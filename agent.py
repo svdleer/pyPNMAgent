@@ -1941,9 +1941,9 @@ class PyPNMAgent:
             return {'success': False, 'error': str(e)}
 
     def _handle_pnm_ofdm_capture(self, params: dict) -> dict:
-        """Trigger OFDM RxMER capture via cm_proxy SNMP SET."""
+        """Trigger OFDM RxMER capture via SNMP SET."""
         modem_ip = params.get('modem_ip')
-        ofdm_channel = params.get('ofdm_channel', 0)
+        ofdm_channel = params.get('ofdm_channel')  # None = auto-discover
         filename = params.get('filename', 'rxmer_capture')
         community = params.get('community', 'your-cm-community')
         
@@ -1951,9 +1951,19 @@ class PyPNMAgent:
             return {'success': False, 'error': 'modem_ip required'}
         
         if not self.config.cm_proxy_host and not self.config.cm_enabled:
-            return {'success': False, 'error': 'cm_proxy not configured'}
+            return {'success': False, 'error': 'cm access not configured'}
         
         try:
+            # Auto-discover OFDM channel if not provided
+            if ofdm_channel is None:
+                self.logger.info(f"Auto-discovering OFDM channels for {modem_ip}")
+                channels_result = self._handle_pnm_ofdm_channels({'modem_ip': modem_ip, 'community': community})
+                if channels_result.get('success') and channels_result.get('channels'):
+                    ofdm_channel = channels_result['channels'][0]['index']
+                    self.logger.info(f"Using first OFDM channel: ifIndex {ofdm_channel}")
+                else:
+                    return {'success': False, 'error': 'No OFDM channels found on modem'}
+            
             # Correct OIDs from PyPNM compiled_oids.py
             OID_RXMER_FILENAME = f'1.3.6.1.4.1.4491.2.1.27.1.2.5.1.8.{ofdm_channel}'
             OID_RXMER_ENABLE = f'1.3.6.1.4.1.4491.2.1.27.1.2.5.1.1.{ofdm_channel}'
