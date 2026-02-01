@@ -1,0 +1,152 @@
+--**************************************************************************
+--
+--  Copyright (c) 2011  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+--
+--
+--
+--    Description:
+--
+--      private MIB for Comcast cable wifi gateway management
+--
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+NETGEAR-COMCAST-RG-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,	
+	Integer32,
+	NOTIFICATION-TYPE
+							FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION              
+							FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP
+							FROM SNMPv2-CONF
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6
+							FROM INET-ADDRESS-MIB
+  	cableGatewayDev
+              FROM NETGEAR-CG-MIB
+	cableGatewayConfigrationComcastGroup
+			  FROM NETGEAR-COMCAST-MIB
+  SnmpAdminString         FROM SNMP-FRAMEWORK-MIB;
+
+cableGatewayConfigrationComcastGroup       OBJECT IDENTIFIER ::= { cableGatewayDev 102 }
+
+-- **********************************************************************
+-- *    cableGatewayConfigrationComcastGroupExt  TABLE
+-- **********************************************************************
+        
+cableGateway OBJECT IDENTIFIER ::= { cableGatewayConfigrationComcastGroup 7 }
+
+cableNatAlg	OBJECT-TYPE
+	SYNTAX      BITS {
+                RSVP(0),
+                FTP(1),
+                TFTP(2),
+                Kerb88(3),
+                NetBios(4),
+                IKE(5),
+                RTSP(6),
+				Kerb1293(7),
+                H225(8),
+                PPTP(9),
+				MSN(10),
+                SIP(11),
+                ICQ(12),
+				IRC666x(13),
+                ICQTalk(14),
+                Net2Phone(15),
+                IRC7000(16),
+				IRC8000(17)
+    }
+	MAX-ACCESS	read-write
+	STATUS		current
+
+	DESCRIPTION
+		"Enables/Disables NAT ALGs by setting the following bits:
+               # 0x80 - RSVP
+               # 0x40 - FTP
+               # 0x20 - TFTP
+               # 0x10 - Kerb88
+               # 0x08 - NetBios
+               # 0x04 - IKE
+               # 0x02 - RTSP
+               # 0x01 - Kerb1293
+               # 0x00 0x80 - H225
+               # 0x00 0x40 - PPTP
+               # 0x00 0x20 - MSN
+               # 0x00 0x10 - SIP
+               # 0x00 0x08 - ICQ
+               # 0x00 0x04 - IRC666x
+               # 0x00 0x02 - ICQTalk
+               # 0x00 0x01 - Net2Phone
+               # 0x00 0x00 0x80 - IRC7000
+			         # 0x00 0x00 0x40 - IRC8000			   			   
+		"
+
+	::= { cableGateway 20 }
+
+DhcpV6ServerControl OBJECT-TYPE
+   SYNTAX  INTEGER {
+                    enabled (1),
+                    disabled (2)
+                   }
+           MAX-ACCESS         read-write
+           STATUS         current
+           DESCRIPTION
+                     "DHCPv6 server control"
+           DEFVAL { 1 }
+    ::= { cableGateway 21 }
+
+ipv6DnsControl OBJECT-TYPE
+   SYNTAX  INTEGER {
+                    enabled (1),
+                    disabled (2)
+                   }
+           MAX-ACCESS         read-write
+           STATUS         current
+           DESCRIPTION
+                     "IPv6 DNS control"
+           DEFVAL { 1 }
+    ::= { cableGateway 22 }
+
+ipv6PrimaryDnsAddress OBJECT-TYPE
+   SYNTAX		OCTET STRING (SIZE(0..39))
+   MAX-ACCESS         read-write
+   STATUS         current
+   DESCRIPTION
+        "IPv6 Primary DNS address"
+    ::= { cableGateway 23 }
+	
+ipv6SecondaryDnsAddress OBJECT-TYPE
+   SYNTAX		OCTET STRING (SIZE(0..39))
+   MAX-ACCESS         read-write
+   STATUS         current
+   DESCRIPTION
+        "IPv6 Secondary DNS address"
+    ::= { cableGateway 24 }
+END
+

@@ -1,0 +1,856 @@
+CADANT-L2VPN-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Unsigned32,
+    Integer32, 
+    Counter32               FROM SNMPv2-SMI
+
+    TEXTUAL-CONVENTION,
+    RowStatus,
+    TruthValue,
+    MacAddress              FROM SNMPv2-TC
+
+    MODULE-COMPLIANCE,
+    OBJECT-GROUP            FROM SNMPv2-CONF
+
+    InterfaceIndex,
+    InterfaceIndexOrZero,
+    ifIndex                 FROM IF-MIB
+
+
+    docsIfCmtsCmStatusIndex FROM DOCS-IF-MIB
+
+    docsQosServiceFlowId,
+    docsQosPktClassId       FROM DOCS-QOS3-MIB
+    
+    DocsL2vpnIfList,
+    clabProjDocsis          FROM CLAB-DEF-MIB
+    
+    
+    docsL2vpnIdx,
+    DocsL2vpnIdentifier,
+    DocsL2vpnIndex,
+    DocsNsiEncapSubtype,
+    DocsNsiEncapValue       FROM DOCS-L2VPN-MIB
+    
+    cadL2vpn                FROM CADANT-PRODUCTS-MIB;
+
+
+cadL2vpnMIB MODULE-IDENTITY
+    LAST-UPDATED  "200908030000Z"  -- Aug 3, 2009
+    ORGANIZATION  "Arris International, Inc."
+    CONTACT-INFO
+        "Arris Technical Support
+         Postal: ARRIS
+         E-Mail: support@arrisi.com"
+    DESCRIPTION
+        "This is the management MIB contains 
+         Cadant proprietary L2VPN MIB information.
+         Copyright 2009 Arris International, Inc.
+         All rights reserved."
+    REVISION "200908030000Z"  -- Aug 3, 2009
+    DESCRIPTION
+        "change syntax of cadL2vpnVlanIdRangeNsiEncapSubtype to read-create."
+    REVISION "200906250000Z"  -- June 25, 2009
+    DESCRIPTION
+        "rename cadl2vpnInstanceVlanId to cadL2vpnInstanceVpnId.
+         rename cadL2vpnVlanIdx to cadL2vpnVpnIdx."  
+    REVISION "200906230000Z"  -- June 23, 2009
+    DESCRIPTION
+        "add cadL2vpnDenyForwardingTable, 
+         change syntax of cadL2vpnCmForwardingEnabled from read-write to read-only
+         change cadL2vpnCmStatsEntry to cadL2vpnCmStatusEntry"  
+    REVISION "200906180000Z"  -- June 18, 2009
+    DESCRIPTION
+        "initial version"  
+    ::= { cadL2vpn 1 }
+    
+--------------------------------------------------------------
+--
+-- Textual Conventions
+--
+
+
+
+
+---------------------------------------------------------------
+
+-- Placeholder for notifications
+--
+-- cadL2vpnMIBNotifications OBJECT IDENTIFIER ::= { cadL2vpnMIB 0 }
+
+--  None defined
+
+--
+-- L2VPN MIB Objects
+--
+
+cadL2vpnMIBObjects OBJECT IDENTIFIER ::= { cadL2vpnMIB 1 }
+----------------------------------------------------------------------
+-- L2VPN Global MIB Objects
+--
+cadL2vpnParams  OBJECT IDENTIFIER ::= { cadL2vpnMIBObjects 1 }
+
+
+cadL2vpnPrimaryNetworkIfIndex OBJECT-TYPE
+    SYNTAX  InterfaceIndexOrZero
+    MAX-ACCESS  read-write
+    STATUS  current
+    DESCRIPTION
+        "ifIndex of the primary physical netowrk interface used for
+         L2VPN traffic. Zero if no primary L2VPN network interface 
+         is configured."
+    DEFVAL { 0 }
+    ::= { cadL2vpnParams 1 }
+
+cadL2vpnSecondaryNetworkIfIndex OBJECT-TYPE
+    SYNTAX  InterfaceIndexOrZero
+    MAX-ACCESS  read-write
+    STATUS  current
+    DESCRIPTION
+        "ifIndex of the secondary physical netowrk interface used for
+         L2VPN traffic. Zero if no secondary L2VPN network interface 
+         is configured."
+    DEFVAL { 0 }
+    ::= { cadL2vpnParams 2 }
+
+cadL2vpnActiveNetworkIfIndex OBJECT-TYPE
+    SYNTAX  InterfaceIndexOrZero
+    MAX-ACCESS  read-only
+    STATUS  current
+    DESCRIPTION
+        "ifIndex of the currently active physical netowrk interface 
+         being used for L2VPN traffic. Zero if no active L2VPN network 
+         interface is up."
+    ::= { cadL2vpnParams 3 }
+
+cadL2vpnForwardingEnabled OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS  current
+    DESCRIPTION
+        "The global L2VPN forwarding state. The default is false(2)."
+    DEFVAL { false }
+    ::= { cadL2vpnParams 4 }
+
+cadL2vpnCmCapEsafeIdentRequired OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS  current
+    DESCRIPTION
+        "When true eSAFE identity TLVs are required in REG-REQ message 
+         otherwise the CM registration will be rejected if L2VPN TLVs 
+         are present. When false a CM may register without these capability TLVs."
+    DEFVAL { true }
+    ::= { cadL2vpnParams 5 }
+
+cadL2vpnCmCapDutFilterRequired OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS  current
+    DESCRIPTION
+        "When true Downstream Unencrypted Traffic (DUT) filter capability 
+         TLV is required in REG-REQ message, otherwise the CM registration 
+         will be rejected if L2VPN TLVs are present. When false a CM may 
+         register without this capability TLV."
+    DEFVAL { true }
+    ::= { cadL2vpnParams 6 }
+
+
+----------------------------------------------------------------------
+--
+-- Point-to-Point and Point-to-Multipoint 
+-- 
+-- The following objects are required for both
+-- Point-to-Point and Point-to-Multipoint operation.
+--
+
+----------------------------------------------------------------
+--
+-- L2VPN MAC layer interface table
+--
+cadL2vpnInterfaceTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CadL2vpnInterfaceEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "L2VPN interface table contains an entry for 
+             each cable MAC interface declared for use with L2VPNs.
+            "
+    ::= { cadL2vpnMIBObjects 2 }
+
+cadL2vpnInterfaceEntry OBJECT-TYPE
+    SYNTAX      CadL2vpnInterfaceEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "each interface must be a unique DOCSIS 3.0 cable MAC interface"
+    INDEX { cadL2vpnInterfaceIfIndex  }
+    ::= { cadL2vpnInterfaceTable 1 }
+
+CadL2vpnInterfaceEntry ::= SEQUENCE
+    {
+        cadL2vpnInterfaceIfIndex    InterfaceIndex,
+        cadL2vpnInterfaceRowStatus  RowStatus
+    }
+
+cadL2vpnInterfaceIfIndex OBJECT-TYPE
+    SYNTAX      InterfaceIndex
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION 
+            "Cable MAC layer ifIndex for this interface."
+    ::= { cadL2vpnInterfaceEntry 1 }
+
+cadL2vpnInterfaceRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION 
+            "Row Status for this table."
+    ::= { cadL2vpnInterfaceEntry 2 }
+
+----------------------------------------------------------------
+--
+-- L2VPN VLAN ID range tables
+--
+cadL2vpnVlanIdRangeTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CadL2vpnVlanIdRangeEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "VPN VLANid range table. Contains ranges of outer 
+             VLANids declared for use with L2VPNs and L3VPNs."
+    ::= { cadL2vpnMIBObjects 3 }
+
+cadL2vpnVlanIdRangeEntry OBJECT-TYPE
+    SYNTAX      CadL2vpnVlanIdRangeEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "contain a VPN VLANid range entry"
+    INDEX { cadL2vpnVlanIdRangeBegin, cadL2vpnVlanIdRangeEnd }
+    ::= { cadL2vpnVlanIdRangeTable 1 }
+
+CadL2vpnVlanIdRangeEntry ::= SEQUENCE
+    {
+        cadL2vpnVlanIdRangeBegin            Unsigned32,
+        cadL2vpnVlanIdRangeEnd              Unsigned32,
+        cadL2vpnVlanIdRangeNsiEncapSubtype  INTEGER,
+        cadL2vpnVlanIdRangeRowStatus        RowStatus
+    }
+
+cadL2vpnVlanIdRangeBegin OBJECT-TYPE
+    SYNTAX      Unsigned32 (2..4094)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION 
+            "Begin range from VLANid."
+    ::= { cadL2vpnVlanIdRangeEntry 1 }
+
+cadL2vpnVlanIdRangeEnd OBJECT-TYPE
+    SYNTAX      Unsigned32 (2..4094)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION 
+            "End range of VLANid. Must be greater than
+             or equal to cadL2vpnVlanIdRangeBegin."
+    ::= { cadL2vpnVlanIdRangeEntry 2 }
+
+cadL2vpnVlanIdRangeNsiEncapSubtype OBJECT-TYPE
+    SYNTAX      INTEGER {
+                    single-qtag(1),
+                    dual-qtag(2),
+                    l3-vrf(3)
+                }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION 
+            "NSI Encapsulation subtype of the VLANid."
+    ::= { cadL2vpnVlanIdRangeEntry 3 }
+
+cadL2vpnVlanIdRangeRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION 
+            "Row Status for this table."
+    ::= { cadL2vpnVlanIdRangeEntry 4 }
+
+----------------------------------------------------------------------
+
+--
+-- L2VPN VPN Instance to CM table
+--
+cadL2vpnInstanceIdToCmTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CadL2vpnInstanceIdToCmEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "L2 VLANid instance table."
+    ::= { cadL2vpnMIBObjects 4 }
+
+cadL2vpnInstanceIdToCmEntry OBJECT-TYPE
+    SYNTAX      CadL2vpnInstanceIdToCmEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "contain a L2VPN Instance entry"
+    INDEX { cadL2vpnInstanceId  }
+    ::= { cadL2vpnInstanceIdToCmTable 1 }
+
+CadL2vpnInstanceIdToCmEntry ::= SEQUENCE
+    {
+        cadL2vpnInstanceId                         Integer32,
+        cadL2vpnInstanceIdVlanIdOuter              Integer32,
+        cadL2vpnInstanceIdVlanIdInner              Integer32,
+        cadL2vpnInstanceIdCmMac                    MacAddress
+    }
+
+cadL2vpnInstanceId OBJECT-TYPE
+    SYNTAX      Integer32 (1..16777215)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION 
+            "The 24-bit L2VPN instance identifier composed from
+             2 12-bit VLANids assigned to the L2VPN instance."
+    ::= { cadL2vpnInstanceIdToCmEntry 1 }
+
+cadL2vpnInstanceIdVlanIdOuter OBJECT-TYPE
+    SYNTAX      Integer32 (2..4094)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "Outer VLANid of this L2VPN Instance."
+    ::= { cadL2vpnInstanceIdToCmEntry 2 }
+
+cadL2vpnInstanceIdVlanIdInner OBJECT-TYPE
+    SYNTAX      Integer32 (0..4095)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "Inner VLANid of this L2VPN Instance."
+    ::= { cadL2vpnInstanceIdToCmEntry 3 }
+
+cadL2vpnInstanceIdCmMac OBJECT-TYPE
+    SYNTAX      MacAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "CM MAC address of this L2VPN Instance."
+    ::= { cadL2vpnInstanceIdToCmEntry 4 }
+
+----------------------------------------------------------------------
+
+--
+-- L2VPN CM to Instance Id Table
+--  Point-to-Point and Multipoint mode
+--
+cadL2vpnCmToInstanceIdTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CadL2vpnCmToInstanceIdEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "The L2VPN CM table."
+    ::= { cadL2vpnMIBObjects 5 }
+
+cadL2vpnCmToInstanceIdEntry OBJECT-TYPE
+    SYNTAX      CadL2vpnCmToInstanceIdEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "An entry is indexed by Cable Modem MAC address and L2VPN Instance ID."
+
+    INDEX { cadL2vpnCmMac, cadL2vpnInstanceId }
+    ::= { cadL2vpnCmToInstanceIdTable 1 }
+
+CadL2vpnCmToInstanceIdEntry ::= SEQUENCE {
+        cadL2vpnCmMac                       MacAddress,
+        cadL2vpnIdx                         DocsL2vpnIndex,
+        cadL2vpnInstanceVpnId              DocsL2vpnIdentifier,
+        cadL2vpnCmForwardingEnabled         TruthValue,
+        cadL2vpnInstanceOuterVlanId         Integer32,
+        cadL2vpnInstanceInnerVlanId         Integer32,
+        cadL2vpnInstanceNsiEncapSubType     INTEGER,
+        cadL2vpnCmCompliantCapability       TruthValue,
+        cadL2vpnCmDutFilteringCapability    TruthValue,
+        cadL2vpnCmDutCMIM                   DocsL2vpnIfList,
+        cadL2vpnCmDhcpSnooping              DocsL2vpnIfList,
+        cadL2vpnVpnCmCMIM                   DocsL2vpnIfList,
+        cadL2vpnVpnCmIndividualSAID         Integer32,
+        cadL2vpnVpnCmVendorSpecific         OCTET STRING,
+        cadL2vpnCmNsiEncapSubtype           DocsNsiEncapSubtype,
+        cadL2vpnCmNsiEncapValue             DocsNsiEncapValue
+    }
+
+cadL2vpnCmMac OBJECT-TYPE
+    SYNTAX      MacAddress
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION 
+            "The CM MAC address hosting this this L2VPN Instance."
+    ::= { cadL2vpnCmToInstanceIdEntry 1 }
+
+cadL2vpnInstanceVpnId OBJECT-TYPE
+    SYNTAX      DocsL2vpnIdentifier
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "An externally configured octet string that identifies an
+            L2VPN."
+    ::= { cadL2vpnCmToInstanceIdEntry 2 }
+
+cadL2vpnIdx     OBJECT-TYPE
+    SYNTAX      DocsL2vpnIndex
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "An internally assigned index value for a known VLAD ID. Refer docsL2vpnIdx."
+    ::= { cadL2vpnCmToInstanceIdEntry 3 }
+
+
+cadL2vpnCmForwardingEnabled     OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "L2VPN forwarding state for all L2VPN instances hosted by this CM and VLAN instance."
+    ::= { cadL2vpnCmToInstanceIdEntry 4 }
+
+cadL2vpnInstanceOuterVlanId OBJECT-TYPE
+    SYNTAX      Integer32 (2..4094)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "L2VPN Instance outer VLAN id."
+    ::= { cadL2vpnCmToInstanceIdEntry 5 }
+
+cadL2vpnInstanceInnerVlanId OBJECT-TYPE
+    SYNTAX      Integer32 (0..4095)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "L2VPN Instance inner VLAN id."
+    ::= { cadL2vpnCmToInstanceIdEntry 6 }
+
+cadL2vpnInstanceNsiEncapSubType OBJECT-TYPE
+    SYNTAX      INTEGER {
+                    single-qtag(1),
+                    dual-qtag(2)
+                }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "NSI Encapsulation subtype."
+    ::= { cadL2vpnCmToInstanceIdEntry 7 }
+
+cadL2vpnCmCompliantCapability OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "Whether an L2VPN CM is compliant with DOCSIS
+             specification. Refer docsL2vpnCmCompliantCapability."
+    ::= { cadL2vpnCmToInstanceIdEntry 8 }
+
+cadL2vpnCmDutFilteringCapability OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "Whether an L2VPN forwarding CM is capable of Downstream
+             Unencrypted Traffic(DUT) Filtering.
+             Refer docsL2vpnCmDutFilteringCapability."
+    ::= { cadL2vpnCmToInstanceIdEntry 9 }
+
+cadL2vpnCmDutCMIM OBJECT-TYPE
+    SYNTAX      DocsL2vpnIfList
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "Reports the value in a per-CM L2VPN Encoding for DUT
+             Cable Modem Interface Mask(CMIM)."
+    ::= { cadL2vpnCmToInstanceIdEntry 10 }
+
+cadL2vpnCmDhcpSnooping OBJECT-TYPE
+    SYNTAX      DocsL2vpnIfList
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "Reports the value of the Enable DHCP Snooping subtype of
+             a top-level L2VPN Encoding."
+    ::= { cadL2vpnCmToInstanceIdEntry 11 }
+
+cadL2vpnVpnCmCMIM OBJECT-TYPE
+    SYNTAX      DocsL2vpnIfList
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "A Cable Modem Interface Mask represents a set of MAC bridge
+             interfaces within the CM."
+    ::= { cadL2vpnCmToInstanceIdEntry 12 }
+
+cadL2vpnVpnCmIndividualSAID OBJECT-TYPE
+    SYNTAX      Integer32 (0..16383)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "The BPI+ Security Association ID in which traffic intended
+            for point-to-point forwarding through an individual CM is 
+            forwarded. 
+
+            If the CMTS does not allocate an individual SAID for
+            multipoint forwarding (as is recommended),it MUST 
+            report this object as zero." 
+    ::= { cadL2vpnCmToInstanceIdEntry 13 }
+
+cadL2vpnVpnCmVendorSpecific OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This object encodes the concatenation of all Vendor 
+            Specific Subtype encodings that appeared in any 
+            registration per-CM L2VPN Encoding associated with this 
+            entry."
+    ::= { cadL2vpnCmToInstanceIdEntry 14 }
+
+cadL2vpnCmNsiEncapSubtype OBJECT-TYPE
+    SYNTAX      DocsNsiEncapSubtype
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "The General Encapsulation Information (GEI) subtype of the
+            Network System Interface (NSI) encapsulation configured
+            for the CM."
+    ::= { cadL2vpnCmToInstanceIdEntry 15 }
+
+cadL2vpnCmNsiEncapValue OBJECT-TYPE
+    SYNTAX      DocsNsiEncapValue
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "The encapsulation value for L2VPN forwarded packets on NSI
+            ports."
+    ::= { cadL2vpnCmToInstanceIdEntry 16 }
+
+
+--------------------------------------------------------------------------
+--
+-- L2VPN VLAN ID to CM and VPN Instance Table
+--
+cadL2vpnIdxToCmVpnInstTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CadL2vpnIdxToCmVpnInstEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "This table contains all the VPN instances ordered by VPN Index,
+             CM MAC and VPN Instance ID."
+    ::= { cadL2vpnMIBObjects 6 }
+
+cadL2vpnIdxToCmVpnInstEntry OBJECT-TYPE
+    SYNTAX      CadL2vpnIdxToCmVpnInstEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "contain a L2VPN Instance entry"
+    INDEX { cadL2vpnVpnIdx, cadL2vpnCmMac, cadL2vpnInstanceId  }
+    ::= { cadL2vpnIdxToCmVpnInstTable 1 }
+
+CadL2vpnIdxToCmVpnInstEntry ::= SEQUENCE
+    {
+        cadL2vpnVpnIdx              DocsL2vpnIndex
+    }
+
+
+
+cadL2vpnVpnIdx OBJECT-TYPE
+    SYNTAX      DocsL2vpnIndex
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION 
+            "An internally assigned index value for a known VLAD ID. Refer docsL2vpnIdx."
+    ::= { cadL2vpnIdxToCmVpnInstEntry 1 }
+
+
+----------------------------------------------------------------------
+--
+-- L2VPN/CM Statistics Table
+--  Point-to-Point and Multipoint mode
+--
+cadL2vpnCmStatsTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CadL2vpnCmStatsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "This table is used to populate data to docsL2vpnCmStatusEntry."
+    ::= { cadL2vpnMIBObjects 7 }
+
+cadL2vpnCmStatsEntry OBJECT-TYPE
+    SYNTAX      CadL2vpnCmStatsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "An entry is indexed by Cable Modem MAC address and VPN Instance ID."
+    INDEX { cadL2vpnCmMac, cadL2vpnInstanceId }
+    ::= { cadL2vpnCmStatsTable 1 }
+
+CadL2vpnCmStatsEntry ::= SEQUENCE {
+        cadL2vpnCmStatsUpstreamPkts       Counter32,
+        cadL2vpnCmStatsUpstreamBytes      Counter32,
+        cadL2vpnCmStatsUpstreamDiscards   Counter32,
+        cadL2vpnCmStatsDownstreamPkts     Counter32,
+        cadL2vpnCmStatsDownstreamBytes    Counter32,
+        cadL2vpnCmStatsDownstreamDiscards Counter32
+    }
+
+cadL2vpnCmStatsUpstreamPkts OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The number of L2vpn-forwarded packets received
+            from this instance's Cable Modem on
+            this instance's L2VPN."
+    ::= { cadL2vpnCmStatsEntry 1 }
+
+cadL2vpnCmStatsUpstreamBytes OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The number of L2vpn-forwarded bytes received
+            from this instance's Cable Modem on
+            this instance's L2VPN."
+    ::= { cadL2vpnCmStatsEntry 2 }
+
+cadL2vpnCmStatsUpstreamDiscards OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The number of L2-forwarded packets 
+            discarded from this instance's 
+            Cable Modem on this instance's VPN."
+    ::= { cadL2vpnCmStatsEntry 3 }
+
+cadL2vpnCmStatsDownstreamPkts OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The number of L2-forwarded packets
+            transmitted to this instance's
+            Cable Modem on this instance's VPN."
+    ::= { cadL2vpnCmStatsEntry 4 }
+
+cadL2vpnCmStatsDownstreamBytes OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The number of L2-forwarded bytes
+            transmitted to this instance's
+            Cable Modem on this instance's VPN."
+    ::= { cadL2vpnCmStatsEntry 5 }
+
+cadL2vpnCmStatsDownstreamDiscards OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The number of L2-forwarded packets that were discarded 
+            before they could be transmitted to this instance's 
+            Cable Modem on this instance's VPN."
+    ::= { cadL2vpnCmStatsEntry 6 }
+
+----------------------------------------------------------------------
+--
+-- L2VPN Classifier Table
+--  (Point-to-Point and Multipoint mode)
+--
+
+cadL2vpnPktClassTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CadL2vpnPktClassEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "This table provides the L2VPN-specific objects for
+            packet classifiers that apply to only L2VPN traffic. 
+            The indices of this table are a subset of the
+            indices of classifiers in docsQosPktClassTable."
+    ::= { cadL2vpnMIBObjects 8 }
+
+cadL2vpnPktClassEntry OBJECT-TYPE
+    SYNTAX      CadL2vpnPktClassEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "An entry in this table extends a single row
+            of docsQosPktClassTable for a rule that applies only to
+            downstream L2VPN forwarded packets.
+            The index ifIndex is an ifType of docsCableMaclayer(127)."
+    INDEX {
+        ifIndex,
+        docsQosServiceFlowId,
+        docsQosPktClassId
+    }
+    ::= { cadL2vpnPktClassTable 1 }
+
+CadL2vpnPktClassEntry ::= SEQUENCE {
+        cadL2vpnPktClassL2vpnId           DocsL2vpnIdentifier,
+        cadL2vpnPktClassUserPriRangeLow   Unsigned32,
+        cadL2vpnPktClassUserPriRangeHigh  Unsigned32,
+        cadL2vpnPktClassCMIM              DocsL2vpnIfList,
+        cadL2vpnPktClassVendorSpecific    OCTET STRING
+    }
+
+cadL2vpnPktClassL2vpnId OBJECT-TYPE
+    SYNTAX      DocsL2vpnIdentifier 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The locally assigned L2VPN index corresponding to the VPN
+            Identifier subtype of a Downstream Classifier L2VPN 
+            Encoding."
+    ::= { cadL2vpnPktClassEntry 1 }
+
+cadL2vpnPktClassUserPriRangeLow OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..7)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The lower priority of the user Priority Range subtype
+            of a Downstream Classifier L2VPN Encoding. If the subtype
+            was omitted, this object has value 0."
+    ::= { cadL2vpnPktClassEntry 2 }
+
+cadL2vpnPktClassUserPriRangeHigh OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..7)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The higher priority of the user Priority Range subtype
+            of a Downstream Classifier L2VPN Encoding. If the subtype
+            was omitted, this object has value 7."
+    ::= { cadL2vpnPktClassEntry 3 }
+
+cadL2vpnPktClassCMIM OBJECT-TYPE
+    SYNTAX      DocsL2vpnIfList 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The Cable Modem Interface Mask (CMIM) signaled in a 
+            Packet Classifier Encoding. In a Downstream Packet 
+            Classifier Encoding, a specified CMIM value restricts the 
+            classifier to match packets with a Destination MAC address
+            corresponding to the interfaces indicated in the CMIM mask.
+            The eCM self and any eSAFE interface bits correspond to
+            the individual eCM and eSAFE host MAC addresses.
+
+            In an Upstream Packet Classifier encoding, a specified CMIM
+            value restricts the classifier to match packets with an 
+            ingress bridge port interface matching the bits in the 
+            CMIM value.
+
+            If the CMIM subtype was omitted, this object should be 
+            reported as a zero length octet string."
+    ::= { cadL2vpnPktClassEntry 4 }
+
+cadL2vpnPktClassVendorSpecific OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This object provides the set of configured 
+            Vendor Specific subtypes within a Packet Classifier 
+            Encoding for a CM. If no Vendor Specific subtype was 
+            specified, this object is a zero length octet string. 
+            If one or more Vendor Specific subtype parameters was 
+            specified, this object represents the concatenation of all
+            such subtypes."
+    ::= { cadL2vpnPktClassEntry 5 }
+
+
+----------------------------------------------------------------------
+--
+-- L2VPN Deny Forwarding Table
+--  (Point-to-Point and Multipoint mode)
+--
+
+cadL2vpnDenyForwardingTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CadL2vpnDenyForwardingEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "This table provides the L2VPN-specific deny data forwarding list. 
+            The index of this table is an arbitrary number."
+    ::= { cadL2vpnMIBObjects 9 }
+
+cadL2vpnDenyForwardingEntry OBJECT-TYPE
+    SYNTAX      CadL2vpnDenyForwardingEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "An entry in this table can be a VPN Id, CM MAC or VLAN id.
+             When a row is created or removed, SCM will set the associated VLANid
+             cadL2vpnCmForwardingEnabled to true(1) or false(2)."
+    INDEX {
+        cadL2vpnDenyForwardingIndex
+    }
+    ::= { cadL2vpnDenyForwardingTable 1 }
+
+CadL2vpnDenyForwardingEntry ::= SEQUENCE {
+        cadL2vpnDenyForwardingIndex       Unsigned32,
+        cadL2vpnDenyForwardingVpnId       OCTET STRING,
+        cadL2vpnDenyForwardingInstanceId  Integer32,
+        cadL2vpnDenyForwardingCmMac       MacAddress,
+        cadL2vpnDenyForwardingRowStatus   RowStatus
+    }
+
+cadL2vpnDenyForwardingIndex OBJECT-TYPE
+    SYNTAX      Unsigned32 
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "The index of this table."
+    ::= { cadL2vpnDenyForwardingEntry 1 }
+
+cadL2vpnDenyForwardingVpnId OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..32)) 
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+            "When it is specified, data forwarding of all the VLANid 
+             within this VPN ID will be disabled."
+    ::= { cadL2vpnDenyForwardingEntry 2 }
+
+cadL2vpnDenyForwardingInstanceId OBJECT-TYPE
+    SYNTAX      Integer32 (0..16777215)
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+            "When it is specified, data forwarding of this VLAN
+             instance will be disabled."
+    ::= { cadL2vpnDenyForwardingEntry 3 }
+
+cadL2vpnDenyForwardingCmMac OBJECT-TYPE
+    SYNTAX      MacAddress 
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+            "When it is specified, data forwarding of all the VLANid 
+             within this CM will be disabled."
+    ::= { cadL2vpnDenyForwardingEntry 4 }
+
+cadL2vpnDenyForwardingRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+            "row status of this table entry."
+    ::= { cadL2vpnDenyForwardingEntry 5 }
+END
+

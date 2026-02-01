@@ -1,0 +1,580 @@
+-- vim: set ts=4, set expandtab, match Todo /\%>79v/
+-- ***********************************************************************
+-- ***********************************************************************
+--                             ROUTER
+--                      SNMP/MIB : MIB Files
+--
+--            Copyright (C) 2014 Hitron Technologies Inc.
+--                       All Rights Reserved.
+-- ***********************************************************************
+--  Filename    : HITRON-RG-UI-CGNS-MENU.mib
+--  Description : User Interface MIB
+-- ***********************************************************************
+--
+
+HITRON-RG-UI-CGNS-MENU-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+    , OBJECT-TYPE
+    , enterprises
+    , Integer32
+    , Unsigned32
+    , Counter32
+        FROM SNMPv2-SMI -- RFC2578
+    
+    DisplayString
+    , TruthValue
+    , DateAndTime
+	, TEXTUAL-CONVENTION
+        FROM SNMPv2-TC  -- RFC2579
+    
+    hitronUiWebs
+        FROM HITRON-RG-UI-MIB
+
+    ; -- End of IMPORTS
+
+hitronCgnsUiMenu  MODULE-IDENTITY
+    LAST-UPDATED    "201408201100Z" -- Aug. 20, 2014
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "CaoJun
+        Hitron Technologies, Inc.
+        16F Jinqhope Square, No.88 Huachi Stree, Suzhou Industrial Park, Suzhou PRC 215000
+        Phone:  +86-512-62653066 Ext.8146
+        E-mail: caojun@sz.hitrontech.com"
+    DESCRIPTION
+        "MIB module for User Interface(UM) configuration, includes :
+            GUIMENU - Web MENU CONTROL,"
+    ::= { hitronUiWebs 2 }
+
+defaultMenu  OBJECT IDENTIFIER  ::= { hitronCgnsUiMenu 1 }
+menuWizard   OBJECT IDENTIFIER  ::= { hitronCgnsUiMenu 2 }
+menuStatus   OBJECT IDENTIFIER  ::= { hitronCgnsUiMenu 3 }
+menuBasic    OBJECT IDENTIFIER  ::= { hitronCgnsUiMenu 4 }
+menuWireless OBJECT IDENTIFIER  ::= { hitronCgnsUiMenu 5 }
+menuAdmin    OBJECT IDENTIFIER  ::= { hitronCgnsUiMenu 6 }
+menuSecurity OBJECT IDENTIFIER  ::= { hitronCgnsUiMenu 7 }
+menuAdvanced OBJECT IDENTIFIER  ::= { hitronCgnsUiMenu 8 }
+menuMta      OBJECT IDENTIFIER  ::= { hitronCgnsUiMenu 9 }
+
+MenuAccessValue ::= TEXTUAL-CONVENTION
+	STATUS          current
+    DESCRIPTION
+        ""
+    SYNTAX INTEGER {
+         disableAll(0),
+         cusOnly(1),
+         msoOnly(2),
+         enableAll(3)   
+    }
+
+defaultMsoFirstMenu OBJECT-TYPE
+    SYNTAX INTEGER {
+        wizardAll(0),
+        statusOverview(1),
+        basicLan(2),
+        wirelessBasic(3),
+        adminPassword(4),
+        securityFirewall(5),	
+        advancedSwitch(6),
+        mtaLinestatus(7)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Mso default redirect url after login the GUI. "
+    ::= { defaultMenu 1 }
+
+defaultMsoNormalMenu OBJECT-TYPE
+    SYNTAX INTEGER {
+        wizardAll(0),
+        statusOverview(1),
+        basicLan(2),
+        wirelessBasic(3),
+        adminPassword(4),
+        securityFirewall(5),	
+        advancedSwitch(6),
+        mtaLinestatus(7)		
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Mso default redirect url after login the GUI. "
+    ::= { defaultMenu 2 }	
+	
+defaultCusFirstMenu OBJECT-TYPE
+    SYNTAX INTEGER {
+        wizardAll(0),
+        statusOverview(1),
+        basicLan(2),
+        wirelessBasic(3),
+        adminPassword(4),
+        securityFirewall(5),	
+        advancedSwitch(6),
+        mtaLinestatus(7)		
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Customer default redirect url after login the GUI. "
+    ::= { defaultMenu 3 }	
+
+defaultCusNormalMenu OBJECT-TYPE
+    SYNTAX INTEGER {
+        wizardAll(0),
+        statusOverview(1),
+        basicLan(2),
+        wirelessBasic(3),
+        adminPassword(4),
+        securityFirewall(5),	
+        advancedSwitch(6),
+        mtaLinestatus(7)		
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Customer default redirect url after login the GUI. "
+    ::= { defaultMenu 4 }
+	
+menuWizardMain OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide wizard main menu. "
+    ::= { menuWizard 1 }
+	
+menuWizardWizard OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide wizard menu. "
+    ::= { menuWizard 2 }
+
+menuStatusMain OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide status main menu. "
+    ::= { menuStatus 1 }
+	
+menuStatusOverview OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide overview menu. "
+    ::= { menuStatus 2 }	
+
+menuStatusSystem OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide system info menu. "
+    ::= { menuStatus 3 }
+	
+menuStatusGateway OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide gateway menu. "
+    ::= { menuStatus 4 }	
+
+menuStatusDocsis OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide docsis menu. "
+    ::= { menuStatus 5 }
+
+menuStatusEvent OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide docsis event menu. "
+    ::= { menuStatus 6 }
+	
+menuStatusWls OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide wireless status menu. "
+    ::= { menuStatus 7 }	
+
+menuStatusMoca OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide MoCA status menu. "
+    ::= { menuStatus 8 }
+
+menuBasicMain OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide baisc main menu. "
+    ::= { menuBasic 1 }
+	
+menuBasicLan OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide baisc lan menu. "
+    ::= { menuBasic 2 }
+
+menuBasicWan OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide basic wan menu. "
+    ::= { menuBasic 3 }
+	
+menuBasicCap OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide capability menu. "
+    ::= { menuBasic 4 }	
+
+menuBasicPf OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide port forward menu. "
+    ::= { menuBasic 5 }
+
+menuBasicPt OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide port trigger menu. "
+    ::= { menuBasic 6 }
+	
+menuBasicDmz OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide dmz menu. "
+    ::= { menuBasic 7 }	
+
+menuBasicDns OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide dns menu. "
+    ::= { menuBasic 8 }
+
+menuBasicMoca OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide MoCA setup menu. "
+    ::= { menuBasic 9 }
+	
+menuBasicDdns OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide ddns menu. "
+    ::= { menuBasic 10 }	
+
+menuBasicNat OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide nat menu. "
+    ::= { menuBasic 11 }
+
+menuWlsMain OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide wireless main menu. "
+    ::= { menuWireless 1 }	
+	
+menuWlsBasic OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide wireless basic setting menu. "
+    ::= { menuWireless 2 }	
+
+menuWlsSecurity OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide wireless security menu. "
+    ::= { menuWireless 3 }
+	
+menuWlsGuest OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide wireless guest menu. "
+    ::= { menuWireless 4 }	
+
+menuWlsAccess OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide wireless access control menu. "
+    ::= { menuWireless 5 }
+
+menuWlsAdvance OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide wireless advance setting menu. "
+    ::= { menuWireless 6 }
+	
+menuWlsDhcp OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide wireless dhcp menu. "
+    ::= { menuWireless 7 }
+
+menuAdminMain OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide admin main menu. "
+    ::= { menuAdmin 1 }
+	
+menuAdminManage OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide management menu. "
+    ::= { menuAdmin 2 }
+
+menuAdminAccess OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide access menu. "
+    ::= { menuAdmin 3 }
+	
+menuAdminDiag OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide diag menu. "
+    ::= { menuAdmin 4 }	
+
+menuAdminBackup OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide backup menu. "
+    ::= { menuAdmin 5 }
+
+menuAdminSntp OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide sntp menu. "
+    ::= { menuAdmin 6 }
+	
+menuAdminUsb OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide usb menu. "
+    ::= { menuAdmin 7 }
+
+menuAdminDevreboot OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide device reboot menu. "
+    ::= { menuAdmin 8 }
+	
+menuSecMain OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide security main menu. "
+    ::= { menuSecurity 1 }
+
+menuSecFirewall OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide firewall menu. "
+    ::= { menuSecurity 2 }
+
+menuSecSrvFlt OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide service filter menu. "
+    ::= { menuSecurity 3 }
+	
+menuSecDevFlt OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide device filter menu. "
+    ::= { menuSecurity 4 }	
+
+menuSecKwdFlt OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide key word filter menu. "
+    ::= { menuSecurity 5 }
+
+menuSecTime OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide time filter menu. "
+    ::= { menuSecurity 6 }
+	
+menuSecNoti OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide notify menu. "
+    ::= { menuSecurity 7 }
+
+menuSecLog OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide log menu. "
+    ::= { menuSecurity 8 }
+
+menuAdvMain OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide advanced main menu. "
+    ::= { menuAdvanced 1 }
+	
+menuAdvSwitch OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide switch menu. "
+    ::= { menuAdvanced 2 }
+
+menuAdvDdns OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide ddns menu. "
+    ::= { menuAdvanced 3 }
+	
+menuAdvRoute OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide static router menu. "
+    ::= { menuAdvanced 4 }
+
+menuAdvRip OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide rip menu. "
+    ::= { menuAdvanced 5 }
+
+menuAdvSpectrum OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide spectrum menu. "
+    ::= { menuAdvanced 6 }
+	
+menuMtaMain OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide mta main menu. "
+    ::= { menuMta 1 }
+	
+menuMtaLinestatus OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide line status menu. "
+    ::= { menuMta 2 }
+
+menuMtaDhcp OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide mta dhcp menu. "
+    ::= { menuMta 3 }
+	
+menuMtaSrvflow OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide mta service flow menu. "
+    ::= { menuMta 4 }
+
+menuMtaDiag OBJECT-TYPE
+	SYNTAX      MenuAccessValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Display/Hide mta diagnostics menu. "
+    ::= { menuMta 5 }
+
+END

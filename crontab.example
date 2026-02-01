@@ -1,0 +1,9 @@
+# Crontab entry to start agent on boot/reboot
+# 
+# Add to your crontab with: crontab -e
+# Then paste the line below (adjust path as needed):
+
+@reboot /home/YOUR_USER/.pypnm-agent/run_background.sh start
+
+# Or if you installed in a different location:
+# @reboot /path/to/pypnm-agent/run_background.sh start

@@ -1,0 +1,218 @@
+--**************************************************************************
+ --                                                                          
+ --    Copyright 2008 Scientific Atlanta, A Cisco Company                                   
+ --    All Rights Reserved                                                   
+ --    No portions of this material may be reproduced in any
+ --    form without the written permission of:                                                
+ --             Scientific Atlanta, A Cisco Company                                          
+ --             5030 Sugarloaf Pkwy                                     
+ --             Lawrenceville, Georgia 30044                                    
+ --                                                                          
+ --**************************************************************************
+ 
+ SA-TR069-MIB DEFINITIONS ::= BEGIN
+ IMPORTS
+         MODULE-IDENTITY, 
+         OBJECT-TYPE,
+         enterprises
+                 FROM SNMPv2-SMI
+         TruthValue
+                 FROM SNMPv2-TC
+         SnmpAdminString 
+                 FROM SNMP-FRAMEWORK-MIB
+         InetAddressType,
+         InetAddress
+                 FROM INET-ADDRESS-MIB ;
+ 
+ sa           OBJECT IDENTIFIER ::= { enterprises 1429 }
+ saModules    OBJECT IDENTIFIER ::= { sa 79 }
+ 
+ saTR069 MODULE-IDENTITY
+         LAST-UPDATED    "201212140000Z"
+         ORGANIZATION    "Cisco Systems, Inc."
+         CONTACT-INFO    "http://support.cisco.com"
+         DESCRIPTION
+             "Controls the configuration of TR-069 CWMP Client"
+ 
+         -- History
+	REVISION     "201212140000Z"
+	DESCRIPTION
+             "Added saTR069ClientDeviceIdentifier"
+			 
+	REVISION     "201112190000Z"
+	DESCRIPTION
+             "Moved saModules line under comments"
+               
+	REVISION     "201109290000Z"
+	DESCRIPTION
+             "Updated the MIB CONTACT-INFO and saTR069ClientMode description -CR-19293"
+
+	REVISION     "201109280000Z"
+	DESCRIPTION
+		"Added saTR069ClientMode to Enable/ Disable TR69 thread"
+
+    
+    REVISION     "201101260000Z"
+	DESCRIPTION
+             "i) Changed saTR069 to saModules 6. It was saModules 5 before but cannot be used as there is other conflicting definition
+              ii) Changed saTR069ClientPeriodicInformInterval max value to 2147483647"     
+         
+	REVISION     "201101190000Z"
+    DESCRIPTION
+             "Initial release."
+			 
+		::= { saModules 6 }
+
+saTR069ClientConfig   OBJECT IDENTIFIER ::=  { saTR069 1 }
+
+saTR069ClientMode OBJECT-TYPE
+    SYNTAX INTEGER  {
+        disable(0),
+        enable(1)
+        }
+    MAX-ACCESS  read-write 
+    STATUS      current
+    DESCRIPTION  
+            "Enabling this MIB starts the TR-069 client to communicate with ACS"
+    DEFVAL { 0 }
+    ::= { saTR069ClientConfig 1 }
+
+saTR069ClientAcsUrl OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE(0..255))
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        " Sets the ACS Management Server URL.
+          This parameter is stored in non-vol and is NULL by default.
+          
+         forex: 'http://myacs.acs.lab.sa"
+    ::= { saTR069ClientConfig 2 }
+    
+saTR069ClientAcsUsername OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE(0..255))
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        " Sets the username associated with the ACS Management Server.
+          This parameter is stored in non-vol and is NULL by default.
+        "
+    ::= { saTR069ClientConfig 3 }
+
+saTR069ClientAcsPassword OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE(0..255))
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        " Sets the password associated with the ACS Management Server.
+          This parameter is stored in non-vol and is NULL by default.
+          
+          NOTE: This should be a hidden value in SNMPGET/SNMPWALK but user 
+	        should be able to set this using SNMPSET
+        "          
+    ::= { saTR069ClientConfig 4 }
+    
+saTR069ClientCrUsername OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE(0..255))
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        " Set the username associated with the connection request from the ACS.
+          This parameter is stored in non-vol and is NULL by default.
+        "
+    ::= { saTR069ClientConfig 5 }
+
+saTR069ClientCrPassword OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE(0..255))
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        " Set the password associated with the connection request from the ACS.
+          This parameter is stored in non-vol and is NULL by default.    
+          
+          NOTE: This should be a hidden value in SNMPGET/SNMPWALK but user 
+	        should be able to set this using SNMPSET
+        "
+    ::= { saTR069ClientConfig 6 }
+    
+
+saTR069ClientPeriodicInform OBJECT-TYPE 
+    SYNTAX INTEGER  {
+        disable(0),
+        enable(1)
+        }
+    MAX-ACCESS  read-write 
+    STATUS      current
+    DESCRIPTION  
+            "Enable the TR-069 client, allowing informs to occur at the periodic rate."
+    DEFVAL { 1 }
+    ::= { saTR069ClientConfig 7 }
+
+saTR069ClientPeriodicInformInterval OBJECT-TYPE 
+    SYNTAX INTEGER  (1..2147483647)
+    UNITS	"Seconds"	
+    MAX-ACCESS  read-write 
+    STATUS      current
+    DESCRIPTION  
+            "Specify the periodic inform interval in seconds.
+             Not advisable to have inform interval less than 180 seconds (3 min)"
+    DEFVAL { 600 }
+    ::= { saTR069ClientConfig 8 }
+
+saTR069ClientAllowDocsisConfig OBJECT-TYPE 
+    SYNTAX INTEGER  {
+        disable(0),
+        enable(1)
+        }
+    MAX-ACCESS  read-write 
+    STATUS      current
+    DESCRIPTION  
+            "	In operation, X_DOCSIS_AllowDocsisConfiguration in a factory-defaulted cable modem will be true, 
+             allowing the device to contact its ACS or an activation server using either a factory-default 
+             ACS URL and other parameters, or ACS URL and other parameters supplied in the DOCSIS configuration file.
+		Once the initial contact is established the ACS modifies the URL, and X_DOCSIS_AllowDocsisConfiguration 
+	     is automatically set to false. Subsequent re-booting of the device will use the modified address is accordance with TR-069.
+		The ACS may relinquish this control by explicitly setting X_DOCSIS_AllowDocsisConfiguration to false. 
+	     The next time the device reboots the URL can again be accepted from the DOCSSIS configuration file.
+		X_DOCSIS_AllowDocsisConfiguration also defaults to true, so resetting the device to factory defaults 
+	     also re-enables the DOCSIS configuration file."
+    DEFVAL { 1 }
+    ::= { saTR069ClientConfig 9 }
+
+
+saTR069ClientConnReqUrl OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE(0..255))
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " This is set by default during the initial bootup and always uses port 30005
+          Connection Request URL is used by the ACS to solicit Gateway and make the client checkin to ACS.
+          This parameter is stored in non-vol and is http://<rg-wan-ip>:30005/ by default.
+        "
+    ::= { saTR069ClientConfig 10 }
+
+saTR069ClientAcsControlPanelUrl OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE(0..255))
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " Set by the ACS when the client checks in. The user is re-directed to this link when try to access local GUI
+          This parameter is stored in non-vol and is NULL by default.
+        "
+    ::= { saTR069ClientConfig 11 }
+
+saTR069ClientDeviceIdentifier OBJECT-TYPE
+   SYNTAX INTEGER {
+       useSerialNumber(0),
+       useCmMacAddress(1)
+   }
+   MAX-ACCESS   read-write
+   STATUS       current
+   DESCRIPTION
+       "Defines the value used to identify this device with the ACS.  This value will show up in the ACS server under the Serial Number field.
+             useSerialNumber(0):       The InternetGatewayDevice.DeviceInfo.SerialNumber parameter will return the device's serial number (e.g. 234567890).
+             useCmMacAddress(1):    The InternetGatewayDevice.DeviceInfo.SerialNumber parameter will return the device's CM MAC address (e.g. 00407B1A2B3C).
+       "
+   DEFVAL { 0 }
+   ::= { saTR069ClientConfig 12 }
+
+END

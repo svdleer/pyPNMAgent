@@ -1,0 +1,33 @@
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.tar.gz
+
+# Config files with secrets
+agent_config.json
+config/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# SSH keys
+*.pem
+id_*
+# Committed DOCSIS MIBs for agent SNMP operations

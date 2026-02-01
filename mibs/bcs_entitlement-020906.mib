@@ -1,0 +1,246 @@
+ENTITLEMENT-KEY-MIB DEFINITIONS ::= BEGIN
+
+
+IMPORTS
+        MODULE-IDENTITY,
+        Integer32,
+        OBJECT-TYPE
+                                FROM SNMPv2-SMI
+
+        DisplayString           FROM SNMPv2-TC
+
+        giproducts              FROM BCS-IDENT-MIB;
+
+
+entitlementKey MODULE-IDENTITY
+        LAST-UPDATED "200602090000Z"
+
+        ORGANIZATION "Motorola Connected Home Solutions"
+        CONTACT-INFO "Motorola Technical Response Center
+                      Inside USA     1-888-944-HELP (1-888-944-4357)
+                      Outside USA    1-215-323-0044
+                      TRC Hours:
+                      Monday through Friday 8am - 7pm Eastern Standard Time
+                      Saturdays            10am - 5pm Eastern Standard Time"
+
+        DESCRIPTION  "The MIB module for the feature entitlement key
+                      capability."
+
+        REVISION     "200602090000Z"
+        DESCRIPTION  "Version 1.3; February 9, 2006
+                      - Updated Contact Information."
+
+        REVISION     "200510050000Z"
+        DESCRIPTION  "Version 1.2:
+
+                      October 5, 2005
+                      - Updated bcsEntitlementKeyStatus descriptions
+                      - Added Feature Status field to bcsEntitlementFeatureTable"
+
+        REVISION     "200502150000Z"
+        DESCRIPTION  "Version 1.1:
+
+                      February 15, 2005
+                      - Modified bcsEntitlementKeyMessage to be DisplayString."
+ 
+         ::= {giproducts 13}
+
+--
+-- ENTITLEMENT-KEY MIB STRUCTURE
+--
+-- The following duplicates the structure and entries in the ENTITLEMENT-KEY
+-- MIB.  Object identifiers for groups are defined here.
+--
+   bcsEntitlementKeyControl        OBJECT IDENTIFIER ::= { entitlementKey 1}
+--    bcsEntitlementKeyMessage                          { bcsEntitlementKeyControl 1}   
+--    bcsEntitlementOperation                           { bcsEntitlementKeyControl 2}
+--    bcsEntitlementKeyStatus                           { bcsEntitlementKeyControl 3}
+--    bcsEntitlementFeatureTable                        { bcsEntitlementKeyControl 4}
+--       bcsEntitlementFeatureEntry                   { bcsEntitlementFeatureTable 1}
+--          bcsEntitlementFeatureIndex                { bcsEntitlementFeatureEntry 1}
+--          bcsEntitlementFeatureID                   { bcsEntitlementFeatureEntry 2}
+--          bcsEntitlementFeatureSupported            { bcsEntitlementFeatureEntry 3}
+--          bcsEntitlementFeatureQualifier            { bcsEntitlementFeatureEntry 4}
+--          bcsEntitlementFeatureStatus               { bcsEntitlementFeatureEntry 5}
+
+
+-- --------------------------------------------------------------------
+--
+-- Key Entitlement Configuration and Status
+--
+
+bcsEntitlementKeyMessage OBJECT-TYPE
+    SYNTAX DisplayString
+    MAX-ACCESS  read-write
+    STATUS current
+    DESCRIPTION
+        "Entitlement Key Message used to enable a device with one or more
+         features.
+
+         The Entitlement Key Message contains a prefix with an actual key
+         code.  The following information is included in the Entitlement Key:
+           o  Key Version Number
+           o  Entitlement Features (count and feature id-qualifier pairs)
+           o  Algorithm
+           o  Key Code Information (length and key code)
+           
+         This is an ASCII character representation of the message with
+         characters representing HEX digits 0 to F."
+::= { bcsEntitlementKeyControl 1}
+
+bcsEntitlementOperation OBJECT-TYPE
+    SYNTAX  INTEGER
+    {
+        apply              (1),  -- Verify and apply key
+        applyNotInProgress (2),  -- Apply operation complete or never started
+        applyInProgress    (3)   -- Apply operation started but not completed
+    }
+    MAX-ACCESS  read-write
+    STATUS current
+    DESCRIPTION
+        "Entitlement Operation used to initiate key validation, as well as
+         to report the status of the operation.  If the a new entitlement key
+         is being applied to a device with an existing entitlement key, the
+         existing entitlement remains in affect until the verification and
+         apply process is complete and the entitlement key is valid.  Once
+         the applied entitlement key has been validated, the new key is saved
+         and its entitlements are used."
+::= { bcsEntitlementKeyControl 2}
+
+bcsEntitlementKeyStatus OBJECT-TYPE
+    SYNTAX  INTEGER
+    {
+        keyInactive        (1), -- No key applied (never started)
+        keyVerify          (2), -- Verification in progress
+        keyValid           (3), -- Verification complete, key is valid and
+                                -- applied
+        keyInvalidUseOldKey(4), -- Verification complete, key is invalid
+                                -- and reverting back to previous valid key
+        keyInvalidNoKey    (5)  -- Verification complete, key is invalid
+                                -- and no valid key is available
+    }
+    MAX-ACCESS  read-only
+    STATUS current
+    DESCRIPTION
+        "Entitlement Key Status indicates the status of the last applied
+         entitlement key.  When an invalid entitlement key has been applied,
+         any entitlements successfully applied remain in affect; in other
+         words, the last valid entitlement key is restored.  When a valid
+         key has been applied, the key is saved and the entitlements of the
+         new key is used.
+         
+         If during a reboot, an invalid key is processed, the device indicates
+         that the key is invalid and restores the last valid key applied, if
+         one exists.
+         
+         When a device restores the last valid key applied due to receiving an
+         invalid key via SNMP or during a reboot, the status is set to
+         keyInvalidUseOldKey and the bcsEntitlementKeyMessage OID is modified
+         to contain the last valid key applied.  When no valid key exists, the
+         status is set to keyInvalidNoKey and the bcsEntitlementKeyMessage OID
+         contains the invalid key.
+         
+         The bcsEntitlementFeatureTable lists the authorization status of
+         all features, reflecting the authorizations present in the last valid
+         entitlement key."
+::= { bcsEntitlementKeyControl 3}
+
+bcsEntitlementFeatureTable OBJECT-TYPE
+    SYNTAX SEQUENCE OF BcsEntitlementFeatureEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "This table lists the status of all entitlement features known by
+         the device.  The table also reflects the authorizations present in
+         the last valid entitlement key; in other words, only those features
+         authorized in the last valid entitlement key received should be
+         authorized.  The device accepts authorizations for features not
+         supported; however, a feature only becomes active when the feature
+         is both authorized and supported."
+::= { bcsEntitlementKeyControl 4}
+
+bcsEntitlementFeatureEntry OBJECT-TYPE
+    SYNTAX BcsEntitlementFeatureEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "A row in the Entitlement Feature table."
+    INDEX { bcsEntitlementFeatureIndex }
+::= { bcsEntitlementFeatureTable 1}
+
+BcsEntitlementFeatureEntry ::= SEQUENCE
+    {
+     bcsEntitlementFeatureIndex     Integer32,
+     bcsEntitlementFeatureID        Integer32,
+     bcsEntitlementFeatureSupported INTEGER,
+     bcsEntitlementFeatureQualifier Integer32,
+     bcsEntitlementFeatureStatus	Integer32
+    }
+
+bcsEntitlementFeatureIndex OBJECT-TYPE
+    SYNTAX Integer32
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "Entitlement Feature Index."
+::= { bcsEntitlementFeatureEntry 1 }
+
+bcsEntitlementFeatureID OBJECT-TYPE
+    SYNTAX Integer32
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Entitlement Feature ID uniquely identifies a feature."
+::= { bcsEntitlementFeatureEntry 2 }
+
+bcsEntitlementFeatureSupported OBJECT-TYPE
+    SYNTAX  INTEGER
+    {
+        featureNotSupported (1),
+        featureSupported    (2)
+    }
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Entitlement Feature Supported status indicates whether the
+         device is capable of supporting a feature.  For example, if a
+         feature is dependent on certain hardware, the feature would not
+         be supported when the hardware is not present or when it is not
+         operational.  A key can still be valid if it contains an
+         authorization for a feature that is not supported by the device;
+         however, the feature only becomes active when the feature is both
+         authorized and supported."
+::= { bcsEntitlementFeatureEntry 3 }
+
+bcsEntitlementFeatureQualifier OBJECT-TYPE
+    SYNTAX Integer32
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Entitlement Feature Qualifier describes the authorization
+         qualifier for the feature.  For those features present in the
+         last valid entitlement key applied, this object represents the
+         qualifier included in the key; otherwise, this object represents
+         a deauthorized value (e.g., 0)."
+::= { bcsEntitlementFeatureEntry 4 }
+
+bcsEntitlementFeatureStatus OBJECT-TYPE
+    SYNTAX Integer32
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Entitlement Feature Status describes whether the feature is
+         fully operational.  The various status values include:
+             0 - No errors and the feature is operating as configured.
+             1 - Not operational due to unknown reason.
+             2 - Not operational because feature is not supported by
+                 device.
+             3 - Not operational due to imcomplete configuration, i.e.
+                 the feature is not properly or not fully configured.
+             4 - Reboot required for feature to become operational.
+         Since the errors only pertain to features that have been
+         authorized, any feature that is deauthorized has a status of
+         0 (zero)."
+::= { bcsEntitlementFeatureEntry 5 }
+
+END

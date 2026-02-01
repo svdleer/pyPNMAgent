@@ -1,0 +1,2116 @@
+TMMPKTC-MTA-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+        MODULE-IDENTITY, 
+        OBJECT-TYPE,enterprises, 
+        Unsigned32,
+        Integer32
+                FROM SNMPv2-SMI
+        ifIndex
+                FROM IF-MIB
+        SnmpAdminString 
+                FROM SNMP-FRAMEWORK-MIB
+        TruthValue
+                FROM SNMPv2-TC ;
+
+TenthMOS ::= TEXTUAL-CONVENTION
+        DISPLAY-HINT "d-1"
+        STATUS       current
+        DESCRIPTION
+            "Units are in tenths of a MOS score;
+             for example, MOS score 4.2 will be represented as 42."
+        SYNTAX       Integer32
+                        
+thomson      OBJECT IDENTIFIER ::= { enterprises 2863 }
+tmmVoip      OBJECT IDENTIFIER ::= { thomson 78 }
+
+tmmMta   MODULE-IDENTITY
+         LAST-UPDATED    "0907170000Z"  -- 2009/07/17
+         ORGANIZATION    "Thomson, Inc."
+         CONTACT-INFO    "larry.brown@thomson.net"
+         DESCRIPTION
+             "Controls the behavior of Embedded MTA fuctions.
+              This MIB is active only at the MTA IP address.
+              Can be part of MTA coniguration file."
+         ::= { tmmVoip 3 }
+
+-- MTA Device
+tmmMtaDevice   OBJECT IDENTIFIER ::=  { tmmMta 1 }
+
+tmmMtaDevCmsVendor OBJECT-TYPE
+    SYNTAX INTEGER {
+        broadcom(1),
+        sonus(2),
+        tollBridge(3),
+        syndeo(4),
+        standardPacketCable(5),
+        commatch(6),
+        generalBandwidth(7),
+        nueraV52(8),
+        nueraGr303(9)
+    }
+    MAX-ACCESS 	  read-write
+    STATUS        current
+    DESCRIPTION	
+        "Call Agent Vendor.
+         1:  Broadcom simple call agent or generic NCS call agent
+         2:  Sonus
+         3:  TollBridge
+         4:  Syndeo
+         5:  Standard PacketCable Call Agent (Default)
+         6:  Commatch
+         7:  General Bandwidth
+         8:  Nuera v5.2 gateway Call Agent
+         9:  Nuera GR303 gateway Call Agent
+         Note:  Similar to vendor specific DOCSIS TLV 24."
+    DEFVAL { 5 }
+    ::= { tmmMtaDevice 1 }
+
+tmmMtaDevAllowBe OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+    }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+           "Primary SF usage if dynamic SF fails:
+            0: do no switch to primary SF if dynamic SF fails.
+            1: allow to switch to primary SF.
+            Equivalent of VSIF 74."
+    DEFVAL { 0 }
+    ::= { tmmMtaDevice 2 }
+
+tmmMtaDevPhsMode OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1),
+        onlyUpstream(2),
+        onlyDownstream(3)
+    }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "Enable Payload Header Suppression for upstream RTP traffic.
+         0: Disable (Default)
+         1: Enable
+         2: Only in the upstream direction
+         3: Only in the downstream direction
+         Note:  PHS is not supported by all CMTS vendors
+         Note:  Equivalent of VSIF 29."
+    DEFVAL { 0 }
+    ::= { tmmMtaDevice 3 }
+
+tmmMtaDevMediaSecurityAdvertise OBJECT-TYPE 
+    SYNTAX INTEGER { 
+       disable(0),
+       enable(1)
+    } 
+    MAX-ACCESS    read-write 
+    STATUS        current 
+    DESCRIPTION 
+        "Media security advertisement in OK to CRCX/MDCX. 
+         If disableMediaSecurity, only 60/50, 80/70 (no security) 
+         will be advertised by the MTA. 
+        This setting is used to disable Media Security for voice calls.
+         0: Media Security Advertisement Disabled 
+         1: Media Security Advertisement Enabled (default) 
+        Equivalent of VSIF 63."
+   DEFVAL { 1 }
+    ::= { tmmMtaDevice 4 }
+
+tmmMtaDevCountryCode OBJECT-TYPE
+    SYNTAX INTEGER {
+        northAmerica(0),
+        japan(1),
+        uk(2),
+        sweden(3),
+        germany(4),
+        france(5),
+        tr57(6),
+        belgium(7),
+        finland(8),
+        italy(9),
+        etsi(10),
+        netherlands (11),
+        switzerland (12),        
+        brazil (13),
+        denmark (14),
+        hungary (15),
+        chile (16),                    
+        slovenia (17),
+        singapore(18),
+        unitedArabEmirates(19),
+-- 2008/02/14 added new country code 20 for Austria
+-- 2009/03/23 added new country code 24 for Cyprus                
+        austria(20),        
+    	poland(21),
+    	guatemala(22),        
+    	colombia(23),
+        cyprus(24)       
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+-- 2008/02/14 added new country code 20 for Austria 
+-- 2009/03/23 added new country code 24 for Cyprus      
+        "Set country specific telephone line parameters:
+         0:  NORTH_AMERICA (PacketCable standard)
+         1:  JAPAN          
+         2.  UK               
+         3:  SWEDEN          
+         4:  GERMANY        
+         5:  FRANCE           
+         6:  TR57 
+         7:  BELGIUM        
+         8:  FINLAND         
+         9:  ITALY     
+         10: ETSI 101 909-18 (EuroPacketCable standard) 
+         11: NETHERLANDS  
+         12: SWITZERLAND     
+         13: BRAZIL
+         14: DENMARK
+         15: HUNGARY
+         16: CHILE              
+         17: SLOVENIA                    
+         18: SINGAPORE
+         19: UnitedArabEmirates             
+         20: AUSTRIA
+		 21: POLAND
+		 22: GUATEMALA
+		 23: COLOMBIA
+         24: CYPRUS
+		                   
+         Default for PacketCable MTA is 0
+         Default for EuroPacketCable MTA is 10
+         Note: Equivalent of VSIF 67.
+         Note: This object can be set via the MTA configuration file ONLY."
+    ::= { tmmMtaDevice 5 }
+
+tmmMtaDevRequireGateId OBJECT-TYPE 
+    SYNTAX INTEGER { 
+        true(1), 
+        false(2) 
+    } 
+    MAX-ACCESS    read-write 
+    STATUS        current 
+    DESCRIPTION 
+        "Config Gate-ID usage in DQoS. 
+         1: MTA requires GateID in CRCX/MDCX in order to send DSA-REQ. 
+         2: MTA does not require GateID in CRCX/MDCX in order to send DSA-REQ. 
+            Will use gate-id if it is present , else create the DQoS without the gate-id 
+         Note:  Equivalent of VSIF 71." 
+    ::= { tmmMtaDevice 6 }
+
+tmmMtaDevRtcpTosValue OBJECT-TYPE
+    SYNTAX        Integer32 (0..63)
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This is used to set the value of the upper 6 bits of the diff-serve byte for transmitted RTCP packets
+         To set the diff-serve byte to 0xA0 in outgoing packets, set this field to 0x28
+         EX:     0xA0 = 1010 0000 (binary)
+              => 0x28 = 1010 00 (binary)
+              => 40 (dec)
+         Note:  Equivalent of VSIF 53."
+    DEFVAL { 0 }
+    ::= { tmmMtaDevice 7 }
+
+tmmMtaDevCrestFactor OBJECT-TYPE
+    SYNTAX INTEGER {
+        cf10(0),
+        cf11(1),
+        cf12(2),
+        cf13(3),
+        cf1414(4)
+    }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        " - OBSOLETE - 
+         This MIB setting adjusts the ring waveform crest factor to 
+         one of the following possible values 
+         (1.0, 1.1, 1.2, 1.3, 1.414 (sine wave)) 
+         The default mode enables sine wave ringing signals.
+         ID     Crest Factor
+         0   :   1.0
+         1   :   1.1
+         2   :   1.2
+         3   :   1.3
+         4   :   1.414
+         To use this MIB setting set this value to 0,1,2,3 or 4"
+    DEFVAL { 4 }
+    ::= { tmmMtaDevice 8 }
+
+tmmMtaDevRingVoltageOffset OBJECT-TYPE
+    SYNTAX INTEGER {
+        balanced-NoOffset(1),
+        balanced-TipPos16V(2),
+        balanced-RingPos16V(3)
+    }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        " - OBSOLETE - 
+         This setting controls the DC offset on the telephone loop during the Ring cycle.
+         1:  (Default) Balanced ringing - No Offset
+         2:  Balanced with 16V offset (Tip pos)
+             100Vpp sine 16Vdc offset (Tip pos) 
+         3:  Balanced with 16V offset (Ring pos)
+             100Vpp sine 16Vdc offset (Ring pos)"
+    ::= { tmmMtaDevice 9 }
+
+tmmMtaDevJitterBase   OBJECT IDENTIFIER ::=  { tmmMtaDevice 10 }
+-- - OBSOLETE - 
+         
+tmmMtaDevJitMaxLen OBJECT-TYPE
+    SYNTAX INTEGER (0..200)
+    UNITS           "milliseconds"
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        " - OBSOLETE - 
+         Maximum Holding Time (in 125 usec samples).
+         Setting this value will limit the jitter
+         buffer from adapting above this value."
+    DEFVAL { 200 }
+    ::= { tmmMtaDevJitterBase 1 }
+
+tmmMtaDevJitMinLen OBJECT-TYPE
+    SYNTAX INTEGER (0..50)
+    UNITS           "milliseconds"
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        " - OBSOLETE - 
+         Minimum Holding time (in 125 usec samples).
+         Setting this value will limit the jitter
+         buffer from adapting below this value."
+    DEFVAL { 10 }
+    ::= { tmmMtaDevJitterBase 2 }
+
+tmmMtaDevJitCommitSetting OBJECT-TYPE 
+    SYNTAX INTEGER { 
+        true(1), 
+        false(2),
+        error(3)
+    } 
+    MAX-ACCESS    read-write 
+    STATUS        current 
+    DESCRIPTION 
+        " - OBSOLETE - 
+         Config the lower bound and upper bound of the jitter buffer length.         
+         Setting this object to true(1) causes tmmMtaDevJitMaxLen and 
+         tmmMtaDevJitMinLen to be committed on the device.
+         Reading this object should returns false(2).
+         If tmmMtaDevJitMinLen > (tmmMtaDevJitMaxLen/2), 
+         it will return error(3).
+         Note: 0 =< tmmMtaDevJitMinLen <= (tmmMtaDevJitMaxLen/2)" 
+    DEFVAL { 2 }
+    ::= { tmmMtaDevJitterBase 3 }
+
+tmmMtaDevProvisionalResponse OBJECT-TYPE 
+    SYNTAX INTEGER {
+        true(1),
+        false(2)
+    }
+    MAX-ACCESS    read-write 
+    STATUS        current 
+    DESCRIPTION 
+        "Enable/Disable Provisional Response
+         1:  Enable provisional response (default) 
+         2:  Disable provisional response
+        " 
+    DEFVAL { 1 } 
+    ::= { tmmMtaDevice 11 } 
+    
+tmmMtaDevRtpPortNumber OBJECT-TYPE
+    SYNTAX Integer32 (1025..65535)
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Specifies which UDP port to use for RTP packets. If this is set to
+         x, then the port assignement will be:
+                RTP  port is x   for 1st active connection.
+                RTCP port is x+1 for 1st active connection.
+                RTP  port is x+2 for 2nd active connection.
+                RTCP port is x+3 for 2nd active connection.
+                RTP  port is x+4 for 3rd active connection.
+                RTCP port is x+5 for 3rd active connection.
+                RTP  port is x+6 for 4th active connection.
+                RTCP port is x+7 for 4th active connection.
+         NOTE : Maximally four connections are supported in two endpoints.
+         Note:  This object can be set via the MTA configuration file ONLY."
+    DEFVAL { 53456 }
+    ::= { tmmMtaDevice 12 }    
+
+tmmMtaDevNcsPiggyBacking OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        " - OBSOLETE - 
+         Enable/Disable NCS PiggyBacking.
+         0:  Disable NCS Piggy Backing.
+         1:  Enable NCS Piggy Backing."
+    ::= { tmmMtaDevice 13 }
+
+-- Add 2005/07/22  
+tmmRSIPKeepAlive OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enable or disable a keep-alive RSIP message transmission (RM:X-keepalive)"
+    DEFVAL { 0 } 
+    ::= { tmmMtaDevice 20 }
+
+tmmRSIPKeepAliveTimer OBJECT-TYPE
+    SYNTAX INTEGER (10..600)
+    UNITS           "seconds"
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "Specifies the interval which the keepalive RSIP message will be transmitted. 
+         The interval is limited between 10 and 600 seconds & it's 30 seconds by default."
+    DEFVAL { 30 }
+    ::= { tmmMtaDevice 21 }
+    
+tmmMtaDevCmsIpsecCtrl OBJECT-TYPE
+    SYNTAX INTEGER { 
+        followPacketCableSpec(1), 
+        forceToDisableIPSEC(2)
+    } 
+    MAX-ACCESS    read-only 
+    STATUS        current 
+    DESCRIPTION 
+        "FollowPacketCableSpec(1): Follow the PacketCable spec. to enable or disable IPSEC
+         by the pktcMtaDevCmsIpsecCtrl setting on each pktcMtaDevCmsTable !! (Default)
+         
+         ForceToDisableIPSEC(2): Force MTA to disable the IpSEC no matter what the pktcMtaDevCmsIpsecCtrl setting is !!
+         Note:  This object can be set via the MTA configuration file ONLY.
+         " 
+    DEFVAL { 1 }
+    ::= { tmmMtaDevice 22 }          
+
+-- Add 2007/03/02    
+tmmRSIPonPermanentError OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If a permanent error (5xx other than 521) was returned at RSIP stage.
+         The default behavior is that the endpoint no longer initiates the 
+         restart procedure on its own"
+    DEFVAL { 0 } 
+    ::= { tmmMtaDevice 23 }     
+    
+-- Add 2007/07/12
+tmmMtaDevDNSNonAuthAnsCache OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: MTA does not cache non-authoritative DNS answer (default)
+         1: MTA cache non-authoritative DNS answer"
+    DEFVAL { 0 }
+    ::= { tmmMtaDevice 24 }   
+
+-- Add 2008/04/09    
+tmmMtaDevDtmfPayloadType OBJECT-TYPE
+    SYNTAX        INTEGER (0..255)
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This is used to configure dynamic payload type for DTMF signaling"
+    DEFVAL { 101 }
+    ::= { tmmMtaDevice 25 }   
+
+-- Add 2008/07/15    
+tmmMtaDevVmwiType OBJECT-TYPE
+    SYNTAX        INTEGER {
+					default(0),
+					sdmf(1),
+					mdmf(2)
+                  }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+ 		"This is used to configure signal type of VMWI.
+        0: The VMWI signal will not changed (default type associated to country code)    
+        1: Set VMWI signal to SDMF
+        2: Set VMWI signal to MDMF"
+    DEFVAL {0}
+    ::= { tmmMtaDevice 26 } 
+    
+      
+-- Add 2009/02/18
+-- Modified 2009/04/21
+tmmMtaDevClirType OBJECT-TYPE
+    SYNTAX INTEGER {
+        reasonCode08(0),
+        callerName07(1),
+        callerNameBlock(2)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION        
+        " This MIB specified the encoding when MTA receiving in caller name field 'O' or 'P'.
+         0: MTA encodes 'O' 'P' in FSK with reason code tag 08(default)
+         1: MTA encodes 'O' 'P' in FSK with zero length caller name 07 00
+         2: MTA blocks the caller name by taking out both 07 and 08 in FSK"
+    DEFVAL { 0 }
+    ::= { tmmMtaDevice 27 }   
+    
+  
+-- Add 2009/02/18
+tmmMtaDevSyslog OBJECT-TYPE
+    SYNTAX INTEGER {
+        defaultLog(0),
+        extraLog(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION        
+        " This MIB controls the messages sending to syslog server from eMTA.
+         0: MTA sends messages to syslog based on pktcEventMib settings (default)
+         1: MTA sends extra messages to syslog server"
+    DEFVAL { 0 }
+    ::= { tmmMtaDevice 28 }
+        
+--//luke@2009/06/16: TT2708 
+tmmMtaDevCodecAdvertise    OBJECT-TYPE
+    SYNTAX BITS {
+       reserved0(0),              --MSB (Bit-16)
+       reserved1(1),
+       reserved2(2),
+       reserved3(3),
+       reserved4(4),
+       reserved5(5),
+       reserved6(6),       
+       t38(7),
+       bV16(8),
+       iLBC(9),
+       g729e(10),
+       g729a(11),
+       g728(12),
+       g726(13),
+       g723-1(14),
+       g711(15)   
+    }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This object is used to control advertisement of supported codec.
+        
+        bit0: reserved. (MSB: Most Significant Bit)
+        bit1: reserved.
+        bit2: reserved.
+        bit3: reserved.
+        bit4: reserved.
+        bit5: reserved.
+        bit6: reserved. 
+        bit7: T.38
+        bit8: BV16
+        bit9: iLBC(including 20/30)
+        bit10: G.729e
+        bit11: G.729a
+        bit12: G.728
+        bit13: G.726(including 16/24/32/40)
+        bit14: G.723.1(including 53/63)
+        bit15: G.711    (LSB: Least Significant Bit)"
+
+       ::= { tmmMtaDevice 29}
+
+--//luke@2009/06/16: TT2709 
+tmmMtaRSIPTimer OBJECT-TYPE
+SYNTAX Unsigned32 (0..120)
+     UNITS "minutes"
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION 
+     "This MIB Object allows the operator to specify the timer 
+      after which expires that eMTA goes back to PacketCable MTA-1. 
+      The time would be armed as soon as eMTA halts incomplete RSIP attempt."    
+ 
+     DEFVAL { 10 } 
+      ::= { tmmMtaDevice 30}
+
+--//luke@2009/06/16: TT2710
+tmmMtaOsiDuration OBJECT-TYPE
+    SYNTAX        Unsigned32
+    UNITS         "milliseconds"
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+     "This MIB specifies the duration of OSI(open switch interval) 
+      performed by eMTA upon receiving osi command from call agent.
+     "    
+ 
+     DEFVAL { 1000 } 
+      ::= { tmmMtaDevice 31}
+-- Add 2005/04/25
+tmmPOTDEncryptedSeed OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(32..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Encrypted Seed for Password of the Day"
+    ::= { tmmMtaDevice 50 }
+
+
+-- added 2007/02/28
+tmmMtaDevMgmtSignalingControl   OBJECT IDENTIFIER ::=  { tmmMtaDevice 104 } 
+-- tmmMtaDevMgmtSignalingControl - objects allowing control over eMTA signaling behavior
+
+tmmMtaSignalingVoiceJitterBufferType OBJECT-TYPE
+    SYNTAX INTEGER {
+        jitterBufferTypeFixed(1),
+        jitterBufferTypeAdaptive(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the type of the jitter buffer. Setting this object
+        to jitterBufferTypeFixed(1) causes the eMTA to employ a fixed jitter
+        buffer. Setting this object to jitterBufferTypeAdaptive(2) causes the
+        eMTA to use an adaptive jitter buffer.
+        If the jitter buffer type value is changed through SNMP, then those
+        changes take affect starting with the next phone call (in process
+        calls are not affected). When the voice jitter buffer is frozen it uses
+        the emtaSignalingVoiceJitterNomValue for the fixed size of the jitter
+        buffer."
+    DEFVAL {jitterBufferTypeAdaptive}
+    ::= { tmmMtaDevMgmtSignalingControl 3 }
+
+tmmMtaSignalingVoiceJitterNomValue OBJECT-TYPE
+    SYNTAX        Unsigned32
+    UNITS         "milliseconds"
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "If the voice jitter buffer value is changed through SNMP, then those
+        changes take affect starting with the next phone call (in process calls
+        are not affected). This MIB sets the target hold time for the voice
+        jitter buffer in milliseconds. This is the initial hold time for the
+        adaptive jitter buffer. The actual target holding time will adapt above
+        or below this in response to observed network jitter. The MTA will
+        reject all attempts to set the value which is not within the interval
+        defined by the emtaSignalingVoiceJitterMinValue and
+        emtaSignalingVoiceJitterMaxValue MIB Objects. When the jitter
+        buffer is frozen, this MIB controls the static size of the voice jitter
+        buffer. The default value is 0 which is interpreted as the maximum
+        jitter buffer size for the product."
+    DEFVAL {0}
+    ::= { tmmMtaDevMgmtSignalingControl 4 }
+
+tmmMtaSignalingVoiceJitterMinValue OBJECT-TYPE
+    SYNTAX Unsigned32 (0..200)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If the voice jitter buffer value is changed through SNMP, then those
+        changes take affect starting with the next phone call (in process calls
+        are not affected). This MIB sets the minimum hold time for the voice
+        jitter buffer in milliseconds. The target hold time cannot take on a
+        value below the minimum either through a MIB setting or through
+        adaptation. That is, packets will be held in the jitter buffer for at
+        least this duration (on average). When a packet is received late it may
+        be held for less than this time. The default is 0ms."
+    DEFVAL {0}
+    ::= { tmmMtaDevMgmtSignalingControl 5 }
+
+tmmMtaSignalingVoiceJitterMaxValue OBJECT-TYPE
+    SYNTAX Unsigned32 (0..200)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If the voice jitter buffer value is changed through SNMP, then those
+        changes take affect starting with the next phone call (in process calls
+        are not affected). This MIB sets the maximum hold time for the voice
+        jitter buffer in milliseconds. The maximum size of the jitter buffer is
+        only relevant for an adaptive jitter buffer. The target hold time cannot
+        take on a value greater than the maximum either through a MIB setting or
+        through adaptation. On average, packets will not be held longer than
+        this time. However, if a packet is received quite early it may be held
+        longer than the max hold time. The default value is 0 which is
+        interpreted as the maximum jitter buffer size for the product."
+    DEFVAL {0}
+    ::= { tmmMtaDevMgmtSignalingControl 6 }
+
+tmmMtaSignalingDataJitterNomValue OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..200)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If the jitter buffer value is changed through SNMP, then those changes
+        take affect starting with the next phone call (in process calls are not
+        affected). This object controls the hold time for fixed VBD jitter
+        buffer. The jitter buffer always fixes itself when VBD is
+        detected. There is no maximum or minimum setting for VBD because these
+        values are only relevant for adaptive jitter buffers. A fixed jitter
+        buffer is fixed at the nominal value. The default value is 0 which is
+        interpreted as half of the maximum jitter buffer size for the product."
+    DEFVAL {0}
+    ::= { tmmMtaDevMgmtSignalingControl 7 }
+
+tmmMtaDevMgmtStatistics   OBJECT IDENTIFIER ::=  { tmmMtaDevice 105 }
+-- tmmMtaDevMgmtStatistics - objects reporting eMTA signaling statistics
+
+tmmMtaStatsRTPPktTxTotal OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the total number of RTP packets sent for the device
+        since it was last started up (across all endpoints)."
+    ::=  { tmmMtaDevMgmtStatistics 2 }
+
+tmmMtaStatsRTPPktRxTotal OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the total number of RTP packets received for the device
+        since it was last started up (across all endpoints)."
+    ::=  { tmmMtaDevMgmtStatistics 3 }
+
+tmmMtaStatsRTPPktLostTotal OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the total number of RTP packets lost for the device
+         since it was last started up (across all endpoints)."
+    ::=  { tmmMtaDevMgmtStatistics 4 }
+
+tmmMtaStatsRTPPktTxRecent OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the total number of RTP packets sent for the most
+        recent call."
+    ::=  { tmmMtaDevMgmtStatistics 5 }
+
+tmmMtaStatsRTPPktRxRecent OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the total number of RTP packets received for the most
+        recent call."
+    ::=  { tmmMtaDevMgmtStatistics 6 }
+
+tmmMtaStatsRTPPktLostRecent OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the percentage (%) of RTP packets lost for the most
+        recent call.
+          "
+    ::=  { tmmMtaDevMgmtStatistics 7 }
+
+tmmMtaStatsAvgJitterMeasurement OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This objects contains the average jitter measurements for the last 24 hours."
+    ::= { tmmMtaDevMgmtStatistics 8 }
+
+tmmMtaStatsMaxJitterMeasurement OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This objects contains the maximum jitter measurements for the last 24 hours."
+    ::= { tmmMtaDevMgmtStatistics 9 }
+
+tmmMtaStatsRTPAvgLatency OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This objects contains the average latency/delay for RTP Packets for the last
+        24 hours."
+    ::= { tmmMtaDevMgmtStatistics 10 }
+
+tmmMtaStatsMGCPResponseAvgLatency OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This objects contains the average latency/delay for MGCP Response messages
+		  for the last 24 hours."
+    ::= { tmmMtaDevMgmtStatistics 11 }
+
+tmmMtaStatsSuccessfulMsgCount OBJECT-TYPE
+    SYNTAX      Unsigned32
+	 MAX-ACCESS  read-only
+	 STATUS      current
+	 DESCRIPTION
+	     "This object contains the count of successful MGCP messages transmitted to and
+        received from Call Agent for the last 24 hours."
+    ::= { tmmMtaDevMgmtStatistics 12 } 
+    
+tmmMtaStatsNegAckCount OBJECT-TYPE
+    SYNTAX      Unsigned32
+	 MAX-ACCESS  read-only
+	 STATUS      current
+	 DESCRIPTION
+	     "This object contains the number of MGCP error responses sent to and
+        received from Call Agent for the last 24 hours."
+    ::= { tmmMtaDevMgmtStatistics 13 }
+
+tmmMtaStatsNoNTFYAckCount OBJECT-TYPE
+    SYNTAX      Unsigned32
+	 MAX-ACCESS  read-only
+	 STATUS      current
+	 DESCRIPTION
+	     "This object contains the number of times no MGCP response was received for a sent NTFY
+		  in the last 24 hours."
+    ::= { tmmMtaDevMgmtStatistics 14 }
+
+tmmMtaStatsLastNCSMsgTx OBJECT-TYPE
+    SYNTAX      SnmpAdminString
+	 MAX-ACCESS  read-only
+	 STATUS      current
+	 DESCRIPTION
+	     "This object contains the last NCS message sent to Call Agent."
+    ::= { tmmMtaDevMgmtStatistics 15 }
+
+tmmMtaStatsLastNCSMsgRx OBJECT-TYPE
+    SYNTAX      SnmpAdminString
+	 MAX-ACCESS  read-only
+	 STATUS      current
+	 DESCRIPTION
+	     "This object contains the last NCS message received from Call Agent."
+    ::= { tmmMtaDevMgmtStatistics 16 }
+
+-- added 2010/01/25    
+tmmMtaStatsRTPStreamTxCurrent OBJECT-TYPE
+   SYNTAX        Unsigned32
+   MAX-ACCESS    read-only
+   STATUS        current
+	 DESCRIPTION
+	     "This object contains the current number of RTP streams sent from the device."
+    ::= { tmmMtaDevMgmtStatistics 17 }    
+-- added 2010/01/25
+
+-- added 2007/07/05
+tmmMtaDevMgmtLog   OBJECT IDENTIFIER ::=  { tmmMtaDevice 106 } 
+-- tmmMtaDevMgmtErrorLog - objects logging system level errors
+
+-- 2007/11/09 changed TmmMtaDevMgmtErrorLogEntry from tmmMtaDevMgmtErrorLogEntry
+tmmMtaDevMgmtErrorLogTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF TmmMtaDevMgmtErrorLogEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       " This table logs CM/EMTA error/exception events. "
+   ::=  { tmmMtaDevMgmtLog 1 }
+
+-- 2007/11/09 changed TmmMtaDevMgmtErrorLogEntry from tmmMtaDevMgmtErrorLogEntry
+tmmMtaDevMgmtErrorLogEntry  OBJECT-TYPE
+    SYNTAX        TmmMtaDevMgmtErrorLogEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        " List of error/exception events. "
+    INDEX { INTEGER }
+    ::= { tmmMtaDevMgmtErrorLogTable 1 }
+
+-- 2007/11/09 changed TmmMtaDevMgmtErrorLogEntry from tmmMtaDevMgmtErrorLogEntry
+TmmMtaDevMgmtErrorLogEntry  ::= SEQUENCE {
+    tmmMtaDevMgmtErrorDescrText SnmpAdminString
+    }
+    
+tmmMtaDevMgmtErrorDescrText OBJECT-TYPE
+    SYNTAX SnmpAdminString 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " This MIB Object contains error log display 
+ 	      string providing a human-readable description of the 
+ 	      log "
+    ::= { tmmMtaDevMgmtErrorLogEntry 1 }
+    
+-- 2007/11/09 changed TmmMtaDevMgmtRebootLogEntry from tmmMtaDevMgmtRebootLogEntry
+tmmMtaDevMgmtRebootLogTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF TmmMtaDevMgmtRebootLogEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       "This table logs CM/EMTA reboot events. "
+   ::=  { tmmMtaDevMgmtLog 2 }
+
+-- 2007/11/09 changed TmmMtaDevMgmtRebootLogEntry from tmmMtaDevMgmtRebootLogEntry
+tmmMtaDevMgmtRebootLogEntry  OBJECT-TYPE
+    SYNTAX        TmmMtaDevMgmtRebootLogEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        " List of Reboot Log entries. "
+    INDEX { INTEGER }
+    ::= { tmmMtaDevMgmtRebootLogTable 1 }
+
+-- 2007/11/09 changed TmmMtaDevMgmtRebootLogEntry from tmmMtaDevMgmtRebootLogEntry
+TmmMtaDevMgmtRebootLogEntry  ::= SEQUENCE {
+    tmmMtaDevMgmtRebootTime  	  SnmpAdminString,
+    tmmMtaDevMgmtRebootDescrText  SnmpAdminString
+    }
+
+tmmMtaDevMgmtRebootTime OBJECT-TYPE
+    SYNTAX SnmpAdminString 
+    MAX-ACCESS read-only
+   STATUS current
+    DESCRIPTION
+        "Time reboot is triggered.
+         Date/Time format: YYYYMMDDhhmmssZ"
+    ::= { tmmMtaDevMgmtRebootLogEntry 1 }
+ 
+tmmMtaDevMgmtRebootDescrText OBJECT-TYPE
+    SYNTAX SnmpAdminString 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " This MIB Object contains reboot event display 
+ 	      string providing a human-readable description of the 
+ 	      event "
+    ::= { tmmMtaDevMgmtRebootLogEntry 2 }
+    
+-- End of tmmMtaDevMgmtLog
+
+-- added 2007/07/05    
+tmmMtaDevEndPntStatistcs   OBJECT IDENTIFIER ::=  { tmmMtaDevice 107 } 
+-- tmmMtaEndPntStatistcs - objects for Endpoint Statistics
+
+-- tmmMtaEndPntCallStatsTable
+-- 2007/11/09 changed TmmMtaDevEndPntOutGoingCallStatsEntry from tmmMtaDevEndPntOutGoingCallStatsEntry
+tmmMtaDevEndPntOutGoingCallStatsTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF TmmMtaDevEndPntOutGoingCallStatsEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       " This table shows statistics for recent 20 calls. "
+   ::=  { tmmMtaDevEndPntStatistcs 1 }
+
+
+-- 2007/11/09 changed TmmMtaDevEndPntOutGoingCallStatsEntry from tmmMtaDevEndPntOutGoingCallStatsEntry
+tmmMtaDevEndPntOutGoingCallStatsEntry  OBJECT-TYPE
+    SYNTAX        TmmMtaDevEndPntOutGoingCallStatsEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        " List of Statistcs for each call"
+    INDEX { INTEGER }
+    ::= { tmmMtaDevEndPntOutGoingCallStatsTable 1 }          
+
+-- 2007/11/09 changed TmmMtaDevEndPntOutGoingCallStatsEntry from tmmMtaDevEndPntOutGoingCallStatsEntry
+TmmMtaDevEndPntOutGoingCallStatsEntry  ::= SEQUENCE {
+    tmmMtaDevEndPntStatsEndPntId              INTEGER,
+    tmmMtaDevEndPntStatsStartTime             SnmpAdminString,    
+    tmmMtaDevEndPntStatsEndTime               SnmpAdminString,    
+    tmmMtaDevEndPntStatsPacketsLost           Integer32, 
+    tmmMtaDevEndPntStatsJitter                Integer32,
+    tmmMtaDevEndPntStatsLatency               Integer32,    
+    tmmMtaDevEndPntStatsMOSLQ                 TenthMOS,
+    tmmMtaDevEndPntStatsMOSCQ                 TenthMOS,
+    tmmMtaDevEndPntStatsDialedNumber          SnmpAdminString,
+    tmmMtaDevEndPntStatsDialMode              INTEGER
+    }  
+
+
+tmmMtaDevEndPntStatsEndPntId OBJECT-TYPE
+    SYNTAX INTEGER { 
+                 telephonyPort1 (1), 
+                 telephonyPort2 (2) 
+                 } 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Endpoint in use for the call."
+    ::= { tmmMtaDevEndPntOutGoingCallStatsEntry 1 }
+
+tmmMtaDevEndPntStatsStartTime OBJECT-TYPE
+    SYNTAX SnmpAdminString 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Time the call is established.
+         Date/Time format: YYYYMMDDhhmmssZ"
+    ::= { tmmMtaDevEndPntOutGoingCallStatsEntry 2 }
+
+tmmMtaDevEndPntStatsEndTime OBJECT-TYPE
+    SYNTAX SnmpAdminString 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Time the call is disconnected.
+         Date/Time format: YYYYMMDDhhmmssZ"
+    ::= { tmmMtaDevEndPntOutGoingCallStatsEntry 3 }
+    
+tmmMtaDevEndPntStatsPacketsLost OBJECT-TYPE
+    SYNTAX Integer32 
+    UNITS  "packets"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " Number of RTP packets lost in the call. "
+    ::= { tmmMtaDevEndPntOutGoingCallStatsEntry 4 }
+
+tmmMtaDevEndPntStatsJitter OBJECT-TYPE
+    SYNTAX Integer32 
+    UNITS  "milliseconds"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " The average jitter between RTP packets arrival for the call. "
+    ::= { tmmMtaDevEndPntOutGoingCallStatsEntry 5 }
+
+tmmMtaDevEndPntStatsLatency OBJECT-TYPE
+    SYNTAX Integer32 
+    UNITS  "milliseconds"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " The average RTP packets latency/delay for the call. "
+    ::= { tmmMtaDevEndPntOutGoingCallStatsEntry 6 }
+
+tmmMtaDevEndPntStatsMOSLQ OBJECT-TYPE
+	SYNTAX      TenthMOS
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+         "Units are in tenths of a MOS score; for example, MOS score 4.2 will be represented as 42.
+		  
+		  The estimated mean opinion score for listening quality (MOS-LQ) 
+          MSO Score value is as follows: 
+          (0) no voip metrics; (1) bad; (2) poor; (3) fair; (4) good; (5) excellent. "
+           
+    ::= { tmmMtaDevEndPntOutGoingCallStatsEntry 7 }
+
+tmmMtaDevEndPntStatsMOSCQ OBJECT-TYPE
+	SYNTAX      TenthMOS
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+         "Units are in tenths of a MOS score; for example, MOS score 4.2 will be represented as 42.
+		  
+		  The estimated mean opinion score for conversational quality (MOS-CQ) 
+          defined as including the effects of delay and other effects 
+          that would affect conversational quality
+          MOS Score value is as follows:
+          (0) no voip metrics; (1) bad; (2) poor; (3) fair; (4) good; (5) excellent. "
+    ::= { tmmMtaDevEndPntOutGoingCallStatsEntry 8 }    
+    
+-- 2009/02/10 added    
+tmmMtaDevEndPntStatsDialedNumber OBJECT-TYPE
+    SYNTAX SnmpAdminString 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Dialed phone number."
+    ::= { tmmMtaDevEndPntOutGoingCallStatsEntry 9 }     
+
+-- Luke@2009/07/17 added: TT2816
+tmmMtaDevEndPntStatsDialMode OBJECT-TYPE
+    SYNTAX INTEGER { 
+                 dtmfToneDial(0), 
+                 pulseDial(1) 
+                 } 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Dial mode of the call"
+    ::= { tmmMtaDevEndPntOutGoingCallStatsEntry 10 }
+    
+    
+    
+-- End of tmmMtaDevEndPntStatistcs
+
+-- tmmMtaEndPntCallStatsTable
+-- 2007/11/09 changed TmmMtaDevEndPntInComingCallStatsEntry from tmmMtaDevEndPntInComingCallStatsEntry
+tmmMtaDevEndPntInComingCallStatsTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF TmmMtaDevEndPntInComingCallStatsEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       " This table shows statistics for recent 20 calls. "
+   ::=  { tmmMtaDevEndPntStatistcs 2 }
+
+-- 2007/11/09 changed TmmMtaDevEndPntInComingCallStatsEntry from tmmMtaDevEndPntInComingCallStatsEntry
+tmmMtaDevEndPntInComingCallStatsEntry  OBJECT-TYPE
+    SYNTAX        TmmMtaDevEndPntInComingCallStatsEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        " List of Statistcs for each call"
+    INDEX { INTEGER }
+    ::= { tmmMtaDevEndPntInComingCallStatsTable 1 }    
+
+ 
+-- 2007/11/09 changed TmmMtaDevEndPntInComingCallStatsEntry from tmmMtaDevEndPntInComingCallStatsEntry
+TmmMtaDevEndPntInComingCallStatsEntry  ::= SEQUENCE {
+    tmmMtaDevEndPntStatsEndPntId              INTEGER,
+    tmmMtaDevEndPntStatsStartTime             SnmpAdminString,    
+    tmmMtaDevEndPntStatsEndTime               SnmpAdminString,    
+    tmmMtaDevEndPntStatsPacketsLost           Integer32, 
+    tmmMtaDevEndPntStatsJitter                Integer32,
+    tmmMtaDevEndPntStatsLatency               Integer32,    
+    tmmMtaDevEndPntStatsMOSLQ                 TenthMOS,
+    tmmMtaDevEndPntStatsMOSCQ                 TenthMOS,
+    tmmMtaDevEndPntStatsIncomingNumber        SnmpAdminString       
+    }  
+
+
+tmmMtaDevEndPntStatsEndPntId OBJECT-TYPE
+    SYNTAX INTEGER { 
+                 telephonyPort1 (1), 
+                 telephonyPort2 (2) 
+                 } 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Endpoint in use for the call."
+    ::= { tmmMtaDevEndPntInComingCallStatsEntry 1 }
+
+tmmMtaDevEndPntStatsStartTime OBJECT-TYPE
+    SYNTAX SnmpAdminString 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Time the call is established.
+         Date/Time format: YYYYMMDDhhmmssZ"
+    ::= { tmmMtaDevEndPntInComingCallStatsEntry 2 }
+
+tmmMtaDevEndPntStatsEndTime OBJECT-TYPE
+    SYNTAX SnmpAdminString 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Time the call is disconnected.
+         Date/Time format: YYYYMMDDhhmmssZ"
+    ::= { tmmMtaDevEndPntInComingCallStatsEntry 3 }
+    
+tmmMtaDevEndPntStatsPacketsLost OBJECT-TYPE
+    SYNTAX Integer32 
+    UNITS  "packets"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " Number of RTP packets lost in the call. "
+    ::= { tmmMtaDevEndPntInComingCallStatsEntry 4 }
+
+tmmMtaDevEndPntStatsJitter OBJECT-TYPE
+    SYNTAX Integer32 
+    UNITS  "milliseconds"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " The average jitter between RTP packets arrival for the call. "
+    ::= { tmmMtaDevEndPntInComingCallStatsEntry 5 }
+
+tmmMtaDevEndPntStatsLatency OBJECT-TYPE
+    SYNTAX Integer32 
+    UNITS  "milliseconds"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " The average RTP packets latency/delay for the call. "
+    ::= { tmmMtaDevEndPntInComingCallStatsEntry 6 }
+
+tmmMtaDevEndPntStatsMOSLQ OBJECT-TYPE
+	SYNTAX      TenthMOS
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+         "Units are in tenths of a MOS score; for example, MOS score 4.2 will be represented as 42.
+		  
+		  The estimated mean opinion score for listening quality (MOS-LQ) 
+          MSO Score value is as follows: 
+          (0) no voip metrics; (1) bad; (2) poor; (3) fair; (4) good; (5) excellent. "
+           
+    ::= { tmmMtaDevEndPntInComingCallStatsEntry 7 }
+
+tmmMtaDevEndPntStatsMOSCQ OBJECT-TYPE
+	SYNTAX      TenthMOS
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+         "Units are in tenths of a MOS score; for example, MOS score 4.2 will be represented as 42.
+		  
+		  The estimated mean opinion score for conversational quality (MOS-CQ) 
+          defined as including the effects of delay and other effects 
+          that would affect conversational quality
+          MOS Score value is as follows:
+          (0) no voip metrics; (1) bad; (2) poor; (3) fair; (4) good; (5) excellent. "
+    ::= { tmmMtaDevEndPntInComingCallStatsEntry 8 }    
+
+-- 2009/02/10 added
+tmmMtaDevEndPntStatsIncomingNumber OBJECT-TYPE
+    SYNTAX SnmpAdminString 
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Phone number of the incoming call."
+    ::= { tmmMtaDevEndPntInComingCallStatsEntry 9 }
+    
+--==
+-- tmmMtaDevEndPntDialModeStatsTable
+-- Luke@2009/07/17 added: TT2816
+tmmMtaDevEndPntDialModeStatsTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF TmmMtaDevEndPntDialModeStatsEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       " This table shows statistics for dial modes on each line"
+   ::=  { tmmMtaDevEndPntStatistcs 3 }
+   
+tmmMtaDevEndPntDialModeStatsEntry  OBJECT-TYPE
+    SYNTAX        TmmMtaDevEndPntDialModeStatsEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        " List of Statistcs for each dial mode"
+    INDEX { INTEGER }
+    ::= { tmmMtaDevEndPntDialModeStatsTable 1 }    
+    
+TmmMtaDevEndPntDialModeStatsEntry  ::= SEQUENCE {
+    tmmMtaDevEndPntDtmfToneDialCount Integer32,
+    tmmMtaDevEndPntPulseDialCount Integer32 
+    } 
+
+tmmMtaDevEndPntDtmfToneDialCount OBJECT-TYPE
+    SYNTAX Integer32 
+    UNITS  "packets"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Number of calls by DTMF tone dial"
+    ::= { tmmMtaDevEndPntDialModeStatsEntry 1 }
+
+tmmMtaDevEndPntPulseDialCount OBJECT-TYPE
+    SYNTAX Integer32 
+    UNITS  "packets"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Number of calls by pulse dial"
+    ::= { tmmMtaDevEndPntDialModeStatsEntry 2 }   
+
+--==    
+-- End of tmmMtaDevEndPntStatistcs
+
+
+-- EndPoint Table
+-- 2007/11/09 changed TmmMtaEndPointEntry from tmmMtaEndPointEntry
+tmmMtaEndPointTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF TmmMtaEndPointEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       "This table describes the MTA EndPoint
+        Volume configuration. "
+   ::=  { tmmMta 2 }
+
+-- 2007/11/09 changed TmmMtaEndPointEntry from tmmMtaEndPointEntry
+tmmMtaEndPointEntry  OBJECT-TYPE
+    SYNTAX        TmmMtaEndPointEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        " List of attributes for a single MTA endpoint interface."
+    INDEX { ifIndex }
+    ::= { tmmMtaEndPointTable 1 }
+
+-- 2007/11/09 changed TmmMtaEndPointEntry from tmmMtaEndPointEntry 
+-- 2008/09/10 add tmmMtaEndPntCidFskGain and tmmMtaEndPntDtmfRxGain
+TmmMtaEndPointEntry  ::= SEQUENCE {
+    tmmMtaEndPntHookFlashMinTime  INTEGER,
+    tmmMtaEndPntHookFlashMaxTime  INTEGER,
+    tmmMtaEndPntPulseDialing      INTEGER,
+    tmmMtaEndPntTxGain            SnmpAdminString,
+    tmmMtaEndPntRxGain            SnmpAdminString,
+    tmmMtaEndPntHookStatus        INTEGER,  
+    tmmMtaEndPntLoopbackTone      INTEGER,
+    tmmMtaEndPntDigitMap          SnmpAdminString,
+    tmmMtaEndPntCidFskGain        SnmpAdminString,
+    tmmMtaEndPntDtmfRxGain        SnmpAdminString
+    }
+
+tmmMtaEndPntHookFlashMinTime OBJECT-TYPE
+    SYNTAX INTEGER (40..2000)
+    UNITS         "milliseconds"
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION  
+-- 2008/02/14 added new country code 20 for Austria
+-- 2009/03/23 added new country code 24 for Cyprus       
+        "Shortest onhook time at which hook-flash event will be detected, in miliseconds.
+         Breaks in loop current with shorter duration are assumed to be noise and are ignored.
+         Default values for different country codes are:
+         280 northAmerica(0)
+         100 japan(1)
+         40 uk(2)
+         40 sweden(3)
+         170 germany(4)
+         220 france(5)
+         40 tr57(6)
+         95 belgium(7)
+         50 finland(8)
+         50 italy(9)
+         40 etsi(10)
+         90 netherlands (11)
+         40 switzerland (12)
+         100: BRAZIL (13)
+         100: DENMARK (14)
+         60: HUNGARY (15)
+         220: CHILE (16)
+         40: SLOVENIA(17)              
+         40: SINGAPORE(18)
+         40: UnitedArabEmirates(19)
+         40: AUSTRIA(20)
+         50: POLAND(21)
+         250: GUATEMALA(22)
+		 100: COLOMBIA(23)
+         40: CYPRUS(24)"
+                                
+    ::= { tmmMtaEndPointEntry 1 }
+
+tmmMtaEndPntHookFlashMaxTime OBJECT-TYPE
+    SYNTAX INTEGER (100..2000)
+    UNITS           "milliseconds"
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+-- 2008/02/14 added new country code 20 for Austria   
+-- 2009/03/23 added new country code 24 for Cyprus
+        "Longest onhook time at which hook-flash event will be detected, 
+         in miliseconds. If onhook time is longer then tmmMtaHookFlashMaxTime, 
+         hang up event will be detected.
+         Default values for different country codes are:
+         1100 northAmerica(0)
+         1200 japan(1)
+         350 uk(2)
+         350 sweden(3)
+         350 germany(4)
+         330 france(5)
+         350 tr57(6)
+         155 belgium(7)
+         130 finland(8)
+         130 italy(9)
+         350 etsi(10)
+         800 netherlands (11)
+         200 switzerland (12)
+         1200: BRAZIL (13)
+         1200: DENMARK (14)
+         200: HUNGARY (15)
+         320: CHILE (16)
+         350: SLOVENIA(17)              
+         350: SINGAPORE(18)
+         350: UnitedArabEmirates(19)     
+         350: AUSTRIA(20)         
+         500: POLAND(21)
+		 600: GUATEMALA(22)
+		 1200: COLOMBIA(23)
+         350: CYPRUS(24)"
+		 
+    ::= { tmmMtaEndPointEntry 2 }
+    
+-- 2008/11/06 change default value to reflect the actaul behavior
+tmmMtaEndPntPulseDialing OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS 	  read-write
+    STATUS        current
+    DESCRIPTION	
+        "Dial Pulse Detection.
+         0:  Disable
+         1:  Enable (Default)
+
+    Note:  Equivalent of VSIF 68."
+    DEFVAL { 1 }
+    ::= { tmmMtaEndPointEntry 3 }
+
+tmmMtaEndPntTxGain    OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    UNITS         "dB"
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+-- 2008/02/14 added new country code 20 for Austria 
+-- 2009/03/23 added new country code 24 for Cyprus  
+
+        "For generic build:
+        
+         Set the audio gain in the MTA->phone direction. This is an absolute level.
+         Default values for different country codes are:
+         -13 northAmerica(0)
+         -20 japan(1)
+         -12 uk(2)
+         -15 sweden(3)
+         -12 germany(4)
+         -12 france(5)
+         -3  tr57(6)
+         -5  belgium(7)
+         -15 finland(8)
+         -12 italy(9)
+         -5  etsi(10)
+         -12 netherlands (11)
+         -12 switzerland (12)
+         -10 BRAZIL (13)
+         -15 DENMARK (14)
+         -5  HUNGARY (15)
+         -10 CHILE (16) 
+         -5  SLOVENIA(17)
+         -5 SINGAPORE(18)
+         -5 UnitedArabEmirates(19)            
+         -6 AUSTRIA(20)
+         -6 POLAND(21)
+	     -6 GUATEMALA(22)
+	     -3 COLOMBIA(23)
+	     -9 CYPRUS(24)
+         
+                  
+         The operational range is -16.0 dB to +16.0 dB offset with reference to default gain
+         NOTE : Ensure that the Absolute gain in the D/A path is < -3dB to make sure that you 
+                do not operate the gain in a range where echo canceller problems will result.
+                If there is not enough loss in the D/A + A/D path then the echo will be too 
+                loud for the echo canceller to handle
+          
+         For Time Warner build:
+         
+         Default is -6 dB; the operational range is 0.0 dB to -18 db.       
+         "       
+                
+    ::= { tmmMtaEndPointEntry 4 }
+
+tmmMtaEndPntRxGain    OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    UNITS         "dB"
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+-- 2008/02/14 added new country code 20 for Austria   
+-- 2009/03/23 added new country code 24 for Cyprus
+        "For generic build:
+
+         Set the audio gain in the phone->MTA direction. This is an absolute level.
+         Default values for different country codes are:
+         -3 northAmerica(0)
+         -3 japan(1)
+         -4 uk(2)
+         -4 sweden(3)
+         -4 germany(4)
+         -4 france(5)
+         -3 tr57(6)
+         -3 belgium(7)
+         -4 finland(8)
+         -3 italy(9)
+         -4 etsi(10)
+         -4 netherlands (11)
+         -4 switzerland (12)   
+         -3 BRAZIL (13)
+         -3 DENMARK (14)
+         -4 HUNGARY (15)
+         -4 CHILE (16)
+         -4  SLOVENIA(17)   
+         -4 SINGAPORE(18)
+         -4 UnitedArabEmirates(19)            
+         -4 AUSTRIA(20)
+         -4 POLAND(21)
+		 -4 GUATEMALA(22)
+		 -3 COLOMBIA(23)         
+         -4 CYPRUS(24)
+                  
+         The operational range is -16.0 dB to +16.0 dB offset with reference to default gain
+         NOTE : Ensure that the Absolute gain in the A/D path is < 0 dB to make sure that you 
+                do not operate the gain in a range where echo canceller problems will result.
+                If there is not enough loss in the D/A + A/D path then the echo will be too 
+                loud for the echo canceller to handle
+
+         For Time Warner build:
+         
+         Default is -6 dB; the operational range is 0.0 dB to -18 db.       
+         "       
+                
+    ::= { tmmMtaEndPointEntry 5 }
+
+tmmMtaEndPntHookStatus OBJECT-TYPE
+    SYNTAX INTEGER {
+        onHook(0),
+        offHook(1)
+    }
+    MAX-ACCESS 	  read-only
+    STATUS        current
+    DESCRIPTION	
+        "The onhook/offhook status of endpoints."
+    ::= { tmmMtaEndPointEntry 6 }
+
+-- Add 2007/03/15
+tmmMtaEndPntLoopbackTone OBJECT-TYPE
+    SYNTAX INTEGER { 
+        enable(1), 
+        disable(2)
+    } 
+    MAX-ACCESS    read-write 
+    STATUS        current 
+    DESCRIPTION 
+        "Enable endpoints loop back mode.
+         enable(1) : set this function enable and then user can hear dial tone.
+         disable(2) : turn off this function and endponits will work in normal operation.
+         " 
+    DEFVAL { 2 }
+    ::= { tmmMtaEndPointEntry 7 }     
+    
+-- Add 2008/06/23
+tmmMtaEndPntDigitMap OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..511))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Current Digitmap in use."
+    ::= { tmmMtaEndPointEntry 8 }
+
+-- Add 2008/09/10
+tmmMtaEndPntCidFskGain    OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    UNITS         "dB"
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "Adjust the FSK gain level generated by MTA to the line."
+                
+    ::= { tmmMtaEndPointEntry 9 }
+
+-- Add 2008/09/10    
+tmmMtaEndPntDtmfRxGain    OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    UNITS         "dB"
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "Adjust the DTMF gain level received by MTA transmitting to the network."
+                
+    ::= { tmmMtaEndPointEntry 10 }
+    
+
+-- Tone Table
+-- 2007/11/09 changed TmmMtaToneEntry from tmmMtaToneEntry
+tmmMtaToneTable    OBJECT-TYPE 
+    SYNTAX       SEQUENCE OF TmmMtaToneEntry 
+    MAX-ACCESS   not-accessible 
+    STATUS       current 
+    DESCRIPTION 
+        " The Tone Table defines the various tone operations. Any
+          definition of the tone in this table should just contain
+          the audible tone itself and NOT contain the delay
+          between tones or the tone repeat count. The delay between
+          tones or the repeat count is controlled by the MIB objects
+          pktcNcsEndPntConfigCallWaitingDelay, and
+          pktcNcsEndPntConfigCallWaitingMaxRep.
+          Objects in this table do not persist across an MTA
+          reboot."
+    ::=  { tmmMta 3 }
+
+-- 2007/11/09 changed TmmMtaToneEntry from tmmMtaToneEntry
+tmmMtaToneEntry    OBJECT-TYPE 
+    SYNTAX       TmmMtaToneEntry 
+    MAX-ACCESS   not-accessible 
+    STATUS       current 
+    DESCRIPTION 
+        " Unique value ranging from 0 to 38 that will correspond to
+          the different tone types that are being supported by the
+          device. These tones can be provisioned based on country
+          specific needs."
+    INDEX { tmmMtaToneType } 
+    ::= { tmmMtaToneTable 1 } 
+
+-- 2007/11/09 changed TmmMtaToneEntry from tmmMtaToneEntry
+TmmMtaToneEntry ::= SEQUENCE { 
+    tmmMtaToneType                      INTEGER, 
+    tmmMtaToneDbLevel                   Integer32, 
+    tmmMtaToneFreqType                  INTEGER, 
+    tmmMtaToneNumFrequencies            Unsigned32, 
+    tmmMtaToneFirstFrequency            Unsigned32, 
+    tmmMtaToneSecondFrequency           Unsigned32, 
+    tmmMtaToneThirdFrequency            Unsigned32, 
+    tmmMtaToneFourthFrequency           Unsigned32, 
+    tmmMtaToneNumOnOffTimes             Unsigned32, 
+    tmmMtaToneFirstToneOn               Unsigned32, 
+    tmmMtaToneFirstToneOff              Unsigned32, 
+    tmmMtaToneSecondToneOn              Unsigned32, 
+    tmmMtaToneSecondToneOff             Unsigned32, 
+    tmmMtaToneThirdToneOn               Unsigned32, 
+    tmmMtaToneThirdToneOff              Unsigned32, 
+    tmmMtaToneFourthToneOn              Unsigned32, 
+    tmmMtaToneFourthToneOff             Unsigned32, 
+    tmmMtaToneWholeToneRepeatCount      Unsigned32, 
+    tmmMtaToneSteady                    TruthValue 
+    } 
+
+tmmMtaToneType        OBJECT-TYPE 
+    SYNTAX       INTEGER { 
+                 dtmf0(0), 
+                 dtmf1(1), 
+                 dtmf2(2), 
+                 dtmf3(3), 
+                 dtmf4(4), 
+                 dtmf5(5), 
+                 dtmf6(6), 
+                 dtmf7(7), 
+                 dtmf8(8), 
+                 dtmf9(9), 
+                 dtmfToneStar(10), 
+                 dtmfTonePound(11), 
+                 dtmfA(12), 
+                 dtmfB(13), 
+                 dtmfC(14), 
+                 dtmfD(15), 
+                 busy(16), 
+                 confirmation(17), 
+                 dial(18), 
+                 messageWaiting(19), 
+                 offHookWarning(20), 
+                 ringBack(21), 
+                 reOrder(22), 
+                 stutterdial(23), 
+                 loopback(24), 
+                 callWaiting1(25), 
+                 callWaiting2(26), 
+                 callWaiting3(27), 
+                 callWaiting4(28), 
+                 alertingSignal(29), 
+                 testTone(30), 
+                 specialDial(31), 
+                 specialInfo(32), 
+                 release(33), 
+                 congestion(34), 
+                 userDefined1(35), 
+                 userDefined2(36), 
+                 userDefined3(37), 
+                 userDefined4(38)
+                 } 
+    MAX-ACCESS   not-accessible
+    STATUS       current 
+    DESCRIPTION 
+        " This object defines the type of tone being accessed. Note:
+          the values are enumerated starting at zero (e.g., dtmf0)
+          to correspond to the digits on the telephone keypad."
+    ::={tmmMtaToneEntry 1 } 
+
+tmmMtaToneDbLevel    OBJECT-TYPE 
+    SYNTAX       Integer32 (-60..4) 
+    UNITS        "dbm" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the decibel level at which tones could be
+          generated." 
+    DEFVAL { -4 } 
+    ::={tmmMtaToneEntry 2 } 
+
+tmmMtaToneFreqType    OBJECT-TYPE 
+    SYNTAX      INTEGER { 
+                allFrequencies (1), 
+                singleFrequecySequence (2), 
+                dualFrequencySequence (3), 
+                allFrequenciesModulated (4) 
+    } 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This object describes how the frequencies are applied. 
+          allFrequencies indicates all frequences specifed by
+          tmmMtaToneNumFrequencies are mixed to form a single
+          tone. The tone is then applied in sequence using the
+          number of on/off times specified in
+          tmmMtaToneNumOnOffTimes. SingleFrequecySequence
+          indicates all frequencies specified by
+          tmmMtaToneNumFrequencies are applied in sequence
+          using the corresponding frequency number on/off time
+          (e.g., tmmMtaToneFirstFrequency uses
+          tmmMtaToneFirstToneOn and tmmMtaToneFirstToneOff,
+          tmmMtaToneSecondFrequency uses
+          tmmMtaToneSecondToneOn and
+          tmmMtaToneSecondToneOff). For this tone type
+          tmmMtaToneNumFrequencies MUST equal
+          tmmMtaToneNumOnOffTimes. DualFrequencySequence
+          indicates two pairs of frequencies are mixed to form two
+          sequenced tones. The first and second frequency are mixed
+          to form tone one and are applied using
+          tmmMtaToneFirstToneOn and tmmMtaToneFirstToneOff.
+          The third and forth frequency are mixed to form tone two
+          and are applied using tmmMtaToneSecondToneOn and
+          tmmMtaToneSecondToneOff. For this tone type
+          tmmMtaToneNumFrequencies MUST equal 4 and
+          tmmMtaToneNumOnOffTimes MUST equal 2.
+          allFrequenciesModulated indicates all frequencies
+          specified by tmmMtaToneNumFrequencies are modulated to
+          form a single tone. The tone is then applied in sequence
+          using the number of on/off times specified in
+          tmmMtaToneNumOnOffTimes. For allFrequenciesModulated,
+          the tmmMtaToneNumFrequencies MUST equal 2, and the
+          frequency in tmmMtaToneFirstFrequency modulates the
+          frequency in tmmMtaToneSecondFrequency."
+    DEFVAL { allFrequencies } 
+    ::={ tmmMtaToneEntry 3 } 
+
+tmmMtaToneNumFrequencies    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (1..4) 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " Specifies the number of frequencies specified in the table
+          entry." 
+    DEFVAL { 1 } 
+    ::={tmmMtaToneEntry 4} 
+
+tmmMtaToneFirstFrequency    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..4000) 
+    UNITS        "Hertz" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the first frequency at which the tones could be
+          generated in a multiple frequency tone." 
+    ::={tmmMtaToneEntry 5} 
+
+tmmMtaToneSecondFrequency    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..4000) 
+    UNITS        "Hertz" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the second frequency at which the tones could be
+          generated in a multiple frequency tone." 
+    ::={tmmMtaToneEntry 6} 
+
+tmmMtaToneThirdFrequency    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..4000) 
+    UNITS        "Hertz" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the third frequency at which the tones could be 
+          generated." 
+    ::={tmmMtaToneEntry 7} 
+
+tmmMtaToneFourthFrequency    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..4000) 
+    UNITS        "Hertz" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the fourth frequency at which the tones could be 
+          generated." 
+    ::={tmmMtaToneEntry 8} 
+
+tmmMtaToneNumOnOffTimes    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (1..4) 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " Specifies the number of on/off times specified in the 
+          table entry." 
+    DEFVAL { 1 } 
+    ::={tmmMtaToneEntry 9} 
+
+tmmMtaToneFirstToneOn    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..5000) 
+    UNITS        "Milliseconds" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the first tone interval." 
+    ::={ tmmMtaToneEntry 10} 
+
+tmmMtaToneFirstToneOff    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..5000) 
+    UNITS        "Milliseconds" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the first idle interval." 
+     ::={ tmmMtaToneEntry 11 } 
+
+tmmMtaToneSecondToneOn    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..5000) 
+    UNITS        "Milliseconds" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the second tone interval." 
+    ::={ tmmMtaToneEntry 12 } 
+
+tmmMtaToneSecondToneOff    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..5000) 
+    UNITS        "Milliseconds" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the second idle interval." 
+    ::={ tmmMtaToneEntry 13 } 
+
+tmmMtaToneThirdToneOn    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..5000) 
+    UNITS        "Milliseconds" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the third tone interval." 
+    ::={ tmmMtaToneEntry 14 } 
+
+tmmMtaToneThirdToneOff    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..5000) 
+    UNITS        "Milliseconds" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the third idle interval." 
+    ::={ tmmMtaToneEntry 15 } 
+      
+tmmMtaToneFourthToneOn    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..5000) 
+    UNITS        "Milliseconds" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the fourth tone interval." 
+    ::={ tmmMtaToneEntry 16 } 
+
+tmmMtaToneFourthToneOff    OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..5000) 
+    UNITS        "Milliseconds" 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the Fourth idle interval." 
+    ::={ tmmMtaToneEntry 17 } 
+
+tmmMtaToneWholeToneRepeatCount      OBJECT-TYPE 
+    SYNTAX       Unsigned32 (0..5000) 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the repeat count, which signifies how many times
+          to repeat the entire on-off sequence."
+    ::={ tmmMtaToneEntry 18 } 
+
+tmmMtaToneSteady    OBJECT-TYPE 
+    SYNTAX       TruthValue 
+    MAX-ACCESS   read-write 
+    STATUS       current 
+    DESCRIPTION 
+        " This is the steady tone. Device must playout the on-off
+          sequence for tmmMtaToneWholeRepeatCount times and
+          then apply the last tone forever." 
+    ::={ tmmMtaToneEntry 19 } 
+
+-- LVM 021209
+  
+tmmMtaEndPntLVMgmtTable   OBJECT-TYPE
+       SYNTAX        SEQUENCE OF TmmMtaEndPntLVMgmtEntry
+       MAX-ACCESS    not-accessible
+       STATUS        current
+       DESCRIPTION  
+	 "This MIB table contains the MIB Objects used for
+       managing loop voltage on an MTA. An MTA MUST 
+       implement the defined MIB Objects and the associated 
+       functionality."
+      ::=  { tmmMta 5 }
+
+tmmMtaEndPntLVMgmtEntry   OBJECT-TYPE
+      SYNTAX        TmmMtaEndPntLVMgmtEntry
+      MAX-ACCESS    not-accessible
+      STATUS        current
+      DESCRIPTION   
+	"Each entry in this MIB table consists of the
+       loop voltage management policy for the specified
+       index. The MTA MUST use the ifIndex with a value of '1'
+       to represent the E-MTA and the remaining indices 
+       (if used) to represent the endpoints (as specified 
+       in [1]).
+
+       When the ifIndex is set to a value of '1', it represents 
+       a policy that MUST be applied to all the lines on an MTA. 
+
+       A MTA MUST support access to this MIB Object via the 
+       ifIndex set to a value of '1' (i.e., per-device policy). "
+      REFERENCE "PacketCable Device Provisioning specification [1]"
+      INDEX { ifIndex }
+      ::=  { tmmMtaEndPntLVMgmtTable 1 }
+
+
+TmmMtaEndPntLVMgmtEntry  ::= 
+        SEQUENCE {
+                tmmMtaEndPntLVMgmtPolicy              INTEGER,
+                tmmMtaEndPntLVMgmtResetTimer          Unsigned32,
+                tmmMtaEndPntLVMgmtMaintTimer          Unsigned32,
+                tmmMtaEndPntLVMgmtPolicy2MaintTimer   Unsigned32                
+        }
+
+tmmMtaEndPntLVMgmtPolicy  OBJECT-TYPE 
+     SYNTAX INTEGER { 
+         voltage-at-all-times(1), 
+         voltage-unless-RF-QAM-absent(2), 
+         voltage-based-on-service-or-timers(3), 
+         voltage-based-on-service(4)
+     } 
+     MAX-ACCESS read-write 
+     STATUS current 
+     DESCRIPTION
+
+     "This MIB Object allows the Service Provider to choose
+     a suitable policy for Loop Voltage behavior on MTAs.  
+
+     Unless overridden by the operator, the MTA MUST use the
+     default value specified in the definition of this MIB
+     Object.
+
+     The MTA MUST adhere to PacketCable signaling 
+     requirements, such as the NCS open loop voltage requirement, 
+     irrespective of any chosen policy. 
+
+     For MTAs that need to remove loop voltage during the MTA 
+     initialization phase, in contradiction to a chosen policy,
+     such a loop voltage removal period MUST NOT exceed 1000ms.
+
+
+     The MTA MUST  retain the value of this MIB Object across 
+     hard reboots or soft resets (for a definition of the terms,
+     please refer to [1]).
+
+     Provisioned line is an MTA Endpoint that has been provided 
+     with valid per-line configuration data either via the 
+     configuration file (during provisioning) or the SNMP 
+     management interface.
+
+     When the MIB Object is set to a value of 
+     voltage-at-all-times(1),  - indicating Policy 1 -
+     the MTA MUST maintain the loop idle voltage on all 
+     lines, irrespective of the line status.
+
+     
+     When this MIB Object is set to a value of 
+     voltage-unless-RF-QAM-absent(2)- indicating Policy 2 
+     - the MTA MUST apply loop idle voltage at all times except
+     when it confirms the absence of any RF QAM carrier, following
+     a complete scan of the spectrum (i.e., loop voltage is 
+     maintained during the scan).  When the MTA detects the 
+     presence of any RF QAM carrier, it MUST apply the loop idle 
+     voltage.  Additionally, the following conditions apply:
+
+         - when the timer defined by 
+           tmmMtaEndPntLVMgmtPolicy2MaintTimer has 
+           a non-zero value, the MTA MUST follow the description 
+           defined above.  However, then the timer reaches the 
+           value of zero, the MTA must remove the loop idle 
+           voltage after a complete scan of the spectrum and no 
+           QAM lock.  Refer to the definition of the MIB Object 
+           for the persistence and timer requirements.  
+
+         - during a hard reboot, this policy applies at all lines
+           until the MTA is successfully provisioned (i.e., 
+           pktcMtaDevProvisioningState has a value other than 
+           'inProgress').       
+ 	    
+         - once the MTA is successfully provisioned (i.e., 
+           pktcMtaDevProvisioningState has a value of 'pass(1)',
+           'passWithWarnings(4)' or 'passWithIncompleteParsing(5)')
+           then the policy applies to all provisioned lines.           
+ 	    
+         - upon the onset of a re-initialization due to a soft 
+           reset (via SNMP or RF conditions) the MTA MUST continue 
+           to maintain the existing policy and state on previously 
+           provisioned lines, unless overridden by a policy or the 
+           provisioning process specifies otherwise.                                        
+                                            
+     This policy is similar to Policy 1, except for the 
+     ability to recognize events like cable cuts (due to 
+     malicious activities, or otherwise).
+
+
+     The following requirements apply to policies 3 and 4:
+     - upon the onset of a re-initialization due to a soft reset 
+       the MTA MUST continue to maintain the existing policy and 
+       state on provisioned lines, unless overridden by a policy 
+       or the provisioning process specifies otherwise
+     - once the provisioning process is completed with the value 
+       of the MIB Object pktcMtaDevProvisioningState set to a 
+       value of 'pass(1)', 'passWithWarnings(4)' or 
+       'passWithIncompleteParsing(5)', the MTA MUST apply the
+       chosen policy to all the provisioned lines
+
+     When this MIB Object is set to a value of 
+     voltage-based-on-service-or-timers(3)- indicating Policy 3 - 
+     the MTA MUST adhere to the requirements that follow 
+     at any given point in time: 
+
+         -  when the timer defined by 
+            tmmMtaEndPntLVMgmtResetTimer has 
+            a non-zero value, the MTA MUST apply loop idle voltage 
+            under all circumstances (similar to policy 1).
+            Refer to the definition of the MIB Object for the
+            persistence and timer requirements.
+
+         -  when the timer defined by 
+            tmmMtaEndPntLVMgmtMaintTimer has 
+            a non-zero value, the MTA MUST maintain a line's loop 
+            idle voltage state that was in effect prior to the timer 
+            being set to a non-zero value. Refer to the definition 
+            of the MIB Object defining the timer for the persistence 
+            and timer requirements.
+
+         - When the timers defined by 
+           tmmMtaEndPntLVMgmtMaintTimer and 
+           tmmMtaEndPntLVMgmtResetTimer have 
+           expired (both have a value of zero), then:
+            = the MTA MUST apply loop voltage if the provisioning 
+              process is completed with the value of 
+              pktcMtaDevProvisioningState set to a value of 
+              than 'pass(1)', 'passWithWarnings(4)' or 
+              'passWithIncompleteParsing(5)' 
+            = During a T4 timeout (note: the timers have expired), 
+              the E-MTA MUST remove loop idle voltage on all lines
+
+         -  When both the timers are active (i.e., they both have 
+            non-zero values), then the timer defined by the MIB 
+            Object tmmMtaEndPntLVMgmtMaintTimer takes precedence
+
+         -  if none of the above cases apply, the MTA MUST remove 
+            loop idle voltage on all lines
+                     
+     When the MIB Object is set to a value of 
+     voltage-based-on-service(4) - indicating Policy 4 - the 
+     following conditions apply at any given point in time:
+
+         - the MTA MUST apply loop idle voltage to all 
+         the provisioned lines if the value of the MIB Object 
+         'pktcMtaDevProvisioningState' is set to a 
+         value of 'pass(1)', 'passWithWarnings(4)' 
+         or 'passWithIncompleteParsing(5)' 
+
+         - in all other cases, the MTA 
+         MUST remove loop idle voltage on all lines."
+
+     DEFVAL { voltage-unless-RF-QAM-absent } 
+      ::= { tmmMtaEndPntLVMgmtEntry 1}	
+
+tmmMtaEndPntLVMgmtResetTimer OBJECT-TYPE 
+     SYNTAX Unsigned32 (0..1440)
+     UNITS "minutes" 
+     MAX-ACCESS read-write 
+     STATUS current 
+     DESCRIPTION 
+     "This MIB Object specifies the time duration allowed for 
+     an MTA to successfully provision and is only applicable when 
+     the MIB Object tmmMtaEndPntLVMgmtPolicy is 
+     set to a value of 'voltage-based-on-service-or-timers(3)'.
+     In all other cases, the MTA MUST:
+        - return a value of '0' upon any retrieval requests
+
+     The value contained by this MIB Object is a countdown timer 
+     and the MTA MUST start counting down the configured value 
+     only upon a hard reboot, a soft reset or a T4 timeout. Once 
+     this timer has reached a value of zero, the MTA MUST retain 
+     the value (of zero) until successfully configured otherwise. 
+     The MTA MUST use a change in the value of this MIB Object 
+     only on the next hard reboot, soft reset or T4 timeout.
+
+     The MTA MUST persist the last configured value (i.e., not
+     the countdown value) of this MIB Object across hard reboots
+     and soft resets. 
+     
+     Refer to the MIB Object tmmMtaEndPntLVMgmtPolicy for 
+     usage within 'voltage-based-on-service-or-timers(3)'."
+
+     DEFVAL { 0 } 
+      ::= { tmmMtaEndPntLVMgmtEntry 2}	
+
+tmmMtaEndPntLVMgmtMaintTimer OBJECT-TYPE
+SYNTAX Unsigned32 (0..1440)
+     UNITS "minutes"
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION 
+     "This MIB Object allows the operator to specify the time that
+     loop voltage condition will be maintained, irrespective of 
+     the changes to the MTA. It is only applicable when the MIB 
+     Object tmmMtaEndPntLVMgmtPolicy is set to a 
+     value of 'voltage-based-on-service-or-timers(3)'. 
+     In all other cases, the MTA MUST:
+        - return a value of '0' upon any retrieval requests
+
+     The value contained in this MIB Object is a countdown timer 
+     and the MTA MUST start counting down the value immediately 
+     after a successful configuration to a non-zero value. Once 
+     this timer has reached a value of zero, the MTA MUST retain 
+     the value (of zero) until successfully configured otherwise.
+ 
+     The MTA MUST retain the value of this MIB Object (i.e., the
+     countdown value) across soft resets. The MTA MUST reset the 
+     value of this MIB Object (to its default value) during a 
+     hard reboot of the MTA.
+
+     Refer to the MIB Object tmmMtaEndPntLVMgmtPolicy for 
+     information about applicability and usage."
+
+     DEFVAL { 0 } 
+      ::= { tmmMtaEndPntLVMgmtEntry 3}	 
+      
+tmmMtaEndPntLVMgmtPolicy2MaintTimer OBJECT-TYPE
+SYNTAX Unsigned32 (0..1440)
+     UNITS "minutes"
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION 
+     "This MIB Object allows the operator to specify the timer 
+     after which expires that loop voltage will be dropped 
+     when no QAM lock occurred and only the presence of 
+     non-DOCSIS QAM.  It is only applicable when the MIB 
+     Object tmmMtaEndPntLVMgmtPolicy is set to a value of 
+     voltage-unless-RF-QAM-absent(2).  In all other cases, 
+     the MTA MUST:
+        - return a value of '0' upon any retrieval requests
+	 
+     The value contained in this MIB Object is a countdown timer 
+     and the MTA MUST start counting down the configured value  
+     after a T4 timeout. Once this timer has reached a value of 
+     zero, the MTA MUST retain the value (of zero) until MTA 
+     detects the presence of DOCSIS signal.
+
+     The MTA MUST persist the last configured value (i.e., not
+     the countdown value) of this MIB Object across hard reboots
+     and soft resets.      
+     
+     Refer to the MIB Object tmmMtaEndPntLVMgmtPolicy for 
+     usage within 'voltage-unless-RF-QAM-absent(2)'."    
+ 
+     DEFVAL { 0 } 
+      ::= { tmmMtaEndPntLVMgmtEntry 4}
+ 
+-- LVM 021209
+
+END

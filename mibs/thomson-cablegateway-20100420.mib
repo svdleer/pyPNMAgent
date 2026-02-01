@@ -1,0 +1,564 @@
+--*****************************************************************
+--
+-- THOMSON-CABLEGATEWAY.MIB:  Thomson Inc.
+--
+-- Copyright (c) 2003 by Thomson Inc.
+-- All rights reserved.
+-- 
+--*****************************************************************
+
+--**************************************************************************
+--                                                                          
+--    Copyright 2003 Thomson Inc.
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--             Thomson Inc.                                   
+--             101 W 103rd St.                                   
+--             Indianapolis, IN  46290  USA                                   
+--    All information contained in this document is Thomson Inc.    
+--    company private, proprietary, and trade secret.                       
+--                                                                          
+--**************************************************************************
+--
+--    Filename:      thomson-cablegateway.mib
+--    Author:        Gary Gutknecht
+--    Creation Date: March 20, 2003
+--    Revised      : Mar 08, 2007
+--
+--**************************************************************************
+--
+--    Description:
+--
+--      Thomson Cable Modem MIB.
+--      
+--**************************************************************************
+
+THOMSON-CABLEGATEWAY-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+		OBJECT-TYPE,    
+		IpAddress
+            FROM SNMPv2-SMI 
+		TruthValue,
+		DisplayString,
+        PhysAddress
+        FROM SNMPv2-TC
+        cableGateway
+		FROM THOMSON-BROADBAND-MIB 
+		InetAddress
+		FROM INET-ADDRESS-MIB;
+
+                      
+--*****************************************************************
+--
+-- Thomson cable modem objects.
+-- 
+--*****************************************************************
+
+cableGatewayBase OBJECT IDENTIFIER 
+        ::= { cableGateway 1 }
+
+-- --------------------------------------------------------
+-- Web Pages Setting
+-- --------------------------------------------------------       
+cgWebPagesSetting OBJECT-TYPE
+        SYNTAX INTEGER {
+                           thomson(1),
+                           comcast(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The status of this entry.  The meanings of the values
+            are:
+                thomson(1) - Thomson web pages are used.
+                comcast(2) - Comcast web pages are used."
+        ::= { cableGatewayBase 5 }
+
+cgWebPagesRemoteAccess OBJECT-TYPE
+        SYNTAX INTEGER {
+                           enabled(1),
+                           disabled(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable the remote access function of web page.
+             Same as the feature of 'Remote Config Management' at Advanced page"
+         DEFVAL { Disabled }
+         ::= { cableGatewayBase 6 }
+
+cgWebPagesLocalAccess OBJECT-TYPE
+        SYNTAX INTEGER {
+                           enabled(1),
+                           disabled(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable the local access function of web page."
+         DEFVAL { Enabled }
+         ::= { cableGatewayBase 7 }    
+
+         
+-- 2007/09/21 Adding following 2 MIBs for Guest Network page per TT1871
+cgHttpLanAccessGuestNetwork OBJECT-TYPE     
+        SYNTAX INTEGER {
+                           enabled(1),
+                           disabled(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable the Guest Network page from LAN access."
+         DEFVAL { Disabled }
+         ::= { cableGatewayBase 8 }        
+         
+-- 2007/11/13 modified the description         
+cgHttpWanAccessGuestNetwork OBJECT-TYPE         
+        SYNTAX INTEGER {
+                           enabled(1),
+                           disabled(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable the Guest Network page from WAN access. 
+            Where WAN access means anyone comes from RF interface. Anyone from CMCI can't access this page."
+         DEFVAL { Enabled }
+         ::= { cableGatewayBase 9 } 
+         
+
+         
+         
+cgRouteSubnetMgmtGroup OBJECT IDENTIFIER ::= { cableGatewayBase 10 }  
+-- //Brian: 20100420 TT3278 expand cgRouteSubnetSupport form enabled(1)/disabled(2) to enabled(1)/disabled(2)/enabledWithoutRip(3)/disabledWithRip(4)
+cgRouteSubnetSupport OBJECT-TYPE 
+    SYNTAX INTEGER {
+                       enabled(1),
+                       disabled(2),
+                       enabledWithoutRip(3),
+                       disabledWithRip(4)
+                   }
+    MAX-ACCESS  read-write 
+    STATUS      current 
+    DESCRIPTION 
+        " enabled(1): Enables Routed Subnet along with RIP.
+          disabled(2): Disables both Routed Subnet and RIP.
+          enabledWithoutRip(3): Enables Routed Subnet without RIP.
+          disabledWithRip (4): Disable Routed Subnet with RIP." 
+    ::= { cgRouteSubnetMgmtGroup 1 }    
+    
+cgRipAuthEnabled OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables the RIP MD5 authentication."
+    ::= { cgRouteSubnetMgmtGroup 2 }
+
+cgRipAuthKeyValue OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the RIP Auth key value."
+    ::= { cgRouteSubnetMgmtGroup 3 }
+
+cgRipAuthKeyId OBJECT-TYPE
+    SYNTAX      INTEGER (0..256)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the RIP auth key ID"
+    ::= { cgRouteSubnetMgmtGroup 4 }
+
+cgRipReportingInterval OBJECT-TYPE
+    SYNTAX      INTEGER (1..16535)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the RIP reporting interval."
+    ::= { cgRouteSubnetMgmtGroup 5 }
+
+cgRipDestIpAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the destination IP domain that will be used for RIP 
+         messaging."
+    ::= { cgRouteSubnetMgmtGroup 6 }
+
+cgRouteSubnetNetworkIpAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the Network IP address that will be used for RIP messaging."
+    ::= { cgRouteSubnetMgmtGroup 8 }
+
+cgRouteSubnetMask OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the RIP subnet mask which is AND'ed with the WAN IP address."
+    ::= { cgRouteSubnetMgmtGroup 9 }
+
+cgRouteSubnetGatewayIpAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the Gateway IP address that will be used for RIP messaging."
+    ::= { cgRouteSubnetMgmtGroup 10 }   
+    
+cgRouteSubnetDhcpEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables the DHCP function."
+    ::= { cgRouteSubnetMgmtGroup 11 }
+
+cgRouteSubnetNatEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables the NAT function."
+    ::= { cgRouteSubnetMgmtGroup 12 }
+
+cgRouteSubnetDnsIpAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the DNS IP address."
+    ::= { cgRouteSubnetMgmtGroup 13 }
+
+cgRouteSubnetCommitSettings OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Setting this object to true(1) causes all RIP configurations to be committed on the device.
+ 	     Reading this object should always returns false(2)."
+    ::= { cgRouteSubnetMgmtGroup 99 }
+    
+
+cgEnableLanDhcpServer OBJECT-TYPE
+        SYNTAX INTEGER {
+                           enabled(1),
+                           disabled(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable the LAN DHCP Server. This function works as well as DHCP Server option in web page RgSetup.asp."
+         DEFVAL { Enabled }
+         ::= { cableGatewayBase 11 } 
+         
+cgCheckTcpNopPadPacket OBJECT-TYPE
+        SYNTAX INTEGER {
+                           enabled(1),
+                           disabled(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Wii incorrectly pads NOP byte after EOL bytes in TCP packet. 
+            Firewall will discard this incorrect packet. Setting this object to enabled(1)/disable(2) will enable/disable firewall checking the packets.
+            The default value enabled(1) will discard Wii packets"
+         DEFVAL { enabled }
+         ::= { cableGatewayBase 12 }    
+
+-- 2007/03/08 Adding Connected Computers Table
+cgConnectedDevicesBaseTable  OBJECT IDENTIFIER ::= { cableGatewayBase 13 }
+
+cgConnectedDevicesRefresh OBJECT-TYPE
+    SYNTAX	INTEGER	{
+		done(1),
+		inProgress(2),
+		start(3)
+		}
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Setting this Object to start(3) will cause the device to start the connected devices Table refresh.
+		The refresh will cause an update of the entries in the connectedDevicesTable.  Non-connected devices 
+		entries present in the connectedDevicesTable will be removed.  Only a value of start(3) can be written.  
+		Reading this value will either return done(1) if the refresh is complete, or inProgress(2) if the refresh 
+		is still in progress."
+	DEFVAL { 1 }
+    ::= { cgConnectedDevicesBaseTable 1 }
+    
+cgConnectedDevicesTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CgConnectedDevicesEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Connected Devices Table."
+	::= { cgConnectedDevicesBaseTable 2 }
+
+cgConnectedDevicesEntry OBJECT-TYPE
+	SYNTAX		CgConnectedDevicesEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"DHCP LAN IP Traffic Table Object entry"
+	INDEX { cgConnectedDevicesIndex }
+	::= { cgConnectedDevicesTable 1 }
+
+CgConnectedDevicesEntry ::= SEQUENCE {
+	cgConnectedDevicesIndex			INTEGER,
+	cgConnectedDevicesMacAddr			PhysAddress,	
+	cgConnectedDevicesName			DisplayString,
+	cgConnectedDevicesIpAddr			InetAddress,
+	cgConnectedDevicesInterfaceType	INTEGER
+	}
+
+		cgConnectedDevicesIndex	OBJECT-TYPE
+			SYNTAX		INTEGER
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"Index for Connected Devices"
+			::= { cgConnectedDevicesEntry 1 }
+			
+		cgConnectedDevicesMacAddr	OBJECT-TYPE
+			SYNTAX		PhysAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"MAC Address of the IP Device"
+			::= { cgConnectedDevicesEntry 2 }
+
+		cgConnectedDevicesName OBJECT-TYPE
+			SYNTAX		DisplayString
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"Name associated to the IP Device, same as Computer Name"
+			::= { cgConnectedDevicesEntry 3 }
+
+		cgConnectedDevicesIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION	
+				"IP Address assiged by the PS."
+			::= { cgConnectedDevicesEntry 4 }	
+
+		cgConnectedDevicesInterfaceType OBJECT-TYPE
+			SYNTAX		INTEGER {
+						wired (1),
+						wireless (2)
+						}
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION	
+				"The interface type of the device Wired (1), Wireless (2)."
+			::= { cgConnectedDevicesEntry 5 }	
+
+            
+-- 2007/11/19 Adding following 3 MIBs for TT1939/TT1937
+cgHttpAltAccessCtrlEnabled  OBJECT-TYPE     
+        SYNTAX INTEGER {
+                           disabled(0),
+                           guestNetworkOnly(1),
+                           allPages(99)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable an alternative username/password for WAN access for certain pages."
+         DEFVAL { AllPages }
+         ::= { cableGatewayBase 20 }      
+         
+cgHttpAltAccessUsername    OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Sets the alternative username for WAN access for certain pages."
+        ::= { cableGatewayBase 21 }
+
+cgHttpAltAccessPassword    OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Sets the alternative password for WAN access for certain pages."
+        ::= { cableGatewayBase 22 }                  
+        
+         
+-- 2007/11/29 added for TT1961         
+cgNatSipAlgControl OBJECT-TYPE         
+        SYNTAX INTEGER {
+                           enabled(1),
+                           disabled(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable the SIP ALG running in RG/CH mode."
+         DEFVAL { Enabled }
+         ::= { cableGatewayBase 23 }         
+
+         
+-- 2008/03/14 added for DHCP server settings for Guest Networks        
+cgGuestNetworksDhcpMgmtGroup OBJECT IDENTIFIER ::= { cableGatewayBase 24 }  
+cgGuestNetwork1DhcpServer OBJECT-TYPE         
+        SYNTAX INTEGER {
+                           enabled(1),
+                           disabled(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable the DHCP server for the Guest Network #1 (SSID2)."
+        DEFVAL { Enabled }
+         ::= { cgGuestNetworksDhcpMgmtGroup 1 }   
+
+cgGuestNetwork1DhcpServerIpAddress OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Sets the DHCP IP address for the Guest Network #1 (SSID2)."
+        ::= { cgGuestNetworksDhcpMgmtGroup 2 }         
+
+cgGuestNetwork1DhcpServerSubnetMask OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Sets the DHCP subnet mask for the Guest Network #1 (SSID2)."
+        ::= { cgGuestNetworksDhcpMgmtGroup 3 }    
+
+cgGuestNetwork1DhcpServerLeasePoolStart OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Sets the starting address of DHCP pool for the Guest Network #1 (SSID2)."
+        ::= { cgGuestNetworksDhcpMgmtGroup 4 }    
+
+cgGuestNetwork1DhcpServerLeasePoolEnd OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "Sets the ending address of DHCP pool for the Guest Network #1 (SSID2)."
+        ::= { cgGuestNetworksDhcpMgmtGroup 5 }                            
+
+cgGuestNetwork1DhcpServerLeaseTime OBJECT-TYPE
+        SYNTAX		INTEGER
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "Sets the Lease Time DHCP server for the Guest Network #1 (SSID2)."
+        DEFVAL { 86400 }
+        ::= { cgGuestNetworksDhcpMgmtGroup 6 }              
+        
+
+cgGuestNetworksDhcpApplySettings OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "If set to true(1), then all settings from this MIB group will be applied to
+             the device for on-the-fly reconfiguration.  Note that any settings
+             made are stored to non-volatile storage ONLY unless this object is
+             subsequently set to true(1).  Always returns false(2) when read."
+        ::= { cgGuestNetworksDhcpMgmtGroup 99 }        
+         
+-- 2008/03/20 added for TT2120
+cgWebAccessFromWireless OBJECT-TYPE
+        SYNTAX INTEGER {
+                          allow (1),
+                          deny (2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            " Allow/Deny the WEB (all the pages) access from the  primary wireless interface (SSID1)."
+         DEFVAL { Allow }
+         ::= { cableGatewayBase 25 }
+
+-- 2008/07/29 added for TT2289 in PKE3349-39213
+--cgWebPagesRemotePortNumber OBJECT-TYPE
+--    SYNTAX      INTEGER (80..65535)
+--    MAX-ACCESS  read-write
+--    STATUS      current
+--    DESCRIPTION
+--        "Indicates the HTTP port number for remote access."
+--     DEFVAL { 8080 }
+--     ::= { cableGatewayBase 26 }
+
+-- cg802dot11MgmtGroup OBJECT IDENTIFIER ::= { cableGatewayBase 30 }
+
+-- 2009/03/03 added for TT2560
+cgWebPagesOfflineLocalAccess OBJECT-TYPE
+        SYNTAX INTEGER {
+                           enabled(1),
+                           disabled(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable the local access function of web page when CM isn't operational."
+         DEFVAL { Enabled }
+         ::= { cableGatewayBase 31 }    
+
+cgWebPagesAccessMask OBJECT-TYPE
+        SYNTAX OCTET STRING (SIZE (12))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Set web pages access mask (AABBCCDDEEFFGGHHIIJJKKLL)
+             AA,      // Gateway menu mask
+             BB,      // VoIP menu mask
+             CC,      // Gateway->Status pages mask
+             DD,      // Gateway->Network pages mask
+             EE,      // Gateway->Advanced pages mask
+             FF,      // Gateway->Firewall pages mask
+             GG,      // Gateway->Parental Control pages mask
+             HH,      // Gateway->Wireless pages mask
+             II,      // VoIP->Basic pages mask
+             JJKK,    // VoIP->Advanced pages mask
+             LL       // VoIP->Support pages mask
+             For side menu, MSB is applied to control pages.
+             i.e. To control Password page in Status, set 00100000b to Gateway->Status pages mask
+                  To control Diagnostics page in Status, set 00010000b to Gateway->Status pages mask
+             Also, unused bits are ignored."
+             
+        DEFVAL { 'FFFFFFFFFFFFFFFFFFFFFFFF'H }
+        ::= { cableGatewayBase 32 }
+   
+
+-- cgUserInterfaceFeatures OBJECT IDENTIFIER ::= { cableGatewayBase 33 }
+
+cgWebPagesAccessMaskControl OBJECT-TYPE
+        SYNTAX INTEGER {
+                           Disabled(0),
+                           LAN-enabled(1),
+                           WAN-enabled(2),
+                           Both-enabaled(3)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable the WEB access mask function for WAN, LAN or both.
+            0: Disabled, ignore the MIB 'cgWebPagesAccessMask' setting.
+            1: LAN, apply 'cgWebPagesAccessMask' to LAN side only.
+            2: WAN, apply 'cgWebPagesAccessMask' to WAN side only.
+            3: Both, apply 'cgWebPagesAccessMask' to both of LAN and WAN."
+         DEFVAL { disabled }
+         ::= { cableGatewayBase 34 }          
+   
+END

@@ -1,0 +1,317 @@
+TMMPKTC-CM-MTA-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+        MODULE-IDENTITY, 
+        OBJECT-TYPE,enterprises, 
+        Integer32
+                FROM SNMPv2-SMI
+        SnmpAdminString 
+                FROM SNMP-FRAMEWORK-MIB ;
+
+thomson      OBJECT IDENTIFIER ::= { enterprises 2863 }
+tmmVoip      OBJECT IDENTIFIER ::= { thomson 78 }
+
+tmmCmMta MODULE-IDENTITY
+         LAST-UPDATED    "0910130000Z"  -- 2009/10/13
+         ORGANIZATION    "Thomson"
+         CONTACT-INFO    "Eric Cren
+        			     Postal: Thomson
+        					1 avenue Belle-Fontaine
+        					CS17616 
+        					35576 Cesson-Sign FRANCE
+        			     Phone: +33 2 99 27 37 05
+        			     E-mail: eric.cren@thomson.net"
+         DESCRIPTION
+             "Controls the behavior of the Cable Modem functional block in Embedded MTA devices.  
+              This MIB is active only at the Cable Modem IP address"
+         ::= { tmmVoip 1 }
+
+tmmCmMtaDevice OBJECT-TYPE
+    SYNTAX INTEGER {
+          disable(0),
+          enable(1)
+	}
+    MAX-ACCESS 	  read-only
+    STATUS        current
+    DESCRIPTION	
+        "Control embedded MTA. 
+         If disable(0), MTA will not send out DHCP DISCOVER message.
+         If DHCP option 122.1 is missing, MTA is disabled and MIB is set to disable(0).
+         Note:  Equivalent of VSIF 54.
+         Note:  This object can be set via the CM configuration file ONLY."
+    ::= { tmmCmMta 1 }
+
+tmmCmMtaCountMtaAsCpe OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+        }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "MTA in Max-Count of CPEs (Max number of CPE
+         in CM config file), default per eDOCSIS spec.
+         This setting is used to control counting MTA in Max-Count of CPEs.
+         0: Do not count MTA as a CPE
+         1: Count MTA as a CPE
+         Note:  Equivalent of VSIF 69
+         Note:  This object can be set via the CM configuration file ONLY."
+    DEFVAL    { 1 }
+    ::= { tmmCmMta 2 }
+
+tmmCmMtaApplyIpFiltersToMta OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+        }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "DOCSIS config file filters (from RFC2669) are normally applied to the MTA and all 
+         CPE interfaces per the eDOCSIS spec. This MIB controls if the filters are applied
+         to the MTA.
+         0: Do not apply any filters to the MTA - apply filters only to Ethernet and USB ports  
+            Filters do NOT block traffic to the MTA.
+         1: Follow e-docsis spec - apply filters to MTA, Ethernet and USB ports (default)
+         Note: Equivalent of VSIF 77"
+    DEFVAL    { 1 }
+    ::= { tmmCmMta 3 }
+
+tmmCmMtaSidCount OBJECT-TYPE
+    SYNTAX INTEGER (4|16)
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Number of SIDs the MTA supports."
+    ::= { tmmCmMta 4 }
+
+tmmCmMtaProvisioningMode OBJECT-TYPE
+    SYNTAX INTEGER {
+          packetCable(0),
+          oneConfigFile(1),
+          twoConfigFiles(2),
+          snmp(3)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object must only be set via the CM configuration file during the provisioning process.
+         After CM is operational, this object can not be set via SNMP.
+         MTA provisioning modes:
+         0: MTA follows PacketCable provisioning specifications
+         1: MTA will use only CM config file. VoIP parameters MUST be included in
+            the CM config file as VSIFs. This option will become obsolete.
+         2: MTA will learn about MTA config file name and location from DHCP OFFER.
+            If name or location is missing, MTA will switch to mode 3.
+         3: MTA will send SNMP inform to provisioning server, specified in DHCP
+            option 122.3 or 177.3, depending on tmmCmMtaDhcpPktcOption (note: MTA
+            will not provision if tmmCmMtaDhcpPktcOption = requireNone(1) and no option
+            122.3 or 177.3 is specified).
+         For modes 1 and 2, no MTA DHCP options 122, 177 are required.
+         Note:  Equivalent of VSIF 25.
+         Note:  This object can be set via the CM configuration file ONLY."
+    DEFVAL    { 0 }
+    ::= { tmmCmMta 5 }
+
+tmmCmMtaDhcpPktcOption OBJECT-TYPE
+    SYNTAX INTEGER {
+          require122(0),
+          requireNone(1),
+          require177(2)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object must only be set via the CM configuration file during the provisioning process.
+         After CM is operational, this object can not be set via SNMP.
+         0: CM and MTA will accept only PacketCable option 122. If option 122 is not included
+            in CM DHCP OFFER, MTA will not start.
+         1: CM and MTA will accept 122 or 177 or none. If DHCP OFFER contains 122 or 177, MTA
+            will process it.
+         2: CM and MTA will accept only PacketCable option 177. If option 177 is not included
+            in CM DHCP OFFER, MTA will not start.
+         This MIB is saved into modem's non-vol memory and the new value is active after
+         the modem registers and reboots again (DHCP comes before config file parsing).
+         Note:  Equivalent of VSIF 64
+         Note:  This object can be set via the CM configuration file ONLY."
+    DEFVAL    { 0 }
+    ::= { tmmCmMta 6 }
+
+tmmCmMtaEnrolV2TrapFormat OBJECT-TYPE
+    SYNTAX INTEGER {
+          newFormat(0),
+          oldFormat(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        " - OBSOLETE - 
+         This object must only be set via the CM configuration file during the provisioning process.
+         After CM is operational, this object can not be set via SNMP.
+         0: MTA will send the new format of enrollment v2 trap that follow PacketCable spec. 
+         1: MTA will send the old format of enrollment v2 trap.(refer to PKT-SP-PROV-I03)
+         Note:  This object can be set via the CM configuration file ONLY."
+    DEFVAL    { 0 }
+    ::= { tmmCmMta 7 }
+    
+tmmCmMtaCommunityString OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(1..32))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Allow user to set commnunity string for PKTC Hybrid mode
+         Note1: This object can be set via the CM configuration file ONLY.
+         Note2: This object take effect ONLY in Hybrid provision flow."
+    DEFVAL    { "private" }
+    ::= { tmmCmMta 8 }
+
+tmmCmMtaConsistentSnmpSet OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+         "MTA provisioning step MTA-19 defines:
+          The PROV_APP then instructs the PROV_SNMP_ENTITY to send 'an' SNMP SET message to
+          the MTA containing the URL-encoded file access method and filename, the hash of 
+          the configuration file, and the encryption key (if the configuration file is encrypted). 
+                 
+          This MIB object is used to configure the SNMP-SET message:
+          0 : Accept separate SNMP-SET packets for config. filename, hash or encryption key.
+          1 : Only accept 'one' SNMP-SET packet with all MTA config. filename, hash, encryption key inside. 
+          
+          Note:  This object can be set via the CM configuration file ONLY.          
+        "
+    DEFVAL {1 }
+    ::= { tmmCmMta 9 }
+
+-- Modified@20080926 by Luke: Change default to 1
+tmmCmMtaAllowMtaMac OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: will not include EMTA MAC address to MTA provision step15 (default)
+         1: will include EMTA MAC address to MTA provision step15
+         
+         Note: Equivalent to VSIF 173. 
+               This object can be set via the CM configuration file ONLY.
+         "
+    DEFVAL {1 }
+    ::= { tmmCmMta 10 }
+            
+tmmCmMtaKdcMaxClockSkew OBJECT-TYPE
+    SYNTAX INTEGER (0..10080)
+    UNITS           "minutes"
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "  
+         Define the maximum MTA-KDC clock skew the MTA uses to validate a Kerberos ticket timestamp.
+         The default is 2880 minutes(48 hours), and the maximum setting is 10080 minutes(7 days).
+         The MTA will completely ignore clock skew if this mib object is set to zero. 
+        "        
+    DEFVAL { 2880 }
+    ::= { tmmCmMta 11 }
+
+tmmCmMtaTakeFirstDhcpOffer OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: follow PacketCable SPEC BASIC/HYBRID flow MTA provision step MTA2 (default)
+         1: Take the first DHCP Offer in MTA2 step for BASIC/HYBRID flow.
+        
+        Provision step MTA2 in PacketCable SPEC:
+        b. The MTA MUST check the value of the DHCP option122 sub-option 6 for indication 
+           of the Secure Flow. If no valid DHCP OFFER message directs the MTA to the Secure flow,
+           the MTA MUST retry the DHCP DISCOVER process (MTA-1) exponentially for 3 attempts 
+           (e.g. 2, 4, 8 second intervals). Upon failing to receive any valid DHCP OFFER indicating 
+           the Secure flow, the MTA MUST select, a valid Hybrid Flow DHCP OFFER, or a valid 
+           Basic Flow OFFER in that order.
+        "
+    DEFVAL {0 }
+    ::= { tmmCmMta 12 }   
+    
+tmmCmMtaProvisonState OBJECT-TYPE
+    SYNTAX INTEGER {
+          disabled(0), 
+          dhcp(1),
+          security(2),
+          tftp(3),
+          registeringToCallServer(4),
+          registrationComplete(5)          
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This MIB reports current eMTA provioning state. 
+        "
+    DEFVAL {0 }
+    ::= { tmmCmMta 13 }
+    
+tmmCmMtaMibPersistencyControl OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: Value not persistent across reboot (default)
+         1: Value persistent across reboot.
+         
+         Persistency of the following three MIB objects are controlled by this MIB:
+         
+         a. ifAdminStatus.9/10
+         b. emtaSignalingEndptCtrlBoostedLoopCurrent.9/10. 
+         c. emtaSignalingEndptCtrlRingWaveform.9/10
+         
+         [note1] 0: DO NOT use value in non-vol; 1: Read from and write to non-vol
+         [note2] When set to true(1), the MIB objects listed above are 
+                 NOT expected to exist in the eMTA configuration file.
+        "
+    DEFVAL {0 }
+    ::= { tmmCmMta 14 }    
+    
+-- Add@20081124 by Luke: For Insight (VP-52=8)
+tmmCmMtaMibStopAtMTA15 OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: MTA goes to MTA-1 if MTA-15 failed.(PacketCable SPEC)
+         1: MTA stops at MTA-15 if failed 3 INFORM enrollment attempts (default)
+                  
+         [note1] When enable the behavior is not PacketCable compliant.
+         [note2] This MIB is valid only for VP-52=8 
+        "
+    DEFVAL {1 }
+    ::= { tmmCmMta 15 }    
+
+-- Add@20091013 by Luke
+tmmCmMtaRingBothLine OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: Stop ringing.
+         1: Ring both line 1 and line 2.                  
+        "
+    DEFVAL {0 }
+    ::= { tmmCmMta 16 } 
+
+END

@@ -1,0 +1,115 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-wifihotspot-mgmt.mib
+--    Creation Date: August 19, 2013
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--		private MIB for wifi hotspot management.
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-WIFIHOTSPOT-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, MODULE-IDENTITY, IpAddress, 
+	Integer32
+		FROM SNMPv2-SMI
+	MacAddress
+		FROM SNMPv2-TC
+	cableMgmt
+		FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrWiFiHotspotMgmt MODULE-IDENTITY
+	LAST-UPDATED "201308190000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"This is the MIB Module for Netgear Cable Gateway device."
+::= { cableMgmt 23 }
+
+
+-- -
+-- - Netgear Group
+-- -
+-- August 19, 2013
+-- 
+-- Object Definitions
+-- 
+-- 
+-- MIB objects
+-- 
+
+wifiHotspotHostTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF WifiHotspotHostEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrWiFiHotspotMgmt 1 }
+
+wifiHotspotHostEntry  OBJECT-TYPE
+	SYNTAX 	WifiHotspotHostEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { wifiHotspotHostIndex }
+	::= { wifiHotspotHostTable 1 }
+
+WifiHotspotHostEntry ::= SEQUENCE {
+	wifiHotspotHostIndex
+		Integer32,
+	wifiHotspotHostMacAddr
+		MacAddress,
+	wifiHotspotHostIpAddr
+		IpAddress
+}
+
+wifiHotspotHostIndex  OBJECT-TYPE
+	SYNTAX     Integer32 (1..255)
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The index of connected devices."
+	::= { wifiHotspotHostEntry 1 }
+
+wifiHotspotHostMacAddr  OBJECT-TYPE
+	SYNTAX     MacAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The mac address of connected devices."
+	::= { wifiHotspotHostEntry 2 }
+
+wifiHotspotHostIpAddr  OBJECT-TYPE
+	SYNTAX     IpAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The ip address of connected devices."
+	::= { wifiHotspotHostEntry 3 }
+END

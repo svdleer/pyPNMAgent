@@ -1,0 +1,3332 @@
+--**************************************************************************
+--    Description:
+--
+--		private MIB for runtime (not factory) eMTA management
+--
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+UBEE-EMTA-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Integer32,
+    Unsigned32,
+    IpAddress,
+	 NOTIFICATION-TYPE
+        FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION,
+    DateAndTime,
+    TruthValue,
+    RowStatus,
+    DisplayString
+        FROM SNMPv2-TC
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    NOTIFICATION-GROUP
+        FROM SNMPv2-CONF
+    InetPortNumber
+        FROM INET-ADDRESS-MIB
+    SnmpAdminString
+        FROM SNMP-FRAMEWORK-MIB
+    cableDataMgmtMIBObjects
+        FROM UBEE-CABLEDATA-MGMT-MIB
+    ifIndex
+        FROM IF-MIB;
+
+emtaMgmt MODULE-IDENTITY
+    LAST-UPDATED "201210100000Z"
+    ORGANIZATION "Ubee Interactive Corporation"
+    CONTACT-INFO
+        "	Ubee Interactive Global Headquarters
+
+        Postal: 6F-9, No.38, Taiyuan St.
+        		Jhubei City Hsinchu County 302
+        		Taiwan, R.O.C.
+
+           Tel: +886-3-560-0010
+
+        E-mail: asupport@ubeeinteractive.com"
+    DESCRIPTION
+        "Ubee MIB for runtime management of an eMTA device."
+    ::= { cableDataMgmtMIBObjects 6 }
+
+
+-- Textual Conventions 
+ 
+TenthdBm ::= TEXTUAL-CONVENTION 
+    DISPLAY-HINT "d-1" 
+    STATUS       current 
+    DESCRIPTION 
+        "This textual convention represents power levels that are 
+         normally expressed in dBm. Units are in tenths of a dBm; 
+         for example, -13.5 dBm will be represented as -135." 
+    SYNTAX       Integer32 
+
+
+emtaMgmtNotification     OBJECT IDENTIFIER ::= { emtaMgmt 0 }
+emtaMgmtBase             OBJECT IDENTIFIER ::= { emtaMgmt 1 }
+emtaMgmtMaintenance      OBJECT IDENTIFIER ::= { emtaMgmt 2 }
+emtaMgmtBatteryControl   OBJECT IDENTIFIER ::= { emtaMgmt 3 }
+emtaMgmtSignalingControl OBJECT IDENTIFIER ::= { emtaMgmt 4 }
+emtaMgmtStatistics       OBJECT IDENTIFIER ::= { emtaMgmt 5 }
+emtaMgmtObjects          OBJECT IDENTIFIER ::= { emtaMgmt 6 }
+
+-- The following node must be the last one in this MIB. All new
+-- MIB Objects should be introduced in one of the above categories,
+-- e.g. - in 'emtaMgmtObjects'.
+emtaMgmtConformance      OBJECT IDENTIFIER ::= { emtaMgmt 7 }
+
+
+--
+-- emtaMgmtBase - objects for general-purpose eMTA control
+--
+
+emtaInhibitSwDownloadDuringCall OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the processing logic of software downloading requests when
+        there are specific telephony related EMTA activities. If this object has a value
+        of true(1), DOCSIS software download by way of the docsDevSwAdminStatus MIB object
+        will be inhibited if the value of esafeDevServiceIntImpact for the eMTA entry has
+        a value of significant(1), indicating a call in progress.  If docsDevSwAdminStatus
+        is set to upgradeFromMgt(1) under these conditions,  an error code of
+        resourceUnavailable(13) will be returned and an appropriate event logged to the CM
+        event log."
+    DEFVAL {false}
+    ::= { emtaMgmtBase 1 }
+
+emtaFirewallEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object specifies whether the eMTA lightweight firewall is enabled or
+         disabled."
+    DEFVAL {true}
+    ::= { emtaMgmtBase 2 }
+
+emtaRingWithDCOffset OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object specifies whether the ring with DC offset option is enabled.
+        Note that in order for the EMTA to be able to apply DC offset to ring signal
+        it must support high voltage ring (emtaHighVoltageRingEnabled is true(1).
+        An attempt to set this object to true while emtaHighVoltageRingEnabled is
+        false(2) will result in an 'inconsistent value' error."
+    DEFVAL {false}
+    ::= { emtaMgmtBase 3 }
+
+emtaIncludedInCmMaxCpe OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object specifies whether the EMTA MAC address will be included when
+         calculating the number of CPEs allowed by the CM as specified in the
+         CM configuration file.  Setting of the MIB takes effect on the next re-boot.
+
+         Note that the eDOCSIS specification requires the value of this object
+         to be true(1) and setting it to false(2) will violate the spec and
+         render the device uncertifiable."
+    REFERENCE
+        "CM-SP-eDOCSIS-I05-050408 section 5.2.2"
+    DEFVAL {true}
+    ::= { emtaMgmtBase 4 }
+
+emtaDhcpOption OBJECT-TYPE
+    SYNTAX      INTEGER {
+                cableLabsClientConfiguraton(122),
+                packetCableAndCableHomeObsolete(177)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object specifies the value of the PacketCable DHCP option which will be
+        used in MTA provisioning. Current PacketCable 1.x Provisioning Specification
+        requires value 122, but certain legacy systems still use the currently obsolete
+        value of 177."
+    REFERENCE
+        "http://www.iana.org/assignments/bootp-dhcp-parameters;
+         RFC 3495, DHCP Option for CableLabs Client Configuration."
+    DEFVAL {cableLabsClientConfiguraton}
+    ::= { emtaMgmtBase 5 }
+
+emtaUseAlternateTelephonyRootCert OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls which telephony root certificate the MTA will be
+         using during its authentication phases. As per PacketCable 1.x,
+         the telephony root certificate should be used so that it can be modified
+         by way of a firmware upgrade if necessary. However, the alternate certificate
+         may sometimes be required for testing, development, or other special situations.
+
+         If set to true(1), the EMTA will use the alternate telephony root certificate
+         as provisioned in non-volatile storage.  If set to false(2), the EMTA will use the
+         telephony root certificate which is embedded in the firmware image."
+    DEFVAL { false }
+    ::= { emtaMgmtBase 6 }
+
+emtaEnableDQoSLite OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object specifies whether DQoS Lite is enabled.
+         When enabled, gateid enforcement is disabled, which makes the EMTA use
+         serviceflows (lite DQoS) even in absence of gate IDs.
+         When DQoS lite is disabled, gate ID enforcement on the EMTA is enabled,
+         which makes the EMTA use real DQoS (no lite DQoS)."
+    DEFVAL {false}
+    ::= { emtaMgmtBase 7 }
+
+emtaInhibitNcsSyslog OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the logging of the NCS messages to Syslog. Generally,
+        reporting of the events with NCS messages is following the PacketCable 1.x
+        MEM Specificaition and Event MIB Specificaition.
+        However, if this object has a value of true(1), logging of the NCS messages
+		to syslog is inhibited.  Otherwise, NCS logging control logic follows the
+        requirements of the PacketCable 1.x Event MIB.
+        The MTA must not persist this MIB object."
+    DEFVAL {true}
+    ::= { emtaMgmtBase 8 }
+
+emtaVoiceThreadState OBJECT-TYPE
+    SYNTAX      INTEGER{
+                initializing(1),
+                notStarted(2),
+                runningOk(3),
+                runTimeError(4)
+    }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object indicates the state of the MTA's voice processing.  
+         initializing(1) - the voice processing is in the process of initializing.
+         notStarted(2) - the voice processing thread did not start correctly.  An MTA reset may be necessary. 
+         runningOk(3) - the voice processing has been initialized, and is operating normally.
+         runTimeError(4)- indicates there was an error in the operation of the voice processing,
+                          and the MTA is unable to perform voice processing.
+         "
+    ::= { emtaMgmtBase 9 }
+
+emtaPhsConfiguration OBJECT-TYPE
+    SYNTAX       INTEGER{
+                 enabled(1),
+                 disabled(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the application of Payload Header Suppression 
+        (PHS) to voice RTP traffic.  When disabled(2), PHS is applied to 
+         neither upstream nor downstream RTP traffic.  When enabled(1), PHS
+         is applied to both upstream and downstream RTP traffic.
+         
+         Note that if this object is set to enabled(1), specific fields may be 
+         selected for supression by use of the emtaPhsUpstreamMask and
+         emtaPhsUpstreamMask objects."
+    ::= { emtaMgmtBase 10 }
+
+emtaMaxResetDelay OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..86400)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+       "This object, along with emtaPostCallCompletionResetDelay, controls 
+        the behavior of the device when one or more voice lines is off-hook, 
+        and  a reset becomes pending due to completion of software download or
+        due to a set of cmEmtaSafeReset from the BRCM-CM-EMTA-MGMT-MIB.
+        
+        The object emtaPostCallCompletionResetDelay is used to prevent
+        interruption of an active voice call due to either of these reset
+        conditions, as described in that object's description clause.
+        
+        This object provides a safeguard against the possibility of a reset 
+        being postponed indefinitely should a voice line remain off-hook for an 
+        extended period of time.  It may also be used to cause the reset to 
+        occur immediately regardless of hook state, as required by DOCSIS.
+
+        When a software download completes or a reset is invoked via
+        cmEmtaSafeReset, a timer will begin to run for the duration specified
+        by the value of this object. Note that the timer begins to run when
+        the reset becomes pending, not when all voice lines return to hook.
+
+        When the timer expires, an event will be logged (and possibly a syslog
+        message dispatched) which indcates that a reset is pending. At that
+        time the timer will be started a second time, and when the timer
+        expires a second time the device will be reset regardless of voice
+        line hook state.
+
+        Note that, because the timer must expire two times before the device
+        is reset, the reset will not occur until twice the number of
+        seconds specified by this object have elapsed (unless the conditions
+        set by emtaPostCallCompletionResetDelay are met first).
+        
+        When this object has the default value of 0, the functionality of the 
+        emtaPostCallCompletionResetDelay object is effectively disabled and the 
+        device will reboot immediately following a software upgrade, as required 
+        by DOCSIS.  The use of the default value of 0 for this object also 
+        causes the cmEmtaSafeReset object behave exactly as the docsDevResetNow 
+        object."
+    DEFVAL {0}
+    ::= { emtaMgmtBase 11 }
+
+emtaPostCallCompletionResetDelay OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..3600)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object, along with emtaMaxResetDelay, controls the behavior of 
+         the device when one or more voice lines is off-hook, and a reset is 
+         pending due to completion of software download or due to a set of 
+         cmEmtaSafeReset from the BRCM-CM-EMTA-MGMT-MIB.
+
+         This object prevents an active voice call from being interrupted due 
+         to either of these reset conditions occuring when a call is in 
+         progress.
+
+         If a reset for one of these reasons becomes pending when a voice line 
+         is off-hook, the reset will not take place until all lines have 
+         returned to hook and the number of seconds specified by this object 
+         have elapsed. If a voice line goes off-hook before the timer expires, 
+         the timer will be reset and will begin to run again when all lines 
+         have returned to hook.
+         
+         Use of the default value of 0 seconds means that the device will reset
+         immediately once all voice lines have returned to hook.
+         
+         The length of time that a reset which is pending may be delayed by 
+         the value of this object is limited by the value of emtaMaxResetDelay,
+         as described in the description clause for that object.  If the
+         value of emtaMaxResetDelay has the default value of 0 then the 
+         functionality of this object is effectively disabled."
+    DEFVAL {0}
+    ::= { emtaMgmtBase 12 }
+    
+emtaDhcpRebindRule OBJECT-TYPE
+    SYNTAX      INTEGER{
+                strict(1),
+                relaxed(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object is used to control the DHCP client behaviour for the MTA when a DHCP REBIND (T2 timeout)
+         occurs.
+         The value strict will only allow the MTA to accept a valid DHCP ACK only from the DHCP server 
+         that provided the initial lease.
+         The value relaxed will allow the MTA to accept a valid DHCP ACK from any DHCP server. 
+        "
+    REFERENCE
+        "RFC 2131  Dynamic Host Configuration Protocol"
+    DEFVAL {strict}
+    ::= { emtaMgmtBase 13 }
+
+emtaDhcpIgnoreNaks OBJECT-TYPE
+    SYNTAX       INTEGER{
+                 enabled(1),
+                 disabled(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls client behavior regarding DHCP NAKs.  If set to enabled(1),
+         the DHCP client will handle NAKs from the server by entering a special
+         state where renewing/rebinding stops, but the IP address continues to
+         be used until the lease expires.  If set to disabled(2), the DHCP 
+         client will handle NAKs per the requirements from RFC-2131."
+         DEFVAL { disabled }
+    ::= { emtaMgmtBase 14 }
+
+emtaCountryCode OBJECT-TYPE
+    SYNTAX      SnmpAdminString(SIZE(2))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object contains the country code according to ISO Country Code
+         Standard (eg. the code for United States is 'us').  Two additional codes
+         not part of the ISO standard are supported:  'ei' for ETSI and '57' for
+         TR-57.  
+         
+         This object must only be provided via the configuration  file during the 
+         provisioning process.
+         
+         If the country code is set to an unsupported country in the image, MTA
+         will use the default country code based on build specific options for
+         the image."
+    REFERENCE
+        "ISO 3166-1"
+    ::= { emtaMgmtBase 15 }
+    
+emtaPhsUpstreamMask OBJECT-TYPE
+    SYNTAX      BITS {
+                ethDA(0),
+                ethSA(1),
+                ethEthertype(2),
+                ipVersionIHL(3),
+                ipTOS(4),
+                ipTotalLength(5),
+                ipIdent(6),
+                ipFlagsFragOffset(7),
+                ipTTL(8),
+                ipProtocol(9),
+                ipHeaderChecksum(10),
+                ipSA(11),
+                ipDA(12),
+                udpSourcePort(13),
+                udpDestPort(14),
+                udpLength(15),
+                udpChecksum(16)
+    }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This object sets the PHS mask for upstream voice DQoS flows using
+         IPv4 addressing.  Setting a bit to '1' will cause the MTA to suppress
+         this field for upstream voice flows. 
+         
+         The default configuration is all bits set except for ipTotalLength(5),
+         ipHeaderChecksum(10), and udpLength(15) since these fields are required
+         to properly handle connections using silence suppression.  
+         
+         If silence supression will never be enabled, all bits
+         may be set.
+         
+         Note that this setting only applies if emtaPhsConfiguration is set to
+         enabled(1).  If emtaPhsConfiguration is set to disabled(2), then the 
+         value of this object will be ignored."
+    ::= { emtaMgmtBase 16 }
+    
+emtaPhsDownstreamMask    OBJECT-TYPE
+    SYNTAX BITS {
+       ethEthertype(0),
+       ipVersionIHL(1),
+       ipTOS(2),
+       ipTotalLength(3),
+       ipIdent(4),
+       ipFlagsFragOffset(5),
+       ipTTL(6),
+       ipProtocol(7),
+       ipHeaderChecksum(8),
+       ipSA(9),
+       ipDA(10),
+       udpSourcePort(11),
+       udpDestPort(12),
+       udpLength(13),
+       udpChecksum(14)
+    }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This object sets the PHS mask for downstream voice DQoS flows using
+         IPv4 addressing.  Setting a bit to '1' will cause the CMTS to suppress
+         this field for downstream voice flows.
+          
+         The default configuration is the ethEthertype(0), ipVersionIHL(1), 
+         ipIdent(4), ipFlagsFragOffset(5), ipProtocol(7), ipSA(9), ipDA(10),  
+         and udpDestPort(12) bits are set.
+          
+         If silence supression will never be enabled, ipTotalLength(3)
+         and udpLength(13) may also be set.
+         
+         If silence supression will never be enabled and 
+         emtaPhsDownstreamVerification is set to either disabled(2) or auto(3), 
+         all bits may be set.
+         
+         Note that this setting only applies if emtaPhsConfiguration is set to
+         enabled(1).  If emtaPhsConfiguration is set to disabled(2), then the 
+         value of this object will be ignored."
+    ::= { emtaMgmtBase 17 }
+    
+emtaPhsDownstreamVerification OBJECT-TYPE
+    SYNTAX       INTEGER{
+                 enabled(1),
+                 disabled(2),
+                 auto(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls whether or not the MTA requests PHS verification
+         (PHSV) by the CMTS on downstream PHS operations.  The default is 
+         auto(3).
+         
+         When set to auto(3), the MTA will automatically disable PHSV if the
+         ipTOS(2), ipTTL(6), ipHeaderChecksum(8) or udpChecksum(14) bits are
+         set in emtaPhsDownstreamMask.
+         
+         When set to disabled(2), the MTA will disable PHSV at all times.
+         
+         When set to enabled(1), the MTA will enable PHSV at all times.  
+         
+         This setting should be used with caution as it is possible to create a 
+         non-working configuration if verification is enabled and a 
+         non-predictable downstream field (eg ipTTL) is suppressed.
+         
+         Note that this setting only applies if emtaPhsConfiguration is set to
+         enabled(1).  If emtaPhsConfiguration is set to disabled(2), then the 
+         value of this object will be ignored."
+    ::= { emtaMgmtBase 18 }
+
+emtaUgsAdControl OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object specifies whether the UGS-AD scheduling type is enabled.  
+         When set to true(1), if silence suppression is on, UGS-AD will be 
+         selected.  When set to false(2), the UGS-AD is disabled, meaning UGS 
+         will be selected regardless of the silence suppression parameter.  
+         If the UGS-AD control is changed through SNMP, then this change will 
+         take effect starting with the next phone call (in process calls are 
+         not affected).  
+         The default value of this object is true(1) for UGS-AD enabled, which 
+         corresponds to the functionality compliant with the PacketCable 
+         requirements (DQoS PC1.5 specification section 6.1.2.1)."
+    DEFVAL {true}
+    ::= { emtaMgmtBase 19 }
+
+emtaDnsBaseTimeout OBJECT-TYPE
+    SYNTAX      Unsigned32 (100..30000)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the base timeout value for DNS queries.  
+         The DNS client DNS query times out due to no response from the DNS 
+         server.  The EMTA DNS resolver waits this period of time before sending
+         the next DNS Query if no response is received from the DNS server.  
+         This is exponentially increased on subsequent DNS queries for the same
+         transaction."
+    DEFVAL {500}
+    ::= { emtaMgmtBase 20 }
+
+emtaDnsMaxRetry OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..8)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the maximum retry value for a DNS query.  
+         When a DNS query times out due to no response from the DNS server, 
+         this is the maximum number of times that a DNS query is re-sent."
+    DEFVAL {2}
+    ::= { emtaMgmtBase 21 }
+
+emtaDnsNegativeCacheTTL OBJECT-TYPE
+    SYNTAX      Unsigned32 (10..4294967295)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the maximum TTL value for DNS negative cache PRs. 
+         When a DNS query results in a response of NXDOMAIN, NODATA or SRVFAIL, 
+         and no SOA RR is included in the response, or due to a non-responsive 
+         DNS server, the EMTA DNS resolver caches the negative RR with this 
+         TTL value."
+    DEFVAL {300}
+    ::= { emtaMgmtBase 22 }
+
+emtaEmSvcTrafficPriority OBJECT-TYPE
+    SYNTAX      Unsigned32 (5..6)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the DOCSIS Traffic Priority used in the service 
+         flow for outgoing calls to an emergency service provider.
+         Note that the default value of this object may change based on build 
+         specific options."
+    DEFVAL { 5 }
+    ::= { emtaMgmtBase 23 }
+
+emtaDevHDAudioEnabled OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This MIB is used to enabled or disable HD Audio functionality 
+         across the entire device.
+         A value of false will cause the device, across all lines, to
+         suppress any indication during call negotiation 
+         that the device supports HD audio and takes precedence 
+         over all other MIB's that have the ability to enable and/or disable 
+         HD voice functionality.
+         When this MIB is set to true, then the device will allow HD audio
+         functionality to be advertised during call negotiation according to
+         other MIBs that have the ability to enabled or disable HD voice
+         functionality."
+    DEFVAL { true }
+    ::= { emtaMgmtBase 24 }
+    
+emtaDevG72264PayloadType OBJECT-TYPE
+    SYNTAX      INTEGER { 
+           g722StaticPayloadType(1), 
+           g722DynamicPayloadType(2) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+       "This MIB controls the mode of interpretation of the label 'G722-64' in 
+        the Local Connection Options (LCO's) of any message from a NCS based
+        switch (where LCO is permitted by the Packet Cable 1.5 spec and 
+        where codec labels are permitted in the LCO). The following modes
+        are supported:
+             g722StaticPayloadType(1): the device interprets 'G722-64' as a 
+                                       request for the G722 static codec (64 kb/s) 
+                                       and responds with static codec '9' in the SDP.
+             g722DynamicPayloadType(2): the device interprets 'G722-64' as a 
+                                       request for the G722 dynamic codec (64 kb/s) 
+                                       and responds with the appropriate dynamic 
+                                       codec entries in the SDP."
+    DEFVAL { g722StaticPayloadType }
+    ::= { emtaMgmtBase 25 }
+
+--
+-- emtaMgmtMaintenance - objects allowing specification and control of a
+-- maintenance window during which time IP outages are expected and error
+-- conditions may be handled differently
+--
+
+emtaMaintenanceWindowBegin OBJECT-TYPE
+    SYNTAX      DateAndTime
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object identifies the start of an eMTA maintenance window. A maintenance
+         window is a period of time during which the ISP may perform network
+         maintenance operations and network outages or software resets may
+         occur. During a maintenance window, the eMTA will maintain the line
+         voltage of an MTA regardless of CM resets, MTA resets, or RF losses.
+         If any of these conditions occurs or persists outside of the scheduled
+         maintenance window then the line voltage will be dropped unless the
+         corresponding bit for the condition in question is set in the
+         emtaMaintenanceControlMask MIB. If this object has never been set,
+         it will have the value of midnight, January 1, 1970. Note that the
+         time value used here is the local time as known by the device, as
+         opposed to UTC. Also note that the value of this object will persist
+         across a system reboot.
+         
+         Note that in order to be compliant with (E)PC 1.5 Certification, 
+         PacketCable 1.5 builds will use the MIBs in pktcEnNcsEndPntLVMgmtTable
+         instead of the emtaMaintenance MIBs by default."
+    ::= { emtaMgmtMaintenance 1 }
+
+emtaMaintenanceWindowDuration OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object identifies the duration, in seconds, of an eMTA maintenance window.
+         Setting the value of this object to the default value of zero will
+         cancel the maintenance window. Note that the value of this object
+         will persist across a system reboot.
+         
+         Note that in order to be compliant with (E)PC 1.5 Certification, 
+         PacketCable 1.5 builds will use the MIBs in pktcEnNcsEndPntLVMgmtTable
+         instead of the emtaMaintenance MIBs by default."
+    ::= { emtaMgmtMaintenance 2 }
+
+emtaMaintenanceControlMask OBJECT-TYPE
+    SYNTAX   BITS {
+            maintenanceOnCmReset(0),
+            maintenanceOnRFLoss(1),
+            maintenanceOnMtaReset(2),
+            maintenanceOnCMSLoss(3)
+      }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object identifies the bit mask to control the line voltage behavior of the eMTA in
+         various scenarios:
+         maintenanceOnCmReset(0) -  if this bit is set to 1 it requires the line
+         voltage be maintained in the case when the CM has been reset, regardless
+         of the reason (reset after downloading a new firmware, or hard reboot, or
+         SNMP induced CM reset), and regardless of whether the MTA is in a valid
+         maintenance window maintenanceOnRFLoss(1) - if this bit is set to 1 it
+         requires the line voltage be maintained in the case when RF communication
+         is lost, regardless of the reason, and regardless of whether the MTA is
+         in a valid maintenance window maintenanceOnMtaReset(2) - if this bit is
+         set to 1 it requires the line voltage be maintained in the case when the
+         eMTA is being reset, regardless of the reason (e.g. SNMP induced eMTA reset,
+         etc), and regardless of whether the MTA is in a valid maintenance window
+         maintenanceOnCMSLoss(3) - if this bit is set to 1 it requires the line
+         voltage be maintained in the case when communication is lost with the CMS,
+         regardless of the reason (e.g. endpoint disconnected, etc), and regardless
+         of whether the duration of the communication loss has exceeded the value
+         in the MIB emtaMaintenanceQuarantineTimeout and/or emtaMaintenanceDisconnectedTimeout
+
+         The default value of this object may change based on build specific options.
+         However, it's highly recommended that the default value in the image submitted
+         for (E)PC 1.x Certification be chosen in such a way that it will correspond
+         to the functionality compliant with the PacketCable requirements and will
+         preserve the backward compatibility with the previously certified behaviour.
+         Note that to satisfy the latter, 'maintenanceOnCMSLoss(3)' bit should be set
+         by default.
+         
+         Also, note that in order to be compliant with (E)PC 1.5 Certification, 
+         PacketCable 1.5 builds will use the MIBs in pktcEnNcsEndPntLVMgmtTable
+         instead of the emtaMaintenance MIBs by default."
+    ::= { emtaMgmtMaintenance 3 }
+
+emtaMaintenanceQuarantineTimeout OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object identifies the length of time, in seconds, that the MTA should maintain the
+         line voltage after any of the endpoints enters the quarantine state. If any
+         of the endpoints remains in the quarantine state for longer than this period
+         the line voltage is dropped unless the maintenanceOnCMSLoss bit
+         is set in the emtaMaintenanceControlMask MIB. Note that the value
+         of this object will persist across a system reboot.
+         
+         Note that in order to be compliant with (E)PC 1.5 Certification, 
+         PacketCable 1.5 builds will use the MIBs in pktcEnNcsEndPntLVMgmtTable
+         instead of the emtaMaintenance MIBs by default."
+    DEFVAL {120}
+    ::= { emtaMgmtMaintenance 4 }
+
+emtaMaintenanceDisconnectedTimeout OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object identifies the length of time, in seconds, that the MTA should maintain the
+         line voltage after any of the endpoints is disconnected. If any of the endpoints
+         remains disconnected for longer than this period the line voltage is dropped
+         unless the maintenanceOnCMSLoss bit is set in the emtaMaintenanceControlMask MIB.
+         Note that the value of this object will persist across a system reboot.
+
+         Note that in order to be compliant with (E)PC 1.5 Certification, 
+         PacketCable 1.5 builds will use the MIBs in pktcEnNcsEndPntLVMgmtTable
+         instead of the emtaMaintenance MIBs by default."
+    DEFVAL {120}
+    ::= { emtaMgmtMaintenance 5 }
+
+emtaMaintenanceRFDisconnectTimeout OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..3600)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object identifies the length of time, in seconds, that the MTA should maintain the 
+         line voltage after the RF lock with the CMTS is lost. If the MTA remains disconnected
+         from the CMTS for longer than this period the line voltage is dropped unless the
+         maintenanceOnRFLoss bit is set in the emtaMaintenanceControlMask MIB. 
+         Note that the value of this object will persist across a system reboot.
+
+         Note that in order to be compliant with (E)PC 1.5 Certification, 
+         PacketCable 1.5 builds will use the MIBs in pktcEnNcsEndPntLVMgmtTable
+         instead of the emtaMaintenance MIBs by default."
+    DEFVAL {300}
+::= { emtaMgmtMaintenance 6 }
+
+--
+-- emtaMgmtBatteryControl - objects allowing control of eMTA behavior with
+-- regard to batteries (if batteries are present / supported on the device)
+--
+
+emtaBattReplaceCtrl OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..100)
+    UNITS       "percent"
+    MAX-ACCESS  read-write
+    STATUS      deprecated -- in favor of battChargerReplaceBatteryThreshold from UBEE-BATTERY-MGMT-MIB
+    DESCRIPTION
+        "This object contains the value which controls the nominal load percentage triggering
+        a 'Replace Battery' Telemetry Signal. Default valule of the MIB Object is 55%."
+    DEFVAL {55}
+    ::= { emtaMgmtBatteryControl 1 }
+
+
+--
+-- emtaMgmtSignalingControl - objects allowing control over eMTA signaling
+-- behavior
+--
+
+emtaSignalingEndptCtrlTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EmtaSignalingEndptCtrlEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table controls the loopback mode for each endpoint present on the eMTA."
+    ::=  { emtaMgmtSignalingControl 1 }
+
+emtaSignalingEndptCtrlEntry    OBJECT-TYPE
+    SYNTAX        EmtaSignalingEndptCtrlEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry controls the loopback mode for the particular endpoint indexed
+        by the corresponding ifIndex."
+    INDEX { ifIndex }
+    ::=  { emtaSignalingEndptCtrlTable 1 }
+
+EmtaSignalingEndptCtrlEntry  ::= SEQUENCE {
+       emtaSignalingEndptCtrlAnalogLoopback     TruthValue,
+       emtaSignalingEndptCtrlLineReset          TruthValue,
+       emtaSignalingEndptCtrlDiagTestsStart     BITS,
+       emtaSignalingEndptCtrlDiagTestsStop      BITS,
+       emtaSignalingEndptCtrlDiagTestValid      BITS,
+       emtaSignalingEndptCtrlDiagTestResult     BITS,
+       emtaSignalingEndptCtrlDiagTestValue      SnmpAdminString,
+       emtaSignalingEndptCtrlBoostedLoopCurrent TruthValue,
+       emtaSignalingEndptCtrlTxGain             Integer32,
+       emtaSignalingEndptCtrlRxGain             Integer32,
+       emtaSignalingEndptCtrlDialToneMsecTO     Unsigned32,
+       emtaSignalingEndptCtrlToneDetectionControl INTEGER,
+       emtaSignalingEndptCtrlRingWaveform       INTEGER,
+       emtaSignalingEndptCtrlPowerMgmtDelay     Integer32,
+       emtaSignalingEndptCtrlToneDetectionControlExt BITS,
+       emtaSignalingEndptCtrlPulseDialEnable    TruthValue,
+       emtaSignalingEndptCtrlVBDTxGain          Integer32,
+       emtaSignalingEndptCtrlVBDRxGain          Integer32,
+       emtaSignalingEndptCtrlPulseToDtmfConvert TruthValue,
+       emtaSignalingEndptCtrlCustomCWCIDCfgEnable TruthValue,
+       emtaSignalingEndptCtrlCASLevelCfg          Integer32,
+       emtaSignalingEndptCtrlOffhookCIDFSKLevelCfg Integer32,
+       emtaSignalingEndptCtrlOnhookCIDFSKLevelCfg Integer32,
+       emtaSignalingEndptCtrlVMWIOSIDuration    Unsigned32,
+       emtaSignalingEndptCtrlMgcpQuarantineMode INTEGER,
+       emtaSignalingEndptCtrlOSIDuration        Unsigned32,
+       emtaSignalingEndptCtrlPulseDialMinMakeTime   Unsigned32,
+       emtaSignalingEndptCtrlPulseDialMaxMakeTime   Unsigned32,
+       emtaSignalingEndptCtrlPulseDialMinBreakTime  Unsigned32,
+       emtaSignalingEndptCtrlPulseDialMaxBreakTime  Unsigned32,
+       emtaSignalingEndptCtrlRtpTelEvtPayload       Unsigned32,
+       emtaSignalingEndptCtrlPrefCodecList          SnmpAdminString,
+       emtaSignalingEndptCtrlHDAudioEnabled     TruthValue,
+       emtaSignalingEndptCtrlHDAudioStatus      BITS
+       
+    }
+
+emtaSignalingEndptCtrlAnalogLoopback OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This oject controls the implementation of the analog loopback by the MTA.
+        When the object is set to true(1), the MTA MUST implement an analog loopback
+        operations. When the object is set to false(2), the MTA MUST stop loopback
+        operations immediately.
+        The default value of this object corresponds to the functionality compliant
+        with the PacketCable requirements."
+    DEFVAL {false}
+    ::= { emtaSignalingEndptCtrlEntry 1 }
+
+emtaSignalingEndptCtrlLineReset OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object congrols the resetting the telephone line. Setting this object
+        to true(1) causes the eMTA to reset the telephone line of the corresponding
+        endpoint. Setting this object to false(2) does not have any affect. Reading
+        this object always returns 'false(2)'."
+    DEFVAL {false}
+    ::= { emtaSignalingEndptCtrlEntry 2 }
+
+emtaSignalingEndptCtrlDiagTestsStart    OBJECT-TYPE
+    SYNTAX BITS {
+       startTipToGroundShortDetection(0),
+       startRingToGroundShortDetection(1),
+       startTipToRingShortDetection(2),
+       startRingerEquivalenceNetwork(3),
+       startSelfTestNoReboot(4),
+       startOffHookSimulationTest(5),
+       startTip1ToRing2Short(6),     -- SHOULD
+       startTip2ToRing1Short(7),      -- SHOULD
+       startHazardousPotentialsTest(8),
+       startstartForeignElectromotiveForceTest(9),
+       startReceiverOffhook(10),
+       startPtcFaultDetection(11),
+       test12NotImplemented(12),
+       test13NotImplemented(13),
+       test14NotImplemented(14),
+       test15NotImplemented(15),
+       test16NotImplemented(16),
+       test17NotImplemented(17),
+       test18NotImplemented(18),
+       test19NotImplemented(19),
+       test20NotImplemented(20),
+       test21NotImplemented(21),
+       test22NotImplemented(22),
+       test23NotImplemented(23),
+       test24NotImplemented(24),
+       test25NotImplemented(25),
+       test26NotImplemented(26),
+       test27NotImplemented(27),
+       test28NotImplemented(28),
+       test29NotImplemented(29),
+       test30NotImplemented(30),
+       startForceTestExecution(31)
+    }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This object is used to start one or more diagnostic tests
+        associated with a corresponding endpoint.
+        Thus, whenever one or more BITS corresponding to diagnostic test
+        are set to a value of '1', the MTA MUST start those tests.
+        Before starting the test, the MTA MUST clear the BITS of the
+        objects 'emtaSignalingEndptCtrlDiagTestValid',
+        'emtaSignalingEndptCtrlDiagTestResult', and
+        'emtaSignalingEndptCtrlDiagTestsStop'.
+        Once the tests are executed, the MTA MUST:
+            - set the corresponding bits to a value of '0'
+            - update the corresponding BITS in the MIB Objects
+        'emtaSignalingEndptCtrlDiagTestValid' and
+        'emtaSignalingEndptCtrlDiagTestResult'.
+        Whenever a test is being run on an enpoint the MTA MUST
+        set the corresponding 'ifOperStatus' MIB Object to a value of
+        'testing(3)' for the whole duration of the test.
+        When the test is completed, the MTA MUST set the
+        ifOperStatus to the value corresponding to the current state of the line.
+        The selected tests will not run if the corresponding endpoint is offhook.
+        Any attempt to set the testnnNotImplemented bits (bit 12 to 30) will 
+        result in an 'inconsistentValue' error.
+        To force execution of the selected tests regardless of the endpoint status
+        set the corresponding startForceTestExecution(31) BIT."
+       ::= { emtaSignalingEndptCtrlEntry 3}
+
+emtaSignalingEndptCtrlDiagTestsStop    OBJECT-TYPE
+    SYNTAX BITS {
+       stopTipToGroundShortDetection(0),
+       stopRingToGroundShortDetection(1),
+       stopTipToRingShortDetection(2),
+       stopRingerEquivalenceNetwork(3),
+       stopSelfTestNoReboot(4),
+       stopOffHookSimulationTest(5),
+       stopTip1ToRing2Short(6),      -- SHOULD
+       stopTip2ToRing1Short(7),      -- SHOULD
+       stopHazardousPotentialsTest(8),
+       stopForeignElectromotiveForceTest(9),
+       stopReceiverOffhook(10),
+       stopPtcFaultDetection(11)
+    }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This object is used to stop the test corresponding to the bit
+        being set if the test is not complete yet by the time when
+        the the bit is set.
+        Any attempt to set bits other than bit 0 to bit 11 will result
+        in an 'inconsistentValue' error."
+       ::= { emtaSignalingEndptCtrlEntry 4}
+
+emtaSignalingEndptCtrlDiagTestValid  OBJECT-TYPE
+    SYNTAX BITS {
+       validTipToGroundShortDetection(0),
+       validRingToGroundShortDetection(1),
+       validTipToRingShortDetection(2),
+       validRingerEquivalenceNetwork(3),
+       validSelfTestNoReboot(4),
+       validOffHookSimulationTest(5),
+       validTip1ToRing2Short(6),      -- SHOULD
+       validTip2ToRing1Short(7),      -- SHOULD
+       validHazardousPotentialsTest(8),
+       validForeignElectromotiveForceTest(9),
+       validReceiverOffhook(10),
+       validPtcFaultDetection(11)
+    }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "This object indicates the validity of the corresponding
+        test case that was initiated using the MIB Object
+        'emtaSignalingEndptCtrlDiagTestsStart'.
+        An MTA MUST:
+            - set corresponding bit if the MTA was able to run the test,
+              and the test result is valid.
+            - clear a corresponding bit if the MTA was not able to run the test,
+              or the test was not initiated, or the test was not complete for any reason
+              and, hence, the result is invalid."
+       ::= { emtaSignalingEndptCtrlEntry 5}
+
+emtaSignalingEndptCtrlDiagTestResult  OBJECT-TYPE
+    SYNTAX BITS {
+       resTipToGroundShortDetection(0),
+       resRingToGroundShortDetection(1),
+       resTipToRingShortDetection(2),
+       resRingerEquivalenceNetwork(3),
+       resSelfTestNoReboot(4),
+       resOffHookSimulationTest(5),
+       resTip1ToRing2Short(6),     -- SHOULD
+       resTip2ToRing1Short(7),     -- SHOULD
+       resHazardousPotentialsTest(8),
+       resForeignElectromotiveForceTest(9),
+       resReceiverOffhook(10),
+       resPtcFaultDetection(11)
+    }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "This object indicates the result of the corresponding test that
+        was initiated using the MIB Object 'emtaSignalingEndptCtrlDiagTestsStart'.
+        An MTA MUST:
+            - set the bit if the corresponding test completed successfully.
+            - clear the bit if the corresponding test completed and failed the test."
+       ::= { emtaSignalingEndptCtrlEntry 6}
+
+emtaSignalingEndptCtrlDiagTestValue  OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "This object contains the value which represents the results of the
+        corresponding test. Each value of the result is represented as a human
+        readable string inicating the value of the particular parameter used to
+        evaluate the testing results.
+        The format of the string with the value must be as follows:
+           [P=<param>,V=<value>,U=<unit>]
+        where:
+        <param> - is the name of the particular parameter evaluated during the test,
+        <vaule> - is the human readable representation of the testing result
+        of the particular parameter (e.g. '3.5', 'state is on-hook', etc),
+        <unit> - is the human readable representation of the unit describing the
+        <value>.
+        If there are several parameters constituting the result of the individual test,
+        then all values must be presented in the MIB Object in the following format:
+           [P=<param-1>,V=<value-1>,U=<unit-1>][P=<param-2>,V=<value-2>,U=<unit-2>].....
+        If the test is not represented by the measurable value, or the test has not
+        been complete for any reason, then the object must contain zero-length string."
+       ::= { emtaSignalingEndptCtrlEntry 7}
+
+emtaSignalingEndptCtrlBoostedLoopCurrent  OBJECT-TYPE -- SHOULD
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object indicates whether the the loop current should be boosted (true(1))
+        or not (false(2)). The patrticular value for the loop current depends on the patrticular
+        hardware (SLIC) being used."
+    DEFVAL {false}
+       ::= { emtaSignalingEndptCtrlEntry 8}
+
+emtaSignalingEndptCtrlTxGain OBJECT-TYPE
+    SYNTAX Integer32 (-16..16)
+    UNITS "dB"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This Object represents the per line transmitter (A/D)
+         gain. A positive number reflects a signal gain, a negative
+         number reflects a signal loss.
+
+         This Object does not reflect the desired level at the Telco (POTS)
+         a-b (T/R) terminals as it does not include the affects of the gain
+         settings on the analog interfaces which are pre-configured for a
+         given country specification. The gain setting specified in this MIB
+         object will be applied on top of the preconfigured settings and
+         therefore represents a relative level.
+         
+         The default value of this object may change based on build specific
+         options."
+    DEFVAL { 0 }
+    ::= { emtaSignalingEndptCtrlEntry 9 }
+
+emtaSignalingEndptCtrlRxGain OBJECT-TYPE
+    SYNTAX Integer32 (-16..16)
+    UNITS "dB"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This Object represents the per line receiver (D/A) gain. A positive
+        number reflects a signal gain, a negative number reflects a signal loss.
+
+        This MIB Object does not reflect the desired level at
+        the Telco (POTS) a-b (T/R) terminals as it does not include the
+        affects of the gain settings on the analog interfaces which are
+        pre configured for a given country specification. The gain setting
+        specified in this MIB will be applied on top of the preconfigured
+        settings and therefore represents a relative level.
+
+        The default value of this object may change based on build specific
+        options."
+    DEFVAL { 0 }
+    ::= { emtaSignalingEndptCtrlEntry 10 }
+
+emtaSignalingEndptCtrlDialToneMsecTO OBJECT-TYPE
+    SYNTAX Unsigned32 (0 | 100..16000)
+    UNITS "Milliseconds"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This Object contains the timeout value for dial tone that provides millisecond resolution.
+         If the value of the object is modified by the SNMP Management Station to a non zero value,
+         the MTA MUST use the new value as a default only for a new signal requested by the NCS message.
+         If the value of this object is set to 0, then 'pktcNcsEndPntConfigDialToneTO' from
+         PKTC-SIG-MIB MUST be used, and not this value. If set to a non-zero value
+         this object takes presedence over 'pktcNcsEndPntConfigDialToneTO' object.  Only increments
+         of 100ms are allowed.
+         Note that the value of this object will persist across a system reboot."
+    DEFVAL { 0 }
+    ::= { emtaSignalingEndptCtrlEntry 11 }
+
+emtaSignalingEndptCtrlToneDetectionControl OBJECT-TYPE
+    SYNTAX INTEGER {
+        allDetectorsEnabled(1),
+        allDetectorsDisabled(2),
+        v18-AlarmPOSDisabled(3),
+        alarmPOSDisabled(4),
+        undefined(5)
+    }
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "This MIB object is used to provide enhanced tone detection control on 
+         an EMTA endpoint.
+         
+         When set to AllDetectorsEnabled(1), the  EMTA must enable all the tone 
+         detectors on the specific endpoint. This includes the following 
+         detectors: 
+            - fax/modem tones (1100, 2100Hz)
+            - V18/TDD tones (980,1400,1650Hz)  
+            - Alarm panel and Point of Sale terminal (POS) tones (1275,2225,2250Hz)
+         
+         When set to AllDetectorsDisabled(2), the EMTA must disable all the tone 
+         detectors on the specific endpoint. Note that this mode would make the 
+         EMTA non compliant with the PacketCable requirements.  
+            
+         When set to V18-AlarmPOSDisabled(3), the EMTA must disable the V18, 
+         Alarm panel and POS portion of tone detection. This includes disabling 
+         Baudot (1400Hz), Preamble (980&1650Hz), Ascii/Bell103 (1275,2225) and  
+         V.22bis (2250Hz) detection on the specific endpoint. Note that this 
+         mode would make the EMTA non compliant with the PacketCable 
+         requirements. 
+            
+         When set to AlarmPOSDisabled(4), the EMTA must disable the  Alarm panel  
+         and  POS portion of  tone detection on the specific endpoint. This 
+         includes disabling the Bell103 (1275,2225) and V.22bis (2250Hz) but 
+         leaving the other detectors enabled. 
+            
+         The value undefined(5) indicates a combination of tone detection control
+         not supported by this MIB, but supported by emtaSignalingEndptCtrlToneDetectionControlExt.  
+         Setting to undefined(5) will result in an 'inconsistentValue' error.  
+
+         If a configuration file contains both emtaSignalingEndptCtrlToneDetectionControl 
+         and emtaSignalingEndptCtrlToneDetectionControlExt, the mib that is processed last
+         will take precedence.
+
+         If a connection already exists on the endpoint when this MIB Object is 
+         modified, then the setting needs to take effect on the next connection."
+    DEFVAL { alarmPOSDisabled }
+    ::= { emtaSignalingEndptCtrlEntry 12 }
+
+
+emtaSignalingEndptCtrlRingWaveform OBJECT-TYPE
+    SYNTAX INTEGER {
+        sinusoidal(1),
+        trapezoidal(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This MIB object is controls the shape of the ring waveform.
+    
+         The setting of sinusoidal(1) would result in a sinusoidal ring waveform 
+         with crest factor of 1.414, while the setting of trapezoidal(2) would
+         result in a trapezoidal ring waveform with crest factor of 1.25."
+    DEFVAL { sinusoidal }
+    ::= { emtaSignalingEndptCtrlEntry 13 }
+
+emtaSignalingEndptCtrlPowerMgmtDelay OBJECT-TYPE
+    SYNTAX      Integer32 (-1..2147483647)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Specifies the number of seconds following transition to battery power
+         before the endpoint interface will enter power management mode.  If
+         set to -1, the interface will never enter power management mode and 
+         will remain at full power until utility power is restored or battery
+         charge is depleted.  If a call is active (off-hook) when the timer expires, 
+         the timer will be restarted after hang-up (line goes on-hook)."
+    DEFVAL { -1 }
+::= { emtaSignalingEndptCtrlEntry 14 }
+
+emtaSignalingEndptCtrlToneDetectionControlExt OBJECT-TYPE
+    SYNTAX BITS {
+        faxDetectionDisabled(0),
+        modemDetectionDisabled(1),
+        v18BaudotDisabled(2),
+        v18PreambleDissabled(3),
+        v18AsciiBell103V22bisDisabled(4)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This MIB object is used to control individual tone detectors on an EMTA
+         endpoint.
+         
+         If bit faxDetectionDisabled(0) is set, the EMTA must disable the fax
+         portion of tone detection (1100Hz CNG tone) on the specific endpoint.  
+
+         If bit modemDetectionDisabled(1) is set, the EMTA must disable the modem
+         portion of tone detection (2100Hz CED tone) on the specific endpoint.  
+
+         If bit V18BaudotDisabled(2) is set, the EMTA must disable V18 Baudot (1400 Hz)
+         detection on the specific endpoint.
+
+         If bit V18PreambleDisabled(3) is set, the EMTA must disable V18 Preamble
+         (980, 1650 Hz) detection on the specific endpoint.
+
+         If bit V18AsciiBell103V22bisDisabled(4) is set, the EMTA must disable V18 
+         Ascii/Bell103 (1275, 2225 Hz) and V22bis (2250 Hz) detection on the 
+         specific endpoint (mostly used for Alarm Panels and Point of Sale terminals).
+
+         If a connection already exists on the endpoint when this MIB Object is 
+         modified, then the setting needs to take effect on the next connection.
+
+         The default value of this object has the v18AsciiBell103V22bisDisabled(4) bit
+         set, which is compliant with PacketCable requirements.
+
+         Note that the default value of this object may change based on build specific 
+         options, which could be PacketCable non-compliant.
+         
+         If a configuration file contains both emtaSignalingEndptCtrlToneDetectionControl 
+         and emtaSignalingEndptCtrlToneDetectionControlExt, the mib that is processed last
+         will take precedence." 
+    ::= { emtaSignalingEndptCtrlEntry 15 }
+
+emtaSignalingEndptCtrlPulseDialEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This oject controls pulse dialing detection for the Endpoint.  
+        When set to 'true(1)', pulse and tone dialing detection is enabled.
+        When set to 'false(2)', only tone detection is enabled."
+    DEFVAL {true}
+    ::= { emtaSignalingEndptCtrlEntry 16 }
+
+emtaSignalingEndptCtrlVBDTxGain OBJECT-TYPE
+    SYNTAX Integer32 (-5..5)
+    UNITS "dB"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This Object is added to the default VBD Tx gain to be used when operating in
+        voiceband dcata mode.
+        Note that the value of this object will persist across a system reboot."
+    DEFVAL { 0 }
+    ::= { emtaSignalingEndptCtrlEntry 17 }
+
+emtaSignalingEndptCtrlVBDRxGain OBJECT-TYPE
+    SYNTAX Integer32 (-5..5)
+    UNITS "dB"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This Object is added to the default VBD Rx gain to be used when operating in
+        voiceband dcata mode.
+        Note that the value of this object will persist across a system reboot."
+    DEFVAL { 0 }
+::= { emtaSignalingEndptCtrlEntry 18 }
+
+emtaSignalingEndptCtrlPulseToDtmfConvert OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object controls the in-call pulse dial to dtmf tone conversion.  
+        When set to 'true(1)', in-call pulse-to-dtmf conversion is enabled 
+        and pulse dial events are converted to corresponding dtmf tones.
+        When set to 'false(2)', in-call pulse-to-dtmf conversion is disabled.
+        The value of this object must be set via the MTA config file for
+        persistence."
+    DEFVAL {false}
+    ::= { emtaSignalingEndptCtrlEntry 19 }
+
+emtaSignalingEndptCtrlCustomCWCIDCfgEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls whether MTA uses user-defined values for CAS tone
+        and FSK signal for Call Waiting Caller ID.
+        When set to 'true(1)', user-defined values for CAS tone (as specified in
+        emtaSignalingEndptCtrlCASLevelCfg) and FSK signal (as specified in
+        emtaSignalingEndptCtrlFSKLeveCfg) will be used.  
+        When set to 'false(2)', values defined in Telcordia GR-30 will be used."
+    DEFVAL {false}
+    ::= { emtaSignalingEndptCtrlEntry 20 }
+
+emtaSignalingEndptCtrlCASLevelCfg OBJECT-TYPE
+    SYNTAX Integer32 (-200..-100)
+    UNITS "TenthdBm"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This Object controls the user-defined level of the CPE Alerting Signal 
+        (CAS) during Call Waiting Caller ID delivery procedure.  In order for 
+        this object to take effect, the emtaSignalingEndptCtrlCustomCWCIDCfgEnable
+        object must be set to true(1).
+        This object must be changed in increments and decrements of 5 TenthdB.
+        An attempt to set this object to a value that does not fall on the 
+        increment boundaries will result in an 'inconsistent value' error."
+    DEFVAL { -150 }
+    ::= { emtaSignalingEndptCtrlEntry 21 }
+
+emtaSignalingEndptCtrlOffhookCIDFSKLevelCfg OBJECT-TYPE
+    SYNTAX Integer32 (-200..-100)
+    UNITS "TenthdBm"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This Object controls the user-defined level of the FSK data transmission
+        during Call Waiting Caller ID delivery procedure.  In order for this object
+        to take effect, the emtaSignalingEndptCtrlCustomCWCIDCfgEnable objects must
+        be set to true(1).
+        This object must be changed in increments and decrements of 5 TenthdB.
+        An attempt to set this object to a value that does not fall on the 
+        increment boundaries will result in an 'inconsistent value' error."
+    DEFVAL { -150 }
+    ::= { emtaSignalingEndptCtrlEntry 22 }
+
+emtaSignalingEndptCtrlOnhookCIDFSKLevelCfg OBJECT-TYPE
+    SYNTAX Integer32 (-200..-100)
+    UNITS "TenthdBm"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This Object controls the user-defined level of the FSK data transmission
+        during Onhook Caller ID delivery procedure. This also applies to FSK data
+        transmission during the VMWI delivery procedure. In order for this object
+        to take effect, the emtaSignalingEndptCtrlCustomCWCIDCfgEnable objects
+        must be set to true(1).
+        This object must be changed in increments and decrements of 5 TenthdB.
+        An attempt to set this object to a value that does not fall on the 
+        increment boundaries will result in an 'inconsistent value' error."
+    DEFVAL { -150 }
+::= { emtaSignalingEndptCtrlEntry 23 }
+
+emtaSignalingEndptCtrlVMWIOSIDuration OBJECT-TYPE
+    SYNTAX Unsigned32 (100..1000)
+    UNITS "Milliseconds" 
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION
+        "This object specifies the duration of the Open Switch Interval (OSI) 
+        used as an alerting signal method during Visual Message Waiting Indicator
+        (VMWI) signaling. This object is only used when OSI is the current alerting
+        signal method for VMWI signaling."
+    DEFVAL { 300 } 
+::= { emtaSignalingEndptCtrlEntry  24 } 
+
+emtaSignalingEndptCtrlMgcpQuarantineMode OBJECT-TYPE
+    SYNTAX INTEGER {
+        step(1),
+        loop(2)    
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the value which controls the MGCP Quarantine mode 
+        for an endpoint. Setting this object to step(1)' causes the endpoint to use the
+        step mode as per RFC2705, allowing the MTA to send one NTFY message 
+        for each received RQNT message. Setting this object to loop(2)' causes the 
+        MTA to use loop mode as per RFC2705, allowing the MTA to send multiple NTFY message 
+        with one received RQNT message.  If emtaSignalingMgcpLockstepActivation is currently false(2), 
+        MTA is currently operating in loop mode only and any attemp to set this object to step(1), 
+        will result in an 'inconsistentValue' error."
+    DEFVAL {step}
+::= { emtaSignalingEndptCtrlEntry  25 } 
+ 
+emtaSignalingEndptCtrlOSIDuration OBJECT-TYPE
+    SYNTAX Unsigned32 (50..30000)
+    UNITS "Milliseconds" 
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION
+        "This object specifies the duration of the Open Switch Interval (OSI).  
+         The default value of this object corresponds to the functionality 
+         compliant with the PacketCable requirements.  
+         Note that this default value may change based on build specific options."
+    DEFVAL { 900 } 
+::= { emtaSignalingEndptCtrlEntry  26 } 
+
+emtaSignalingEndptCtrlPulseDialMinMakeTime OBJECT-TYPE
+    SYNTAX       Unsigned32 (10..200)  
+    UNITS        "Milliseconds"  
+    MAX-ACCESS   read-only  
+    STATUS       current  
+    DESCRIPTION  
+        " This is the minimum make pulse width for the dial pulse. 
+          The value of emtaSignalingEndptCtrlPulseDialMinMakeTime MUST 
+          be less than emtaSignalingEndptCtrlPulseDialMaxMakeTime. This 
+          object MUST only be set via the configuration file during 
+          the provisioning process.
+          This MIB object does not apply if the device supports
+          pktcNcsEndPntConfigPulseDialMinMakeTime from the PKTC-EXCENTIS-SIG-MIB 
+          or PKTC-IETF-SIG-MIB."  
+    DEFVAL { 30 }  
+::= { emtaSignalingEndptCtrlEntry  27 }
+
+emtaSignalingEndptCtrlPulseDialMaxMakeTime OBJECT-TYPE
+    SYNTAX       Unsigned32 (10..200)  
+    UNITS        "Milliseconds"  
+    MAX-ACCESS   read-only  
+    STATUS       current  
+    DESCRIPTION  
+        " This is the maximum make pulse width for the dial pulse. 
+          The value of emtaSignalingEndptCtrlPulseDialMaxMakeTime MUST 
+          be greater than emtaSignalingEndptCtrlPulseDialMinMakeTime. 
+          This object MUST only be provided via the configuration  
+          file during the provisioning process.
+          This MIB object does not apply if the device supports
+          pktcNcsEndPntConfigPulseDialMaxMakeTime from the PKTC-EXCENTIS-SIG-MIB 
+          or PKTC-IETF-SIG-MIB."  
+    DEFVAL { 55 }  
+::= { emtaSignalingEndptCtrlEntry  28 }
+
+emtaSignalingEndptCtrlPulseDialMinBreakTime OBJECT-TYPE
+    SYNTAX       Unsigned32 (10..200)  
+    UNITS        "Milliseconds"  
+    MAX-ACCESS   read-only  
+    STATUS       current  
+    DESCRIPTION  
+        " This is the minimum break pulse width for the dial pulse. 
+          The value of emtaSignalingEndptCtrlPulseDialMinBreakTime MUST 
+          be less than emtaSignalingEndptCtrlPulseDialMaxBreakTime. 
+          This object must only be provided via the configuration  
+          file during the provisioning process.
+          This MIB object does not apply if the device supports
+          pktcNcsEndPntConfigPulseDialMinBreakTime from the PKTC-EXCENTIS-SIG-MIB 
+          or PKTC-IETF-SIG-MIB."  
+    DEFVAL { 45 } 
+::= { emtaSignalingEndptCtrlEntry  29 }
+
+emtaSignalingEndptCtrlPulseDialMaxBreakTime OBJECT-TYPE
+    SYNTAX       Unsigned32 (10..200)  
+    UNITS        "Milliseconds"  
+    MAX-ACCESS   read-only  
+    STATUS       current  
+    DESCRIPTION  
+        " This is the maximum break pulse width for the dial pulse. 
+          The value of emtaSignalingEndptCtrlPulseDialMaxBreakTime MUST 
+          be greater than emtaSignalingEndptCtrlPulseDialMinBreakTime. 
+          This object MUST only be provided via the configuration  
+          file during the provisioning process.
+          This MIB object does not apply if the device supports
+          pktcNcsEndPntConfigPulseDialMaxBreakTime from the PKTC-EXCENTIS-SIG-MIB 
+          or PKTC-IETF-SIG-MIB."  
+    DEFVAL { 80 } 
+::= { emtaSignalingEndptCtrlEntry  30 }
+
+emtaSignalingEndptCtrlRtpTelEvtPayload  OBJECT-TYPE
+    SYNTAX      Unsigned32 (96..127)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object configures the dynamic RTP payload number for telephone events (e.g. 
+         DTMF Relay events). "
+    DEFVAL {101}
+    ::= { emtaSignalingEndptCtrlEntry 31 }
+
+emtaSignalingEndptCtrlPrefCodecList OBJECT-TYPE 
+    SYNTAX      SnmpAdminString 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION 
+        " This MIB Object contains the list of the voice and/or video
+          codecs preferred by the network.        
+          The value in this object is formed as a comma-separated list 
+          of the well-known literal voice/video codec names.  The MTA 
+          MUST use the literal voice and/or video codec name as per RTP 
+          AV Profile [RFC 3551], or per encoding names registered with 
+          the IANA, or per encoding names referenced or defined in the 
+          PacketCable Codec-Media specification.
+          Unknown or non-supported codecs are ignored.
+          The zero-length string indicates the preferred codec list is 
+          vendor specific starting with G711 codecs.
+          The default value of this object is a zero-length string.
+          Note that the default value of the object may change based on 
+          build specific options."
+    ::= { emtaSignalingEndptCtrlEntry 32 }
+
+emtaSignalingEndptCtrlHDAudioEnabled OBJECT-TYPE 
+    SYNTAX      TruthValue 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION 
+        " This MIB object will enable or disable the inclusion of HD Audio
+          during codec negotiation.  If HD Audio is supported by the device
+          a value of true will cause HD Audio to be advertised during codec
+          negotiation.  A value of false will prevent HD audio from being
+          advertised during codec negotiation.  
+          HD Audio codecs in emtaSignalingEndptCtrlPrefCodecList
+          are ignored based on the value of emtaSignalingEndptCtrlHDAudioEnabled. 
+          This MIB has the following interaction
+          with other MIB objects when it comes to reporting HD Audio during codec
+          negotiation:
+          
+          emtaDevHDAudioEnabled  emtaSignalingEndptCtrl    HD Audio
+                                     HDAudioEnabled        Reported
+          ----------------------------------------------------------
+                 true                      true              yes
+                 true                      false             no
+                 false                     true              no
+                 false                     false             no
+        "
+    DEFVAL { true }
+    ::= { emtaSignalingEndptCtrlEntry 33 }    
+
+emtaSignalingEndptCtrlHDAudioStatus OBJECT-TYPE 
+    SYNTAX      BITS {
+                G722(0),
+                AMR-WB(1),
+                BV32(2)
+    }
+    MAX-ACCESS  read-only 
+    STATUS      current 
+    DESCRIPTION 
+        "This MIB object reflects the status of the corresponding HD Audio codec
+         for each line.  
+         When the HD Audio codec is provided and available on that line, the 
+         corresponding bit will be set.  When the HD Audio codec is not provided
+         or available for that line, the corresponding bit will be cleared.
+         Note this MIB derives the availability of the HD Audio codec based on 
+         the MIBs emtaDevHDAudioEnabled, emtaSignalingEndptCtrlHDAudioEnabled, 
+         and emtaSignalingEndptCtrlPrefCodecList, as well as whether the codec
+         is supported by the DSP image.
+         The corresponding bit will be set if the following are true:
+         - emtaDevHDAudioEnabled is set to true, and
+         - emtaSignalingEndptCtrlHDAudioEnabled is set to true, and
+         - DSP image supports the codec, and
+         - for SIP, if sipEndPntConfigUserUseCodecTable is set to true and the
+           HD Audio Codec is included in the sipEndPntConfigCodecType
+
+         For example:
+         If emtaDevHDAudioEnabled and emtaSignalingEndptCtrlHDAudioEnabled are
+         set to true, and the DSP image supports G722, then the G722(0) bit 
+         will be set and the MIB will be 0x80 for NCS.  For SIP, there is an
+         additional condition: if sipEndPntConfigUserUseCodecTable is set to 
+         true, and one of the sipEndPntConfigCodecType entries includes G722, 
+         then the MIB will be 0x80 for SIP.
+
+         If emtaDevHDAudioEnabled and emtaSignalingEndptCtrlHDAudioEnabled are
+         set to true, and the DSP image supports G722 and BV32, then the G722(0) 
+         and BV32(2) bits will be set and the MIB will be 0xA0.  For SIP, there 
+         is an additional condition: if sipEndPntConfigUserUseCodecTable is set 
+         to true, and two of the sipEndPntConfigCodecType entries includes G722 
+         and BV32, then the MIB will be 0xA0 for SIP."
+   ::= { emtaSignalingEndptCtrlEntry 34 }    
+
+emtaSignalingAnnouncementCtrl OBJECT-TYPE
+    SYNTAX   BITS {
+            announcementOnRfLoss(0),
+            announcementOnEndptDisabled(1),
+            announcementOnEndptDisconnected(2),
+            announcementOnACLoss(3),
+            announcementOnLowBatt(4),
+            announcementOnBadBatt(5),
+            announcementOnBattOverTemp(6)
+      }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the value controlling the announcements being 
+        played by the MTA in case of service interruption or UPS battery 
+        condition.  The service interruptions announcements are required to be 
+        played if the phone is off-hook.
+
+        If bit announcementOnRfLoss(0) is set, the MTA MUST play an Announcement
+        on all endpoints upon the RF loss. Otherwise (the bit is cleared) - the 
+        MTA MUST NOT play the announcement.
+
+        If bit announcementOnEndptDisabled(1) is set, the MTA MUST play the 
+        announcement on the end-point which is not in an active signalling state.
+
+        If bit announcementOnEndptDisconnected(2) is set, the MTA MUST play 
+        the announcement on the end-point which becomes NCS disconnected 
+        (pktcNcsEndPntStatusError is in disconnected(3) state). Otherwise - the
+        the MTA MUST NOT play the announcement.
+
+        The UPS battery condition announcements are required to be played if the
+        phone is off-hook and before dialtone:
+        If bit announcementOnACLoss(3) is set, the MTA MUST play an audible tone
+        announcement  upon detecting the loss of AC Power.  The announcements 
+        are required to be played if the phone is off-hook and before dial tone.
+        Otherwise (the bit is cleared) - the  MTA MUST NOT play the announcement.
+
+        If bit announcementOnLowBatt(4) is set, the MTA MUST play an audible 
+        tone announcement  upon detecting the low battery condition.  The 
+        announcements are required to be played if the phone is off-hook and 
+        before dial tone.  Otherwise (the bit is cleared) - the  MTA MUST NOT 
+        play the announcement.
+
+        If bit announcementOnBadBatt(5) is set, the MTA MUST play an audible 
+        tone announcement  upon detecting the bad battery condition.  The 
+        announcements are required to be played if the phone is off-hook and 
+        before dial tone.  Otherwise (the bit is cleared) - the  MTA MUST NOT 
+        play the announcement.
+
+        If bit announcementOnBattOverTemp(6) is set, the MTA MUST play an 
+        audible tone announcement  upon detecting the battery over temperature 
+        condition.  The announcements are required to be played if the phone is
+        off-hook and before dial tone.  Otherwise (the bit is cleared) - the MTA
+        MUST NOT play the announcement.
+
+        The default value of this  object corresponds to the functionality compliant with
+        the PacketCable requirements - all bits are cleared."
+    ::= { emtaMgmtSignalingControl 2 }
+
+emtaSignalingVoiceJitterBufferType OBJECT-TYPE
+    SYNTAX INTEGER {
+        jitterBufferTypeFixed(1),
+        jitterBufferTypeAdaptive(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the type of the jitter buffer. Setting this object
+        to jitterBufferTypeFixed(1) causes the eMTA to employ a fixed jitter
+        buffer. Setting this object to jitterBufferTypeAdaptive(2) causes the
+        eMTA to use an adaptive jitter buffer.
+        If the jitter buffer type value is changed through SNMP, then those
+        changes take affect starting with the next phone call (in process
+        calls are not affected). When the voice jitter buffer is frozen it uses
+        the emtaSignalingVoiceJitterNomValue for the fixed size of the jitter
+        buffer."
+    DEFVAL {jitterBufferTypeAdaptive}
+    ::= { emtaMgmtSignalingControl 3 }
+
+emtaSignalingVoiceJitterNomValue OBJECT-TYPE
+    SYNTAX        Unsigned32
+    UNITS         "milliseconds"
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "If the voice jitter buffer value is changed through SNMP, then those
+        changes take affect starting with the next phone call (in process calls
+        are not affected). This MIB sets the target hold time for the voice
+        jitter buffer in milliseconds. This is the initial hold time for the
+        adaptive jitter buffer. The actual target holding time will adapt above
+        or below this in response to observed network jitter. The MTA will
+        reject all attempts to set the value which is not within the interval
+        defined by the emtaSignalingVoiceJitterMinValue and
+        emtaSignalingVoiceJitterMaxValue MIB Objects. When the jitter
+        buffer is frozen, this MIB controls the static size of the voice jitter
+        buffer. The default value is 0ms."
+    DEFVAL {0}
+    ::= { emtaMgmtSignalingControl 4 }
+
+emtaSignalingVoiceJitterMinValue OBJECT-TYPE
+    SYNTAX Unsigned32 (0..200)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If the voice jitter buffer value is changed through SNMP, then those
+        changes take affect starting with the next phone call (in process calls
+        are not affected). This MIB sets the minimum hold time for the voice
+        jitter buffer in milliseconds. The target hold time cannot take on a
+        value below the minimum either through a MIB setting or through
+        adaptation. That is, packets will be held in the jitter buffer for at
+        least this duration (on average). When a packet is received late it may
+        be held for less than this time. The default is 0ms."
+    DEFVAL {0}
+    ::= { emtaMgmtSignalingControl 5 }
+
+emtaSignalingVoiceJitterMaxValue OBJECT-TYPE
+    SYNTAX Unsigned32 (0..200)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If the voice jitter buffer value is changed through SNMP, then those
+        changes take affect starting with the next phone call (in process calls
+        are not affected). This MIB sets the maximum hold time for the voice
+        jitter buffer in milliseconds. The maximum size of the jitter buffer is
+        only relevant for an adaptive jitter buffer. The target hold time cannot
+        take on a value greater than the maximum either through a MIB setting or
+        through adaptation. On average, packets will not be held longer than
+        this time. However, if a packet is received quite early it may be held
+        longer than the max hold time. The default value is 0 which is
+        interpreted as the maximum jitter buffer size for the product."
+    DEFVAL {0}
+    ::= { emtaMgmtSignalingControl 6 }
+
+emtaSignalingDataJitterNomValue OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..200)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If the jitter buffer value is changed through SNMP, then those changes
+        take affect starting with the next phone call (in process calls are not
+        affected). This object controls the hold time for fixed VBD jitter
+        buffer. The jitter buffer always fixes itself when VBD is detected and 
+        never adapts below this level, so this value serves as a minimum too.
+        The default value is 60 milliseconds."
+    DEFVAL {60}
+    ::= { emtaMgmtSignalingControl 7 }
+
+emtaSignalingDtmfToneRelayRFC2833Support OBJECT-TYPE
+    SYNTAX INTEGER {
+        enabled(1),
+        disabled(2),    
+        subtract(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the value which controls the usage of the DTMF
+        Relay. Setting this object to 'enabled(1)' causes the MTA to use the
+        DTMF Tone Relay as per RFC2833. Setting this object to 'disabled(2)'
+        causes the eMTA to pass DTMF tones inband.  Setting this object to
+        'subtract(3)' causes eMTA to mute DTMF tones from the encoded audio and
+        pass DTMF as signaling events."
+    DEFVAL {enabled}
+    ::= { emtaMgmtSignalingControl 8 }
+
+emtaSignalingNumOfCallsTotal OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object contains the total number of calls originated and terminated
+        by the MTA since reset."
+    ::= { emtaMgmtSignalingControl 9 }
+
+emtaSignalingMaxNumberQueuedNcsEvents OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..100)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the max number of the queued NCS events the MTA can store during the
+        lock step."
+    ::= { emtaMgmtSignalingControl 10 }
+
+emtaSignalingRtpBaseReceiveUdpPort OBJECT-TYPE
+    SYNTAX      InetPortNumber (1026..65534)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the UDP Port Number used by the EMTA for RTP connection.
+        RTP (and RTCP) ports for all connections will be based on this port.
+        This object must be an even value.  Attempt to set this object to an odd 
+        value will result in an 'inconsistent value' error.
+        Note that the maximum port number that can be set is based on the maximum
+        number of connections supported, ie. maximum port number is 65534 subtracted 
+        by two times the maximum number of connections.  For example, for an MTA with 
+        two endpoints and two connections per endpoint, the maximum port number would 
+        be 65534 subtracted by 2 * 4 (for RTP and RTCP ports for  4 connections), 
+        which is 65526."
+    DEFVAL { 53456 }
+    ::= { emtaMgmtSignalingControl 11 }
+
+emtaSignalingEndptConnectionCleanupTimeout OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..64000)
+    UNITS       "seconds"
+	MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "If set this object causes the EMTA to tear down and clean up connections and the
+         associated service flows on any endpoint that detects a transition from off-hook
+         to on-hook, remains onhook for a period longer than the value set in this MIB object,
+         and has connections that were active prior to the endpoint going onhook.  If the MIB
+         object is set to 0 then this function is disabled.  If the MIB is set from 1 to 64000
+         seconds then the feature is enabled and this value is used for the timeout.
+         Note that the default value of this object may change based on build specific 
+         options."
+    DEFVAL { 0 }
+    ::= { emtaMgmtSignalingControl 12 }
+
+emtaSignalingEmtaResetCleanupTimeout OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..64000)
+    UNITS       "minutes"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "If set this object causes the entire EMTA to reset if voice connections have been
+        active and both voice lines have been on-hook for a period greater than the value
+        defined via this MIB object.  This will guarantee that orphaned connections and/or
+        service flows are properly cleaned up and freed when the CMTS and CMS fail to perform
+        the correct clean up operations.  It will also ensure that the EMTA state machine, DSP
+        voice channels, NCS connection handling, etc. are also restored to a default state.
+        This protects against any unknown case that could possibly cause stuck service flows
+        and/or connections.  If the MIB object is set to 0 then this function is disabled.  If
+        the MIB is set from 1 to 64000 minutes then the feature is enabled and this value is
+        used for the timeout."
+    DEFVAL { 0 }
+    ::= { emtaMgmtSignalingControl 13 }
+
+emtaSignalingT38FaxRelaySupport OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the value which controls the usage of the T38 Fax Relay.
+        Setting this object to 'true(1)' causes the EMTA to use the T38 Fax Relay if
+        supported by the DSP image. Setting this object to 'false(2)' causes the EMTA
+        not to use T38 Fax Relay, but to use voice-band data mode for fax transmission
+        instead."
+    DEFVAL {true}
+    ::= { emtaMgmtSignalingControl 14 }
+
+emtaSignalingEcanTailLength OBJECT-TYPE
+    SYNTAX      INTEGER {
+                ecanTail8ms(1),
+                ecanTail16ms(2),
+                ecanTail24ms(3),
+                ecanTail32ms(4)
+    }
+    MAX-ACCESS  read-write	    
+    STATUS      current
+    DESCRIPTION
+        "This object specifies the echo cancellation tail length.  
+         If the echo cancellation tail length is changed through SNMP, then those
+         changes take effect starting with the next phone call (in process calls 
+         are not affected).  Also note that the value of this object will persist 
+         across a MTA reset."
+    DEFVAL { ecanTail32ms }
+    ::= { emtaMgmtSignalingControl 15 }
+
+emtaSignalingDQoSActivationModel OBJECT-TYPE
+    SYNTAX      INTEGER {
+                singlePhase(1),
+                twoPhase(2)
+    }
+    MAX-ACCESS  read-only	    
+    STATUS      current
+    DESCRIPTION
+        "This object controls the DQoS activation model.
+        
+         Setting this object to singlePhase(1) causes the eMTA to employ the single
+         phase model where both reservation and commitment occur as a single
+         autonomous operation.
+
+         Setting this object to twoPhase(2) causes the eMTA to employ the two-phase 
+         model where the application reserves the resource, and later commits it.
+
+         This object should only be changed by the configuration file."
+    DEFVAL { twoPhase }
+    ::= { emtaMgmtSignalingControl 16 }
+
+emtaSignalingGR303Support OBJECT-TYPE
+    SYNTAX INTEGER {
+        enabled(1),
+        disabled(2)    
+    }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object controls the GR303 mode.
+        
+         Setting this object to enabled(1) causes the eMTA to switch to GR303
+         mode.  The MTA will generate RTP on-hook event packets in the media 
+         stream until off-hook is detected or the connection is deleted.  Also 
+         MTA will treat flash hook as separate on-hook and off-hook events, and
+         send each event triple redundantly, replacing voice packets in the RTP
+         stream.  
+
+         Setting this object to disabled(2) causes the eMTA not to use GR303 mode.
+
+         This object should only be changed by the configuration file."
+    DEFVAL {disabled}
+    ::= { emtaMgmtSignalingControl 17 }
+
+emtaSignalingPowerRingFrequency OBJECT-TYPE
+    SYNTAX      INTEGER {
+                 f20Hz(1), 
+                 f25Hz(2), 
+                 f33Point33Hz(3),
+                 f50Hz(4),
+                 f15Hz(5),
+                 f16Hz(6),
+                 f22Hz(7),
+                 f23Hz(8),
+                 f45Hz(9),
+                 f17Hz(10)
+    }  
+    UNITS "Hertz"  
+    MAX-ACCESS   read-only  
+    STATUS       current  
+    DESCRIPTION
+        " This object must only be provided via the configuration file during 
+          the provisioning process. The power ring frequency is the frequency
+          at which the sinusoidal voltage must travel down the twisted pair to
+          make terminal equipment ring. Different countries define different 
+          electrical characteristics to make terminal equipment ring.  
+
+          The f20Hz setting corresponds to a power ring frequency of 20 Hertz. 
+          The f25Hz setting corresponds to a power ring frequency of 25 Hertz. 
+          The f33Point33Hz setting corresponds to a power ring frequency of 
+          33.33 Hertz. The f50Hz setting corresponds to a power ring frequency 
+          of 50 Hertz. The f15Hz setting corresponds to a power ring frequency 
+          of 15 Hertz. The f16Hz setting corresponds to a power ring frequency 
+          of 16 Hertz. The f22Hz setting corresponds to a power ring frequency 
+          of 22 Hertz. The f23Hz setting corresponds to a power ring frequency 
+          of 23 Hertz. The f45Hz setting corresponds to a power ring frequency 
+          of 45 Hertz. The f17Hz setting corresponds to a power ring frequency 
+          of 17 Hertz."  
+    DEFVAL { f20Hz }
+    ::= { emtaMgmtSignalingControl 18 }
+
+emtaSignalingDataJitterMaxValue OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..200)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If the voice buffer value is changed through SNMP, then those changes
+        take affect starting with the next phone call (in process calls are not
+        affected). This MIB sets the maximum hold time for the fixed VBD jitter
+        buffer and is only relevant when emtaSignalingVoiceJitterBufferType is 
+        set to 'jitterbufferTypeFixed(1)'.  the default value is 0 which is 
+        intepreted as the maximum jitter buffer size for the product."
+    DEFVAL {0}
+    ::= { emtaMgmtSignalingControl 19 }
+
+emtaSignalingRingWaveform OBJECT-TYPE
+    SYNTAX INTEGER {
+        sinusoidal(1),
+        trapezoidal(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "This MIB object is controls the shape of the ring waveform.
+         The setting of sinusoidal(1) would result in a sinusoidal ring waveform 
+         with crest factor of 1.414, while the setting of trapezoidal(2) would
+         result in a trapezoidal ring waveform with crest factor of 1.25."
+    DEFVAL { sinusoidal }
+::= { emtaMgmtSignalingControl 20 }
+
+emtaSignalingDefRtcpDSCP  OBJECT-TYPE
+    SYNTAX      Integer32 (0..63)
+    MAX-ACCESS    read-write
+    STATUS    current
+    DESCRIPTION
+        "This object contains the default value used in the IP header for 
+         setting the DSCP for RTCP packets. When the value of this object is 
+         updated by SNMP, the MTA MUST use the new value as a default starting 
+         from the new connection.  Existing connections are not affected by the 
+         value's update.
+         Note that the default value of this object may change based on build  
+         specific options."
+      ::= { emtaMgmtSignalingControl 23 }
+
+emtaSignalingDevToneTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF EmtaSignalingDevToneEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This tone table defines the various tone operations.  The MTA MUST make
+        sure that, after the provisioning cycle, the table is fully populated 
+        (ie, for each possible index, an entry MUST be defined) using reasonable
+        defaults for each row that was not defined by the provisioning information
+        delivered by the MTA Configuration File.  
+        
+        The frequency composition of each tone is defined by the 
+        emtaSignalingDevMultiFreqToneTable.  For each ToneType defined in 
+        emtasignalingDevToneTable, the MTA MUST populate at least one entry in 
+        the emtaSignalingDevMultiFreqToneTable.
+        
+        Objects in this table do not persist across MTA reboots.
+
+        For tones with multiple frequencies refer to the MIB table 
+        pktcSigDevMultiFreqToneTable."
+      ::= { emtaMgmtSignalingControl 24 }
+
+emtaSignalingDevToneEntry   OBJECT-TYPE
+    SYNTAX      EmtaSignalingDevToneEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "The different tone types that can be provisioned.
+        Each entry contains the tone generation parameters for a specific Tone 
+        Type.  The different parameters can be provisioned by the MTA 
+        configuration file.  An MTA MUST populate all entries of this table for
+        each tone type."
+      INDEX { emtaSignalingDevToneType }
+      ::= { emtaSignalingDevToneTable 1 }
+
+EmtaSignalingDevToneEntry ::= SEQUENCE {
+        emtaSignalingDevToneType                  INTEGER,
+        emtaSignalingDevToneWholeToneRepeatCount  Unsigned32,
+        emtaSignalingDevToneSteady                TruthValue
+    }
+
+emtaSignalingDevToneType   OBJECT-TYPE
+    SYNTAX       INTEGER {
+                     rfLoss(1),
+                     endptDisabled(2),
+                     endptDisconnected(3),
+                     acLoss(4),
+                     battLow(5),
+                     battBad(6),
+                     battOverTemp(7)
+                 }
+    MAX-ACCESS   not-accessible
+    STATUS       current
+    DESCRIPTION
+        "Unique value that will correspond to the different tone types for 
+        service interruption or battery conditions.  This object defines the 
+        type of tone being accessed."
+      ::= { emtaSignalingDevToneEntry 1 }
+
+emtaSignalingDevToneWholeToneRepeatCount  OBJECT-TYPE
+    SYNTAX      Unsigned32(0..5000)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This is the repeat count, which signifies how many times to repeat the
+        entire on-off cadence sequence.  Setting this object may result in a 
+        cadence duration longer or shorter than the overall signal duration 
+        specified by the time out (TO) object for a particular signal.  If the
+        repeat count results in a longer tone duration than the signal duration
+        specified by the TO, the tone duration defined by the TO object for a 
+        particular signal always represents the overall signal duration for a 
+        tone.  In this case, the tone duration repeat count will not be fully 
+        exercised and the desired tone duration will be truncated per the TO 
+        setting.  If the repeat count results in a shorter tone duration than 
+        the signal duration specified by the TO, the tone duration defined by
+        the repeat count takes precedence over the TO and will end the signal 
+        event.  In this case, the TO represents a time not to be exceeded for 
+        the signal.  It is recommended to ensure proper telephony signaling that
+        the TO duration setting should always be longer than the desired repeat
+        count time duration."
+      ::={ emtaSignalingDevToneEntry 2 }
+
+emtaSignalingDevToneSteady    OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This is the steady tone.  Device must play out the on-off cadence 
+        sequence for pktcSigDevToneWholeRepeatCount times and then apply the 
+        last tone forever.  Setting this object may result in a tone duration 
+        longer or shorter than the overall signal duration specified by the time
+        out (TO) object for a particular signal.  If the repeat count results in
+        a longer tone duration than the signal duration specified by the TO, the
+        tone duration defined by the TO object for a particular signal always 
+        represents the overall signal duration for a tone.  In this case, the 
+        tone duration repeat count will not be fully exercised and the desired 
+        tone duration will be truncated per the TO setting.  If the repeat count
+        results in a shorter tone duration than the signal duration specified by
+        the TO, the tone duration defined by the repeat count takes precedence 
+        over the TO and will end the signal event.  In this case, the TO 
+        represents a time not to be exceeded for the signal.  It is recommended
+        to ensure proper telephony signaling that the TO duration setting should
+        always be longer than the desired repeat count time duration plus the 
+        desired maximum steady tone period."
+      DEFVAL { false }
+      ::={ emtaSignalingDevToneEntry 3 }
+
+emtaSignalingDevMultiFreqToneTable    OBJECT-TYPE
+    SYNTAX      SEQUENCE OF EmtaSignalingDevMultiFreqToneEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This MIB table defines the characteristics of tones with multiple 
+        frequencies.  The constraints imposed on the tones by the MIB table
+        emtaSignalingDevToneTable need to be considered for MIB objects in 
+        this table as well.
+        The MTA MUST populate the corresponding row(s) of the 
+        emtaSignalingDevMultiFreqToneTable for each tone defined in the 
+        emtaSignalingDevToneTable.
+        The contents of the table may be provisioned using the MTA configuration
+        file."
+    REFERENCE
+        "PacketCable NCS Specification, ETSI-TS-101-909-4 Specification."
+      ::= { emtaMgmtSignalingControl 25 }
+
+emtaSignalingDevMultiFreqToneEntry    OBJECT-TYPE
+    SYNTAX      EmtaSignalingDevMultiFreqToneEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "The different tone types with multiple frequencies that can be 
+        provisioned."
+      INDEX { emtaSignalingDevToneType , emtaSignalingDevToneNumber}
+      ::= { emtaSignalingDevMultiFreqToneTable 1 }
+
+EmtaSignalingDevMultiFreqToneEntry ::= SEQUENCE {
+        emtaSignalingDevToneNumber          Unsigned32,
+        emtaSignalingDevToneFirstFreqValue  Unsigned32,
+        emtaSignalingDevToneSecondFreqValue Unsigned32,
+        emtaSignalingDevToneDbLevel         TenthdBm,
+        emtaSignalingDevToneFreqOnDuration  Unsigned32,
+        emtaSignalingDevToneFreqOffDuration Unsigned32,
+        emtaSignalingDevToneFreqRepeatCount     Unsigned32
+    }
+
+emtaSignalingDevToneNumber    OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..4)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This MIB Object represents the frequency reference of a multi-frequency tone."
+      ::= { emtaSignalingDevMultiFreqToneEntry 1 }
+
+emtaSignalingDevToneFirstFreqValue  OBJECT-TYPE
+    SYNTAX      Unsigned32(0..4000)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This MIB Object represents the value of the first frequency of a tone 
+        type.  A value of Zero implies absence of the referenced frequency."
+      ::={ emtaSignalingDevMultiFreqToneEntry 2 }
+
+emtaSignalingDevToneSecondFreqValue    OBJECT-TYPE
+    SYNTAX      Unsigned32(0..4000)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This MIB Object represents the value of the second frequency of a tone
+        type.  A value of Zero implies absence of the referenced frequency."
+    ::={ emtaSignalingDevMultiFreqToneEntry 3 }
+
+emtaSignalingDevToneDbLevel    OBJECT-TYPE
+    SYNTAX      TenthdBm(-250..-30)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This MIB Object contains the decibel level for each analog signal 
+        (tone) that is locally generated (versus in band supervisory tones) and
+        sourced to the a-b terminals (TE connection point).  Each tone in itself
+        may consist of multiple frequencies as defined by the MIB table 
+        'emtaSignalingDevMultiFreqToneTable'.
+        This MIB Object MUST reflect the desired level at the Telco (POTS) a-b 
+        (T/R) terminals including the affect of any MTA receiver gain (loss). 
+        This is required so that locally generated tones are consistent with 
+        remotely generated in band tones at the a-b terminals, consistent with 
+        user expectations. 
+        This MIB Object must be set for each tone.
+        When tones are formed by combining multi-frequencies, the level of each
+        frequency shall be set so as to result in the tone level specified in 
+        this object at the a-b (T/R) terminals.
+        The wide range of levels for this Object is required to provide signal 
+        generator levels across the wide range of gains (loss) - but does not 
+        imply the entire range is to be achievable given the range of gains 
+        (loss) in the MTA."
+      DEFVAL { -40 }
+      ::={ emtaSignalingDevMultiFreqToneEntry 4 }
+
+emtaSignalingDevToneFreqOnDuration  OBJECT-TYPE
+    SYNTAX      Unsigned32(0..5000)
+    UNITS       "Milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This MIB Object represents the duration for which the frequency 
+        reference corresponding to the tone type is turned on."
+      ::={ emtaSignalingDevMultiFreqToneEntry 5 }
+
+emtaSignalingDevToneFreqOffDuration   OBJECT-TYPE
+    SYNTAX      Unsigned32(0..5000)
+    UNITS       "Milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This MIB Object represents the duration for which the frequency 
+        reference corresponding to the tone type is turned off."
+      ::={ emtaSignalingDevMultiFreqToneEntry 6 }
+
+emtaSignalingDevToneFreqRepeatCount    OBJECT-TYPE
+    SYNTAX      Unsigned32(0..5000)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This MIB Object indicates the number of times to repeat the cadence 
+        cycle represented by the on/off durations (refer to the MIB objects 
+        emtaSignalingDevToneFreqOnDuration and emtaSignalingDevToneFreqOffDuration).
+        Setting this object may result in a tone duration longer or shorter 
+        than the overall signal duration specified by the time out (TO) object
+        for the corresponding tone type.  If the value of this MIB Object 
+        indicates a longer duration than the specified by the TO, the latter 
+        overrules the former and the desired tone duration will be truncated 
+        according to the TO.
+        However, if the repeat count results in a shorter tone duration than the
+        signal duration specified by the TO, the tone duration defined by the 
+        repeat count takes precedence over the TO and will end the signal event.
+        In this case, the TO represents a time not to be exceeded for the signal.
+        It is recommended to ensure proper telephony signaling that the TO 
+        duration setting should always be longer than the desired repeat count 
+        time duration.  A value of zero means the tone sequence is to be played 
+        once but not repeated."
+      ::={ emtaSignalingDevMultiFreqToneEntry 7 }
+
+emtaSignalingChatterLineMonitorInterval OBJECT-TYPE
+    SYNTAX        Unsigned32
+    UNITS         "minutes"
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object specifies the monitoring interval for the conditions of
+        interest when detecting a chattering line fault.  If the specified 
+        threshold for a given error condition is reached or exceeded over this
+        monitoring interval, the EMTA will log a vendor-defined PacketCable 
+        event to alert the operator of the fault condition.
+        The value of this object must be set via the MTA config file for 
+        persistence."
+    DEFVAL {60}
+    ::= { emtaMgmtSignalingControl 26 }
+
+emtaSignalingChatterLinePulseDialRejectThreshold OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object specifies the rejected dial pulse error threshold.  
+        If this threshold is reached or exceeded over the monitoring interval
+        as configured via emtaSignalingChatterLineMonitorInterval, the EMTA
+        will log a vendor-defined PacketCableevent to alert the operator of
+        the fault condition.
+        The value of this object must be set via the MTA config file for 
+        persistence."
+    DEFVAL {0}
+    ::= { emtaMgmtSignalingControl 27 }
+
+emtaSignalingChatterLineDigitMapMismatchThreshold OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object specifies the digit map mismatch error threshold.  
+        If this threshold is reached or exceeded over the monitoring interval
+        as configured via emtaSignalingChatterLineMonitorInterval, the EMTA
+        will log a vendor-defined PacketCableevent to alert the operator of
+        the fault condition.
+        The value of this object must be set via the MTA config file for 
+        persistence."
+    DEFVAL {0}
+    ::= { emtaMgmtSignalingControl 28 }
+
+emtaSignalingChatterLineLoopOpenCloseThreshold OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object specifies the valid line activity threshold.  
+        If this threshold is reached or exceeded over the monitoring interval
+        as configured via emtaSignalingChatterLineMonitorInterval, the EMTA
+        will log a vendor-defined PacketCableevent to alert the operator of
+        the fault condition.
+        The value of this object must be set via the MTA config file for 
+        persistence."
+    DEFVAL {600}
+    ::= { emtaMgmtSignalingControl 29 }
+
+emtaSignalingChatterLineROHEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This oject controls the automatic ROH test run resulting from potential
+        chattering line failures.  
+        When set to 'true(1)', the automatic chatter line ROH test is enabled, 
+        and the EMTA will automatically run the ROH line test whenever a  
+        threshold for a monitored chattering line conditions (as configured by
+        emtaSignalingChatterLinePulseDialRejectThreshold, 
+        emtaSignalingChatterLineDigitMapMismatchThreshold, and 
+        emtaSignalingChatterLineLoopOpenCloseThreshold) has been reached or 
+        exceeded indicating potential trouble on the line.
+        When set to 'false(2)', the automatic chatter line ROH test is disabled,
+        and the ROH status shown in the vendor-defined PacketCable event logged
+        will indicate that ROH is disabled.
+        The value of this object must be set via the MTA config file for
+        persistence."
+    DEFVAL {false}
+    ::= { emtaMgmtSignalingControl 30 }
+
+emtaSignalingMaxNumberCallStatsStored OBJECT-TYPE
+    SYNTAX      Unsigned32 
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the max number of calls for which the eMTA stores 
+        statistics in the emtaStatsCallTable.
+        The maximum number of calls stored is based on the number of ports 
+        supported by the MTA:
+        1 port device:  2 - 10 calls
+        2 port device:  2 - 20 calls
+        3 port device:  2 - 30 calls
+        4 port device:  2 - 40 calls
+        More than 4 port device:  2 - 50 calls"
+    DEFVAL { 10 }
+    ::= { emtaMgmtSignalingControl 31 }
+
+emtaSignalingAdjustedFskTransmissionLevel OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS current
+    DESCRIPTION
+        "This object controls whether the MTA sets the FSK generation based 
+        on the desired open circuit output voltage or the desired output power level. 
+        When set to 'true(1)', the FSK generation is generated based on voltage
+        and the unterminated voltage measured at tip and ring in the onhook state will
+        be the same as the terminated voltage in the offhook state.    
+        When set to 'false(2)', the FSK generation is generated based on power levels 
+        and the terminated voltage measured at tip and ring will be the same for both 
+        the onhook and offhook states.  In this mode, if measured into no termination, 
+        the voltage level in the onhook state will be approximately 6dB higher than 
+        the terminated voltage in the offhook state."
+    DEFVAL { false }
+::= { emtaMgmtSignalingControl 32 }
+
+emtaSignalingSdpSuppression OBJECT-TYPE
+    SYNTAX BITS {
+        RFC3407BasicSuppressed(0),
+        RFC3407T38Suppressed(1),
+        T38AttributeSuppressed(2),
+        XPCAttributeSuppressed(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS current
+    DESCRIPTION
+        "This MIB object is used to suppress individual SDP attributes sent from the MTA.
+         
+         If bit RFC3407BasicSuppressed(0) is set, the EMTA suppresses the basic set of 
+         RFC3407 simple SDP capability parameters and descriptions not needed in negotiation.
+
+         If bit RFC3407T38Suppressed(1) is set, the EMTA suppresses the RFC3407 simple  
+         SDP capability parameters and descriptions for T.38 negotiation if T.38 strict 
+         is not used.  
+
+         If bit T38AttributeSuppressed(2) is set, the EMTA suppresses the T.38 attributes
+         in the SDP.
+
+         If bit XPCAttributeSuppressed(3) is set, the EMTA suppresses the X-PC attributes
+         in the SDP if no RTP/RTCP authentication and encryption is used.
+
+         The default value of this object is to have no suppression of the SDP.  The default 
+         value of this object corresponds to the functionality compliant with the PacketCable 
+         requirements - all bits are cleared.  Setting any bits other than the RFC3407Basic bit
+         would be PacketCable non-compliant.  Note that this default value may change based 
+         on build specific options" 
+::= { emtaMgmtSignalingControl 33 }
+
+emtaSignalingRSIPResponseTimer OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..36000) 
+    UNITS       "seconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This objects identifies the length of time, in seconds, after provisioning
+        is complete that the eMTA should wait for RSIP exchange to complete before 
+        reprovisioning.
+        This timer starts at PacketCable provisioning copmlete (PacketCable MTA-25).  
+        If the eMTA has not received a response to the RSIP sent for the configured
+        time period following provisioning complete, then the eMTA will restart 
+        provisioning (go back to PacketCable MTA-1).
+        This object should only be changed by the configuration file."
+    DEFVAL { 600 }
+::= { emtaMgmtSignalingControl 34 }
+
+emtaSignalingMgcpLockstepActivation OBJECT-TYPE
+    SYNTAX      TruthValue    
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the value which activates/deactivates MGCP lockstep mode.
+        Setting this object to true(1) causes the MTA to activate lockstep mode, 
+        allowing MTA to use either lockstep or loop mode as per RFC2705.  Setting this 
+        object to false(2) causes the MTA to deactivate lockstep mode, allowing MTA to 
+        use only loop mode as per RFC2705.   In this configuration, MTA will only operate 
+        in loop mode, 'step' mode is disallowed.  Any future 'step' mode request from CallAgent,
+        SNMP or CLI command,  will either be ignored or result in an 'inconsistentValue' error.
+        The emtaSignalingEndptCtrlMgcpQuarantineMode for each endpoint is updated to loop(2) at the 
+        time this MIB is set to false(2)."
+    DEFVAL {true}
+::= { emtaMgmtSignalingControl 35}
+
+emtaSignalingMgcpQuarantineModeOverrideBehavior OBJECT-TYPE
+    SYNTAX INTEGER {
+        emtaPreferred(1),
+        callAgentPreferred(2)    
+    }    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the value which decribes the MTA behavior when Call Agent explicitly 
+         requests a quarantine mode that conflicts with MTA current setting in emtaSignalingEndptCtrlMgcpQuarantineMode.
+         Setting this object to emtaPreferred(1) causes MTA current setting in emtaSignalingEndptCtrlMgcpQuarantineMode,
+         having preference over the Quarantine mode requested by Call Agent.  Any quarantine mode 
+         request in the MGCP message is ignored.
+         Setting this object to callAgentPreferred(2) causes Quarantine mode requested by Call 
+         Agent having preference over MTA current setting in emtaSignalingEndptCtrlMgcpQuarantineMode.  
+         In this configuration, emtaSignalingEndptCtrlMgcpQuarantineMode value will be updated to the mode 
+         requested by Call Agent if the requested Quarantine mode is supported.  However, 
+         the quarantine mode is ignored if the requested quarantine mode is not supported. 
+         (Call Agent requests step mode when step mode is deactivated by emtaSignalingMgcpLockstepActivation)"
+    DEFVAL {CallAgentPreferred}
+::= { emtaMgmtSignalingControl 36}
+
+emtaSignalingMgcpStepToLoopModeBehavior OBJECT-TYPE
+    SYNTAX INTEGER {
+        processAllQuarantinedEvents(1),
+        flushQuarantinedEvents(2)    
+    }    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the value which decribes the EMTA behavior for the stored 
+        quarantined events when EMTA changes from 'step' to 'loop' quarantine mode in 
+        emtaSignalingEndptCtrlMgcpQuarantineMode.
+        Setting this object to processAllQuarantinedEvents(1) causes the MTA to send 
+        NTFY messages for all quarantined events stored during lockstep.
+        Setting this object to flushQuarantinedEvents(2) causes the MTA to flush the 
+        Quarantined Event buffer.  All stored quarantined events are discarded."
+    DEFVAL {ProcessAllQuarantinedEvents}
+::= { emtaMgmtSignalingControl 37}
+
+emtaSignalingMediaSecurity OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the MTA advertisement of the RTP security ciphersuites.
+
+         Setting this object to true(1) enables the MTA to advertise the full list of 
+         supported RTP security ciphersuites as required by PacketCable specification.
+        
+         Setting this object to false(2) causes the MTA to only advertize the NULL 
+         authentication and encryption algorithms (ciphersuite sets 60/50, 80/70) which 
+         essentially disables the RTP security functionality on the MTA.  Setting this 
+         MIB to disabled would be PacketCable non-compliant.  
+        
+         Note that, setting this object to false(2), along with the XPCAttributeSuppressed(3) 
+         bit of emtaSignalingSdpSuppression MIB, would cause the MTA to not advertise any 
+         security parameters at all in the SDP.    
+        
+         The default value of this object corresponds to the functionality compliant with the 
+         PacketCable requirements ?security advertising is enabled.  Setting this MIB to disabled
+         would be PacketCable non-compliant.  Note that this default value may change based 
+         on build specific options."
+::= { emtaMgmtSignalingControl 38}
+
+emtaSignalingIPSecOnCMSRedirection OBJECT-TYPE
+    SYNTAX INTEGER {
+        IPSecOn(1),
+        IPSecOff(2),
+        IPSecSame(3)
+    }    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object specifies the IPSec Setting of the redirected CMS server when the
+         redirected CMS server does not exist in the pktcMtaDevCmsTable MIB database.  
+         A new entry duplicating the setting of the previous CMS is created in the 
+         pktcMtaDevCmsTable.  The CMS FQDN of the newly created entry is updated to 
+         be the FQDN of the redirected CMS.  Depending on the value of this MIB, 
+         the pktcMtaDevCmsIpsecCtrl of the redirected CMS is set to true or false, 
+         enabling or disabling IPSec of the redirected CMS.
+
+         Setting this object to IPSecOn(1) enables the IPsec of the redirected CMS.
+         Setting this object to IPSecOff(2) disables the IPsec of the redirected CMS.
+         Setting this object to IPSecSame(3) causes the IPsec setting of the previous 
+         CMS to be coppied over and applied to the redirected CMS.
+
+         Note that when the value is not 'IPSecOn', IPSec of a redirected CMS may 
+         become disabled.  PacketCable Security specification (PKT-SP-SEC1.5-I02-070412.doc, 
+         section 6.5.3 Kerberized IPSec, REQ2992.2.5, TC 790) specified that IPSec MUST 
+         be enabled.  Thus, this MIB may violate PacketCable specification."
+    DEFVAL {IPSecOn}
+::= { emtaMgmtSignalingControl 39}
+
+emtaSignalingDlcxOsiDelay OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..15)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object configures the delay in seconds betwen the completion of 
+         the processing of a DLCX message and the automatic application of an 
+         OSI signal to the analog line associated with the deleted connection.  
+         Setting a value of 0 disables this feature.
+         Note that the default value of the object may change based on 
+         build specific options."
+    DEFVAL {0}
+::= { emtaMgmtSignalingControl 40 }
+
+emtaSignalingPlayZeroDurationPkt OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object configures whether an endpoint should transmit a DTMF 
+         telephone-event packet containing a duration field of value zero.  
+         If this object is set to false, MTA will ignore the DTMF packet which
+         has a duration coded to zero.
+         If this object is set to true, MTA shall not ignore the packet and 
+         shall continue playing the tone until an explicit end of tone conditions
+         occurs.  End of Tone conditions occur when Tone has been been played
+         for at least 50 milliseconds and when either of the following conditions 
+         occurs:  an explicit end of tone packet has been received, tone has 
+         exceeded 100 milliseconds, or the packet for start of another tone 
+         has arrived.
+         Note that the default value of the object may change based on 
+         build specific options."
+    DEFVAL { false }
+::= { emtaMgmtSignalingControl 41 }
+
+
+--
+-- emtaMgmtStatistics - objects reporting eMTA signaling statistics
+--
+
+emtaStatsEndptTable OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EmtaStatsEndptEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table contains the endpoint statistics on the eMTA."
+    ::=  { emtaMgmtStatistics 1 }
+
+emtaStatsEndptEntry OBJECT-TYPE
+    SYNTAX        EmtaStatsEndptEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains the particular statistics on the eMTA endpoint.
+         Each entry is indexed by the corresponding ifIndex."
+    INDEX { ifIndex }
+    ::= { emtaStatsEndptTable 1 }
+
+EmtaStatsEndptEntry ::= SEQUENCE {
+    emtaStatsEndptHookState            INTEGER,
+    emtaStatsEndptQuarantineState      INTEGER,
+    emtaStatsEndptSlicOverTempStatus   TruthValue,
+    emtaStatsEndptOverCurrentStatus    TruthValue
+}
+
+emtaStatsEndptHookState OBJECT-TYPE
+   SYNTAX INTEGER {
+              onHook         (1),
+              offHook        (2),
+              disconnected   (3),
+              onHookPlusNCSActivity (4),
+              busyTalking    (5)
+            }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object reflects the 'hook state' of a MTA endpoint.
+         The onHook(1) state indicates that the endpoint is 'on hook'.
+         The offHook(2) state indicates that the endpoint is 'off hook'.
+         The disconnected(3) state indicates that the physical connection of the
+         phone to a port is disconnect.
+         onHookPlusNCSActivity (4) state indicates that the end point is 'on hook' and
+         the presence of 'NCS Activity' on the line.  'NCS Activity' by definition includes:
+         an active timeout signal, brief signal, or existence of an NCS connection.  
+         busyTalking (5) state indicates that the end point is 'off hook' and the presence
+         of voice connection on the line.
+
+         Note that the state of this object does not depend on the provision state
+         of the endpoint."
+    ::= { emtaStatsEndptEntry 1 }
+
+emtaStatsEndptQuarantineState OBJECT-TYPE
+    SYNTAX INTEGER {
+                   normal           (1),
+                   notification     (2),
+                   lockstep         (3),
+                   extendedlockstep (4)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object reflects the state of Endpoint.
+        When the endpoint is in 'notification', 'lockstep', or 'extended lockstep'
+        states, the E-MTA reports the values of 'notification(2)', 'lockstep(3)',
+        or 'extendedlockstep(4)', respectively.  Else, the endpoint reports a
+        value of 'normal(1)'.
+        'Extended lockstep' is defined as the state when the E-MTA is in the
+        lockstep state for longer than 2 minutes.
+        For more description about the states, refer to the PacketCable Network
+        Based Call signaling specification."
+    ::= { emtaStatsEndptEntry 2 }
+
+emtaStatsEndptSlicOverTempStatus  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reflects the SLIC status for the line regarding Over
+         Temperature condition. If this object has a value of true(1), it
+         indicates that the SLIC for this line is in Over Temperature condition.
+         Otherwise, the SLIC is operating under normal Temperature conditions."
+	::= { emtaStatsEndptEntry 3 }
+
+emtaStatsEndptOverCurrentStatus  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reflects the status for the line regarding over-current
+         condition. If this object has a value of true(1), it indicates that the
+         line is in over-current condition.
+         Otherwise, the line is operating under normal current conditions."
+    ::= { emtaStatsEndptEntry 4 }
+
+emtaStatsRTPPktTxTotal OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the total number of RTP packets sent for the device
+        since it was last started up (across all endpoints)."
+    ::=  { emtaMgmtStatistics 2 }
+
+emtaStatsRTPPktRxTotal OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the total number of RTP packets received for the device
+        since it was last started up (across all endpoints)."
+    ::=  { emtaMgmtStatistics 3 }
+
+emtaStatsRTPPktLostTotal OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the total number of RTP packets lost for the device
+         since it was last started up (across all endpoints)."
+    ::=  { emtaMgmtStatistics 4 }
+
+emtaStatsRTPPktTxRecent OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the total number of RTP packets sent for the most
+        recent call."
+    ::=  { emtaMgmtStatistics 5 }
+
+emtaStatsRTPPktRxRecent OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the total number of RTP packets received for the most
+        recent call."
+    ::=  { emtaMgmtStatistics 6 }
+
+emtaStatsRTPPktLostRecent OBJECT-TYPE
+    SYNTAX        Unsigned32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object contains the percentage (%) of RTP packets lost for the most
+        recent call.
+          "
+    ::=  { emtaMgmtStatistics 7 }
+
+emtaStatsAvgJitterMeasurement OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This objects contains the average jitter measurements for the last 24 hours."
+    ::= { emtaMgmtStatistics 8 }
+
+emtaStatsMaxJitterMeasurement OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This objects contains the maximum jitter measurements for the last 24 hours."
+    ::= { emtaMgmtStatistics 9 }
+
+emtaStatsRTPAvgLatency OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This objects contains the average latency/delay for RTP Packets for the last
+        24 hours."
+    ::= { emtaMgmtStatistics 10 }
+
+emtaStatsMGCPResponseAvgLatency OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This objects contains the average latency/delay for MGCP Response messages
+        for the last 24 hours."
+    ::= { emtaMgmtStatistics 11 }
+
+emtaStatsSuccessfulMsgCount OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object contains the count of successful MGCP messages transmitted to and
+        received from Call Agent for the last 24 hours."
+    ::= { emtaMgmtStatistics 12 }
+
+emtaStatsNegAckCount OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object contains the number of MGCP error responses sent to and
+        received from Call Agent for the last 24 hours."
+    ::= { emtaMgmtStatistics 13 }
+
+emtaStatsNoNTFYAckCount OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object contains the number of times no MGCP response was received for a sent NTFY
+        in the last 24 hours."
+    ::= { emtaMgmtStatistics 14 }
+
+emtaStatsLastNCSMsgTx OBJECT-TYPE
+    SYNTAX      SnmpAdminString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object contains the last NCS message sent to Call Agent."
+    ::= { emtaMgmtStatistics 15 }
+
+emtaStatsLastNCSMsgRx OBJECT-TYPE
+    SYNTAX      SnmpAdminString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object contains the last NCS message received from Call Agent."
+    ::= { emtaMgmtStatistics 16 }
+
+emtaStatsRTPPktLostRatio OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..100)
+    UNITS       "percent"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object contains the packet loss ratio, derived from the total 
+         number of packets reported lost, divided by the total number of packets
+         sent and received, expressed as a percentage."
+    ::= { emtaMgmtStatistics 17 }
+
+emtaStatsCallTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EmtaStatsCallEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table contains the per-call measurements for the eMTA."
+    ::=  { emtaMgmtStatistics 18 }
+
+emtaStatsCallEntry    OBJECT-TYPE
+    SYNTAX        EmtaStatsCallEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Entries are created at the end of each originating and terminating call."
+    INDEX { emtaStatsCallIndex }
+    ::=  { emtaStatsCallTable 1 }
+
+EmtaStatsCallEntry       ::= SEQUENCE {
+       emtaStatsCallIndex                    Unsigned32,
+       emtaStatsCallMOSCQScore               INTEGER,
+       emtaStatsCallRFSignalToNoiseLevel     Unsigned32,
+       emtaStatsCallResidualEchoRetLoss      Integer32,
+       emtaStatsCallDestEndpntInfo           SnmpAdminString,
+       emtaStatsCallTotalPktSent             Unsigned32,
+       emtaStatsCallTotalOctSent             Unsigned32,
+       emtaStatsCallTotalPktRecvd            Unsigned32,
+       emtaStatsCallTotalOctRecvd            Unsigned32,
+       emtaStatsCallTotalPktLost             Unsigned32,
+       emtaStatsCallIntervalJitter           Unsigned32,
+       emtaStatsCallAvgTxDelay               Unsigned32,
+       emtaStatsCallJBDiscardRate            Unsigned32,
+       emtaStatsCallJBAdjRate                Unsigned32,
+       emtaStatsCallJBMaxSize                Unsigned32,
+       emtaStatsCallNetRdTripDelay           Unsigned32,
+       emtaStatsCallSignalLevel              Integer32,
+       emtaStatsCallNoiseLevel               Integer32,
+       emtaStatsCallRfTxLevel                Integer32,
+       emtaStatsCallRfRxLevel                Integer32,
+       emtaStatsCallCallTrace                SnmpAdminString,
+       emtaStatsCallStartTime                DateAndTime,
+       emtaStatsCallEndTime                  DateAndTime,
+       emtaStatsCallPhoneNumber              SnmpAdminString,
+       emtaStatsCallLine                     Integer32,
+       emtaStatsCallDirection                INTEGER,
+       emtaStatsCallMOSLQScore               INTEGER,
+       emtaStatsCallDialMode                 INTEGER
+    }
+
+emtaStatsCallIndex OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..50)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object provides the sequencing of per call measurements.  The 
+        number of measurements stored in this table is dependent on 
+        emtaSignalingMaxNumberCallStatsStored.  
+        The most recent call will always be indexed 1, the next most recent call 
+        will be indexed 2, and so on.  The index for each call entry will increase 
+        with each new call entry.  The index of the least recent call will not be 
+        greater than the value stored in emtaSignalingMaxNumberCallStatsStored."
+    ::= { emtaStatsCallEntry 1 }
+
+emtaStatsCallMOSCQScore OBJECT-TYPE
+    SYNTAX      INTEGER {
+      bad(1),
+      poor(2),
+      fair(3),
+      good(4),
+      excellent(5)
+    }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the numerical indication of the perceived quality
+        of received media after compression and/or transmission.  The MOS score
+        is expressed as a single number in the range of 1 to 5.  The associated
+        quality characteristics defined for each MOS score:
+        
+        bad(1) - Very annoying
+        poor(2) - Annoying
+        fair(3) - Slightly annoying
+        good(4) - Perceptible, but not annoying
+        excellent(5) - Imperceptible"
+    ::= { emtaStatsCallEntry 2 }
+
+emtaStatsCallRFSignalToNoiseLevel OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the general measurement of the ratio of RF signal power 
+        to noise power."
+    ::= { emtaStatsCallEntry 3 }
+
+emtaStatsCallResidualEchoRetLoss OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS "dB"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the residual echo return loss, which relates to the
+        effective echo level that a user would hear.  It is the ratio between the
+        transmitted signal level and the received echo level expressed in dB."
+    ::= { emtaStatsCallEntry 4 }
+
+emtaStatsCallDestEndpntInfo OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the IP address for the terminating end point of 
+        each call originated from the eMTA."
+    ::= { emtaStatsCallEntry 5 }
+
+emtaStatsCallTotalPktSent OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the total number of packets transmitted by the sender
+        since starting transmission on the connection."
+    ::= { emtaStatsCallEntry 6 }
+
+emtaStatsCallTotalOctSent OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the total number of payload octets transmitted in RTP
+        packets by the sender since starting transmission on the connection."
+    ::= { emtaStatsCallEntry 7 }
+
+emtaStatsCallTotalPktRecvd OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the total number of packets received by the sender
+        since starting transmission on the connection."
+    ::= { emtaStatsCallEntry 8 }
+
+emtaStatsCallTotalOctRecvd OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the total number of payload octets received in RTP
+        packets by the sender since starting transmission on the connection."
+    ::= { emtaStatsCallEntry 9 }
+
+emtaStatsCallTotalPktLost OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the total number of RTP data packets that have been
+        lost since the beginning of reception.  This number is defined as the 
+        number of packets less the number of packets actually received, where the
+        number of packets received includes any which are late or duplicates."
+    ::= { emtaStatsCallEntry 10 }
+
+emtaStatsCallIntervalJitter OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS "Milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports an estimate of the statistical variance of the RTP data
+        packet inter-arrival time."
+    ::= { emtaStatsCallEntry 11 }
+
+emtaStatsCallAvgTxDelay OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS "Milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports an estimate of the network latency.  The is the average 
+        value of the difference between the NTP timestamp indicated by the senders of
+        the RTCP messages and the NTP timestamp of the receivers, measured when the
+        messages are received."
+    ::= { emtaStatsCallEntry 12 }
+
+emtaStatsCallJBDiscardRate OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the number of packets discarded by the eMTA's jitter buffer."
+    ::= { emtaStatsCallEntry 13 }
+
+emtaStatsCallJBAdjRate OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS "Milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the jitter buffer's adjustment rate."
+    ::= { emtaStatsCallEntry 14 }
+
+emtaStatsCallJBMaxSize OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS "Milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the maximum size of the jitter buffer, in milliseconds."
+    ::= { emtaStatsCallEntry 15 }
+
+emtaStatsCallNetRdTripDelay OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS "Milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the round trip delay (latency) for a packet to travel from
+        the originating end of a call to the terminating end of a call, and back to the
+        originating end of a call."
+    ::= { emtaStatsCallEntry 16 }
+
+emtaStatsCallSignalLevel OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "dB"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the audio signal levels."
+    ::= { emtaStatsCallEntry 17 }
+
+emtaStatsCallNoiseLevel OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "dB"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the audio noise levels."
+    ::= { emtaStatsCallEntry 18 }
+
+emtaStatsCallRfTxLevel OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "dBmV"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the RF transmit level."
+    ::= { emtaStatsCallEntry 19 }
+
+emtaStatsCallRfRxLevel OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "dBmV"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the RF receive level."
+    ::= { emtaStatsCallEntry 20 }
+
+emtaStatsCallCallTrace OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the capture of MGCP/NCS or SIP message series used to 
+        establish and terminate call.  
+        The MGCP/NCS call trace information include the following information:
+        (1) The NCS command/message (CRCX, DLCX, MDCX, etc.)
+        (2) The transaction identifier (transaction number)
+        (3) Any applicable command parameters (CallID, DigitMap, DetectEvents, etc)
+        (4) The destination for the command/message (eg aaln/1@ubeeinteractive.com)
+        (5) The protocol version numbers for both MGCP and NCS
+        
+        The SIP call trace information include the following information:
+        (1) The SIP command/message (INVITE, ACK, BYE etc.)
+        (2) The transaction identifier (Call-ID)
+        (3) Any applicable command parameters 
+        (4) The destination for the command/message (eg sip:xxxx@ubeeinteractive.com)
+        (5) The protocol version numbers for SIP"
+    ::= { emtaStatsCallEntry 21 }
+
+emtaStatsCallStartTime OBJECT-TYPE
+    SYNTAX      DateAndTime
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the timestamp indicating the beginning of the last
+         call made from the MTA."
+    ::= { emtaStatsCallEntry 22 }
+
+emtaStatsCallEndTime OBJECT-TYPE
+    SYNTAX      DateAndTime
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the timestamp indicating the end of the last
+         call made from the MTA."
+    ::= { emtaStatsCallEntry 23 }
+
+emtaStatsCallPhoneNumber OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the phone number of the remote party."
+    ::= { emtaStatsCallEntry 24 }
+
+emtaStatsCallLine OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the line on which the call is being made or being 
+        received."
+    ::= { emtaStatsCallEntry 25 }
+
+emtaStatsCallDirection OBJECT-TYPE
+    SYNTAX      INTEGER {
+                incoming(1),
+                outgoing(2)
+    }
+    MAX-ACCESS  read-only	    
+    STATUS      current
+    DESCRIPTION
+        "This object reports the direction of the call."
+    ::= { emtaStatsCallEntry 26 }
+
+emtaStatsCallMOSLQScore OBJECT-TYPE
+    SYNTAX      INTEGER {
+      bad(1),
+      poor(2),
+      fair(3),
+      good(4),
+      excellent(5)
+    }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the numerical indication of the perceived listening
+        quality.  The MOS score is expressed as a single number in the range of 
+        1 to 5.  The associated quality characteristics defined for each MOS 
+        score:
+
+        bad(1) - Very annoying
+        poor(2) - Annoying
+        fair(3) - Slightly annoying
+        good(4) - Perceptible, but not annoying
+        excellent(5) - Imperceptible"
+    ::= { emtaStatsCallEntry 27 }
+
+emtaStatsCallDialMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                unknown(0),
+                pulseDial(1),
+                dtmfToneDial(2)
+    }
+    MAX-ACCESS  read-only	    
+    STATUS      current
+    DESCRIPTION
+        "This object reports the dial mode of the call."
+    ::= { emtaStatsCallEntry 28 }
+
+--
+-- The following group describes the Notifications defined in the MIB.
+--
+emtaMgmtNotifyQuarantineState  NOTIFICATION-TYPE
+    OBJECTS {
+            ifIndex,
+            emtaStatsEndptQuarantineState
+    }
+    STATUS   current
+    DESCRIPTION
+        "This notification is issued by the MTA to indicate the moment
+        when emtaStatsEndptQuarantineState MIB object changes state to
+        extendedLockStep(4)."
+    ::= { emtaMgmtNotification 1 }
+
+emtaMgmtNotifyLowChargePercent  NOTIFICATION-TYPE
+    STATUS   current
+    DESCRIPTION
+        "This notification is issued by the MTA to indicate the moment
+        when the alarm bcmAlarmLowBatteryCharge is raised."
+    ::= { emtaMgmtNotification 2 }
+
+
+--
+-- Compliance Sstatements
+--
+emtaMgmtCompliances  OBJECT IDENTIFIER ::= { emtaMgmtConformance 1 }
+emtaMgmtGroups       OBJECT IDENTIFIER ::= { emtaMgmtConformance 2 }
+
+emtaMgmtCompliance  MODULE-COMPLIANCE
+    STATUS      current
+    DESCRIPTION
+        "This compliance statement applies to MTA implementations
+        that support Ubee EMTA Proprietary MIB requirements.
+        It is left to manufacturers to determine whether to support
+        this MIB and/or its subset depending on the particular
+        requierements in the field."
+
+    MODULE
+    MANDATORY-GROUPS {
+               emtaMgmtGroup,
+               emtaMgmtNotificationGroup
+    }
+    ::= { emtaMgmtCompliances 1 }
+
+
+emtaMgmtGroup OBJECT-GROUP
+    OBJECTS {
+            emtaInhibitSwDownloadDuringCall,
+            emtaFirewallEnable,
+            emtaRingWithDCOffset,
+            emtaIncludedInCmMaxCpe,
+            emtaDhcpOption,
+            emtaUseAlternateTelephonyRootCert,
+            emtaEnableDQoSLite,
+            emtaInhibitNcsSyslog,
+            emtaPhsConfiguration,
+            emtaMaxResetDelay,
+            emtaPostCallCompletionResetDelay,
+            emtaDhcpRebindRule,
+            emtaDhcpIgnoreNaks,
+            emtaCountryCode,
+            emtaPhsUpstreamMask,
+            emtaPhsDownstreamMask,
+            emtaPhsDownstreamVerification,
+            emtaUgsAdControl,
+            emtaDnsBaseTimeout,
+            emtaDnsMaxRetry,
+            emtaDnsNegativeCacheTTL,
+            emtaDevHDAudioEnabled,
+            emtaDevG72264PayloadType, 
+            emtaMaintenanceWindowBegin,
+            emtaMaintenanceWindowDuration,
+            emtaMaintenanceControlMask,
+            emtaBattReplaceCtrl,
+            emtaSignalingEndptCtrlAnalogLoopback,
+            emtaSignalingEndptCtrlLineReset,
+            emtaSignalingEndptCtrlDiagTestsStart,
+            emtaSignalingEndptCtrlDiagTestsStop,
+            emtaSignalingEndptCtrlDiagTestValid,
+            emtaSignalingEndptCtrlDiagTestResult,
+            emtaSignalingEndptCtrlDiagTestValue,
+            emtaSignalingEndptCtrlBoostedLoopCurrent,
+            emtaSignalingEndptCtrlTxGain,
+            emtaSignalingEndptCtrlRxGain,
+            emtaSignalingEndptCtrlDialToneMsecTO,
+            emtaSignalingEndptCtrlToneDetectionControl,
+            emtaSignalingEndptCtrlRingWaveform,
+            emtaSignalingEndptCtrlPowerMgmtDelay,
+            emtaSignalingEndptCtrlToneDetectionControlExt,
+            emtaSignalingEndptCtrlPulseDialEnable,
+            emtaSignalingEndptCtrlVBDTxGain,
+            emtaSignalingEndptCtrlVBDRxGain,
+            emtaSignalingEndptCtrlPulseToDtmfConvert,
+            emtaSignalingEndptCtrlCustomCWCIDCfgEnable,
+            emtaSignalingEndptCtrlCASLevelCfg,
+            emtaSignalingEndptCtrlOffhookCIDFSKLevelCfg,
+            emtaSignalingEndptCtrlOnhookCIDFSKLevelCfg,
+            emtaSignalingEndptCtrlVMWIOSIDuration,
+            emtaSignalingEndptCtrlMgcpQuarantineMode,
+            emtaSignalingEndptCtrlOSIDuration,
+            emtaSignalingEndptCtrlHDAudioEnabled,
+            emtaSignalingEndptCtrlHDAudioStatus,
+            emtaSignalingAnnouncementCtrl,
+            emtaSignalingVoiceJitterBufferType,
+            emtaSignalingVoiceJitterNomValue,
+            emtaSignalingVoiceJitterMinValue,
+            emtaSignalingVoiceJitterMaxValue,
+            emtaSignalingDataJitterNomValue,
+            emtaSignalingDtmfToneRelayRFC2833Support,
+            emtaSignalingNumOfCallsTotal,
+            emtaSignalingMaxNumberQueuedNcsEvents,
+            emtaSignalingRtpBaseReceiveUdpPort,
+            emtaSignalingEndptConnectionCleanupTimeout,
+            emtaSignalingEmtaResetCleanupTimeout,
+            emtaSignalingT38FaxRelaySupport,
+            emtaSignalingEcanTailLength,
+            emtaSignalingDQoSActivationModel,
+            emtaSignalingGR303Support,
+            emtaSignalingPowerRingFrequency,
+            emtaSignalingDataJitterMaxValue,
+            emtaSignalingRingWaveform,
+            emtaSignalingDefRtcpDSCP,
+            emtaSignalingDevToneWholeToneRepeatCount,
+            emtaSignalingDevToneSteady,
+            emtaSignalingDevToneFirstFreqValue,
+            emtaSignalingDevToneSecondFreqValue,
+            emtaSignalingDevToneDbLevel,
+            emtaSignalingDevToneFreqOnDuration,
+            emtaSignalingDevToneFreqOffDuration,
+            emtaSignalingDevToneFreqRepeatCount,
+            emtaSignalingChatterLineMonitorInterval,
+            emtaSignalingChatterLinePulseDialRejectThreshold,
+            emtaSignalingChatterLineDigitMapMismatchThreshold,
+            emtaSignalingChatterLineLoopOpenCloseThreshold,
+            emtaSignalingChatterLineROHEnable,
+            emtaSignalingMaxNumberCallStatsStored,
+            emtaSignalingAdjustedFskTransmissionLevel,
+            emtaSignalingSdpSuppression,
+            emtaSignalingRSIPResponseTimer,
+            emtaSignalingMgcpLockstepActivation, 
+            emtaSignalingMgcpQuarantineModeOverrideBehavior,
+            emtaSignalingMgcpStepToLoopModeBehavior,
+            emtaSignalingMediaSecurity,
+            emtaSignalingIPSecOnCMSRedirection,
+            emtaSignalingDlcxOsiDelay,
+            emtaSignalingPlayZeroDurationPkt,
+            emtaSignalingEndptCtrlPulseDialMinMakeTime,
+            emtaSignalingEndptCtrlPulseDialMaxMakeTime,
+            emtaSignalingEndptCtrlPulseDialMinBreakTime,
+            emtaSignalingEndptCtrlPulseDialMaxBreakTime,
+            emtaSignalingEndptCtrlRtpTelEvtPayload,
+            emtaSignalingEndptCtrlPrefCodecList,
+            emtaStatsEndptHookState,
+            emtaStatsEndptQuarantineState,
+            emtaStatsEndptSlicOverTempStatus,
+            emtaStatsRTPPktTxTotal,
+            emtaStatsRTPPktRxTotal,
+            emtaStatsRTPPktLostTotal,
+            emtaStatsRTPPktTxRecent,
+            emtaStatsRTPPktRxRecent,
+            emtaStatsRTPPktLostRecent,
+            emtaStatsAvgJitterMeasurement,
+            emtaStatsMaxJitterMeasurement,
+            emtaStatsRTPAvgLatency,
+            emtaStatsMGCPResponseAvgLatency,
+            emtaStatsSuccessfulMsgCount,
+            emtaStatsNegAckCount,
+            emtaStatsNoNTFYAckCount,
+            emtaStatsLastNCSMsgTx,
+            emtaStatsLastNCSMsgRx,
+            emtaStatsRTPPktLostRatio,
+            emtaStatsCallIndex,
+            emtaStatsCallMOSCQScore,
+            emtaStatsCallRFSignalToNoiseLevel,
+            emtaStatsCallResidualEchoRetLoss,
+            emtaStatsCallDestEndpntInfo,
+            emtaStatsCallTotalPktSent,
+            emtaStatsCallTotalOctSent,
+            emtaStatsCallTotalPktRecvd,
+            emtaStatsCallTotalOctRecvd,
+            emtaStatsCallTotalPktLost,
+            emtaStatsCallIntervalJitter,
+            emtaStatsCallAvgTxDelay,
+            emtaStatsCallJBDiscardRate,
+            emtaStatsCallJBAdjRate,
+            emtaStatsCallJBMaxSize,
+            emtaStatsCallNetRdTripDelay,
+            emtaStatsCallSignalLevel,
+            emtaStatsCallNoiseLevel,
+            emtaStatsCallRfTxLevel,
+            emtaStatsCallRfRxLevel,
+            emtaStatsCallCallTrace,
+            emtaStatsCallStartTime,
+            emtaStatsCallEndTime,
+            emtaStatsCallPhoneNumber,
+            emtaStatsCallLine,
+            emtaStatsCallDirection,
+            emtaStatsCallMOSLQScore,
+            emtaStatsCallDialMode
+    }
+    STATUS      current
+    DESCRIPTION
+        "This group defines a collection of the MIB objects to meet the customers
+        requirements in MTA functionlity which is complementary to the 'standard'
+        PacketCable features."
+    ::= { emtaMgmtGroups 1 }
+
+emtaMgmtNotificationGroup NOTIFICATION-GROUP
+    NOTIFICATIONS {
+                  emtaMgmtNotifyQuarantineState,
+                  emtaMgmtNotifyLowChargePercent
+       }
+    STATUS      current
+    DESCRIPTION
+        "This group a set of the notifications dealing with the change in the EMTA state
+        of various parameters."
+    ::= { emtaMgmtGroups 2 }
+
+cmEmtaMgmtGroup OBJECT-GROUP
+    OBJECTS {
+            emtaInhibitSwDownloadDuringCall,
+            emtaFirewallEnable,
+            emtaRingWithDCOffset,
+            emtaIncludedInCmMaxCpe,
+            emtaDhcpOption,
+            emtaUseAlternateTelephonyRootCert,
+            emtaPhsConfiguration,
+            emtaMaxResetDelay,
+            emtaPostCallCompletionResetDelay,
+            emtaDhcpIgnoreNaks,
+            emtaPhsUpstreamMask,
+            emtaPhsDownstreamMask,
+            emtaPhsDownstreamVerification,
+            emtaEmSvcTrafficPriority,
+            emtaMaintenanceWindowBegin,
+            emtaMaintenanceWindowDuration,
+            emtaMaintenanceControlMask,
+            emtaMaintenanceQuarantineTimeout,
+            emtaMaintenanceDisconnectedTimeout,
+            emtaMaintenanceRFDisconnectTimeout
+    }
+    STATUS      current
+    DESCRIPTION
+        "This group specifies the set of objects from this MIB which, in an
+         integrated CM / EMTA product, are accessible via the IP address of the
+         cablemodem as well as that of the EMTA."
+    ::= { emtaMgmtGroups 3 }
+
+END
+

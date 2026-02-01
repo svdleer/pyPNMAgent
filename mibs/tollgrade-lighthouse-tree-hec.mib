@@ -1,0 +1,149 @@
+-- ****************************************************************************
+-- *  Copyright © 2002,  Tollgrade Communications, Inc.  All Rights Reserved.
+-- ****************************************************************************
+-- *
+-- *  Module Name:   TLGDHECTREE.MIB
+-- *
+-- *  Description:   Defines MIB Tree for the Head End Controller
+-- *
+-- *  Notes:
+-- *
+-- *  Revision History:
+-- *
+-- *     $Log: TlgdtreeHec.mib,v $
+-- *     Revision 1.1  2004/08/11 21:44:15  fshimer
+-- *     Description: Added to support firmware download
+-- *     Developer: Frank Shimer
+-- *     PTR: N/A
+-- *     Tester Comments: N/A
+-- *
+-- * 
+-- *    Rev 5.0   Aug 28 2002 13:51:10   CBrewer
+-- * Initial check-in for re-org of tlgdtree.
+-- * 
+-- * 
+-- *
+-- * Reproduction of this document is authorized on condition that this
+-- * copyright notice is included.  This SNMP MIB Specification
+-- * embodies proprietary intellectual property.  The copyright
+-- * retains all title and ownership in the specification, including any
+-- * revisions. 
+-- * 
+-- * This specification is supplied "AS IS," and no
+-- * warranty, either express or implied, as to the use, operation,
+-- * condition, or performance of the specification, is made.
+-- * 
+-- * The right to change this MIB without notification is retained.
+-- * 
+-- * 
+-- * Agents supporting this MIB: Tollgrade Head End Controller, Software Rev: 2.xxx
+-- * 
+-- ****************************************************************************
+
+TOLLGRADE-LIGHTHOUSE-TREE-HEC-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+     headend, networkElement
+          FROM TOLLGRADE-LIGHTHOUSE-TREE-MIB
+     ;
+
+--*****************************************************************************
+--**                                                                         **
+--**  Define HEC tree                                                        **
+--**                                                                         **
+--*****************************************************************************
+
+hec  OBJECT IDENTIFIER             ::= { headend 1 }
+
+hecModems OBJECT IDENTIFIER        ::= { headend 2 }
+
+hecCommPath OBJECT IDENTIFIER      ::= { headend 3 }
+
+alarms OBJECT IDENTIFIER           ::= { headend 4 }
+
+autoLeveling OBJECT IDENTIFIER     ::= { headend 5 }
+
+testEngNE OBJECT IDENTIFIER        ::= { networkElement 1 }
+
+tollgradeNE OBJECT IDENTIFIER      ::= { networkElement 2 }
+
+tlgdStandard OBJECT IDENTIFIER    ::= { tollgradeNE 1 }
+
+-- ************************
+-- **                    **
+-- ** Define vendor OIDs **
+-- **                    **
+-- ************************
+
+adc OBJECT IDENTIFIER       ::= { networkElement 20 }     -- ADC Telecommunica-
+                                                          -- tions Inc.
+
+alpha OBJECT IDENTIFIER     ::= { networkElement 21 }     -- Alpha Technologies
+
+antec OBJECT IDENTIFIER     ::= { networkElement 22 }     -- Antec Corp.
+
+barco OBJECT IDENTIFIER     ::= { networkElement 23 }     -- Barco Group
+
+ccor OBJECT IDENTIFIER      ::= { networkElement 24 }     -- C-Cor Electronics 
+                                                          -- Inc.
+
+exide OBJECT IDENTIFIER     ::= { networkElement 25 }     -- Exide Electronics 
+                                                          -- Group Inc (Lectro)
+
+gi OBJECT IDENTIFIER        ::= { networkElement 26 }     -- General Instrument 
+                                                          -- Corp.
+
+harmonic OBJECT IDENTIFIER  ::= { networkElement 27 }     -- Harmonic 
+                                                          -- Lightwaves
+
+lindsay OBJECT IDENTIFIER   ::= { networkElement 28 }     -- Lindsay 
+                                                          -- Electronics
+
+phasor OBJECT IDENTIFIER    ::= { networkElement 29 }     -- Phasor Electronics 
+                                                          -- GmbH
+
+philips OBJECT IDENTIFIER   ::= { networkElement 30 }     -- Philips Broadband 
+                                                          -- Network, Inc.
+
+sa OBJECT IDENTIFIER        ::= { networkElement 31 }     -- Scientific Atlanta
+
+wavetek OBJECT IDENTIFIER   ::= { networkElement 32 }     -- Wavetek Corp.
+
+wisi OBJECT IDENTIFIER      ::= { networkElement 33 }     -- Wisi
+
+
+
+-- Tree Definitions
+--
+-- Under headend:
+--   1 hec
+--   2 Modems (interfaces)
+--   3 CommPath
+--        1 CommPathTable
+--   4 Alarms
+--        2 AlarmTable
+--        3 ModemAlarmTable (not accessible)
+--	  5 AutoLeveling
+--
+-- Under networkElement:
+--   2 TollgradeNE
+--        1 Standard
+--             1 GenericMIB
+--             2 MulticastMIB                
+--             3 LineAmpMIB
+--             4 PowerSupplyMIB
+--             5 FiberNodeMIB
+--        2 CreateTable
+--        3 PropertyTable
+--        4 GenericTable
+--        5 DownloadTable
+--        6 DigitalTable
+--        7 AnalogTable
+--   20 VendorA
+--        1 ProductA1Table
+--        2 ProductA2Table
+--   21 VendorB
+--        1 ProductB1Table
+--        2 ProductB2Table
+
+END

@@ -1,0 +1,177 @@
+--****************************************************************************
+--    Description:
+--
+--		private MIB for host security management
+--		
+--****************************************************************************
+--    Revision History:
+--
+--****************************************************************************
+
+UBEE-HOST-SEC-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Integer32
+        FROM SNMPv2-SMI
+    RowStatus,
+    DisplayString
+        FROM SNMPv2-TC
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE
+        FROM SNMPv2-CONF
+    InetAddress, 
+    InetAddressType
+        FROM INET-ADDRESS-MIB
+    SnmpAdminString
+        FROM SNMP-FRAMEWORK-MIB
+    cableDataMgmtMIBObjects
+        FROM UBEE-CABLEDATA-MGMT-MIB;
+                
+ubeeHostSecurityMgmt MODULE-IDENTITY
+    LAST-UPDATED "201101210000Z"
+    ORGANIZATION "Ubee Interactive Corporation"
+    CONTACT-INFO
+        "	Ubee Interactive Global Headquarters
+
+        Postal: 6F-9, No.38, Taiyuan St.
+        		Jhubei City Hsinchu County 302
+        		Taiwan, R.O.C.
+
+           Tel: +886-3-560-0010
+
+        E-mail: asupport@ubeeinteractive.com"
+
+    DESCRIPTION
+        "MIB Module for defining host security objects."
+
+    REVISION      "201101210000Z"
+    DESCRIPTION
+        "Initial version of this MIB module."
+    ::= { cableDataMgmtMIBObjects 16 }
+    
+ubeeHostSecurityTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF UbeeHostSecurityEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table containing security information for the host  
+         console in this system.  An entry exists in this table 
+         for each user instance."
+    ::= { ubeeHostSecurityMgmt 1 }
+
+ubeeHostSecurityEntry OBJECT-TYPE
+    SYNTAX      UbeeHostSecurityEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry describing the download attributes of a single 
+         software module."
+    INDEX  { ubeeHostSecIndex }  
+    ::= { ubeeHostSecurityTable 1 }
+
+UbeeHostSecurityEntry ::=
+    SEQUENCE {
+             ubeeHostSecIndex                    Integer32,
+             ubeeHostSecUsername                 DisplayString,
+             ubeeHostSecPassword                 SnmpAdminString,
+             ubeeHostSecLevel                    Integer32,
+             ubeeHostSecStatus                   RowStatus
+             }
+
+ubeeHostSecIndex OBJECT-TYPE
+        SYNTAX      Integer32 (0..32)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object uniquely identifies the security information
+             that pertains to this row in the ubeeHostSecurityTable.
+             The value of this object is context sensitive, that
+             is, this value has meaning, but that meaning is known
+             by the managed system and is outside the scope of this
+             document."
+        ::= { ubeeHostSecurityEntry 1 }
+
+ubeeHostSecUsername OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE (0..16))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "A user name."
+        ::= { ubeeHostSecurityEntry 2 }
+
+ubeeHostSecPassword OBJECT-TYPE
+        SYNTAX      SnmpAdminString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The password associated with this row. 
+             If the value of this object is the 
+             zero-length string, then no password 
+             is reqired on the host system for this
+             user."
+        ::= { ubeeHostSecurityEntry 3 }
+
+ubeeHostSecLevel OBJECT-TYPE
+        SYNTAX      Integer32
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The security level of ubeeHostSecUsername. Note that
+             the meaning of this value is system dependent."
+        DEFVAL { 0 }
+        ::= { ubeeHostSecurityEntry 4 }
+
+ubeeHostSecStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Controls and reflects the status of rows in this table. Rows in this
+             table may be created by either the create-and-go or create-and-wait
+             paradigms. Setting the value of this object to active, either directly 
+             or indirectly via create-and-go, will cause the row to be written to 
+             the host security system. It is expected that as soon as the row is 
+             written to the host security system, the row may be made unavailable 
+             to management. This may be done by removing the entry from the table,
+             removing the entry from all views, or rendering the entry inaccessible
+             via some other mechanism."
+        ::= { ubeeHostSecurityEntry 5 }
+
+    
+--
+-- Conformance definitions
+--
+ubeeHostSecurityConformance      OBJECT IDENTIFIER ::= { ubeeHostSecurityMgmt 100 }
+
+--
+-- Compliance Statements
+--
+ubeeHostSecurityCompliances  OBJECT IDENTIFIER ::= { ubeeHostSecurityConformance 1 }
+ubeeHostSecurityGroups       OBJECT IDENTIFIER ::= { ubeeHostSecurityConformance 2 }
+
+ubeeHostSecurityCompliance  MODULE-COMPLIANCE
+    STATUS      current
+    DESCRIPTION
+        "The compliance statement for cablemodem devices."
+    MODULE
+    MANDATORY-GROUPS {
+               ubeeHostSecurityGroup
+    }
+    ::= { ubeeHostSecurityCompliances 1 }
+         
+ubeeHostSecurityGroup OBJECT-GROUP
+    OBJECTS {
+        ubeeHostSecIndex,
+        ubeeHostSecUsername,
+        ubeeHostSecPassword,
+        ubeeHostSecLevel,
+        ubeeHostSecStatus
+    }
+    STATUS      current
+    DESCRIPTION
+        "A set of objects supported by agents which support host security configuration."
+    ::= { ubeeHostSecurityGroups 1 }
+    
+END

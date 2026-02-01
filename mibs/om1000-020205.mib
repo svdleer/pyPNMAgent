@@ -1,0 +1,2209 @@
+OM1000-MIB DEFINITIONS ::= BEGIN
+-- ****************************************************************************
+--
+--  FILE INFO:
+--    $Workfile:   oma1000.mib  $
+--    $Revision:   1.11  $
+--    $Date:   02 Feb 2005 15:37:10  $
+--
+--  MODULE-COMPLIANCE, OBJECT-GROUP
+--      FROM SNMPv2-CONF
+--  system, ifIndex
+--      FROM RFC1213-MIB
+--
+--  OM1000-MIB MODULE-IDENTITY
+--      LAST-UPDATED "021210"
+--      ORGANIZATION " Motorola Connected Home Solutions "
+--      CONTACT-INFO "Motorola Connected Home Solutions 
+--                    101 Tournament Drive
+--                    Horsham, PA  19044
+--
+--                    Tel: +1 215 323 1000
+--                    Fax: +1 215 323 0098
+--                    E-mail: none"
+--
+--      DESCRIPTION  "The MIB module for the OM 1000A."
+--                    The MIB tree for this MIB is shown below:
+--
+-- ****************************************************************************
+-- updated for Firmware revision 3.4 by S. DiDomenico ON 7/15/02
+-- updated by S. Moscirella on 12/03/02
+
+
+-- ****************************************************************************
+-- ************************ MIB Map (for reference use) ***********************
+-- ****************************************************************************
+--          The objects in this MIB are organized as follows:
+--
+-- omSystem
+--   omSystemConf
+--     omSysConfIPAddress
+--     omSysConfMACAddress
+--     omSysConfSubnetMask
+--     omSysConfDefaultEM
+--     omSysConfSaveConfig
+--     omSysConfRevision
+--     omSysConfCntrlHostName
+--     omSysConfCntrlService
+--     omSysConfIgmpEnable
+--     omSysConfMcastTimeToLive
+--   omSystemStatus
+--     omSysStatusFaultSumm
+--     omSysStatusExtSync
+--     omSysStatusPLL
+--     omSysStatusRfOut
+--     omSysStatusEmerAlert
+--   omSystemStats
+--     omSysStatsClear
+--   omPacketStats (New)
+--     omPacketStatsTable
+--       omPacketStatsEntry
+--         omPacketStatsTableIndex
+--         omPacketStatsInterfaceType
+--         omPacketStatsInterfaceMode
+--         omPacketStatsPacketsDropped
+--         omPacketStatsQueueMaxUsage
+--         omPacketStatsDropThreshold
+--         omPacketStatsCountPeriod
+--         omPacketStatsResetTheshold
+--   omEmerBrdcastConf
+--     omEmerPort
+--     omEmerPidToBlockOne
+--     omEmerPidToBlockTwo
+--     omEmerPidToBlockThree
+--     omEmerPidToBlockFour
+--   omContCount
+--     omMissedContCountThreshold
+--     omMissedContCountResetThreshold
+--     omContCountTimePeriod
+--     omMissedContCountTotal
+-- omPhysIf
+--   omPhysIfConfig
+--     omPhysIfConfigTable
+--       omPhysIfConfigEntry
+--         omPhysIfConfigInfcIndex
+--         omPhysIfConfigType
+--         omPhysIfMultiCastMac1
+--         omPhysIfMultiCastMac2
+--         omPhysIfMultiCastMac3
+--         omPhysIfConfigTransMode
+--         omPhysIfConfigDataRate
+--         omPhysIfConfigModFrequency
+--         omPhysIfConfigModOutLevel
+--         omPhysIfConfigModMode
+--         omPhysIfXmtMultiCastMac1
+--         omPhysIfXmtMultiCastMac2
+--         omPhysIfXmtMultiCastMac3
+--         omPhysIfXmtMultiCastUdpPort
+--   omPhysIfStatus
+--     omPhysIfStatusTable
+--       omPhysIfStatusEntry
+--         omPhysIfStatusInfcIndex
+--         omPhysIfStatusCode       (PLACEHOLDER ENTRY)
+-- omLogPort
+--   omLogPortConfig
+--     omLogPortConfigTable
+--       omLogPortConfigEntry
+--         omLogPortConfigLogPortNumber
+--         omLogPortConfigPhysIfNumber
+--         omLogPortConfigOperationMode
+--         omLogPortConfigAdminState
+--         omLogPortConfigUdpPortNumber
+--         omLogPortConfigDestIPaddress
+--         omLogPortConfigUdpPacking
+--   omLogPortPidMap
+--     omPortPidMapTable
+--       omPortPidMapEntry
+--         omPidMapLogPortNumber
+--         omPidMapEntryNumber
+--         omPidMapInPID
+--         omPidMapOutPID
+--         omPidMapDest1
+--         omPidMapDest2
+--         omPidMapDest3
+--   omLogPortStatus  (PLACEHOLDER GROUP)
+--     OPTIONAL (PART OF omLogPortStatus GROUP, BUT IS NOT YET IMPLEMENTED):
+--     omLogPortStatusTable
+--       omLogPortStatusEntry
+--         omLogPortStatusMpegsPerSec...  (SUGGESTED ENTRIES...)
+--         omLogPortStatus1...
+--         omLogPortStatus2...
+--   omLogPortRcvMcast
+--     omPortRcvMcastIpTable
+--       omPortRcvMcastIpEntry
+--         omRcvMcastIpLogPortNumber
+--         omRcvMcastIpEntryNumber
+--         omRcvMcastIpAddress
+-- omTraps
+-- omAlarms
+-- ****************************************************************************
+
+
+-- ****************************************************************************
+-- ********************************** NOTICE **********************************
+-- ****************************************************************************
+-- The OM system uses generic base classes to implement access to many of these
+-- items.  The MIB compiler produces automatic defines for the following MIB
+-- items.  Some of those definitions are used in the base class constructor to
+-- keep its implementation as clean as possible. If you add, remove, or change
+-- things in this MIB, be sure to re-evaluate the code for those groups/tables.
+--
+-- Be careful of the following trouble spots:
+--      1) If a group is renamed, code is most certainly affected.
+--      2) If an item is moved from one group to another, the code may compile,
+--         but it might be in error - check to see if that item's definition is
+--         used and where.
+--      3) If items are added/removed from a group, the size of the group is
+--         adjusted automatically in the code since the name of the last group
+--         item is used to get the size.  Thus, you are safe if items are added
+--         before the last item (not after!), and the last item is not removed.
+--         Otherwise, the new last item name must be used in the code.
+--      4) If the number of indexed items, or the location if the index items
+--         change, code must be changed.
+--      5) The code relies on the fact that OIDs are sequential and start at
+--         ".1" for each group.  Don't mess it up.
+-- ****************************************************************************
+
+
+-- ****************************************************************************
+-- ************************** IMPORTS FROM OTHER MIBS *************************
+-- ****************************************************************************
+IMPORTS
+        Counter, Gauge,
+        IpAddress, TimeTicks    FROM RFC1155-SMI
+        DisplayString           FROM RFC1213-MIB
+        OBJECT-TYPE             FROM RFC-1212
+        TRAP-TYPE               FROM RFC-1215
+        om1000                  FROM NLS-BBNIDENT-MIB
+        trapIdentifier,
+        trapNetworkElemModelNumber,
+        trapNetworkElemSerialNum,
+        trapPerceivedSeverity,
+        trapNetworkElemOperState,
+        trapNetworkElemAlarmStatus,
+        trapNetworkElemAdminState,
+        trapNetworkElemAvailStatus,
+        trapText,
+        trapNETrapLastTrapTimeStamp,
+        trapChangedObjectId,
+        trapAdditionalInfoInteger1,
+        trapAdditionalInfoInteger2,
+        trapAdditionalInfoInteger3,
+        trapChangedValueDisplayString,
+        trapChangedValueOID,
+        trapChangedValueIpAddress,
+        trapChangedValueInteger FROM NLSBBN-TRAPS-MIB;
+
+-- ****************************************************************************
+-- ******************************* MIB HIEARCHY *******************************
+-- ****************************************************************************
+        omSystem                OBJECT IDENTIFIER ::= { om1000 1    }
+          omSystemConf          OBJECT IDENTIFIER ::= { omSystem 1  }
+          omSystemStatus        OBJECT IDENTIFIER ::= { omSystem 2  }
+          omSystemStats         OBJECT IDENTIFIER ::= { omSystem 3  }
+          omPacketStats		OBJECT IDENTIFIER ::= { omSystem 4  }
+	  omEmerBrdcastConf	OBJECT IDENTIFIER ::= { omSystem 5  }
+          omContCount           OBJECT IDENTIFIER ::= { omSystem 6  }
+        omPhysIf                OBJECT IDENTIFIER ::= { om1000 2    }
+          omPhysIfConfig        OBJECT IDENTIFIER ::= { omPhysIf 1  }
+          omPhysIfStatus        OBJECT IDENTIFIER ::= { omPhysIf 2  }
+        omLogPort               OBJECT IDENTIFIER ::= { om1000 3    }
+          omLogPortConfig       OBJECT IDENTIFIER ::= { omLogPort 1 }
+          omLogPortPidMap       OBJECT IDENTIFIER ::= { omLogPort 2 }
+          omLogPortStatus       OBJECT IDENTIFIER ::= { omLogPort 3 }
+          omLogPortRcvMcast     OBJECT IDENTIFIER ::= { omLogPort 4 }
+        omTraps                 OBJECT IDENTIFIER ::= { om1000 4    }
+        omAlarms                OBJECT IDENTIFIER ::= { om1000 5    }
+
+
+-- ****************************************************************************
+-- **************************** omSystemConf **********************************
+-- ****************************************************************************
+
+omSysConfIPAddress   OBJECT-TYPE
+        SYNTAX  IpAddress
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "This is the IP address for this OM1000.  It is used on all
+                 input UDP logical ports as well as the ACC interface."
+        REFERENCE   " -- "
+        ::= { omSystemConf 1 }
+
+omSysConfMACAddress   OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..17))
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "This is the MAC address for this OM1000.  It is set at the
+                 factory and cannot be changed.  The string length is 17
+                 characters in the format 'hh:hh:hh:hh:hh:hh' where 'hh' is
+                 a hexadecimal number."
+        REFERENCE   " -- "
+        ::= { omSystemConf 2 }
+
+omSysConfSubnetMask   OBJECT-TYPE
+        SYNTAX  IpAddress
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "This is subnet mask for this OM1000 on the OAM&P net."
+        REFERENCE   " -- "
+        ::= { omSystemConf 3 }
+
+omSysConfDefaultEM   OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..10))
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "This is the host name for the Element Manager to which this
+                 OM1000 will send traps. The maximum string length is ten
+                 characters, not including an ending null. NOTE: this object
+                 is currently not used in the OM-1000."
+        REFERENCE   " -- "
+        ::= { omSystemConf 4 }
+
+omSysConfSaveConfig    OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                saveNotInProgress   (1),
+                startSaveToFlash    (2),
+                savingConfigToFlash (3)
+                }
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "Writing to this object will commit the current configuration
+                 to Flash.  After the save is complete, this object takes on
+                 the value saveNotInProgress.  While a read returns the value
+                 savingConfigToFlash, the flash is being saved; the save may
+                 not have been initiated by an SNMP set."
+        ::= { omSystemConf 5 }
+
+omSysConfRevision   OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..10))
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Not yet implemented; this object returns a NULL string.  When
+                 implemented, it will return the current revision ID of the
+                 initialization parameters, revised whenever the unit's
+                 configuration is saved.  The maximum string length is 10
+                 characters not including an ending null."
+        ::= { omSystemConf 6 }
+
+omSysConfCntrlHostName   OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..10))
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "This is the host name of the controlling device.
+                 Whenever the value of this object is changed, a trap
+                 is sent to the EM"
+        REFERENCE   " -- "
+        ::= { omSystemConf 7 }
+
+omSysConfCntrlService   OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..10))
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "This is the destination TCP port for the control
+                 channel. Whenever the value of this object is changed,
+                 a trap is sent to the EM"
+        REFERENCE   " -- "
+        ::= { omSystemConf 8 }
+
+omSysConfIgmpEnable OBJECT-TYPE
+        SYNTAX  INTEGER (1..2)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "This is the IGMP enable/disable parameter.  Set this
+                 parameter to 1 to disable IGMP and to 2 to enable IGMP.
+                 Whenever the value of this object is changed,
+                 a trap is sent to the EM"
+        REFERENCE   " -- "
+        ::= { omSystemConf 9 }
+
+omSysConfMcastTimeToLive OBJECT-TYPE
+        SYNTAX  INTEGER (0..255)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "This is the UDP datagram Time To Live (TTL) value for
+                 transmit multicast.  Whenever the value of this object
+                 is changed, a trap is sent to the EM"
+        REFERENCE   " -- "
+        ::= { omSystemConf 10 }
+
+-- ****************************************************************************
+-- ***************************** omSystemStatus *******************************
+-- ****************************************************************************
+
+omSysStatusFaultSumm  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                faultSummInactive (1),
+                faultSummActive   (2)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "The current state of FAULT SUMM status LED on the OM1000
+                 front panel."
+        ::= { omSystemStatus 1 }
+
+omSysStatusPLL  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                pllLocked   (1),
+                pllUnlocked (6)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "The state of the modulator Phase Locked Loop.  Corresponds
+                 to the PLL ERROR status LED on the OM 1000 front panel."
+        ::= { omSystemStatus 2 }
+
+omSysStatusRfOut  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                rfOutOk    (1),
+                rfOutError (6)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "The state of the modulator RF output.  Corresponds to the
+                 RF ERROR status LED on the OM 1000 front panel."
+        ::= { omSystemStatus 3 }
+
+omSysStatusExtSync  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                extSyncInactive (1),
+                extSyncActive   (2)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "The state of the modulator external symbol sync.  Corresponds
+                 to the EXT SYNC status LED on the OM 1000 front panel."
+        ::= { omSystemStatus 4 }
+
+omSysStatusEmerAlert  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                emerAlertInactive (1),
+                emerAlertActive   (2)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Returns the current state of OM's rear panel EMR ALRT
+                 terminals (open/closed)."
+        ::= { omSystemStatus 5 }
+
+-- ****************************************************************************
+-- ****************************** omSystemStats *******************************
+-- ****************************************************************************
+
+omSysStatsClear   OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "This object clears (zeroes) any statistics"
+        ::= { omSystemStats 1 }
+
+-- ****************************************************************************
+-- ****************************** omPacketStats *******************************
+-- ****************************************************************************
+
+omPacketStatsTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF OmPacketStatsEntry
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "The packets statistics table maintained on various interfaces:
+                     aggregate input to the multiplexer,
+                     RF modulator output port,
+                     RS-530 serial port used for either input or output, and
+                     RS-232 serial port used for either input or output 
+                 This table supports up to 5 entries where the first entry 
+                 always represents the aggregate input to the multiplexer
+                 interface and the second entry always represents the RF
+                 modulator output port.  When a serial port is configured, the
+                 remaining entries represent the appropriate serial ports."
+        REFERENCE   " -- "
+        ::= { omPacketStats 1 }
+
+omPacketStatsEntry OBJECT-TYPE
+        SYNTAX  OmPacketStatsEntry
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "An entry (conceptual row) in the om-1000 packet statistics
+                 table.  There is one row for each of the interfaces
+                 outlined above."
+        INDEX   { omPacketStatsTableIndex  }
+        ::= { omPacketStatsTable 1}
+
+OmPacketStatsEntry ::= SEQUENCE
+        {
+        omPacketStatsTableIndex        INTEGER,
+        omPacketStatsInterfaceType     INTEGER,
+        omPacketStatsInterfaceMode     INTEGER,
+        omPacketStatsPacketsDropped    Counter,
+        omPacketStatsQueueMaxUsage     Counter,
+        omPacketStatsDropThreshold     Counter,
+        omPacketStatsCountPeriod       Counter,
+        omPacketStatsResetThreshold    Counter
+        }
+
+omPacketStatsTableIndex  OBJECT-TYPE
+        SYNTAX  INTEGER (1..5)
+        ACCESS not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "This is the index into the packets stats table."
+        ::= { omPacketStatsEntry 1 }
+
+omPacketStatsInterfaceType  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                typeNotUsed       (1),
+                typeMultiplexer   (2),
+		typeRFModulator   (3),
+		typeRS232-9       (4),
+		typeRS530         (5),
+		typeRS232-25      (6)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Identifies the logical interfaces that the packet
+                 statistics are being collected.  Packet statistics
+                 can be collected for the following interfaces:
+                     Multiplexer
+                     RF Modulator
+                     RS-530
+                     RS-232-9
+                     RS-232-25
+                 Both the Multiplexer and RF Modulator are always present;
+                 however, if there is no logical port associated with the
+                 RF Modulator, the packet statistics remain fixed at zero.
+                 For those table entries that are not associated with a
+                 logical port interface, this field will be Not Used. All
+                 other fields for this entry should be ignored."
+        ::= { omPacketStatsEntry 2 }
+
+omPacketStatsInterfaceMode  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                modeInput    (1),
+                modeOutput   (2)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Describes whether the mode of this interface is 
+                 input or output."
+        ::= { omPacketStatsEntry 3 }
+
+omPacketStatsPacketsDropped  OBJECT-TYPE
+        SYNTAX  Counter
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "Contains the numbers of packets dropped on this 
+                 interface.  Setting the packet statistics to any 
+                 value (e.g., 0) will result in the OM resetting
+                 the counter."
+        ::= { omPacketStatsEntry 4 }
+
+omPacketStatsQueueMaxUsage  OBJECT-TYPE
+        SYNTAX  Counter
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "Contains the queue maximum utilization (i.e., high water mark)
+                 for this interface.  Setting the queue maximum utilization to 
+                 any value (e.g., 0) will result in the OM resetting
+                 the counter."
+        DEFVAL { 100 }
+        ::= { omPacketStatsEntry 5 }
+
+omPacketStatsDropThreshold  OBJECT-TYPE
+        SYNTAX  Counter
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "Contains the packets dropped threshold on this interface that
+                 if this number is reached consecutively for the time period 
+                 below, an alarm is generated."
+        DEFVAL { 10 }
+        ::= { omPacketStatsEntry 6 }
+
+omPacketStatsCountPeriod  OBJECT-TYPE
+        SYNTAX  Counter
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "Contains the time period in minutes that dropped packets 
+                 statistics are kept on this interface before alarm is 
+                 generated." 
+        DEFVAL { 5 }
+	::= { omPacketStatsEntry 7 }
+
+omPacketStatsResetThreshold  OBJECT-TYPE
+        SYNTAX  Counter
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "Contains the maximum number of dropped packets allowed
+                 for the time period above before a dropped packet alarm
+                 is cleared."
+        DEFVAL { 0 }
+        ::= { omPacketStatsEntry 8 }
+
+-- ****************************************************************************
+-- **************************** omEmerBrdcastConf *****************************
+-- ****************************************************************************
+
+omEmerPort  OBJECT-TYPE
+        SYNTAX  INTEGER (1..16)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The Emergency Broadcast logical port.  This is the logical
+		 input port where PIDs identified below in the MIB objects
+		 omEmerPidToBlockOne...omEmerPidToBlockFour will be blocked
+		 during an Emergency Broadcast condition."
+        ::= { omEmerBrdcastConf 1 }
+
+omEmerPidToBlockOne  OBJECT-TYPE
+        SYNTAX  INTEGER (-1..8191)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The first Emergency Broadcast PID to block.  The number
+		 minus one (-1) means not configured."
+        ::= { omEmerBrdcastConf 2 }
+
+omEmerPidToBlockTwo  OBJECT-TYPE
+        SYNTAX  INTEGER (-1..8191)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The second Emergency Broadcast PID to block.  The number
+		 minus one (-1) means not configured."
+        ::= { omEmerBrdcastConf 3 }
+
+omEmerPidToBlockThree  OBJECT-TYPE
+        SYNTAX  INTEGER (-1..8191)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The third Emergency Broadcast PID to block.  The number
+		 minus one (-1) means not configured."
+        ::= { omEmerBrdcastConf 4 }
+
+omEmerPidToBlockFour  OBJECT-TYPE
+        SYNTAX  INTEGER (-1..8191)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The fourth Emergency Broadcast PID to block.  The number
+		 minus one (-1) means not configured."
+        ::= { omEmerBrdcastConf 5 }
+        
+-- ****************************************************************************
+-- **************************** omContCount ***********************************
+-- ****************************************************************************
+omMissedContCountThreshold  OBJECT-TYPE
+        SYNTAX  INTEGER (1..50)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The Missed Continuity Count Threshold is the number of
+                 occurrences of MPEG messages that came in out of order
+                 or missed all together per minute."
+        DEFVAL { 10 }
+        ::= { omContCount 1 }
+        
+omMissedContCountResetThreshold  OBJECT-TYPE
+        SYNTAX  INTEGER (0..50)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The Missed Continuity Count Reset Threshold is the 
+                 maximum number of occurrences of MPEG messages that 
+                 came in out of order or missed all together per 
+                 minute that are allowed before the alarm is cleared."
+        DEFVAL { 0 }
+        ::= { omContCount 2 }
+        
+omContCountTimePeriod  OBJECT-TYPE
+        SYNTAX  INTEGER (0..10)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "Contains the time period in minutes that missed 
+                 continuity count occurrences are kept before an alarm 
+                 is generated."
+        DEFVAL { 5 }
+        ::= { omContCount 3 }
+        
+omMissedContCountTotal  OBJECT-TYPE
+        SYNTAX  Counter
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "Contains the total number of missed continuity count
+                 occurrences since last reset.  Setting the missed 
+                 continuity count total to any value (e.g., 0) will 
+                 result in the OM resetting the counter."
+        DEFVAL { 0 }
+        ::= { omContCount 4 }
+
+-- ****************************************************************************
+-- ************************* omPhysIF and omPhysIfConfig **********************
+-- ****************************************************************************
+-- Each row contains the parameters for every type of interface.  However,
+-- certain parameters are only applicable for certain interface types.
+-- ****************************************************************************
+
+omPhysIfConfigTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF OmPhysIfConfigEntry
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "A conceptual physical interface configuration table."
+        REFERENCE   " -- "
+        ::= { omPhysIfConfig 1 }
+
+omPhysIfConfigEntry OBJECT-TYPE
+        SYNTAX  OmPhysIfConfigEntry
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "An entry (conceptual row) in the OM1000 physical interface
+                 configuration table.  There is one row for each of the
+                 OM1000's 8 physical interfaces."
+        INDEX   { omPhysIfConfigInfcIndex  }
+        ::= { omPhysIfConfigTable 1}
+
+OmPhysIfConfigEntry ::= SEQUENCE
+        {
+        omPhysIfConfigInfcIndex         INTEGER,
+        omPhysIfConfigType              INTEGER,
+        omPhysIfMultiCastMac1           INTEGER,
+        omPhysIfMultiCastMac2           INTEGER,
+        omPhysIfMultiCastMac3           INTEGER,
+        omPhysIfConfigTransMode         INTEGER,
+        omPhysIfConfigDataRate          INTEGER,
+        omPhysIfConfigModFrequency      INTEGER,
+        omPhysIfConfigModOutLevel       INTEGER,
+        omPhysIfConfigModMode           INTEGER,
+        omPhysIfXmtMultiCastMac1        INTEGER,
+        omPhysIfXmtMultiCastMac2        INTEGER,
+        omPhysIfXmtMultiCastMac3        INTEGER,
+        omPhysIfXmtMultiCastUdpPort     INTEGER
+        }
+
+omPhysIfConfigInfcIndex  OBJECT-TYPE
+        SYNTAX  INTEGER (1..8)
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "The auxiliary variable used for identifying instances
+                 of the columnar objects in the omPhysIfConfgTable.  A
+                 value of 1 identifies physical configuration database
+                 record 1, etc."
+        ::= { omPhysIfConfigEntry 1 }
+
+omPhysIfConfigType  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                physTypeNull      (1),
+                physTypeConsole   (2),
+                physTypeEthernet  (3),
+                physTypeModulator (4),
+                physTypePidGen    (5),
+                physTypeRS232-25  (6),
+                physTypeRS530     (7),
+                physTypeRS232-9   (8)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "The type of the Physical interface controlled by this record.
+                 With this information along with the TypeNumber and
+                 SlotNumber, the actual location of the physical interface can
+                 be determined."
+        ::= { omPhysIfConfigEntry 2 }
+
+omPhysIfMultiCastMac1  OBJECT-TYPE
+        SYNTAX  INTEGER (0..16711935)
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "The 1st two components of Receive Multicast MAC address of the
+                 primary ethernet device in the OM (aa:bb:--:--:--:--), where
+                 'aa' is held in the upper half of the integer and 'bb' is held
+                 in the lower half.
+
+                 The entire MAC address is accessible through three MIB
+                 objects, since a MAC address is too big to fit into a single
+                 integer. The valid range is 0 to 16711935 (00FF00FF hex)."
+        ::= { omPhysIfConfigEntry 3 }
+
+omPhysIfMultiCastMac2  OBJECT-TYPE
+        SYNTAX  INTEGER (0..16711935)
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "The 2nd two components of Receive Multicast MAC address of the
+                 primary ethernet device in the OM (--:--:cc:dd:--:--), where
+                 'cc' is held in the upper half of the integer and 'dd' is held
+                 in the lower half.
+
+                 The entire MAC address is accessible through three MIB
+                 objects, since a MAC address is too big to fit into a single
+                 integer. The valid range is 0 to 16711935 (00FF00FF hex)."
+        ::= { omPhysIfConfigEntry 4 }
+
+omPhysIfMultiCastMac3  OBJECT-TYPE
+        SYNTAX  INTEGER (0..16711935)
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "The 3rd two components of Receive Multicast MAC address of the
+                 primary ethernet device in the OM (--:--:--:--:ee:ff), where
+                 'ee' is held in the upper half of the integer and 'ff' is held
+                 in the lower half.
+
+                 The entire MAC address is accessible through three MIB
+                 objects, since a MAC address is too big to fit into a single
+                 integer. The valid range is 0 to 16711935 (00FF00FF hex)."
+        ::= { omPhysIfConfigEntry 5 }
+
+omPhysIfConfigTransMode  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                modeAsync        (1),
+                modeSyncInternal (2),
+                modeSyncExternal (3),
+                modeSyncSlave    (4)
+                }
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "This object is only used if the omPhysIfConfigType is one
+                 of the serial types. It indicates the mode of the serial
+                 interface. The terms Internal, External, and Slave refer to
+                 the syncronous clock source.  The RS232-9 interface supports
+                 only the async mode. The optional RS232-25 and RS530
+                 interfaces support both the async and sync modes."
+        ::= { omPhysIfConfigEntry 6 }
+
+omPhysIfConfigDataRate  OBJECT-TYPE
+        SYNTAX  INTEGER (300..2048000)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "This object is only used if the omPhysIfConfigType is one
+                 of the serial types. It indicates the data rate of the serial
+                 interface, common for both input and output streams from this
+                 interface.  The rate is expressed as a baud rate within the
+                 range of 300 to 2048000. Valid rates are determined by the
+                 type of serial interface and it's mode:
+
+                 Async mode valid rates:
+                   RS232-9      (300,600,1200,2400,9600,19200)
+                   RS232-25     (300,600,1200,2400,9600,19200,38400,57600)
+                   RS530        (300,600,1200,2400,9600,19200,38400,57600)
+                 Sync mode valid rates:
+                   RS232-9      (not supported)
+                   RS232-25     (300 to 57600 inclusive)
+                   RS530        (300 to 2048000 inclusive)"
+        ::= { omPhysIfConfigEntry 7 }
+
+omPhysIfConfigModFrequency  OBJECT-TYPE
+        SYNTAX  INTEGER (7100..12900)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The modulator RF frequency.  This object is only used if the
+                 omPhysIfConfigType is 'PhysTypeModulator'. The range of values
+                 is 7100 to 12900 in steps of 5 (corresponding to 71.00 Mhz to
+                 129.00 MHz in steps of 50KHz)."
+        ::= { omPhysIfConfigEntry 8 }
+
+omPhysIfConfigModOutLevel  OBJECT-TYPE
+        SYNTAX  INTEGER (1..40)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The modulator relative RF output level.  This object is only
+                 used if the omPhysIfConfigType is 'PhysTypeModulator'.  The
+                 units are relative, with 1 being the lowest output level and
+                 40 being the highest output level."
+        ::= { omPhysIfConfigEntry 9 }
+
+omPhysIfConfigModMode  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                modModeStandby  (1),
+                modModeOperate  (2),
+                modModeCwTest   (3),
+                modMode2tTest   (4),
+                modModeConTest  (5),
+                modModeRevTest  (6)
+                }
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The modulator mode. This object is only used if the
+                 omPhysIfConfigType is 'PhysTypeModulator'."
+        ::= { omPhysIfConfigEntry 10 }
+
+omPhysIfXmtMultiCastMac1  OBJECT-TYPE
+        SYNTAX  INTEGER (0..16711935)
+        ACCESS  read-only
+        STATUS  deprecated
+        DESCRIPTION
+                "The 1st two components of Transmit Multicast MAC address of the
+                 primary ethernet device in the OM (aa:bb:--:--:--:--), where
+                 'aa' is held in the upper half of the integer and 'bb' is held
+                 in the lower half.
+
+                 The entire MAC address is accessible through three MIB
+                 objects, since a MAC address is too big to fit into a single
+                 integer. The valid range is 0 to 16711935 (00FF00FF hex).
+
+                 This object is not used with OM releases 3.4 and above."
+        ::= { omPhysIfConfigEntry 11 }
+
+omPhysIfXmtMultiCastMac2  OBJECT-TYPE
+        SYNTAX  INTEGER (0..16711935)
+        ACCESS  read-only
+        STATUS  deprecated
+        DESCRIPTION
+                "The 2nd two components of Transmit Multicast MAC address of the
+                 primary ethernet device in the OM (--:--:cc:dd:--:--), where
+                 'cc' is held in the upper half of the integer and 'dd' is held
+                 in the lower half.
+
+                 The entire MAC address is accessible through three MIB
+                 objects, since a MAC address is too big to fit into a single
+                 integer. The valid range is 0 to 16711935 (00FF00FF hex).
+
+                 This object is not used with OM releases 3.4 and above."
+        ::= { omPhysIfConfigEntry 12 }
+
+omPhysIfXmtMultiCastMac3  OBJECT-TYPE
+        SYNTAX  INTEGER (0..16711935)
+        ACCESS  read-only
+        STATUS  deprecated
+        DESCRIPTION
+                "The 3rd two components of Transmit Multicast MAC address of the
+                 primary ethernet device in the OM (--:--:--:--:ee:ff), where
+                 'ee' is held in the upper half of the integer and 'ff' is held
+                 in the lower half.
+
+                 The entire MAC address is accessible through three MIB
+                 objects, since a MAC address is too big to fit into a single
+                 integer. The valid range is 0 to 16711935 (00FF00FF hex).
+
+                 This object is not used with OM releases 3.4 and above."
+        ::= { omPhysIfConfigEntry 13 }
+
+omPhysIfXmtMultiCastUdpPort  OBJECT-TYPE
+        SYNTAX  INTEGER (0..65535)
+        ACCESS  read-only
+        STATUS  deprecated
+        DESCRIPTION
+                "The Transmit Multicast UDP Port Number.
+
+                 UDP Datagrams transmitted to this port number will
+                 automatically be assigned a broadcast IP address and a
+                 multicast MAC address.
+
+                 This object is not used with OM releases 3.4 and above."
+        ::= { omPhysIfConfigEntry 14 }
+
+-- ****************************************************************************
+-- ************************ omPhysIF .. omPhysIfStatus ************************
+-- ****************************************************************************
+
+omPhysIfStatusTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF OmPhysIfStatusEntry
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "A conceptual physical interface status Table. There will
+                 exist one row for each physical interface.  There are a
+                 maximum of 8 physical interfaces in the OM 1000."
+        REFERENCE   " -- "
+        ::= { omPhysIfStatus 1 }
+
+omPhysIfStatusEntry OBJECT-TYPE
+        SYNTAX  OmPhysIfStatusEntry
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "An entry (conceptual row) in the OM1000 Physical Interface
+                 Status Table.  There will exist one row for each physical
+                 interface.  There are 8 physical interfaces in the OM 1000."
+        INDEX   { omPhysIfStatusInfcIndex  }
+        ::= { omPhysIfStatusTable 1 }
+
+OmPhysIfStatusEntry ::= SEQUENCE
+        {
+        omPhysIfStatusInfcIndex         INTEGER (1..8),
+        omPhysIfStatusCode              INTEGER
+--
+--      IDENTIFY ADDITIONAL PHYSICAL IF STATUS TABLE ENTRIES HERE
+--
+        }
+
+omPhysIfStatusInfcIndex  OBJECT-TYPE
+        SYNTAX  INTEGER (1..8)
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "The auxiliary variable used for identifying instances of the
+                 columnar objects in the omPhysIfStatusTable.  A value of 1
+                 identifies physical configuration database record 1, etc.
+                 Once the desired interface is found by going through the
+                 omPhysIfConfigTable records, the same index can be used here
+                 to access its status."
+        ::= { omPhysIfStatusEntry 1 }
+
+omPhysIfStatusCode  OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Not used - reserved for future use."
+        ::= { omPhysIfStatusEntry 2 }
+
+--DEFINE ADDITIONAL PHYSICAL IF STATUS TABLE ENTRIES HERE
+
+-- ****************************************************************************
+-- *********************** omLogPort and omLogPortConfig **********************
+-- ****************************************************************************
+-- Each row contains the parameters for each type of port. However,
+-- certain parameters are only applicable to for certain port types.
+-- ****************************************************************************
+
+omLogPortConfigTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF OmLogPortConfigEntry
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "A conceptual physical interface status Table. There will
+                 exist one row for each physical interface.  There are a
+                 maximum of 8 physical interfaces in the OM 1000."
+        REFERENCE   " -- "
+        ::= { omLogPortConfig 1 }
+
+omLogPortConfigEntry OBJECT-TYPE
+        SYNTAX  OmLogPortConfigEntry
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "An entry (conceptual row) in the OM1000 Logical Interface
+                 Config Table.  There will exist one row for each logical
+                 interface.  There are a maximum of 16 logical interfaces
+                 in an OM 1000."
+        INDEX   { omLogPortConfigLogPortNumber  }
+        ::= { omLogPortConfigTable 1 }
+
+OmLogPortConfigEntry ::= SEQUENCE
+        {
+        omLogPortConfigLogPortNumber    INTEGER,
+        omLogPortConfigPhysIfNumber     INTEGER,
+        omLogPortConfigOperationMode    INTEGER,
+        omLogPortConfigAdminState       INTEGER,
+        omLogPortConfigUdpPortNumber    INTEGER,
+        omLogPortConfigDestIPaddress    IpAddress,
+        omLogPortConfigUdpPacking       INTEGER
+        }
+
+omLogPortConfigLogPortNumber  OBJECT-TYPE
+        SYNTAX  INTEGER (1..16)
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "The auxiliary variable used for identifying instances of the
+                 columnar objects in the omLogPortConfigTable.  A value of 1
+                 identifies logical port configuration database record 1, etc.
+                 Once the desired interface is found by going through the
+                 omLogPortConfigTable records, the same index can be used here
+                 to access its status."
+        ::= { omLogPortConfigEntry 1 }
+
+omLogPortConfigPhysIfNumber  OBJECT-TYPE
+        SYNTAX  INTEGER (1..8)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The number of the physical interface to which this logical
+                 port is associated.  This number can be used directly as
+                 the omPhysIfConfigInfcIndex or omPhysIfStatusInfcIndex to
+                 access the physical interface data records.  Valid range of
+                 values is 1 through 8, corresponding to the 8 physical OM
+                 interfaces"
+        ::= { omLogPortConfigEntry 2 }
+
+omLogPortConfigOperationMode  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                logicalInput  (1),
+                logicalOutput (2),
+                notConfigured (3)
+                }
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "Identifies the logical port as being either an input or
+                 output port, or as not configured. 'logicalOutput' is the only
+                 valid interface when the associated omPhysIfConfigType is set
+                 to 'physTypeModulator'. 'logicalInput' is the only valid
+                 interface when the associated omPhysIfConfigType is set to
+                 'physTypePidGen.'"
+        ::= { omLogPortConfigEntry 3 }
+
+omLogPortConfigAdminState  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                portUnlocked    (1),
+                portLocked      (2)
+                }
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "The operational (administrative) state of the port. The value
+                 'portUnlocked' is analogous to 'port on' and 'portLocked' is
+                 analogous to 'port off.'"
+        ::= { omLogPortConfigEntry 4 }
+
+omLogPortConfigUdpPortNumber  OBJECT-TYPE
+        SYNTAX  INTEGER (1..65535)
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "If the corresponding physical interface to this logical port
+                 is Ethernet, then this object defines the UDP port to be used
+                 as determined by omLogPortConfigOperationMode. The valid range
+                 of values is 1 to 65535 (0001 to FFFF hex)."
+        ::= { omLogPortConfigEntry 5 }
+
+omLogPortConfigDestIPaddress  OBJECT-TYPE
+        SYNTAX  IpAddress
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "If the corresponding physical interface to this logical port
+                 is Ethernet, and omLogPortConfigOperationMode is
+                 logicalOutput, then this object defines the IP address used
+                 for output.  It is unused otherwise."
+        ::= { omLogPortConfigEntry 6 }
+
+omLogPortConfigUdpPacking  OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                pack1 (1),
+                pack2 (2),
+                pack3 (3),
+                pack4 (4),
+                pack5 (5),
+                pack6 (6),
+                pack7 (7)
+                }
+        ACCESS  read-write
+        STATUS  mandatory
+        DESCRIPTION
+                "If the corresponding physical interface to this logical port
+                 is Ethernet, and omLogPortConfigOperationMode is output, then
+                 this object defines the number of MPEGs to be packed into
+                 a UDP datagram. It is used otherwise."
+        ::= { omLogPortConfigEntry 7 }
+
+-- ****************************************************************************
+-- **************************  omLogPortPidMap  *******************************
+-- ****************************************************************************
+-- Valid entries in the PID tables are always filled in top down, that is from
+-- smallest table index (1) to largest (16).  The omPidMapInPID and
+-- omPidMapOutPID entries immediately following the last valid entry should be
+-- set to -1 (FFFF hex). The remaining entries need not be modified."
+-- ****************************************************************************
+
+omPortPidMapTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF OmPortPidMapEntry
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "A conceptual PID Table. There will exist one row for each PID
+                 entry. The OM 1000 has a maximum of 32 entries for each port."
+        REFERENCE   " -- "
+        ::= { omLogPortPidMap 1 }
+
+omPortPidMapEntry OBJECT-TYPE
+        SYNTAX  OmPortPidMapEntry
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "TBD ***************"
+        INDEX   { omPidMapLogPortNumber, omPidMapEntryNumber }
+        ::= { omPortPidMapTable 1 }
+
+OmPortPidMapEntry ::= SEQUENCE
+        {
+        omPidMapLogPortNumber   INTEGER (1..16),
+        omPidMapEntryNumber     INTEGER (1..32),
+        omPidMapInPID           INTEGER (-1..8191),
+        omPidMapOutPID          INTEGER (-1..8191),
+        omPidMapDest1           INTEGER (0..16),
+        omPidMapDest2           INTEGER (0..16),
+        omPidMapDest3           INTEGER (0..16)
+        }
+
+omPidMapLogPortNumber  OBJECT-TYPE
+        SYNTAX  INTEGER (1..16)
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "The first auxiliary variable used for identifying instances of
+                 the columnar objects in the omPortPidMapTable.  A value of 1
+                 identifies logical port 1, etc.  The valid range of values is
+                 1 through 16."
+        ::= { omPortPidMapEntry 1 }
+
+omPidMapEntryNumber  OBJECT-TYPE
+        SYNTAX  INTEGER (1..32)
+        ACCESS  not-accessible
+        STATUS  mandatory
+        DESCRIPTION
+                "The second auxiliary variable used for identifying
+                 instances of the columnar objects in the omPortPidMapTable.
+                 A value of 1 identifies table entry 1 for the port identified
+                 in omPidMapLogPortNumber, etc. The valid range of values is
+                 1 through 32"
+        ::= { omPortPidMapEntry 2 }
+
+omPidMapInPID  OBJECT-TYPE
+        SYNTAX  INTEGER (-1..8191)
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "The input, or source, PID number.  This is the PID which is
+                 received by the OM on a properly configured logical input
+                 port. This received PID is replaced by the specified
+                 omPidMapOutPid for all but the default route (first entry for
+                 each port). All packets with this PID are routed to any of the
+                 valid omPidMapDestX values (non 0); if all three omPidMapDestX
+                 values are 0, the MPEG packet with this PID is dropped. The
+                 first OmPortPidMapEntry for each port is the default entry.
+                 The valid range of values is -1 though 8191 (FFFF or 0000 to
+                 1FFF hex)."
+        ::= { omPortPidMapEntry 3 }
+
+omPidMapOutPID  OBJECT-TYPE
+        SYNTAX  INTEGER (-1..8191)
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "The translated, or output, PID number.  This is the PID number
+                 which appears in MPEG packet when the packet is sent to an
+                 output logical port.  This PID replaces the omPidMapInPID in
+                 the multiplexed MPEG packet, when it is set to a value other
+                 than omPidMapInPID. The first OmPortPidMapEntry for each port
+                 is the default entry. The valid range of values is -1 though
+                 8191 (FFFF or 0000 to 1FFF hex)."
+        ::= { omPortPidMapEntry 4 }
+
+omPidMapDest1  OBJECT-TYPE
+        SYNTAX  INTEGER (0..16)
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "This is the logical port number of a properly configured
+                 output port.  A '0' means this destination is not used.
+                 Unused destinations MUST be put in the higher number
+                 locations, as the OM scans from Dest1 to Dest3, and stops
+                 scanning for valid destination ports when it sees a '0'.
+
+                 The number in this field should be the same port number
+                 used as index fields in other SNMP groups dealing with
+                 logical ports.  If all three destinations are '0', then the
+                 MPEG packet with the specified PID will be dropped. The
+                 valid range of values is 0 to 16."
+        ::= { omPortPidMapEntry 5 }
+
+omPidMapDest2  OBJECT-TYPE
+        SYNTAX  INTEGER (0..16)
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Refer to the description for omPidMapDest1."
+        ::= { omPortPidMapEntry 6 }
+
+omPidMapDest3  OBJECT-TYPE
+        SYNTAX  INTEGER (0..16)
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Refer to the description for omPidMapDest1."
+        ::= { omPortPidMapEntry 7 }
+
+-- ****************************************************************************
+-- *********************** omLogPortRcvMcast **********************************
+-- ****************************************************************************
+-- Each row contains the parameters for each type of port. However,
+-- certain parameters are only applicable to for certain port types.
+-- ****************************************************************************
+
+omPortRcvMcastIpTable OBJECT-TYPE
+    SYNTAX SEQUENCE OF OmPortRcvMcastIpEntry
+    ACCESS not-accessible
+    STATUS mandatory
+    DESCRIPTION
+        "This table is contains Receive Multicast IP addresses for each Logical Port."
+    REFERENCE" - - - "
+::= { omLogPortRcvMcast 1}
+
+omPortRcvMcastIpEntry OBJECT-TYPE
+    SYNTAX OmPortRcvMcastIpEntry
+    ACCESS not-accessible
+    STATUS mandatory
+    INDEX {omRcvMcastIpLogPortNumber, omRcvMcastIpEntryNumber}
+::= { omPortRcvMcastIpTable 1}
+
+OmPortRcvMcastIpEntry ::= SEQUENCE
+    {
+     omRcvMcastIpLogPortNumber      INTEGER,
+     omRcvMcastIpEntryNumber        INTEGER,
+     omRcvMcastIpAddress            IpAddress
+    }
+
+omRcvMcastIpLogPortNumber OBJECT-TYPE
+    SYNTAX INTEGER (1..16)
+    ACCESS not-accessible
+    STATUS mandatory
+    DESCRIPTION
+        "The Logical Port Index."
+    REFERENCE " -- "
+::= { omPortRcvMcastIpEntry 1}
+
+omRcvMcastIpEntryNumber  OBJECT-TYPE
+    SYNTAX INTEGER (1..5)
+    ACCESS not-accessible
+    STATUS mandatory
+    DESCRIPTION
+        "The Receive Multicast IP Address Index."
+    REFERENCE " -- "
+::= { omPortRcvMcastIpEntry 2}
+
+omRcvMcastIpAddress OBJECT-TYPE
+    SYNTAX  IpAddress
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+        "The Receive Multicast IP Address.  Must be in the range
+         224.0.0.0 through 239.255.255.255.  A value of 0.0.0.0
+         indicates that the object is not used."
+    REFERENCE " -- "
+::= { omPortRcvMcastIpEntry 3}
+
+-- ****************************************************************************
+-- ******************************* omTraps Group ******************************
+-- ****************************************************************************
+-- The OM 1000 specific traps.
+-- ****************************************************************************
+
+omTrapPllError TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued if the Phase Locked Loop
+                 becomes unlocked.  No additional information
+                 is provided."
+        ::= 2000
+
+omTrapRfOutError TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued if the RF modulator output port becomes
+                 less than the minimum level expected for the current RF
+                 level setting. This trap is only issued when a logical
+                 output port is associated with the RF modulator port and
+                 when its mode setting is operate.  No additional information
+                 is provided."
+        ::= 2001
+
+omTrapCtrlLinkError TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued if the TCP connection with the
+                 Control Host is not established or is lost.  One of the
+                 responsibilities of the control host is to provision EAS,
+                 so when this alarm is set, EAS may not be properly
+                 provisioned.  The varbind trapAdditionalInfoInteger1 
+                 contains the IP address of the control host."
+        ::= 2002
+
+omTrapDuplicateInputUdpPortNumber TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when a duplicate UDP port number
+                 is encountered for logical Ethernet input ports.
+                 The OM will only configure the first port encountered
+                 with this UDP port number.  The following varbinds are
+                 used to identify the duplicate UPD port number and the
+                 failed port:
+                     trapAdditionalInfoInteger1 - logical input port of
+                          the first port encountered with a duplicate
+                          UDP port number
+                     trapAdditionalInfoInteger2 - logical input port of
+                          a subsequent entry with duplicate UDP port
+                          number that is not configured
+                     trapAdditionalInfoInteger3 - duplicate UDP port number."
+        ::= 2003
+
+omTrapInvalidRecMcastIpAddress TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when a Receive Multicast IP
+                 address is not in the required range.  The following
+                 varbinds are used to identify the invalid Receive
+                 Multicast Address:
+                     trapAdditionalInfoInteger1 - logical input port
+                     trapAdditionalInfoInteger2 - index, together
+                          with the logical input port identifies the
+                          entry within the Receive Multicast IP table
+                     trapAdditionalInfoInteger3 - invalid receive
+                          multicast address."
+        ::= 2004
+
+omTrapInvalidMcastTtlSetting TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when the Multicast Time to live
+                 (TTL) setting is not in the defined range.  The 
+                 default is used when an invalid value is configured. 
+                 The following varbinds are used to identify the
+                 invalid TTL setting, as well as the default value:
+                     trapAdditionalInfoInteger1 - invalid TTL setting
+                     trapAdditionalInfoInteger2 - default TTL setting."
+        ::= 2005 
+
+omTrapEmergencyAlertStatus TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued whenever the EAS state changes.  When
+                 an EAS condition is activated, i.e. contacts are closed, a
+                 warning alarm is generated.  When the EAS condition is
+                 cleared, a clear alarm is generated."
+        ::= 2006 
+
+omTrapMuxPacketsDropped TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when packets on the aggregate input
+                 to the multiplexer are dropped as specified by the threshold
+                 criteria located in the omPacketStatsTable.  The following
+                 varbinds are used to report the configured thresholds:
+                     trapAdditionalInfoInteger1 - Dropped Packet Threshold
+                     trapAdditionalInfoInteger2 - Time Threshold (in minutes)
+                     trapAdditionalInfoInteger3 - Reset Threshold
+                 When the number of dropped packets meets or exceeds the
+                 'Dropped Packet Threshold' for a duration specified by
+                 the 'Time Threshold', a major alarm is generated.  When
+                 the number of dropped packets falls below the 'Reset
+                 Threshold' for the same duration ('Time Threshold'), a
+                 clear alarm is generated."
+        ::= 2007 
+
+omTrapRFOutputPacketsDropped TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when packets on the RF output port
+                 are dropped as specified by the threshold criteria
+                 located in the omPacketStatsTable.  The following varbinds
+                 are used to report the configured thresholds:
+                     trapAdditionalInfoInteger1 - Dropped Packet Threshold
+                     trapAdditionalInfoInteger2 - Time Threshold (in minutes)
+                     trapAdditionalInfoInteger3 - Reset Threshold
+                 When the number of dropped packets meets or exceeds the
+                 'Dropped Packet Threshold' for a duration specified by
+                 the 'Time Threshold', a major alarm is generated.  When
+                 the number of dropped packets falls below the 'Reset
+                 Threshold' for the same duration ('Time Threshold'), a
+                 clear alarm is generated."
+        ::= 2008
+        
+omTrapMissedContinuityCounts TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when the number of missed continuity
+                 count occurrences exceeds the threshold criteria. 
+                 TrapAdditionalInfoInteger1 contains the PID value."
+        ::= 2009 
+
+-- ****************************************************************************
+-- ****************************** omAlarms Group ******************************
+-- ****************************************************************************
+-- Each of the following OM 1000 alarm objects corresponds to the OM 1000 traps
+-- declared above, and have the same identification number as the corrsponding
+-- trap.
+-- ****************************************************************************
+
+omAlarmPllError OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                ok              (1),
+                undetermined    (2),
+                warning         (3),
+                minor           (4),
+                major           (5),
+                critical        (6)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Set to critical when the Phase Locked Loop becomes
+                 unlocked." 
+        ::= { omAlarms 2000 }
+
+omAlarmRfOutError OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                ok              (1),
+                undetermined    (2),
+                warning         (3),
+                minor           (4),
+                major           (5),
+                critical        (6)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Set to critical when the modulator RF output level is
+                 not within expected limits."
+        ::= { omAlarms 2001 }
+
+omAlarmCtrlLinkError OBJECT-TYPE
+        SYNTAX  INTEGER
+                {
+                ok              (1),
+                undetermined    (2),
+                warning         (3),
+                minor           (4),
+                major           (5),
+                critical        (6)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Set to major when the TCP connection with the
+                Control Host is not established or is lost."
+        ::= { omAlarms 2002 }
+
+omAlarmDuplicateInputUdpPortNumber OBJECT-TYPE
+        SYNTAX  INTEGER 
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "This status is a counter specifying the number of duplicate
+                 UDP port number encountered.  When two or more logical
+                 Ethernet input ports are configured with the same UPD port
+                 number, the OM will only configure the first port and will
+                 increment this counter when another port with the same UDP
+                 port number is encountered."
+        ::= { omAlarms 2003 }
+
+omAlarmInvalidRecMcastIpAddress OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "This status is a counter specifying the number of Receive
+                 Multicast IP addresses not in the required range."
+         ::= { omAlarms 2004 }
+
+omAlarmInvalidMcastTtlSetting OBJECT-TYPE
+        SYNTAX  INTEGER 
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "This status is a counter specifying whether the Multicast
+                 Time to live setting was not valid.  The OM will default the
+                 parameter to a value of 30."
+        ::= { omAlarms 2005 }
+
+omAlarmAlertStatus OBJECT-TYPE
+        SYNTAX  INTEGER 
+                {
+                ok              (1),
+                undetermined    (2),
+                warning         (3),
+                minor           (4),
+                major           (5),
+                critical        (6)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Set to warning when the EAS condition is activated,
+                 i.e. contacts are closed. When the EAS condition is
+                 cleared, this is set to ok."
+        ::= { omAlarms 2006 }
+
+omAlarmMuxPacketsDroppedError OBJECT-TYPE
+        SYNTAX  INTEGER 
+                {
+                ok              (1),
+                undetermined    (2),
+                warning         (3),
+                minor           (4),
+                major           (5),
+                critical        (6)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Set to major when packets on the aggregate input
+                 to the multiplexer are dropped as specified by the threshold
+                 criteria located in the omPacketStatsTable."
+        ::= { omAlarms 2007 }
+
+omAlarmRFOutputPacketsDroppedError OBJECT-TYPE
+        SYNTAX  INTEGER 
+                {
+                ok              (1),
+                undetermined    (2),
+                warning         (3),
+                minor           (4),
+                major           (5),
+                critical        (6)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Set to major when packets on the RF output port as
+                 specified by the threshold criteria located in the
+                 omPacketStatsTable."
+        ::= { omAlarms 2008 }
+        
+omAlarmMissedContinuityCountsError OBJECT-TYPE
+        SYNTAX  INTEGER 
+                {
+                ok              (1),
+                undetermined    (2),
+                warning         (3),
+                minor           (4),
+                major           (5),
+                critical        (6)
+                }
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+                "Set to major when the missed continuity count 
+                 occurrences exceeds the value as specified by the 
+                 threshold criteria located in the MCC Threshold."
+        ::= { omAlarms 2009 }
+
+
+-- ****************************************************************************
+-- **************************** NLSBBN Traps Group ****************************
+-- ****************************************************************************
+-- This group contains those objects which are commonly defined for the Next
+-- Level Systems Broad Band Network except that the ENTERPRISE is set specific
+-- to the OM 1000.  Trap IDs start at 1.
+-- ****************************************************************************
+
+trapNewNEFound TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedValueOID
+                }
+        DESCRIPTION
+                "This trap is isssued if a Proxy Agent Detected A New NE.
+                 trapPerceivedSeverity - 'indeterminate'
+                 trapChangedValueOID - This  variable identifies the new
+                 Network Element.  This trap is not issues by non-proxy
+                 agents."
+        ::= 1
+
+
+trapNewNELost TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedValueOID
+                }
+        DESCRIPTION
+                "This trap is isssued if a Proxy Agent lost communication with
+                 NE.  trapPerceivedSeverity - 'critical'.
+                 trapChangedValueOID - This  variable identifies the new
+                 Network Element. This trap is not issues by non-proxy agents."
+        ::= 2
+
+
+trapConfigurationChangeInteger TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger
+                }
+        DESCRIPTION
+                "This trap is issued if configuration of a single variable
+                 with integer type was changed (via ANY interface).
+                 TrapChangedValueInteger variable may contain current reading
+                 of that variable.
+                 trapPerceivedSeverity - 'indeterminate'"
+        ::= 3
+
+
+trapConfigurationChangeDisplayString TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueDisplayString
+                }
+        DESCRIPTION
+                "This trap is issued if configuration of a single variable
+                 with DispalayString type was changed (via ANY interface).
+                 TrapChangedValueDisplayString variable may contain current
+                 reading of that variable.
+                 trapPerceivedSeverity - 'indeterminate'"
+        ::= 4
+
+
+trapConfigurationChangeOID TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueOID
+                }
+        DESCRIPTION
+                "This trap is issued if configuration of a single variable
+                 with OID type was changed (via ANY interface).
+                 TrapChangedValueOID variable may contain current reading
+                 of that variable.
+                 trapPerceivedSeverity - 'indeterminate'"
+        ::= 5
+
+trapConfigurationChangeIpAddress TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueIpAddress
+                }
+        DESCRIPTION
+                "This trap is issued if configuration of a single variable
+                 with IpAddress type was changed (via ANY interface).
+                 TrapChangedValueIpAddress variable may contain current reading
+                 of that variable.
+                 trapPerceivedSeverity - 'indeterminate'"
+        ::= 6
+
+
+trapToBeSendQueueOverflow TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp
+                }
+        DESCRIPTION
+                "This trap is issued if SNMP agent's TrapToBeSendQueue is full.
+                 trapPerceivedSeverity - 'major'
+                 trapNetworkElemModelNumber - Model # of the Agent
+                 trapNetworkElemSerialNum - Serial # of the Agent
+                 trapNetworkElemOperState - from Ident MIB
+                 trapNetworkElemAlarmStatus - from Ident MIB
+                 trapNetworkElemAdminState - from Ident MIB
+                 trapNetworkElemAvailStatus - from Ident MIB"
+        ::= 7
+
+-- ****************************************************************************
+-- ****************************** DNS Traps Group *****************************
+-- ****************************************************************************
+-- This group contains those objects which are commonly defined for the Digital
+-- Network Systems group except that the ENTERPRISE is set specific to the
+-- OM 1000.  Trap IDs start at 20.
+-- ****************************************************************************
+
+trapConditionNotInList TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued if a condition is being cleared and
+                 it is not in the condition list. "
+        ::= 20
+
+trapConditionAlreadyInList TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued if a condition is being set and
+                 it is already in the condition list. "
+        ::= 21
+
+trapConditionListFull TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued if a condition is being set and
+                 the condition list is full. "
+        ::= 22
+
+trapInvalidCaseInSwitch TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when in a switch statement the
+                 default case is reached.  The trapAdditionalInfoInteger1
+                 will contain the value of the switch.
+                 The trapAdditionalInfoInteger2 will contain the
+                 task ID and the trapAdditionalInfoInteger3 will
+                 contain the function ID."
+        ::= 23
+
+trapCannotCreateSemaphore TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when a semaphore cannot
+                 be created. The trapAdditionalInfoInteger1 will contain the
+                 task ID and the trapAdditionalInfoInteger2 will
+                 contain the function ID."
+        ::= 24
+
+trapCannotOpenSocket TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when a socket cannot
+                 be opened. The trapAdditionalInfoInteger1 will contain the
+                 task ID. The trapAdditionalInfoInteger2 will contain the
+                 errno returned by the call to socket()."
+        ::= 25
+
+trapUnknownMessageReceived TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when an unknown message
+                 is received.  The trapAdditionalInfoInteger1 will contain the
+                 message ID. The trapAdditionalInfoInteger2 will contain the
+                 task ID."
+        ::= 26
+
+trapInvalidMessageReceived TRAP-TYPE
+        ENTERPRISE om1000
+        VARIABLES
+                {
+                trapIdentifier,
+                trapNetworkElemModelNumber,
+                trapNetworkElemSerialNum,
+                trapPerceivedSeverity,
+                trapNetworkElemOperState,
+                trapNetworkElemAlarmStatus,
+                trapNetworkElemAdminState,
+                trapNetworkElemAvailStatus,
+                trapText,
+                trapNETrapLastTrapTimeStamp,
+                trapChangedObjectId,
+                trapChangedValueInteger,
+                trapAdditionalInfoInteger1,
+                trapAdditionalInfoInteger2,
+                trapAdditionalInfoInteger3
+                }
+        DESCRIPTION
+                "This trap is issued when an invalid message
+                 is received.  The trapAdditionalInfoInteger1 will contain the
+                 message ID. The trapAdditionalInfoInteger2 will contain the
+                 task ID."
+        ::= 27
+
+END
+

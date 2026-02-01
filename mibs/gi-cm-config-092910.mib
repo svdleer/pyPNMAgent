@@ -1,0 +1,2838 @@
+--
+-- (c) 2002 Motorola, Inc.
+--
+
+CM-CONFIG-MIB DEFINITIONS ::= BEGIN
+
+
+IMPORTS
+        MODULE-COMPLIANCE, OBJECT-GROUP
+            FROM SNMPv2-CONF
+        enterprises, OBJECT-TYPE, MODULE-IDENTITY, Unsigned32, IpAddress
+            FROM SNMPv2-SMI
+        InetPortNumber 
+            FROM INET-ADDRESS-MIB            
+        TruthValue, RowStatus, DisplayString,DateAndTime
+            FROM SNMPv2-TC
+        SnmpAdminString
+            FROM SNMP-FRAMEWORK-MIB
+        DocsX509ASN1DEREncodedCertificate
+            FROM DOCS-IETF-BPI2-MIB       -- RFC 4131
+       docsDevDateTime
+            FROM DOCS-CABLE-DEVICE-MIB    -- RFC 4639
+        sysDescr
+            FROM SNMPv2-MIB;              -- RFC 3418
+
+--
+-- Path to root
+--
+
+gi OBJECT IDENTIFIER ::= {enterprises 1166}
+giproducts OBJECT IDENTIFIER ::= {gi 1}
+cm OBJECT IDENTIFIER ::= {giproducts 19}
+ 
+cmConfigPrivateBase MODULE-IDENTITY
+LAST-UPDATED "201009291000Z"  -- Sept 29, 2010
+ORGANIZATION "Motorola BCS"
+CONTACT-INFO "Carolyn Huynh or Tom Beifuss
+Postal: 6450 Sequence Dr.
+San Diego, CA 92121
+Tel: +1 858 404-3503 or 404-2643
+Fax: +1 858 404-3480
+E-mail: carolynhuynh@motorola.com or tom.beifuss@motorola.com"
+
+DESCRIPTION
+"This module defines proprietary MIB variables for the Motorola SB 
+line of cable modems."   
+
+REVISION "201009291000Z"
+DESCRIPTION
+"Edited by Sravani Kolli and Mithun.
+- Added MIB cqvds00024094 
+- cmConfigAdditionalDSIfIndex
+- Modified cqvds00024489 
+- cmConfigSequenceOutOfRangeOverridePackets 
+- Modified cqvds00024590
+- cmConfigDownstreamFrequency
+- cmConfigWaitBeforeCpeMacReplace."
+
+REVISION "201008161000Z"
+DESCRIPTION
+"Edited by Tom Beifuss, Soumya Kolar, Kokila H and Mithun.
+- Added MIB cqvds00023824
+- cmConfigSequenceOutOfRangeOverrideEnable
+- cmConfigSequenceOutOfRangeOverridePackets
+- cmConfigSequenceOutOfRangeOverrideTimeout
+- Added MIB cqvds00023805
+- cmConfigWaitBeforeCpeMacReplace
+- Added MIB cqvds00023802
+- cmConfigDownstreamFrequency 
+- cmConfigAcquireFrquencyAtQAM
+- cmConfigStartFrequencyDetection 
+- cmFrequencyDetectionResultTable
+- cmFrequencyDetectionResultEntry 
+- cmFrequencyDetectionResultIndex	
+- cmFrequencyDetectionResultElement"
+
+REVISION "201007131000Z"
+DESCRIPTION
+"Edited by Keshav Kumar, Kevin and Mithun.
+- Added MIB cqvds00023036 
+- modemCmTurboDoxRTTThreshold
+- Modified MIB cqvds00023534 
+- cmStandbyCapable
+- cmPromiscuousMode
+- cmSecondaryLEDColorDisable
+- cmConfigCpeInterfaceEnable
+- cmConfigHfcInterfaceEnable."
+
+REVISION "201005181000Z"
+DESCRIPTION
+"Edited by Rajiv Pakanati, Uma and Mithun.
+- Added MIB cqvds00022866 
+- cmConfigVendorObjectsBcm  
+- cmAckCelEnable.
+- Added MIB cqvds00022940
+- cmConfigCpeInterfaceEnable
+- cmConfigHfcInterfaceEnable"
+
+REVISION  "201004211000Z"
+DESCRIPTION
+"Edited by Hugo Sibilla and Mithun.
+- Modified MIB cqvds00022297
+- cmConfigGuiAdmin
+- cmConfigGuiRoot
+- Added MIB cqvds00022297
+- cmConfigGuiAdminTable
+- cmConfigGuiAdminEntry 
+- cmConfigGuiAdminDeviceId 
+- cmConfigGuiAdminList 
+- cmConfigGuiAdminActive
+- cmConfigGuiAdminRowStatus  
+- cmConfigGuiRootTable
+- cmConfigGuiRootEntry 
+- cmConfigGuiRootDeviceId
+- cmConfigGuiRootList
+- cmConfigGuiRootActive
+- cmConfigGuiRootRowStatus"
+
+REVISION "201002151000Z"
+DESCRIPTION
+"Edited by Venkatesh and Mithun.
+- Added MIB cqvds00021156 
+- cmConfigSecureShellAccess  
+- cmConfigSSHCpeInterfaceEnable."
+
+
+REVISION "201001111000Z"
+DESCRIPTION
+"Edited by Rajiv and Mithun.
+- Added MIB cqvds00020698 
+- cmConfigGwMsoManagementType."
+
+
+REVISION "200912141000Z"
+DESCRIPTION
+"Edited by Kevin, Lisa and Mithun.
+- Modified MIB cqvds00019981
+- cmMotVendorMDDHonorIp."
+
+REVISION "200911131000Z"
+DESCRIPTION
+"Edited by Rich,Shilpa,P.Rajiv,Poorna and Mithun.
+- Added MIB cqvds00019727
+- cmConfigUdcCapable.
+
+- Modified MIB cqvds00019695
+- cmFreqCustomList
+- cmFreqCustomListBank2
+- cmFreqCustomListBank3
+- cmFreqCustomListBank4."
+
+REVISION "200910211000Z"
+DESCRIPTION
+"Edited by Tom Beifuss,Sravani Kolli  and Poorna.
+- Added MIB cqvds00018587
+- cmMotVendorMDDHonorIp
+
+- Added MIB cqvds00018490
+- cmConfigTunerSpurAvoidanceMode
+
+- Modified MIB cqvds00018723
+- cmConfigDCCUpstreamDSBonded."
+
+REVISION "200909101000Z"
+DESCRIPTION
+"Edited by Sravani Kolli  and Poorna.
+- Modified MIB cqvds00017527
+- cmSnmpDisplayHtml."
+
+
+REVISION "200908111000Z"
+DESCRIPTION
+"Edited by Jeff, Uma, A.Kiran Kumar,Ravi and Poorna.    
+
+- Moidfied MIB cqvds00017208  
+- cmFreqPlanType             
+
+- Added MIB cdvds00017154
+- cmConfigGenericObjects
+- cmConfigLastResetToDefaults
+- cmConfigNotifications
+- cmConfigResetToDefaultsTrap
+
+- Added MIB cqvds00016773
+- cmConfigGuiAutoRefreshTimer
+
+- Added MIB cqvds00015959
+- cmConfigMixedChannelBonding."
+
+REVISION "200907021000Z"
+DESCRIPTION
+"Edited by Ryan Chen,Sravani and Poorna.
+
+- Added MIB cqvds00016235
+- cmConfigGuiAdmin
+- cmConfigGuiRoot
+
+- Added MIB cqvds00014545
+- cmConfigDCCUpstreamDSBonded."
+
+REVISION "200905281000Z"
+DESCRIPTION
+"Edited by Grace,Reddy Ravi and Poorna.
+- Added MIB cqvds00015801
+- cmConfigCPEMacAddrAging
+
+- Added MIB cqvds00015618 
+- cmConfigDefaultSnmpAccess"
+
+REVISION "200904221000Z"
+DESCRIPTION
+"Edited by Krishna Murthy  and Poorna.
+- Modified MIB cqvds00014375
+- cmConfigEtherSpeed"
+
+REVISION "200903161000Z"
+DESCRIPTION
+"Edited by Sravani Kolli, Soumya and Poorna.
+- Added MIB cqvds00013898
+- cmFreqCustomListBank2
+- cmFreqCustomListBank3
+- cmFreqCustomListBank4"
+
+REVISION "200902181000Z"
+DESCRIPTION
+"Edited by Tom, S Manivannan,Soumya and Poorna.
+- Added MIB cqvds00013068
+- cmConfigPartialServiceObjects
+- cmConfigPartialServiceAction
+- cmConfigBondingRecoveryObjects
+- cmConfigBondingRecoveryEnable
+- cmConfigBondingRecoveryTrafficIdlePeriod
+- cmConfigBondingRecoveryTrafficPacketCountThreshold
+
+- Modified MIB cqvds00013216
+- cmRegularUserName."
+
+REVISION "200901051000Z"
+DESCRIPTION
+"Edited by Natalie Nguyen, Reddy Raviprasad, Soumya and Poorna.
+- Modified MIB cqvds00012138
+- modemCmTurboDoxEnable
+- Modified MIB cqvds00010854
+- cmFreqCustomList."
+
+REVISION "200810171000Z"
+DESCRIPTION
+"Edited by Ananth Nayak, Manivannan, Kevin, Poorna and Soumya
+- Added MIB cqvds00010032
+- cmMotVendorCVC
+- cmMotVendorCVCFragmentTable
+- cmMotVendorCVCFragmentEntry
+- cmMotVendorCVCFragmentIndex
+- cmMotVendorCVCFragmentData
+- cmMotVendorCVCFragmentFinal
+- cmMotVendorSwDnldTable
+- cmMotVendorSwDnldEntry
+- cmMotVendorSwDnldIndex
+- cmMotVendorHardwareModel
+- cmMotVendorSwServer
+- cmMotVendorSwFilename
+- cmMotVendorSwAdminStatus
+
+- Added MIB cqvds00009981
+- cmConfigGUIType
+
+- Modified MIB cqvds00010021
+- cmRegularUserName 
+- cmRegularUserPassword 
+- cmSuperUserName 
+- cmSuperUserPassword."
+
+
+REVISION "200809091000Z"
+DESCRIPTION
+"Edited by Poorna, Soumya, Mahesh Vithal Talewad and Richard DiBenedetto
+- Added MIB cqvds00009819
+- cmMtaResetToDefaults.
+
+- Modified MIB cqvds00009947
+- cmFreqPlanType
+
+- Modified MIBcqvds00009963
+- cmConfigFreq1
+- cmConfigFreq2 
+- cmConfigFreq3
+- cmFreqCustomList
+- cmDocsis30Capable."
+
+REVISION "200807210000Z"
+DESCRIPTION
+"Edited by Tarun, Soumya and Santosh
+- Added cmDsTimeoutEnable.
+- Added cmDsTimeoutValue"
+
+REVISION "200804150000Z"
+DESCRIPTION
+"Edited by Tom Beifuss
+- Added cmSecondaryLEDColorDisable."
+
+REVISION "200712150000Z"
+DESCRIPTION
+"Edited by Howard Cohen
+- Added cmMtaProvMode and cmMtaCustomProvParam."
+
+REVISION "200708270000Z"
+DESCRIPTION
+"Added due to changes made by Ryan Chen
+- Edited on 200609200000Z
+- Added cmPromiscuousMode for SB5001."
+
+REVISION "200704270000Z"
+DESCRIPTION
+"Edited by Jeff Christensen
+- Merged SBV5x2x Password of the Day Feature.
+- cmPasswordOfDaySeed size value changed"
+
+REVISION "200610310000Z"
+DESCRIPTION
+"Edited by Chau Do
+- Added cmConfigMtaObjects Table for eMTA processing."
+
+REVISION "200607240000Z"
+DESCRIPTION
+"Edited by Ryan Chen
+- Added cmClearUpstreamFavChanID for SB5101/E."
+
+REVISION "200604280000Z"
+DESCRIPTION
+"Edited by Chris Li
+- Add cmDsBondingCapable to allow enable/disable the DS channel bonding feature
+  for SB6100."
+
+REVISION "200603270000Z"
+DESCRIPTION
+"Edited by Ryan Chen
+- Add cmAllowWirelessCardParamReset to allow refreshing the parameter
+of the wireless card."
+
+REVISION "200512300000Z"
+DESCRIPTION
+"Edited by Ryan Chen
+  - Added cmDocsis1xHackForCmts20Enable for SB5101/E."
+
+REVISION "200512130000Z"
+DESCRIPTION
+"Edited by Carolyn Huynh
+  - Added cmFreqCustomList for SB5101/E."
+
+REVISION "200512130000Z"
+DESCRIPTION
+"Edited by Tom Beifuss
+- Changed the cmConfigEtherSpeed and cmConfigEtherStatsDuplex to reveal the state of 
+  the values stored in nonvolatile memory. Note that these variables are only used when the
+  cmConfigEtherAutoNegotiation is set to FALSE. The ifSpeed and dot3StatsDuplexStatus variables
+  should be used to determine how the modem is currently operating"
+
+REVISION "200511160000Z"
+DESCRIPTION
+"Edited by Carolyn Huynh
+- Changed the cmConfigEtherSpeed value to speed10Mbps and speed100Mbps to avoid
+  the compiling error."
+
+REVISION "200511030000Z"
+DESCRIPTION
+"Edited by Carolyn Huynh
+- Added cmConfigEtherAutoNegotiation cmConfigEtherStatsDuplex, cmConfigEtherSpeed,
+  cmConfigEtherOperStatus."
+
+REVISION "200509280000Z"
+DESCRIPTION
+"Edited by Carolyn Huynh
+- Added cmConfigT3TimeoutInitRngRetries for SB5101/E. "
+
+REVISION "200509130000Z"
+DESCRIPTION
+"Edited by Carolyn Huynh
+- Added cmConfigEnableAllEventLogPriorities for SB5101/E. "
+
+REVISION "200501110000Z"
+DESCRIPTION
+"Edited by Carolyn Huynh
+- Updated cmFreqPlanType to allow 0..4"
+
+REVISION "200409170000Z"
+DESCRIPTION
+"Edited by Kevin Marez
+- Revised Reset To Factory Defaults description and corresponding objects
+to be consistent with each other. "
+
+REVISION "200408160000Z"
+DESCRIPTION
+"Edited by Kevin Marez
+- Revise all MIB descriptions to include the following information:
+Storage, Modification, Default Value and Reset To Factory behavior. "
+
+REVISION "200407270000Z"
+DESCRIPTION
+"Edited by Kaitlyn Chau
+- Add cmConfigFullResetOnT4 to perform a full reset after T4 Timeout condition
+and start scanning the next frequency on the list."
+
+REVISION "200407270000Z"
+DESCRIPTION
+"Edited by Carolyn Huynh
+- Add cmConfigFullResetOnT4 to perform a full reset after T4 Timeout condition
+and start scanning the next frequency on the list."
+
+
+REVISION "200407150000Z"
+DESCRIPTION
+"Edited by Kevin Marez
+- Add modemCmTurboRemoveAllPorts, modemCmTurboDoxAddPort, modemCmEnable
+MsoFeatures, and modemCmDisablePacketcable objects. "
+
+REVISION "200403300000Z"
+DESCRIPTION
+"Edited by Carolyn Huynh
+- Add cmSunboxCapable to ignore TFTP response from a wrong SUN box interface 
+and allows to register when CMTS is connected to a global loop with multiple 
+interfaces. "
+     
+REVISION "200402200000Z"
+DESCRIPTION
+"Edited by Kaitlyn Chau.
+- Add cmConfigGwRIPDisplayMode to allow different display
+  settings of the RIP GUI pages. "
+  
+REVISION "200402040000Z"
+DESCRIPTION
+"Edited by P. Rajiv. Published as giCmConfig-16.mib. 
+- SCR1699 - updated cmConfigGatewayDeviceOperMode to support a new
+  mode (cableHomeVersion2). This allows cmConfigGatewayDeviceOperMode to
+  be in sync with rgOperMode in brcm-rg-control.mib." 
+
+REVISION "200401260000Z"
+DESCRIPTION
+"Edited by Carolyn Huynh.
+- Add cmConfigGwRIPDownloadFeatureEnable to enable the Time Warner's Customer 
+  Premise Router (CPR) Config Download GUI page."
+  
+REVISION "200401220000Z"
+DESCRIPTION
+"Edited by Jason Krasnow.
+- Add cmConfigGwWrdFeatureEnable."
+
+REVISION "200309020000Z"
+DESCRIPTION
+"Edited by Kaitlyn Chau.
+- Add cmConfigGwSmpFeatureEnable."
+
+REVISION "200306160000Z"
+DESCRIPTION
+"Edited by Chinglan Hu.  Published as giCmConfig-15.mib.
+- SCR1279 - added new MIB objects for factory security implementation. The
+  MIB objects are for host app's Login Challenge and Login Response."
+
+REVISION "200304140000Z"
+DESCRIPTION
+"Edited by Kevin Marez.  Published as giCmConfig-12.mib.
+- Updated the Compliance Statement section.  Created new
+  cmExtendedChannelCompliance group and located the MIBs
+  appropriately to this new group."
+                           
+REVISION "200210150000Z"
+DESCRIPTION
+"Edited by Tom Beifuss.  
+- Added Compliance Statement per Kevin Marez
+- Obsoleted cmSnmpHFCSetPort
+- Updated cmResetToDefaults"
+
+REVISION "200210140000Z"
+DESCRIPTION
+"Edited by Tom Beifuss.  
+- Added Vendor specific branch.
+- Added TI TurboDox MIB objects"
+
+REVISION "200208220000Z"
+DESCRIPTION
+"Edited by Zheng Fang.
+- Move content of cmConfigGuiDeviceOperMode and cmConfigGuiSessionTable from cmGateway.mib.
+- Add cmConfigGuiSessionInactivityTimeoutEnable."
+::= { cm 3 }           
+
+
+           
+--
+--  PRIVATE CONFIG MIB VARIABLES
+--
+
+cmConfigFreqObjects   OBJECT IDENTIFIER ::= { cmConfigPrivateBase 1 }
+cmConfigPartialServiceObjects  OBJECT IDENTIFIER ::= { cmConfigFreqObjects 50 }
+cmConfigGuiAdminObjects   OBJECT IDENTIFIER ::= { cmConfigPrivateBase 2 }
+cmConfigGatewayObjects   OBJECT IDENTIFIER ::= { cmConfigPrivateBase 3 }
+cmConfigSecurityObjects   OBJECT IDENTIFIER ::= { cmConfigPrivateBase 4 }
+cmConfigMtaObjects   OBJECT IDENTIFIER ::= { cmConfigPrivateBase 5 }
+cmConfigGenericObjects OBJECT IDENTIFIER ::= { cmConfigPrivateBase 6 }
+
+
+cmConfigVendorObjects    OBJECT IDENTIFIER ::= { cmConfigPrivateBase 100 }
+cmConfigVendorObjectsTI  OBJECT IDENTIFIER ::= { cmConfigVendorObjects 1 }
+
+cmConfigNotifications  OBJECT IDENTIFIER ::= { cmConfigPrivateBase 200 }
+
+cmConfigFreq1 OBJECT-TYPE
+    SYNTAX INTEGER (0..1000000000)
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+          "This object displays the most recent downstream frequency with
+           which the modem registered, or is set to the first favorite
+           frequency in Hz.  The value is stored in NVRAM.  A manual reset is
+           required for the changes take effect."
+        ::= { cmConfigFreqObjects 1 }
+
+cmConfigFreq2 OBJECT-TYPE
+    SYNTAX INTEGER (0..1000000000)
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+          "This object displays the 2nd most recent downstream frequency with
+           which the modem registered, or is set to the second favorite
+           frequency in Hz.  The value is stored in NVRAM.  A manual reset
+           is required for the changes take effect."
+        ::= { cmConfigFreqObjects 2 }
+
+cmConfigFreq3 OBJECT-TYPE
+    SYNTAX INTEGER (0..1000000000)
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+          "This object displays the 3rd most recent downstream frequency with
+           which the modem registered, or is set to the third favorite
+           frequency in Hz.  The value is stored in NVRAM.  A manual reset
+           is required for the changes take effect."
+        ::= { cmConfigFreqObjects 3 }
+
+-- Optional: Currently only used for EMC
+cmConfigDisableFullScan OBJECT-TYPE
+    SYNTAX     TruthValue
+        MAX-ACCESS read-write
+        STATUS     deprecated
+        DESCRIPTION
+          "EMC CM RUNNING M VERSION ONLY.
+           This object retrieves/sets the scan limit flag from/to NVRAM.
+           A CM reboot will be required for changes to take effect.
+           Setting this flag to TRUE(1) disables full scan.
+           The CM will scan only frequencies that are in the lower
+           and upper scan limits.  Setting this flag to FALSE(2) allows the
+           CM to do a full scan if it failed to register after scanning
+           the frequencies in the scan limit."
+        ::= { cmConfigFreqObjects 4 }
+
+-- Optional: Currently only used for EMC
+cmConfigLowerScanLimit OBJECT-TYPE
+    SYNTAX     INTEGER (90..860)
+        MAX-ACCESS read-write
+        STATUS     deprecated
+        DESCRIPTION
+          "EMC CM RUNNING M VERSION ONLY.
+           This object retrieves the lower scanning limit from
+           NVRAM or set new limit value in Mhz unit and save to NVRAM.
+           A CM reboot will be required for changes to take effect."
+        ::= { cmConfigFreqObjects 5 }
+
+-- Optional: Currently only used for EMC
+cmConfigUpperScanLimit OBJECT-TYPE
+    SYNTAX     INTEGER (90..860)
+        MAX-ACCESS read-write
+        STATUS     deprecated
+        DESCRIPTION
+          "EMC CM RUNNING M VERSION ONLY.
+           This object retrieves the upper scanning limit from
+           NVRAM or set new limit value in Mhz unit and save to NVRAM.
+           A CM reboot will be required for changes to take effect."
+        ::= { cmConfigFreqObjects 6 }
+
+-- No longer supported.
+cmQam16Preamble OBJECT-TYPE
+    SYNTAX     TruthValue
+        MAX-ACCESS read-write
+        STATUS     obsolete
+        DESCRIPTION
+          "This object retrieves/sets the QAM16 Preamble flag value
+           from/to NVRAM.  If set to TRUE, QAM16
+           Preamble mode will be used.   If set to FALSE, QPSK mode will
+           be used.  A manual reset will require to take effect if changing
+           flag."
+        ::= { cmConfigFreqObjects 7 }
+
+cmFreqPlanType OBJECT-TYPE
+        SYNTAX  INTEGER {
+	        northAmerica(0),
+        	europe(1),
+        	japan(2),
+        	worldwideMode(3),
+        	korea(4)
+        }
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+		 "This object retrieves/sets the Freq Plan type.
+		  Set to 0 for NORTH AMERICA, 1 for EUROPE, 2 for JAPAN, 
+		  3 for Worldwide Mode, and 4 for KOREA.  
+		    
+		  When setting to 3, North American models will not allow 
+		  worldwideMode(3) to be enabled.
+		    
+		  When setting to 4, the Korea US Power Offset table will be supported,
+		  but the frequency channel list is still NORTH AMERICA.
+		        
+		  A manual reset is required for the changes to take effect.
+		  Storage:  Permanent and Dynamic Non-Vol
+		  Modification:  Factory and User Config
+		  Reset To Factory Defaults:  Dynamic Non-Vol"
+        ::= { cmConfigFreqObjects 8 }
+
+cmUpstreamChannelId1 OBJECT-TYPE
+    SYNTAX      INTEGER ( 0..255 )
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+      "This object controls the Upstream Channel ID for cmConfigFreq1."
+    ::= { cmConfigFreqObjects 11 }
+
+cmCarrierFrequencyOffset OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+          "Acquired offset from carrier center."
+        ::= { cmConfigFreqObjects 12 }
+
+-- No longer supported.
+cmBabbleControl OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      obsolete
+        DESCRIPTION
+          "This object allows enable/disable of babble control."
+        ::= { cmConfigFreqObjects 13 }
+
+-- SBG1000 plans to support it.
+cmSnmpHFCPort OBJECT-TYPE
+        SYNTAX      InetPortNumber
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "The SNMP HFC port from which to carry out SNMP operation.
+          
+          This object is not accessible before CM completes registration except
+          in factory mode."
+        DEFVAL { 161 }
+        ::= { cmConfigFreqObjects 14 }
+
+-- SBG1000 plans to support it.
+cmSnmpHFCTrapPort OBJECT-TYPE
+        SYNTAX      InetPortNumber
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "The SNMP TRAP HFC port to which SNMP traps will be sent.
+                    
+          This object is not accessible before CM completes registration except
+          in factory mode."
+        DEFVAL { 162 }
+        ::= { cmConfigFreqObjects 15 }
+
+-- No longer supported.
+cmSnmpHFCSetPort OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      obsolete
+        DESCRIPTION
+          "Change the SNMP and SNMP Trap UDP Port now.  Set to true(1) to
+           do the operation.  Always return false(2)."
+        ::= { cmConfigFreqObjects 16 }
+
+cmSnmpDisplayHtml OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "Flag used to make HTML pages viewable.  Set to True(1) to
+           enable the display of HTML pages.  Set to False(2) to disable
+           the display of HTML pages.
+           Modification:  Factory and User Config
+		   Reset To Factory Defaults:  Default Value"
+	  DEFVAL { true }
+        ::= { cmConfigFreqObjects 17 }
+
+cmResetToDefaults OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "Reset configuration to factory defaults.
+           Reboot required for the changes to take effect.
+
+           cmConfigFreq1         = CLEAR
+           cmConfigFreq2         = CLEAR
+           cmConfigFreq3         = CLEAR 
+           cmUpstreamChannelId1  = CLEAR
+           cmUpstreamChannelId2  = CLEAR 
+           cmUpstreamChannelId3  = CLEAR
+           cmUpstreamPower1      = CLEAR
+           cmUpstreamPower2      = CLEAR
+           cmUpstreamPower3      = CLEAR
+           
+           cmStandbyCapable      = DEFAULT VALUE (If Applicable)   
+           cmFullResetOnT4       = DEFAULT VALUE
+           cmDhcpServerEnable    = PERM NON-VOL
+           cmCfgConcatEnabled    = PERM NON-VOL
+           
+           Set to true(1) to do the operation.  Always return false(2)."
+        ::= { cmConfigFreqObjects 18 }
+
+cmStandbyMode OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+          "Flag used to indicate the state of standby mode.
+           Returns current standby mode of the modem.
+           However, if modem does not support the standby button
+           then variable always return false.
+           
+           For SBG1000 and SBG1000E, this object is always 'false'."
+        ::= { cmConfigFreqObjects 19 }
+
+-- This object OID used to be cmUpstreamChannelId2, but has been changed to
+-- cmHybridMode.  cmUpstreamChannelId2 is now OID cmConfigFreqObjects.26
+
+cmHybridMode OBJECT-TYPE
+        SYNTAX      TruthValue 
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "Flag used to indicate the state of hybrid mode
+           Set to True(1) to enable hybrid mode
+           Set to False(2) to disable hybrid mode.
+           For SBG1000 and SBG1000E, this object is always 'false'.
+		Storage:  Permanent and Dynamic Non-Vol
+		Modification:  Factory and User Config
+		Reset To Factory Defaults:  Dynamic Non-Vol"
+        ::= { cmConfigFreqObjects 20 }
+        
+cmUpstreamChannelId3 OBJECT-TYPE
+    SYNTAX      INTEGER ( 0..255 )
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the Upstream Channel ID for cmConfigFreq3."   ::= { cmConfigFreqObjects 21 }
+
+cmUpstreamPower1 OBJECT-TYPE
+    SYNTAX      INTEGER ( 0..255 )
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the initial Upstream Power for cmConfigFreq1
+         in units of dbMv."
+      ::= { cmConfigFreqObjects 22 }
+
+cmUpstreamPower2 OBJECT-TYPE
+    SYNTAX      INTEGER ( 0..255 )
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the initial Upstream Power for cmConfigFreq2
+         in units of dbMv."
+      ::= { cmConfigFreqObjects 23 }
+
+cmUpstreamPower3 OBJECT-TYPE
+    SYNTAX      INTEGER ( 0..255 )
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the initial Upstream Power for cmConfigFreq3
+         in units of dbMv."
+      ::= { cmConfigFreqObjects 24 }
+
+
+cmDocsis20Capable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "This object is used to enable DOCSIS 2.0 ATDMA operation mode.  
+             Set to True(1) to enable DOCSIS 2.0 ATDMA operation mode.  
+             Set to False(2) to disable DOCSIS 2.0 ATDMA operation mode.
+             This object is not accessible before CM completes registration except
+             in factory mode.
+		Storage:  Permanent and Dynamic Non-Vol
+		Modification:  Factory User Config
+		Reset To Factory Defaults:  Dynamic Non-Vol"
+        DEFVAL {false}
+        ::= { cmConfigFreqObjects 25 }
+
+--  cmUpstreamChannelId2 was previously defined to be cmConfigFreqObjects.20
+cmUpstreamChannelId2 OBJECT-TYPE
+    SYNTAX      INTEGER ( 0..255 )
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the Upstream Channel ID for cmConfigFreq2."   
+    ::= { cmConfigFreqObjects 26 }
+
+cmStandbyCapable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "This object is used to enable/disable whether the standby button does anything.
+
+           If the CM is currently in standby mode, SNMP sets of cmStandbyCapable to FALSE will
+           will be rejected from a Management Station but will be accepted from a config file 
+           TLV11.    
+
+           There are no restrictions on setting cmStandbyCapable to TRUE
+
+           Setting to TRUE(1) causes the standby button to behave normally.
+           Setting to FALSE(2) causes presses to the standby button to be ignored and forces
+           the unit into non-standby mode."
+         DEFVAL { true }
+        ::= { cmConfigFreqObjects 27 }
+
+cmCustomerSpecificScanPlan OBJECT-TYPE
+        SYNTAX     INTEGER (0..7)
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+          "This object is used to specify a customer-specific channel scan plan.
+           Currently only the following IRC-offset scan plans are supported:
+           IRC+1, IRC+2, IRC+3, IRC+4, IRC+5, IRC-2, IRC-1. Setting this
+           object to 1 selects IRC+1, setting it to 2 selects IRC+2, and so on.
+           The IRC range is (114-858 MHz) and IRC+N refers to an IRC scan plan 
+           offset by N MHz so IRC+2 refers to a scan plan with a frequency range
+           of (116-860 MHz). This object is set to 0 if no customer-specific 
+           channel scan plan is specified. This is the default setting for this
+           MIB object. An SNMP Set of this object must be followed by a manual
+           reset of the device for the new value to take effect."
+        DEFVAL { 0 }
+        ::= { cmConfigFreqObjects 28 }     
+        
+cmSunboxCapable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "This object is used by SB5101/E to ignore TFTP response from a wrong SUN box interface 
+           and allows to register when CMTS is connected to a global loop with multiple interfaces
+           It should be set to FALSE by default."
+        DEFVAL {false}
+        ::= { cmConfigFreqObjects 29 }
+
+cmConfigFullResetOnT4 OBJECT-TYPE
+       SYNTAX     TruthValue
+       MAX-ACCESS read-write
+       STATUS     current
+       DESCRIPTION
+           "Setting this value to True(1) causes the modem to perform a full reset on a 
+           T4 Timeout condition.  Setting this value to False(2) will only perform a 
+           re-initialize MAC on a T4 Timeout condition.  Setting this value to True(1) 
+           could potentially cause a loss of service on devices with LAN and Telephony support.  
+           This value should be stored in non-volatile memory and set to a value of False(2)
+           on a Reset To Factory Defaults, except on SB510x/E, SB610x, this value is set to True on a 
+           reset to Factory Defaults" 
+        DEFVAL {false}
+        ::= { cmConfigFreqObjects 30 }
+
+
+cmConfigEnableAllEventLogPriorities OBJECT-TYPE
+       SYNTAX     TruthValue
+       MAX-ACCESS read-write
+       STATUS     current
+       DESCRIPTION
+         "Setting this value to True(1) and rebooting the modem will enable the  
+          LocalNonVol, Traps, SysLog and LocalVolatile level controls (0xE0) for
+          the following event log priorities: 
+           1: emergency
+           2: alert 
+           3: critical 
+           4: error 
+           5: warning 
+           6: notice 
+           7: information 
+           8: debug 
+           By default, this flag is false and the mask level control is set based on 
+           DOCSIS OSS-I06 requirements."
+         DEFVAL {false}
+         ::= { cmConfigFreqObjects 31 }
+
+cmConfigT3TimeoutInitRngRetries OBJECT-TYPE
+      SYNTAX INTEGER (3..16)
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+        "This setting is useful only on a CMTS with multiple upstream channels. Set 
+        this value to less than default T3 Timeout Init Ranging Retries (16 times) 
+        will speed up the initial ranging attempt of each upstream channel. Be aware 
+        that with the smaller number of retries, the CM might not be able to adjust the 
+        local power correctly to register. By default, the CM will perform the T3 Timeout
+        Init Ranging Retries 16 times before it exhausts, re-initialize MAC and move on 
+        to the next Upstream channel.  This value should be stored in non-volatile memory."
+           DEFVAL { 16 }
+    ::= { cmConfigFreqObjects 32 }
+
+cmConfigEtherAutoNegotiation OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Setting this object to 'false' allows for further configuration of the 
+            Ethernet Interface Settings using cmConfigEtherStatsDuplex and/or 
+            cmConfigEtherSpeed. This setting will be saved to non-volatile memory and 
+            requires a reboot to take effect.
+
+            By default, this setting is set to 'true', leaving the unit in its normal, 
+            “Full EtherAutoNegotiation Mode”." 
+        DEFVAL {true}
+        ::= { cmConfigFreqObjects 33 }
+ 
+cmConfigEtherStatsDuplex OBJECT-TYPE
+           SYNTAX      INTEGER {
+                 unknown(1),
+                 halfDuplex(2),
+                 fullDuplex(3)
+                 }
+           MAX-ACCESS  read-write
+           STATUS      current
+           DESCRIPTION 
+               "This variable is only used by the CM when the cmConfigEtherAutoNegotiation 
+               is set to FALSE. The dot3StatsDuplexStatus MIB should be used to determine the duplex
+               status when the CM is operating in autonegotiation mode.
+
+               This setting is READ-WRITE to allow the Ethernet Interface to be set to halfDuplex(2) 
+               or fullDuplex (3) and stored in non-volatile memory. 
+               The unknown(1) value is not settable.
+
+               A reboot is required for the changes to take effect."             
+        ::= { cmConfigFreqObjects 34 }
+
+cmConfigEtherSpeed OBJECT-TYPE
+           SYNTAX      INTEGER {
+                 speed10Mbps(1),
+                 speed100Mbps(2),
+		 speed1000Mbps(3)
+                 }
+           MAX-ACCESS  read-write
+           STATUS      current
+           DESCRIPTION 
+	       "This variable is only used by the CM when the cmConfigEtherAutoNegotiation 
+               is set to FALSE. The ifSpeed MIB should be used to determine the link speed when
+               the CM is operating in autonegotiation mode.
+	
+               This setting is READ-WRITE to allow the Ethernet Interface to be set to 
+               10Mbps(1) or 100Mbps(2) or 1000Mbps(3) and stored in non-volatile memory.  
+	
+        	A reboot is required for the changes to take effect." 
+          ::= { cmConfigFreqObjects 35 }
+
+
+cmConfigEtherOperStatus OBJECT-TYPE
+       SYNTAX  INTEGER {
+                   up(1),        -- ready to pass packets
+                   down(2),
+                   testing(3),   -- in some test mode
+                   unknown(4),   -- status can not be determined
+                                 -- for some reason.
+                   dormant(5),
+                   notPresent(6),    -- some component is missing
+                   lowerLayerDown(7) -- down due to state of
+                                     -- lower-layer interface(s)
+               }
+
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "The current operational state of the Ethernet interface.  
+               The testing(3) state indicates that no operational packets can be passed; 
+               The up(2) state indicates if the interface is ready to transmit and 
+               receive network traffic; it should change to dormant(5) if the interface 
+               is waiting for external actions (such as a serial line waiting for an 
+               incoming connection); it should remain in the down(2) state if
+               and only if there is a fault that prevents it from going to the up(1) 
+               state; it should remain in the notPresent(6) state if the interface has 
+               missing (typically, hardware) components."
+       ::= { cmConfigFreqObjects 36 }
+
+
+cmFreqCustomList OBJECT-TYPE
+        SYNTAX     DisplayString(SIZE (255))
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+          "This value represents a comma separated listing of
+           frequencies (in Hz).  This list is parsed to create
+           a Custom Scan List. For example, a list of 551000000,743250000,601000000 would be
+           parsed as 551000000, 743250000 and 601000000. If any value is parsed and 
+           does not represent a valid, tunable frequency the
+           value is ignored. 
+
+           The parsed list shall support a maximum of 16 entries.
+           Any additional entries beyond 16 shall be disregarded.
+	   If device configuration is reset to defaults using GUI, SNMP or
+	   the Hardware Reset Button, this object shall be reset to 
+	   default factory values; retaining any preconfigured values from  
+	   Factory Configuration Information.
+
+	   This object list can be cleared by setting the value to a 'null string'."
+        ::= { cmConfigFreqObjects 37 }
+
+
+cmDocsis1xHackForCmts20Enable OBJECT-TYPE
+       SYNTAX     TruthValue
+       MAX-ACCESS read-write
+       STATUS     current
+       DESCRIPTION			
+           "This object is used to determine whether operation of DOCSIS 2.0 on DOCSIS 1.x channel
+           is allowed.  Setting this value to True(1) does not allow DOCSIS 2.0 operation on 
+           1.x channel.  Setting this value to False(2) allows DOCSIS 2.0 operation
+           on 1.x channel.  This value should be stored in non-volatile memory.  
+		   
+		   A reboot is required for the changes to take effect."
+        DEFVAL {true}
+        ::= { cmConfigFreqObjects 38 }
+
+
+cmAllowWirelessCardParamReset OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Allows refreshing the parameter of the wireless card. 
+             Setting to true(1) will allow ResetToDefaults to reset all wireless parameters.
+             After ResetToDefault is called, cmAllowWirelessCardParamReset is set back to 
+             it's default value of false(2). 
+             Setting to false(2) does nothing."
+        DEFVAL {false}
+        ::= { cmConfigFreqObjects 39 }
+
+cmDsBondingCapable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "This object is used to enable/disable the DOCSIS Downstream Bonding mode.  
+             If the CMTS supports DS Bonding functionality, set to True(1) to enable DOCSIS Downstream 
+             Bonding on the modem. 
+             If the CMTS is on the 1.0/1.1/2.0 plant, set to False(2) to disable the DOCSIS Downstream Bonding mode to
+             allow to register faster.
+             A reboot is required for the change to take effect."       
+        DEFVAL {false}
+        ::= { cmConfigFreqObjects 40 }
+
+
+cmClearUpstreamFavChanID OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Setting this value to True(1) causes the modem to clear out the upstream favorite channel ID 
+             list upon a reboot and prior to downstream scanning.  Setting this value to True(1) with the
+             previous value being either ‘uninitialized’ or False(2) will cause the device to immediately 
+             reboot.  This value should be stored in non-volatile memory and set to a value of False(2)
+             on a Reset To Factory Defaults."
+        DEFVAL {false}
+        ::= { cmConfigFreqObjects 41 }
+
+cmPromiscuousMode OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "This object enables/disables the hardware CAM filtering mechanism.
+           If this value is set to True(1), the device will ignore any value of Max CPE that has been
+           configured and bridge all traffic through device, regardless of MAC address.
+           If this value is set to False(2), the device will adhere to standard DOCSIS requirements
+           related to bridging traffic."
+        DEFVAL { false }
+        ::= { cmConfigFreqObjects 42 }
+
+cmSecondaryLEDColorDisable OBJECT-TYPE
+        SYNTAX      BITS{
+            ledPower(0),
+            ledReceive(1),
+            ledSend(2),
+            ledOnline(3),
+            ledLink(4)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Multicolored LED secondary color enable/disable bit mask
+             Used to specify whether multicolor LEDs display the secondary color.
+ 
+             Setting the associated bit to 0 enables the secondary color for that LED
+             Setting the associated bit to 1 disables the secondary color for that LED
+             Setting a bit for an LED that does not have a secondary color has no effect
+ 
+             Note that BITS objects are encoded most significant bit
+             first. For example, if bit 2 is set, the value of this
+             object is the octet string '20'H "
+        DEFVAL { {ledPower} }
+        ::= { cmConfigFreqObjects 43 }
+
+cmDocsis30Capable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "This object is used to enable DOCSIS 3.0 ATDMA operation mode.  
+             Set to True(1) to enable DOCSIS 3.0 ATDMA operation mode.  
+             Set to False(2) to disable DOCSIS 3.0 ATDMA operation mode.
+             This object is not accessible before CM completes registration except
+             in factory mode.
+		Storage:  Permanent and Dynamic Non-Vol
+		Modification:  Factory User Config
+		Reset To Factory Defaults:  Dynamic Non-Vol"
+        DEFVAL {false}
+        ::= { cmConfigFreqObjects 44 }
+
+cmConfigGUIType OBJECT-TYPE
+        SYNTAX INTEGER 
+            {
+                motorola(1), 
+                custom1(2),
+                custom2(3),
+                custom3(4),
+                custom4(5),
+                custom5(6)
+            }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "This Object is used to customize GUI page for different requirements. 
+             This object is not accessible before CM completes registration except
+             in factory mode.
+        Storage:  Permanent and Dynamic Non-Vol
+        Modification:  Factory User Config
+        Reset To Factory Defaults:  Dynamic Non-Vol"
+        ::= { cmConfigFreqObjects 45 }
+
+cmFreqCustomListBank2 OBJECT-TYPE
+        SYNTAX     DisplayString(SIZE (255))
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+          "This value represents a comma separated listing of
+           frequencies (in Hz). This list is parsed to create
+           a Custom Scan List. For example, a list of 551000000,743250000,601000000 would be
+           parsed as 551000000, 743250000 and 601000000. If any value is parsed and 
+           does not represent a valid, tunable frequency the
+           value is ignored. 
+
+           The parsed list shall support a maximum of 16 entries.
+           Any additional entries beyond 16 shall be disregarded.
+	   If device configuration is reset to defaults using GUI, SNMP or
+	   the Hardware Reset Button, this object shall be reset to 
+	   default factory values; retaining any preconfigured values from  
+	   Factory Configuration Information.
+
+	   This object list can be cleared by setting the value to a 'null string'."
+        ::= { cmConfigFreqObjects  46}
+
+cmFreqCustomListBank3 OBJECT-TYPE
+        SYNTAX     DisplayString(SIZE (255))
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+          "This value represents a comma separated listing of
+           frequencies (in Hz).  This list is parsed to create
+           a Custom Scan List. For example, a list of 551000000,743250000,601000000 would be
+           parsed as 551000000, 743250000 and 601000000.If any value is parsed and 
+           does not represent a valid, tunable frequency the
+           value is ignored. 
+
+            The parsed list shall support a maximum of 16 entries.
+           Any additional entries beyond 16 shall be disregarded.
+	   If device configuration is reset to defaults using GUI, SNMP or
+	   the Hardware Reset Button, this object shall be reset to 
+	   default factory values; retaining any preconfigured values from  
+	   Factory Configuration Information.
+
+	   This object list can be cleared by setting the value to a 'null string'."
+        ::= { cmConfigFreqObjects 47 }
+
+cmFreqCustomListBank4 OBJECT-TYPE
+        SYNTAX     DisplayString(SIZE (255))
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+          "This value represents a comma separated listing of
+           frequencies (in Hz).  This list is parsed to create
+           a Custom Scan List. For example, a list of 551000000,743250000,601000000 would be
+           parsed as 551000000, 743250000 and 601000000.If any value is parsed and 
+           does not represent a valid, tunable frequency the
+           value is ignored. 
+
+            The parsed list shall support a maximum of 16 entries.
+           Any additional entries beyond 16 shall be disregarded.
+	   If device configuration is reset to defaults using GUI, SNMP or
+	   the Hardware Reset Button, this object shall be reset to 
+	   default factory values; retaining any preconfigured values from  
+	   Factory Configuration Information.
+
+	   This object list can be cleared by setting the value to a 'null string'."
+        ::= { cmConfigFreqObjects 48 }
+
+cmConfigDCCUpstreamDSBonded OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+            "This object is used to enable/disable the support for DCC init-tech level 1,2,3 & 4 
+            to change only the upstream for a downstream bonded modem. For a downstream bonded 
+            modem, setting this object to True(1) allows the channel bonded modem to support any 
+            DCC with init-tech 1,2,3 & 4 to move only the upstream. For a downstream bonded modem, 
+            setting this object to False(2) disables support for DCC init-tech level 1,2,3 & 4. 
+            The value is set to False(2) on Reset To Defaults. This feature functionality needs 
+            support from CMTS."
+        ::= { cmConfigFreqObjects 49 }
+
+cmConfigDefaultSnmpAccess OBJECT-TYPE
+        SYNTAX INTEGER
+          {
+              docsis30(0),
+              docsis20(1)
+          }          
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "Setting this object to docsis30(0) disables SNMP access to the CM by Default. 
+           Setting this object to docsis20(1) enables SNMP access to the CM by Default.
+           A TLV55 or TLV11 entry for docsDevNmAccessInterface in the config file will
+           override this MIB object setting." 
+         DEFVAL {0} 
+        ::= { cmConfigFreqObjects 51 }
+
+cmConfigCPEMacAddrAging OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "During normal DOCSIS operation, CPE MAC addresses are learned until the 
+           DOCSIS Forwarding Table reaches either the limit imposed by Max CPE TLV18 in the 
+           DOCSIS configuration file, or the device limit, whichever is the lesser value. 
+           Once the DOCSIS Forwarding Table reaches its limit, additional CPE devices are 
+           ignored and will not gain network connectivity.
+
+             Setting this value to True(1) alters the DOCSIS Forwarding Table MAC address learning
+             mechanism. Once the DOCSIS Forwarding Table reaches its storage limit, any newly 
+             discovered CPE MAC address will replace an existing entry in the table.  The CPE entry 
+             that is replaced shall be the CPE entry whose elapsed time since last transmission is 
+             the greatest. This table update is done at run time.  
+
+           Setting this value to False(2) disables this feature.
+
+           The following MAC addresses are not subject to removal from the DOCSIS Forwarding Table:
+               MAC addresses provisioned in the DOCSIS configuration file using TLV 14.  
+               MAC addresses internal to the device.
+
+           A reboot is NOT required for the change to take effect. This value is NOT persistent 
+           across a reboot on the device."
+        DEFVAL {false}
+        ::= { cmConfigFreqObjects 52 }
+
+cmConfigMixedChannelBonding OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "Setting this object to True(1) enables 6-8-8-8 mixed channel bonding feature of the Cable Modem.
+           Setting this object to False(2) disables 6-8-8-8 mixed channel bonding feature of the Cable Modem.
+
+           The 6-8-8-8 mixed channel bonding feature allows the Cable Modem to use a downstream bonding in which
+           the channel-width of the primary is 6 MHz while that of each secondary is 8 MHz" 
+        DEFVAL { false }
+        ::= { cmConfigFreqObjects 53 }
+
+cmConfigTunerSpurAvoidanceMode OBJECT-TYPE
+        SYNTAX INTEGER
+        {
+              mode81MHz(0),
+              mode96MHz(1)
+        }          
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                 "Setting this object to mode81MHz(0) selects 81MHz spur avoidance algorithm for the tuner to 
+                  attain 81MHz Capture Bandwidth.  Setting this object to mode96MHz(1) selects 96MHz spur
+                  avoidance algorithm for the tuner to attain 96MHz Capture Bandwidth.
+                  A reboot is required for the changes to take effect.This feature functionality needs 
+                  support from CMTS"             
+        ::= { cmConfigFreqObjects 54 }
+
+cmConfigUdcCapable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+        "This object is used to enable/disable the support for UDCs (Upstream 
+        Drop Classifiers).
+        Set to True(1) to enable support for Upstream Drop Classifiers.
+        Set to False(2) to disable support for Upstream Drop Classifiers.  
+        Storage:  Permanent and Dynamic Non-Vol
+        Modification:  Factory and User Config
+        Reset To Factory Defaults:  Dynamic Non-Vol"
+        ::= { cmConfigFreqObjects 55 }
+
+cmConfigSecureShellAccess OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "Setting this object to true(1) allows secure shell access to CM 
+           Setting this object to false(2) prohibits secure shell access to CM 
+           This value is stored in persistent storage" 
+         DEFVAL {false}
+        ::= { cmConfigFreqObjects 56 }
+
+cmConfigSSHCpeInterfaceEnable    OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "Setting this object to true(1) allows secure shell access to CM through CPE interface
+           Setting this object to false(2) prohibits secure shell access to CM through CPE interface
+           This MIB is settable only after registration or through config file" 
+         DEFVAL {false}
+        ::= { cmConfigFreqObjects 57 }
+
+cmConfigWaitBeforeCpeMacReplace OBJECT-TYPE
+        SYNTAX INTEGER (0 .. 3600)
+       UNITS "seconds"
+       MAX-ACCESS read-write 
+       STATUS current
+       DESCRIPTION 
+	"CmConfigWaitBeforeCpeMacReplace is the time to wait before replacing a CPE Mac address in the DOCSIS forwarding table. 
+	 When a new CPE is connected to the cable modem and if the max limit of the DOCSIS forwarding table is reached, 
+	 one of the existing MAC entry will be selected to be replaced by the new CPE MAC if the MIB cmConfigCPEMacAddrAging is set. 
+	 Before replacing the selected entry, the time since the CPE is connected to cable modem will be compared against 
+	 CmConfigWaitBeforeCpeMacReplace. If the selected entry is connected for time longer than CmConfigWaitBeforeCpeMacReplace 
+	 then it will be replaced by the new MAC entry. Else the new CPE will not be allowed to connect." 
+       ::= { cmConfigFreqObjects 58 }
+
+cmConfigDownstreamFrequency OBJECT-TYPE
+	SYNTAX		INTEGER (0..1000000000)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	
+  	"CmConfigDownstreamFrequency specifies the downstream frequency which needs to be detected by the cable modem. 
+	The result of the frequency detection is determined by reading the cmFrequencyDetectionResultTable. 
+	This MIB can be used to detect the presence of any given downstream frequency at RF. 
+	It can also be used to detect the presence of RF traps or filters depending on the frequency detection result."
+	::= { cmConfigFreqObjects 59 }
+
+cmConfigAcquireFrquencyAtQAM OBJECT-TYPE
+	SYNTAX		 INTEGER
+	{
+            qam64(1),
+            qam256(2)
+	}
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+	"cmConfigAcquireFrquencyAtQAM specifies the QAM value at which the frequency 
+         specified by cmConfigDownstreamFrequency is to be detected."
+	::= { cmConfigFreqObjects 60 }
+
+cmConfigStartFrequencyDetection OBJECT-TYPE
+	SYNTAX	    TruthValue
+	MAX-ACCESS	    read-write
+	STATUS	    current
+	DESCRIPTION
+	"When set to true, it will initiate the frequency detection process.
+	 This MIB requires cmConfigDownstreamFrequency and CmConfigAcquireFrquencyAtQAM MIB to be set 
+	 before initiating the detection process. If the frequency and QAM is not set via SNMP set,
+	 the value stored in non-volatile memory for these MIBs will be used to initiate the process.
+         If no values are set for frequency and QAM via SNMP or if they are not stored in non-volatile memory,
+         the detection process will not get started."
+	::= { cmConfigFreqObjects 61 }
+
+cmFrequencyDetectionResultTable	OBJECT-TYPE
+    SYNTAX         SEQUENCE OF CmFrequencyDetectionResultEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "cmFrequencyDetectionResultTable displays last 10 frequency detection result."
+         ::= {cmConfigFreqObjects 62} 
+
+cmFrequencyDetectionResultEntry OBJECT-TYPE
+    SYNTAX         CmFrequencyDetectionResultEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "CmFrequencyDetectionResultEntry"
+    INDEX { cmFrequencyDetectionResultIndex }
+    --DEFAULT test-function-async   	null_test_async
+    --DEFAULT set-function-async    	null_set_async
+    --DEFAULT get-function-async    	CmFrequencyDetectionResultEntry_get
+    --DEFAULT next-function-async   	CmFrequencyDetectionResultEntry_next
+    --DEFAULT cookie        		(char *)0
+    ::= { cmFrequencyDetectionResultTable 1 }
+
+CmFrequencyDetectionResultEntry ::= SEQUENCE
+{
+    cmFrequencyDetectionResultIndex	INTEGER,
+    cmFrequencyDetectionResultElement OCTET STRING
+}
+
+cmFrequencyDetectionResultIndex	OBJECT-TYPE
+    SYNTAX         INTEGER
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Index to the cmFrequencyDetectionResultTable"
+    ::= { cmFrequencyDetectionResultEntry 1 }
+
+cmFrequencyDetectionResultElement OBJECT-TYPE
+    SYNTAX         OCTET STRING
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "cmFrequencyDetectionResultElement displays the requeted  frequency CmConfigDownstreamFrequency and the QAM CmConfigAcquireFrquencyAtQAM 
+         and the corresponding detection result with the timestamp."
+    ::= { cmFrequencyDetectionResultEntry 2 }
+   
+     
+cmConfigSequenceOutOfRangeOverrideEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "This object determines whether the CM will override the Out-Of-Range
+          threshold values as defined by the Docsis 3.0 MULPI spec.  If this object is
+          true, the CM will use the values set in cmConfigSequenceOutOfRangeOverridePackets 
+          and cmConfigSequenceOutOfRangeOverrideTimeout.  If this object is set using the 
+          modem's configuration file, the changes will take effect immediately.  In all other 
+          cases, the changes will take effect upon the CM's next provisioning attempt.
+          The value of this object is stored in non volatile memory."
+        DEFVAL {false}
+        ::= { cmConfigFreqObjects 63 }
+
+cmConfigSequenceOutOfRangeOverridePackets OBJECT-TYPE
+        SYNTAX INTEGER (1..1000)   
+        UNITS "packets"
+        MAX-ACCESS read-write
+        STATUS     current   
+        DESCRIPTION
+          "This object is used to set the number of Out Of Range packets that the CM will discard.
+          The CM will use this value only if the cmConfigSequenceOutOfRangeOverrideEnable object is 
+          set to true.  If this object is set using the CM's configuration file, the changes will 
+          take effect immediately.  In all other cases, the changes will take effect during the CM's next 
+          provisioning attempt.  The value of this object is stored in non volatile memory."
+        DEFVAL {1000}
+        ::= { cmConfigFreqObjects 64 }
+
+cmConfigSequenceOutOfRangeOverrideTimeout OBJECT-TYPE
+        SYNTAX INTEGER (1..900)  
+        UNITS "seconds"
+        MAX-ACCESS read-write
+        STATUS     current  
+        DESCRIPTION
+          "This object defines the minimum time in seconds that the CM will wait 
+          before it re-synchronizes with CMTS.  The CM will use this value only if the 
+          cmConfigSequenceOutOfRangeOverrideEnable object is set to true.  If this object is
+          set using the CM's configuration file, the changes will take effect immediately.
+          In all other cases, the changes will take effect during the CM's next provisioning 
+          attempt.  The value of this object is stored in non volatile memory."
+        DEFVAL {120}
+        ::= { cmConfigFreqObjects 65 }
+
+cmConfigAdditionalDSIfIndex OBJECT-TYPE
+	SYNTAX TruthValue
+	MAX-ACCESS read-write
+ 	STATUS current
+	DESCRIPTION
+	  "Setting this object to true(1) allows the additional downstream interfaces ifIndex to start from 49.
+	  Setting this object to false(2) allows the additional downstream interfaces ifIndex to start from 48.
+	  A reboot is required for the changes to take effect. The value of this object is stored in non volatile memory."
+	DEFVAL {2}
+	::= { cmConfigFreqObjects 66 }
+
+cmConfigPartialServiceAction OBJECT-TYPE
+        SYNTAX  INTEGER
+        {
+	        docsis20(0),
+        	docsis30(1)
+        }
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+                "When the CM receives a registration response with bonding channels specified and 
+                 the CM is unable to lock on all of the specified downstreams, this object determines how
+                 the CM will behave.
+                 Option docsis20 will cause the CM to immediately reinitialize the MAC layer and attempt to
+                 register as a non-bonding capable modem.
+                 Option docsis30 will cause the CM to continue registration and to include the failed DS frequencies 
+                 in the registration ACK messages.
+                 This value is saved to non-vol"
+        DEFVAL { 0 }
+        ::= { cmConfigPartialServiceObjects 1 }
+
+cmConfigBondingRecoveryObjects OBJECT IDENTIFIER  ::= { cmConfigPartialServiceObjects 2 }
+
+cmConfigBondingRecoveryEnable OBJECT-TYPE
+    SYNTAX     TruthValue
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+          "When the CM has registered in non-bonding mode due to a failure to lock on all the 
+           downstream frequencies contained in a registration request, if this object is set to true, 
+           the CM will continue to monitor the originally specified downstreams and attempt to reregister 
+           if the downstreams become available.
+           Note: This object is only valid if cmConfigPartialServiceAction is set to docsis20
+           This value is saved to non-vol"
+        DEFVAL { true }        
+        ::= { cmConfigBondingRecoveryObjects 1 }      
+        
+cmConfigBondingRecoveryTrafficIdlePeriod OBJECT-TYPE
+        SYNTAX INTEGER (0..1000000)  
+        UNITS "seconds"
+        MAX-ACCESS read-write
+        STATUS     current  
+        DESCRIPTION
+          "CM will count inbound and outbound LAN  packets for the cmConfigBondingRecoveryTrafficIdlePeriod
+           A value for cmConfigBondingRecoveryTrafficIdlePeriod of 0 will disable idle checking but CM will 
+           still check status of secondaries for purposes of bonding recovery.
+
+           This value is saved to non-vol"
+        DEFVAL { 10 }
+        ::= { cmConfigBondingRecoveryObjects 2 }      
+
+cmConfigBondingRecoveryTrafficPacketCountThreshold OBJECT-TYPE
+        SYNTAX INTEGER (1..1000000)   
+        UNITS "packets"
+        MAX-ACCESS read-write
+        STATUS     current   
+               DESCRIPTION
+          "CM will count combined upstream and downstream network packets for the cmConfigBondingRecoveryTrafficThresholdIdlePeriod.
+           The CM will only attempt bonding recovery at a time when the secondary downstreams are available and a count of 
+           combined upstream and downstream network packets for an interval given by cmConfigBondingRecoveryTrafficIdlePeriod is
+           less than the cmConfigBondingRecoveryTrafficPacketCountThreshold
+                                      
+           Note that there may be constant general network traffic unrelated to CPE activity which would prevent
+           the threshold from ever being met for small values of cmConfigBondingRecoveryTrafficPacketCountThreshold
+           This value is saved to non-vol"
+        DEFVAL { 10 }
+        ::= { cmConfigBondingRecoveryObjects 3 }    
+  
+-- 
+-- GUI Admin related objects
+--
+-- SessionTable
+--
+cmConfigGuiSessionTable OBJECT-TYPE
+      SYNTAX SEQUENCE OF CmConfigGuiSessionEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "Table of login and session information
+         
+         Only one entry is allowed for now.
+         
+          This table is not accessible before CM completes registration except
+          in factory mode."
+      ::= { cmConfigGuiAdminObjects 1 }
+
+cmConfigGuiSessionEntry OBJECT-TYPE
+      SYNTAX CmConfigGuiSessionEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "Each entry stores login and session information for a user. 
+         Only alphanumeric value is allowed for User ID."
+
+      INDEX { cmConfigGuiSessionUserId }  
+      ::= { cmConfigGuiSessionTable 1 }
+
+CmConfigGuiSessionEntry ::=
+      SEQUENCE {  
+         cmConfigGuiSessionUserId
+            SnmpAdminString,
+         cmConfigGuiSessionPassword
+            SnmpAdminString, 
+         cmConfigGuiSessionInactivityTimeoutEnable
+            TruthValue,   
+         cmConfigGuiSessionInactivityTimeout
+            Unsigned32,
+         cmConfigGuiSessionStatus
+            RowStatus
+      }
+
+cmConfigGuiSessionUserId OBJECT-TYPE 
+      SYNTAX      SnmpAdminString (SIZE(0..20)) 
+      MAX-ACCESS  not-accessible 
+      STATUS      current 
+      DESCRIPTION 
+         "User id.
+         This object must be maintained in non-volatile memory."
+      ::= { cmConfigGuiSessionEntry 1 }
+
+     
+cmConfigGuiSessionPassword OBJECT-TYPE 
+      SYNTAX      SnmpAdminString (SIZE(0..20))
+      MAX-ACCESS  read-create 
+      STATUS      current 
+      DESCRIPTION 
+         "Password for this user.  
+         When read, this object MUST return a zero length string.
+         This object must be maintained in non-volatile memory."
+      ::= { cmConfigGuiSessionEntry 2 }
+      
+cmConfigGuiSessionInactivityTimeoutEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "Enable/disable inactivity timeout period for this session.  
+         If this object is set to 'true', cmConfigGuiSessionInactivityTimeout will take effect.
+         If this object is set to 'false', cmConfigGuiSessionInactivityTimeout will be ignored.
+         This object must be maintained in non-volatile memory.     
+         
+         NOTE: This object is read-only for initial implementation."         
+      DEFVAL { true }
+      ::= { cmConfigGuiSessionEntry 3 }
+      
+cmConfigGuiSessionInactivityTimeout OBJECT-TYPE
+      SYNTAX Unsigned32
+      UNITS  "minutes"
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "Inactivity timeout period for this session.  
+         If this object is set to zero, there is no timeout for this session.
+         This object must be maintained in non-volatile memory.
+         
+         NOTE: This object is read-only for initial implementation."
+      DEFVAL { 10 }
+      ::= { cmConfigGuiSessionEntry 4 }
+                                    
+cmConfigGuiSessionStatus OBJECT-TYPE
+      SYNTAX RowStatus
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "Controls the creation and modification of entries in this table."
+      ::= { cmConfigGuiSessionEntry 5 }
+
+cmConfigGuiHfcAccessEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object is used to control GUI access on the HFC interface. 
+          When this object is set to true(1) the GUI is accessible on the 
+          HFC address.  This variable should be stored in NV Ram."
+      DEFVAL { false }
+      ::= { cmConfigGuiAdminObjects 2}
+
+cmConfigGuiLanAccessEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object is used to control GUI access on the LAN interface. 
+          When this object is set to true(1) the GUI is accessible on the 
+          LAN addresses. This controls access to both the diagnostic and the 
+          LAN Side NAT router addresses.  This variable should be stored in NV Ram."  
+      DEFVAL { true }
+      ::= { cmConfigGuiAdminObjects 3}
+
+cmConfigGuiWanManAccessEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object is used to control GUI access on the WAN-MAN interface. 
+          When this object is set to true(1) the GUI is accessible on the 
+          WAN-MAN address if the device is in NAPT mode.  This variable should 
+          be stored in NV Ram."  
+      DEFVAL { false }
+      ::= { cmConfigGuiAdminObjects 4}
+
+cmConfigGuiWiFiGOnlyMode OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If this is set to true the GUI will show '802.11g only' 
+         as an option for wireless operation modes.
+         
+         This mode is for WiFi testing and correlates to the 
+         'Basic Rate Set#2'  It is similiar to '802.11b/g Standard'
+         mode in that it uses g protection and normal slot times, however
+         it does not allow 802.11b stations to associate.  
+         This is opposed to 11g enhanced mode which uses short slot 
+         times and may not be compatible with all g hardware.  
+         Short slot times is an option in the 802.11g specification.
+         "
+      DEFVAL { false }
+    ::= { cmConfigGuiAdminObjects 5}           
+
+cmConfigGuiAdmin OBJECT-TYPE
+    SYNTAX     DisplayString(SIZE (255))
+    MAX-ACCESS read-write
+    STATUS     obsolete
+    DESCRIPTION
+            "This object is used to define which GUI pages the Admin user is able to access.  
+            This object can be configured to display all pages, hide all pages, or hide a list of pages.  
+            The page enumeration is in hex and is device dependant.
+
+            To display all pages, set the OCTET STRING to 0x01.
+            To hide all pages, set the OCTET STRING to 0x02.
+            To hide a list of pages, set the OCTET STRING to the list of page numbers to be hidden. 
+            Format must be hexadecimal. Valid page range 0x03-0xFF. Example to hide pages 6, 10 and 23: 0x060A17
+            If this object returns no value when read, it means it has never been set. In this case the standard
+            default behavior is for the GUI to display all pages for the Admin user.
+
+            This object has been obsoleted and replaced by cmConfigGuiAdminTable to support specifying independent 
+            values for the Admin user for many device models in a single configuration file."
+    ::= { cmConfigGuiAdminObjects 6 }
+
+cmConfigGuiRoot OBJECT-TYPE
+    SYNTAX     DisplayString(SIZE (255))
+    MAX-ACCESS read-write
+    STATUS     obsolete
+    DESCRIPTION
+            "This object is used to define which GUI pages the Root user is able to access.  
+            This object can be configured to display all pages, hide all pages, or hide a list of pages.  
+            The page enumeration is in hex and is device dependant.
+  
+            To display all pages, set the OCTET STRING to 0x01.
+            To hide all pages, set the OCTET STRING to 0x02.
+            To hide a list of pages, set the OCTET STRING to the list of page numbers to be hidden. 
+            Format must be hexadecimal. Valid page range 0x03-0xFF. Example to hide pages 6, 10 and 23: 0x060A17
+            If this object returns no value when read, it means it has never been set. In this case the standard
+            default behavior is for the GUI to display all pages for the Root user.
+
+            This object has been obsoleted and replaced by cmConfigGuiRootTable
+            to allow multiple device GUI page hiding settings for Root user 
+            to be included in a single CM configuration file."
+    ::= { cmConfigGuiAdminObjects 7 }
+
+cmConfigGuiAutoRefreshTimer	OBJECT-TYPE
+    SYNTAX         Unsigned32(0 .. 60)
+    UNITS          "Seconds"
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+	      "This object is used to set a periodic timer for automatic refresh of GUI page displayed. 
+	       Setting this object to value 0 will disable automatic refresh.
+             
+               Example: If this object is set to value 20, GUI page is refreshed automatically every 20 seconds.
+               Note: The page needs to be refreshed/reloaded for the new value to effect if the page is already open."
+    DEFVAL { 0 }
+    ::= { cmConfigGuiAdminObjects 8}
+
+cmConfigGuiAdminTable OBJECT-TYPE
+        SYNTAX        SEQUENCE OF CmConfigGuiAdminEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+            "This table controls the exposure of GUI pages for Admin user.
+            Each entry of the table is associated with a specific device type identified
+            by the value of cmConfigGuiAdminDeviceId.
+
+            Each device type is assigned a Device Id such as 0x01, 0x02, 0x03, etc. to be used
+            as the value for cmConfigGuiAdminDeviceId. Please, refer to document
+            'SURFboard GUI Hide/Show Feature -- Page Enumeration' for current assignment of DeviceIDs.
+
+            Although the table may contain multiple entries, a device will only use an entry whose
+            cmConfigGuiAdminDeviceId is equal to its own assigned Device Id. If an entry containing
+            the Device Id for the device is present in the table, the device sets
+            cmConfigGuiAdminActive to true(1) for that entry, and will use the cmConfigGuiAdminList
+            settings from that entry.
+
+            If other entries are present with cmConfigGuiAdminDeviceId values that are different
+            from the device's Device Id, the CmConfigGuiAdminList settings from those rows are
+            ignored by the device and cmConfigGuiAdminActive is set to false(2) for those entries."
+        ::= { cmConfigGuiAdminObjects 9 }
+
+cmConfigGuiAdminEntry OBJECT-TYPE
+         SYNTAX        CmConfigGuiAdminEntry
+         MAX-ACCESS    not-accessible
+         STATUS        current
+         DESCRIPTION
+             "An entry defines which GUI pages the Admin user will NOT be able to access."
+         INDEX         { cmConfigGuiAdminDeviceId }
+         ::= { cmConfigGuiAdminTable 1 }
+
+CmConfigGuiAdminEntry ::= SEQUENCE {
+        cmConfigGuiAdminDeviceId  INTEGER,
+        cmConfigGuiAdminList   OCTET STRING,
+        cmConfigGuiAdminActive  TruthValue,
+        cmConfigGuiAdminRowStatus  RowStatus
+     }
+
+cmConfigGuiAdminDeviceId OBJECT-TYPE
+        SYNTAX         INTEGER (1..255)
+        MAX-ACCESS     read-create
+        STATUS         current
+        DESCRIPTION
+            "This object identifies the device type to which this entry applies.
+            Please, refer to document 'SURFboard GUI Hide/Show Feature -- Page Enumeration'
+            for current assignment of DeviceIDs."
+        ::= { cmConfigGuiAdminEntry 1 }
+
+cmConfigGuiAdminList OBJECT-TYPE
+        SYNTAX     OCTET STRING (SIZE (1..255))
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+            "This object is used to control the exposure of GUI pages for Admin user.
+            This object can be configured to display all pages, hide all pages, or hide a list of pages.
+            The page enumeration is in hex and is device dependant.
+
+            To display all pages, set the OCTET STRING to 0x01.
+            To hide all pages, set the OCTET STRING to 0x02.
+            To hide a list of pages, set the OCTET STRING to the list of page IDs to be hidden.
+            Each GUI page is assigned a unique page ID.
+
+            Format must be hexadecimal. Valid page ID range is 0x03-0xFF. Example to hide page IDs 6, 10 and 23: 0x060A17
+            Please, refer to document 'SURFboard GUI Hide/Show Feature -- Page Enumeration' for
+            current assignment of page IDs to GUI pages.
+
+            If this object returns no value when read, it means it has not been set. In this case the standard
+            default behavior is for the GUI to display all pages for the Admin user."
+        ::= { cmConfigGuiAdminEntry 2 }
+
+cmConfigGuiAdminActive OBJECT-TYPE
+       SYNTAX      TruthValue
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+           "cmConfigGuiAdminActive is set by the device. It is set to true(1) if this row of cmConfigGuiAdminTable
+           is valid and cmConfigGuiAdminDeviceId matches the device's Device Id.
+           false(2) shall indicate that the entry does not apply to the device.
+           The default value of this attribute shall be false."
+       DEFVAL { false }
+       ::= { cmConfigGuiAdminEntry 3 }
+
+cmConfigGuiAdminRowStatus OBJECT-TYPE
+       SYNTAX      RowStatus
+       MAX-ACCESS  read-create
+       STATUS      current
+       DESCRIPTION
+           "The status of this conceptual row. All writable objects in this row may be modified
+           when the CM configuration file is applied.
+
+           Only writable objects in the active row, e.g.: the row which cmConfigGuiAdminActive is true(1),
+           may be modified from external SNMP clients. Writable objects in non-active rows may
+           not be accessed from external SNMP clients."
+      ::= { cmConfigGuiAdminEntry 4 }
+
+cmConfigGuiRootTable OBJECT-TYPE
+        SYNTAX        SEQUENCE OF CmConfigGuiRootEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+            "This table controls the exposure of GUI pages for Root user.
+            Each entry of the table is associated with a specific device type identified
+            by the value of cmConfigGuiRootDeviceId.
+
+            Each device type is assigned a Device Id such as 0x01, 0x02, 0x03, etc. to be used
+            as the value for cmConfigGuiRootDeviceId. Please, refer to document
+            'SURFboard GUI Hide/Show Feature -- Page Enumeration' for current assignment of DeviceIDs.
+
+            Although the table may contain multiple entries, a device will only use an entry whose
+            cmConfigGuiRootDeviceId is equal to its own assigned Device Id. If an entry containing
+            the Device Id for the device is present in the table, the device sets
+            cmConfigGuiRootActive to true(1) for that entry, and will use the cmConfigGuiRootList
+            settings from that entry.
+
+            If other entries are present with cmConfigGuiRootDeviceId values that are different
+            from the device's Device Id, the CmConfigGuiRootList settings from those rows are
+            ignored by the device and cmConfigGuiRootActive is set to false(2) for those entries."
+         ::= { cmConfigGuiAdminObjects 10 }
+
+cmConfigGuiRootEntry OBJECT-TYPE
+         SYNTAX        CmConfigGuiRootEntry
+         MAX-ACCESS    not-accessible
+         STATUS        current
+         DESCRIPTION
+             "An entry defines which GUI pages the Root user will NOT be able to access."
+         INDEX         { cmConfigGuiRootDeviceId }
+         ::= { cmConfigGuiRootTable 1 }
+
+CmConfigGuiRootEntry ::= SEQUENCE {
+        cmConfigGuiRootDeviceId  INTEGER,
+        cmConfigGuiRootList   OCTET STRING,
+        cmConfigGuiRootActive  TruthValue,
+        cmConfigGuiRootRowStatus  RowStatus
+     }
+
+cmConfigGuiRootDeviceId OBJECT-TYPE
+        SYNTAX         INTEGER (1..255)
+        MAX-ACCESS     read-create
+        STATUS         current
+        DESCRIPTION
+            "This object identifies the device type to which this entry applies.
+            Please, refer to document 'SURFboard GUI Hide/Show Feature -- Page Enumeration'
+            for current assignment of DeviceIDs."
+        ::= { cmConfigGuiRootEntry 1 }
+
+cmConfigGuiRootList OBJECT-TYPE
+        SYNTAX     OCTET STRING (SIZE (1..255))
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+            "This object is used to control the exposure of GUI pages for Root user.
+            This object can be configured to display all pages, hide all pages, or hide a list of pages.
+            The page enumeration is in hex and is device dependant.
+
+            To display all pages, set the OCTET STRING to 0x01.
+            To hide all pages, set the OCTET STRING to 0x02.
+            To hide a list of pages, set the OCTET STRING to the list of page IDs to be hidden.
+            Each GUI page is assigned a unique page ID.
+
+            Format must be hexadecimal. Valid page ID range is 0x03-0xFF. Example to hide page IDs 6, 10 and 23: 0x060A17
+            Please, refer to document 'SURFboard GUI Hide/Show Feature -- Page Enumeration' for
+            current assignment of page IDs to GUI pages.
+
+            If this object returns no value when read, it means it has not been set. In this case the standard
+            default behavior is for the GUI to display all pages for the Root user."
+        ::= { cmConfigGuiRootEntry 2 }
+
+cmConfigGuiRootActive OBJECT-TYPE
+       SYNTAX      TruthValue
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+           "cmConfigGuiRootActive is set by the device. It is set to true(1) if this row of cmConfigGuiRootTable
+           is valid and cmConfigGuiRootDeviceId matches the device's Device Id.
+           false(2) shall indicate that the entry does not apply to the device.
+           The default value of this attribute shall be false."
+       DEFVAL { false }
+       ::= { cmConfigGuiRootEntry 3 }
+
+cmConfigGuiRootRowStatus OBJECT-TYPE
+       SYNTAX      RowStatus
+       MAX-ACCESS  read-create
+       STATUS      current
+       DESCRIPTION
+           "The status of this conceptual row. All writable objects in this row may be modified
+           when the CM configuration file is applied.
+
+           Only writable objects in the active row, e.g.: the row which cmConfigGuiRootActive is true(1),
+           may be modified from external SNMP clients. Writable objects in non-active rows may
+           not be accessed from external SNMP clients."
+      ::= { cmConfigGuiRootEntry 4 }
+
+--
+-- Gateway Device objects
+--
+cmConfigGatewayDeviceOperMode OBJECT-TYPE
+      SYNTAX INTEGER
+             {      
+              cableHome(1),
+              gateway(2),
+              docsis(3),
+              cableHomeVersion2(4)
+             }
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object controls the mode that the gateway device operates in.  
+         
+         If set to cableHome(1), the device operates as a DOCSIS compliant CM 
+         with an embedded CableHome-compliant Portal Services Device.
+         
+         If set to gateway(2), the device operates as a DOCSIS compliant CM 
+         with Gateway features that are the same as or similar to
+         many of the CableHome features, plus additional Motorola proprietary Gateway features.
+         
+         If set to docsis(3), the device operates as a DOCSIS compliant CM with a Print Server.
+          
+         The device MUST automatically reset when this value is changed.
+                    
+         This object must be maintained in non-volatile memory.
+         
+          This object is not accessible before CM completes registration except
+          in factory mode."
+      ::= {cmConfigGatewayObjects 1}
+
+-- Gateway Feature MIB Objects added 20030324, Jason Krasnow
+--
+-- Gateway Feature Configuration
+--
+          
+cmConfigGwFeatureObjects  OBJECT IDENTIFIER ::= { cmConfigGatewayObjects 2 }
+
+cmConfigGwRIPFeatureEnable OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "This object is used to enable the RIP feature of the gateway product.
+              When the feature is disabled, the RIP feature will be disable, the Router 
+              and CPR Config Download pages will be hidden and MIB will be unavailable. 
+              After setting it, reboot the modem is required in order to see the associated 
+              page displays or hides properly.
+              The default is false"
+        DEFVAL {false}
+        ::= { cmConfigGwFeatureObjects 1 }   
+
+--  cmConfigGwSmpFeatureEnable added 20030820, KChau
+
+cmConfigGwSmpFeatureEnable OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "This object is used to enable the SMP (aka Heartbeat) feature 
+              of the gateway product.
+              When the feature is disabled the feature's GUI and MIB will be 
+              unavailable. The default is false"
+        DEFVAL {false}
+        ::= { cmConfigGwFeatureObjects 2 }
+
+cmConfigGwWrdFeatureEnable OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "This object is used to enable the Wireless Registration 
+              Detect (WRD) feature of the gateway product.
+              When the feature is enabled the wireless interface will 
+              be enabled upon WAN connection and disabled upon losing 
+              the WAN connection. This can be used for public networks 
+              such as hospitality networks to insure clients are only 
+              associated with access points that have WAN connectivity."
+        DEFVAL {false}
+        ::= { cmConfigGwFeatureObjects 3 }
+
+
+
+-- cmConfigGwRIPDownloadFeatureEnable added 20040126, CH
+
+cmConfigGwRIPDownloadFeatureEnable OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "This object is only applicable if cmconfigGwRIPFeatureEnable is enabled.
+              When this object is set to true, it will enable the Time Warner's Customer 
+              Premise Router (CPR) Config Download GUI page and disable the Router 
+              Configuration page and vice versa. 
+              After setting it, reboot the modem is required in order to see the associated 
+              page displays or hides properly.
+              The default is false"
+        DEFVAL {false}
+        ::= { cmConfigGwFeatureObjects 4 }   
+
+-- cmConfigGwRIPDownloadFeatureEnable added 20040126, KC
+
+cmConfigGwRIPDisplayMode OBJECT-TYPE
+      SYNTAX INTEGER
+             {      
+               downloadPageDisabled(0),
+               downloadPageEnabled(1),
+               hideAll(2)
+             }
+      MAX-ACCESS read-write
+      STATUS current        
+      DESCRIPTION
+             "This object is only applicable if cmconfigGwRIPFeatureEnable is enabled.
+              If set to '0', the RIP Configuration File Download GUI page is disabled.
+              If set to '1', the RIP Configuration File Download GUI page is enabled.
+              If set to '2', hide both the Router and RIP Configuration File Download GUI pages.
+               
+              Reboot modem is required after setting in order to see the associated 
+              page displays or hides properly.
+              
+              The default is enabled(1)"
+        DEFVAL {1}
+        ::= { cmConfigGwFeatureObjects 5 }
+        
+ -- cmConfigGwDisableResetToDefaultButton added 20030606, CLH
+
+ cmConfigGwDisableResetToDefaultButton OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object is to enable/disable the capability to hard reset to default 
+          from the switch on the back panel of the modem.
+          Set to true(1) to disable hard reset to default, set to false(2) to enable it.
+          The default value is false"
+      DEFVAL {false}
+      ::= {cmConfigGatewayObjects 3}
+
+cmConfigGwMsoManagementType OBJECT-TYPE
+	SYNTAX      INTEGER
+	MAX-ACCESS  read-write
+	STATUS      current
+	DESCRIPTION
+	     "This object is used to configure custom MSO management of the Gateway 
+              device. 
+              A value of 0 is the default and indicates that custom MSO management of 
+              the Gateway is disabled. Other values for this object are MSO-specific 
+              and will be provided in customer release notes."
+	REFERENCE 
+              "SURFboard Cable Device FCI Enumerations Specification."      
+	::= {cmConfigGatewayObjects 4}
+
+      
+-- TurboDox MIB Objects added 20021006, Kevin Marez.
+--
+-- TurboDox Configuration
+--
+modemCmTurboDoxEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "Enables/disables TurboDox operation.  This MIB object may only be set via 
+          the configuration file.  Default value is TRUE."
+      ::= { cmConfigVendorObjectsTI 1 }
+      
+
+modemCmTurboDoxDeleteTimer OBJECT-TYPE
+      SYNTAX INTEGER (1..65535)
+      MAX-ACCESS read-only
+      STATUS current
+      DESCRIPTION
+         "Changes the TCP session delete timeout value.  This MIB object may only be 
+          set via the configuration file.  Default value is 15."
+      ::= { cmConfigVendorObjectsTI 2 }
+      
+
+modemCmTurboDoxSlowStartTimer OBJECT-TYPE
+      SYNTAX INTEGER (1..65535)
+      MAX-ACCESS read-only
+      STATUS current
+      DESCRIPTION
+         "Changes the TCP slow start timeout value.  This MIB object may only be 
+          set via the configuration file.  Default value is 10."
+      ::= { cmConfigVendorObjectsTI 3 }
+
+
+modemCmTurboDoxVersion OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..15))
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+           "The value of this object is TurboDox version value.
+           If TurboDox feature is not implemented, this object empty instance
+           (NULL)."
+        ::= { cmConfigVendorObjectsTI 4 }
+
+-- Objects Merged by K. Marez via H. Cohen's email, 7/1/2004
+modemCmTurboRemoveAllPorts OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "All TurboDox objects are read-only while CM is Operational.
+           TurboDox parameters can not be changed in run-time. Configuration
+           file SNMP settings are only permitted for parametrs modifications.
+
+           This object remove all ports from Aplicatioin level Filter. By
+           default all TCP ports are involved into TurboDox processing. After
+           appling set to this object to True the selected filters may be
+           added using modemCmTurboDoxAddPort object.
+           Set to true(1) to reset all Port Filters.
+           Set to False(2) do nothing. Always return False(2).
+           If TurboDox feature is not implemented, this object has not instance
+           (NULL)."
+        ::= { cmConfigVendorObjectsTI 5 }
+
+modemCmTurboDoxAddPort OBJECT-TYPE
+        SYNTAX  INTEGER (0|1..65535)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+           "All TurboDox objects are read-only while CM is Operational.
+           TurboDox parameters can not be changed in run-time. Configuration
+           file SNMP settings are only permitted for parametrs modifications.
+
+           By default all TCP ports are involved into TurboDox processing.
+           After appling set to modemCmTurboRemoveAllPorts object to True
+           the selected filters may be added using this object.
+           Return last added port.
+           If any set was not executed since reboot read value will be 0.
+           If TurboDox feature is not implemented, this object has not instance
+           (NULL)."
+        ::= { cmConfigVendorObjectsTI 6 }
+
+modemCmEnableMsoFeatures OBJECT-TYPE
+        SYNTAX  TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to Enable MSO features for field deployment.
+            Set to true(1) to enable MSO features.
+            Set to false(2) to disable MSO features.
+            This value is also stored into NV and will be operational after
+            next reboot."
+        ::= { cmConfigVendorObjectsTI 7 }
+
+modemCmDisablePacketcable OBJECT-TYPE
+        SYNTAX  TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to disable the packet cable application.
+            Set to true(1) to disable the packetcable application.
+            Set to false(2) to to enable the packetcable application.
+            This value is also stored into NV and will be operational after
+            next reboot."
+        ::= { cmConfigVendorObjectsTI 8 }
+
+modemCmTurboDoxRTTThreshold OBJECT-TYPE
+        SYNTAX  INTEGER (0|1..5000) 
+        UNITS   "milliseconds"
+        MAX-ACCESS  read-write 
+        STATUS      current
+        DESCRIPTION
+            "This object is used to set the Round Trip Time threshold which is used by 
+            the adaptive TurboDox algorithm.  The adaptive TurboDox algorithm determines
+            the TCP ACK suppression behaviour based on this value. The modem will use
+            ACK suppression for a TCP session only if the Round Trip Time between the end
+            points of the TCP connection is less than this value. This value is stored into 
+            non volatile memory and does not require a reboot to take effect."  
+        DEFVAL { 20 }
+       	::= { cmConfigVendorObjectsTI 9 }
+
+-- cqvds00009010: Moto-S
+-- MIB objects for UPC's requirements
+
+cmMotVendorCVC OBJECT-TYPE
+       SYNTAX         DocsX509ASN1DEREncodedCertificate
+       MAX-ACCESS     read-write
+       STATUS         current
+       DESCRIPTION
+           "X.509 certificate"
+       ::= { cmConfigVendorObjects 2 }
+
+cmMotVendorCVCFragmentTable OBJECT-TYPE
+        SYNTAX        SEQUENCE OF CmMotVendorCVCFragmentEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+            "This table contains fragments of the vendorCVC of a size that can be contained in the TFTP config file.
+            Each varbind in the config file must be limited to 200 bytes (except the last fragment, if that is the case).  
+            The final fragment is specified by setting the vendorCVCFragmentFinal value for the final index to true. 
+            When all of the fragments have been obtained, they are assembled into a complete CVC and passed to the CVC 
+            handling routine.  The indexes must be a complete set starting from 1 and ending at the final fragment."
+        ::= { cmConfigVendorObjects 3 }
+ 
+cmMotVendorCVCFragmentEntry OBJECT-TYPE
+        SYNTAX        CmMotVendorCVCFragmentEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+            "Each row stores a CVC fragment and the final fragment flag"
+        INDEX         { cmMotVendorCVCFragmentIndex }
+        ::= { cmMotVendorCVCFragmentTable 1 }
+ 
+CmMotVendorCVCFragmentEntry ::= SEQUENCE {
+        cmMotVendorCVCFragmentIndex  INTEGER,
+        cmMotVendorCVCFragmentData   OCTET STRING,
+        cmMotVendorCVCFragmentFinal  TruthValue
+     }
+ 
+cmMotVendorCVCFragmentIndex OBJECT-TYPE
+        SYNTAX         INTEGER (0..9)
+        MAX-ACCESS     not-accessible
+        STATUS         current
+        DESCRIPTION
+            "Row number of cmMotVendorCVCFragmentTable"
+        ::= { cmMotVendorCVCFragmentEntry 1 }
+ 
+cmMotVendorCVCFragmentData OBJECT-TYPE
+       SYNTAX      OCTET STRING (SIZE (0..200))
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+           "A fragment of the vendor CVC"
+       ::= { cmMotVendorCVCFragmentEntry 2 }
+ 
+cmMotVendorCVCFragmentFinal OBJECT-TYPE
+       SYNTAX      TruthValue
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+           "True means that this is the final fragment."
+       DEFVAL { false }
+       ::= { cmMotVendorCVCFragmentEntry 3 }
+
+cmMotVendorSwDnldTable OBJECT-TYPE
+        SYNTAX        SEQUENCE OF CmMotVendorSwDnldEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+            "This table contains the objects that are 
+             vendor specific and related to software upgrade"
+        ::= { cmConfigVendorObjects 4 }
+
+cmMotVendorSwDnldEntry OBJECT-TYPE
+        SYNTAX        CmMotVendorSwDnldEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+            "Each row stores the Hardware Model, the TFTP server, 
+             the software filename, and software admin status"
+        INDEX         { cmMotVendorSwDnldIndex }
+        ::= { cmMotVendorSwDnldTable 1 }
+
+CmMotVendorSwDnldEntry ::= SEQUENCE {
+           cmMotVendorSwDnldIndex     INTEGER,
+           cmMotVendorHardwareModel   SnmpAdminString,
+           cmMotVendorSwServer        IpAddress,
+           cmMotVendorSwFilename      SnmpAdminString,
+           cmMotVendorSwAdminStatus   INTEGER
+        }
+
+cmMotVendorSwDnldIndex OBJECT-TYPE
+        SYNTAX         INTEGER (0..64)
+        MAX-ACCESS     not-accessible
+        STATUS         current
+        DESCRIPTION
+            "Row number of the SwDnldTable"
+        ::= { cmMotVendorSwDnldEntry 1 }
+
+cmMotVendorHardwareModel OBJECT-TYPE
+       SYNTAX      SnmpAdminString (SIZE (0..64))
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+           "If this string matches the CM's hardware model,
+             - cmMotVendorSwServer should be treated as a TLV 21
+             - cmMotVendorSwFilename should be treated as a TLV 9
+             - cmMotVendorSwAdminStatus should be treated as docsDevSwAdminStatus"
+       ::= { cmMotVendorSwDnldEntry 2 }
+
+cmMotVendorSwServer OBJECT-TYPE
+       SYNTAX      IpAddress
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+           "The address of the TFTP server used for software
+            upgrades.  If the TFTP server is unknown or is a
+            non-IPv4 address, return 0.0.0.0."
+       ::= { cmMotVendorSwDnldEntry 3 }
+
+cmMotVendorSwFilename OBJECT-TYPE
+       SYNTAX      SnmpAdminString (SIZE (0..64))
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+           "The filename of the software image to be downloaded via
+            TFTP. If unknown, the value of this object is the zero-length
+            string."
+       ::= { cmMotVendorSwDnldEntry 4 }
+
+cmMotVendorSwAdminStatus OBJECT-TYPE
+       SYNTAX INTEGER {
+           upgradeFromMgt(1),
+           allowProvisioningUpgrade(2),
+           ignoreProvisioningUpgrade(3)
+       }
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+           "If set to upgradeFromMgt(1), the device will initiate a
+            TFTP or HTTP software image download.  After
+            successfully receiving an image, the device will set
+            its state to ignoreProvisioningUpgrade(3) and reboot.
+            If the download process is interrupted (e.g., by a reset
+            or power failure), the device will load the previous
+            image and, after re-initialization, continue to attempt
+            loading the image specified in docsDevSwFilename.
+
+            If set to allowProvisioningUpgrade(2), the device will
+            use the software version information supplied by the
+            provisioning server when next rebooting (this does not
+            cause a reboot).
+
+            When set to ignoreProvisioningUpgrade(3), the device
+            will disregard software image upgrade information
+            from the provisioning server.
+
+            Note that reading this object can return
+            upgradeFromMgt(1).  This indicates that a software
+            download is currently in progress, and that the device
+            will reboot after successfully receiving an image."
+       DEFVAL { allowProvisioningUpgrade }
+       ::= { cmMotVendorSwDnldEntry 5 }
+
+-- cqvds00009010: Moto-E
+
+cmMotVendorMDDHonorIp OBJECT-TYPE
+        SYNTAX INTEGER
+        {
+            vendorMDDIpHonorMDDWithoutLog(-1),
+            vendorMDDIpHonorMDD(0),
+            vendorMDDIpUseIPv4(1),
+            vendorMDDIpUseIPv6(2),
+            vendorMDDIpUseAPM(3),
+            vendorMDDIpUseDPM(4)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+          "-1  indicates that the device MUST honor the IP Mode MDD TLV transmitted by the CMTS on the access network.
+               An event log entry that reports the old and new provisioning modes will not be added to docsDevEventTable.
+            0  indicates that the device MUST honor the IP Mode MDD TLV transmitted by the CMTS on the access network.
+               An event log entry that reports the old and new provisioning modes will be added to docsDevEventTable.
+            1  indicates that the device MUST only attempt initialization in IPv4 mode.
+            2  indicates that the device MUST only attempt initialization in IPv6 mode.
+            3  indicates that the device MUST attempt initialization using APM.
+            4  indicates that the device MUST attempt initialization using DPM.
+                 Storage:  Permanent Non-Vol
+		         Reset To Factory Defaults:  No effect on this item"
+        REFERENCE
+	             "Comcast Honor MDD IP Mode Requirements Version DRAFT 0.4
+	             DOCSIS MULPI 3.0 Specification, Section 6.4.28"
+        DEFVAL {vendorMDDIpHonorMDDWithoutLog}
+        ::= { cmConfigVendorObjects 5 }
+
+cmConfigVendorObjectsBcm     OBJECT IDENTIFIER ::= { cmConfigVendorObjects 6 }
+
+-- TCP ACK Suppression Enable/Disable
+--
+cmAckCelEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "Enables/disables the AckCel feature that implements TCP ACK suppression as described in RFC3449.
+          Setting this object to true(1) enables TCP ACK suppression which will reduce the number of TCP ACKs sent on the upstream link.
+          Setting this object to false(2) disables TCP ACK suppression."
+      ::= { cmConfigVendorObjectsBcm 1 }
+
+
+-- cmConfigSecurityObjects added 20030616, CLH
+cmLoginChallenge OBJECT-TYPE 
+        SYNTAX OCTET STRING (SIZE (0..8))
+        MAX-ACCESS read-only 
+        STATUS current 
+        DESCRIPTION 
+            "This value is queried by the Test/Calibration station and 
+             has a length of 9 bytes. It consists of Protocol Version 
+             (1 byte; value of 0x01) and Device Transaction ID (8 bytes; 
+             value from random number generator)." 
+        ::= { cmConfigSecurityObjects 1 } 
+
+cmLoginResponse OBJECT-TYPE 
+        SYNTAX OCTET STRING 
+        MAX-ACCESS read-write 
+        STATUS current 
+        DESCRIPTION 
+            "This value is set by the Test/Calibration station and has four 
+             components. It consists of Protocol Version (1 byte; value of 
+             0x01), Host Transaction ID (8 bytes), Signature (128 bytes) and 
+             Certificate (X.509 Certificate format; variable length)." 
+        ::= { cmConfigSecurityObjects 2 } 
+
+
+-- 
+-- cmConfigMtaObjects added 20050606, Chau Do
+--
+cmPasswordOfDayEnable OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS read-write 
+        STATUS current 
+        DESCRIPTION 
+            "Enables GUI Password of Day feature.  If this set to true
+	         then the Password is computed using the seed specified below.  Note that
+	         a password will be automatically generated each day based on the seed.
+			 Defaults to false."
+        ::= { cmConfigMtaObjects 1 } 
+      
+cmPasswordOfDaySeed OBJECT-TYPE
+        SYNTAX  OCTET STRING (SIZE (0..16))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Provides initial value for password of day generator.  This object may 
+			only be set in the CM config file.  SNMP Sets will be ignored.  
+			SNMP gets will return empty string.  Must be alphanumeric."
+        ::= { cmConfigMtaObjects 2 }
+
+cmRegularUserName OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..32))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Provides the user name for regular user. 
+	     Must be alphanumeric."
+        ::= { cmConfigMtaObjects 3 } 
+
+cmRegularUserPassword OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..32))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Provides the password for regular user. Must be alphanumeric."
+        ::= { cmConfigMtaObjects 4 } 
+
+cmSuperUserName OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..32))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Provides the user name for super user.  The default value is 'root'. 
+			Must be alphanumeric."
+        ::= { cmConfigMtaObjects 5 } 
+
+cmSuperUserPassword OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..32))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Provides the password for the super user. Note that this password is used
+			 only when the Password of Day feature is disabled (false).
+			 Always returns empty string.  Must be alphanumeric."
+        ::= { cmConfigMtaObjects 6 } 
+
+cmTodRenewEnable OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS read-write 
+        STATUS current 
+        DESCRIPTION 
+            "Enables Tod Renew Time feature.  If this set to true
+	         then the TOD renew feature is enabled.  Defaults to true."
+        ::= { cmConfigMtaObjects 7 } 
+
+cmTodRenewTime OBJECT-TYPE
+	SYNTAX	    INTEGER ( 600..31536000 )
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Time of Day (TOD) renew time in seconds.   This is the maximum periodic renewal time when the eMTA system time is refreshed by
+             recontacting the TOD server to get a new time.   The system will renew randomly starting at 1/2 this value and upto
+             the configured value.   Default value is 2592000 secs (30 days)."
+        ::= { cmConfigMtaObjects 8 } 
+
+cmDsTimeoutEnable	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enables and Disables the Down Stream lock Management.
+	 If True(1) then uses a timer, wait before intentionally rebooting the emta
+	 due to unsuccessfully scanning for DownStream channel.
+	 The durations may be configured using MIB object: btiDsTimeoutValue"
+      ::= { cmConfigMtaObjects 11 }
+
+cmDsTimeoutValue	OBJECT-TYPE
+	SYNTAX         INTEGER(0..3600)
+	UNITS		   "seconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Defines the time to wait before intentionally rebooting the emta
+	 due to unsuccessful scanning for DownStream channel"
+      ::= { cmConfigMtaObjects 12 }
+
+MtaProvModeType ::= TEXTUAL-CONVENTION  
+    STATUS       current  
+    DESCRIPTION    
+        "This textual convention defines MTA provisioning modes
+        that MAY be supported. The description for each 
+        enumeration is listed below: 
+            Enumeration                 Description 
+            pcProv10                    PacketCable 1.0 Compatible
+            pcProv15                    PacketCable 1.5 Compatible
+            pcProv20                    PacketCable 2.0 Compatible
+            pcProvCustom1               Custom Provisioning Mode 1
+            pcProvCustom2               Custom Provisioning Mode 2
+            pcProvCustom3               Custom Provisioning Mode 3
+            pcProvCustom4               Custom Provisioning Mode 4
+            pcProvCustom5               Custom Provisioning Mode 5
+        " 
+    SYNTAX INTEGER { 
+            pcProv10                    (1),
+            pcProv15                    (2),
+            pcProv20                    (3),
+            pcProvCustom1               (4),
+            pcProvCustom2               (5),
+            pcProvCustom3               (6),
+            pcProvCustom4               (7),
+            pcProvCustom5               (8)
+    }
+
+cmMtaProvMode OBJECT-TYPE
+    SYNTAX          MtaProvModeType
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "The MTA Provisioning Mode."
+    ::= { cmConfigMtaObjects 9 }
+
+cmMtaCustomProvParam OBJECT-TYPE
+    SYNTAX  DisplayString (SIZE (0..100))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Additional parameters associated a custom provisioning mode.
+        The values are encoded as a list of comma separated values.
+        "
+    ::= { cmConfigMtaObjects 10 } 
+
+cmMtaResetToDefaults OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "Setting to TRUE will reset all of the MTA's non-vol paramters to
+         factory defaults. Setting to FALSE will have no effect.
+         This may be set to the CM IP address.
+         Default value is FALSE when read."
+    ::= { cmConfigMtaObjects 13 }
+
+
+-- 
+-- cmConfigGenericObjects 
+--
+
+cmConfigLastResetToDefaults OBJECT-TYPE
+    SYNTAX DateAndTime
+    MAX-ACCESS read-only 
+    STATUS current 
+    DESCRIPTION 
+            "This object returns the date and time when cmResetToDefaults was last set
+            to true, or factory reset button was pressed, or if factory reset 
+            occured via local web page."
+    ::= { cmConfigGenericObjects 1 }
+
+    
+cmConfigCpeInterfaceEnable	OBJECT-TYPE
+	  SYNTAX         BITS
+	  {
+		telnet(0),
+		reserved1(1),
+		reserved2(2),
+		reserved3(3),
+		reserved4(4),
+		ssh(5)
+	  }
+	  MAX-ACCESS     read-write
+	  STATUS         current
+	  DESCRIPTION
+	    "When set, indicates access into the device is available through the 
+	    CPE interface for a particular function. When cleared, indicates that 
+	    function is disallowed through the CPE interface. 
+	    
+	    On MTA products, similar functionality is available via 
+	    btiCpeInterfaceEnable MIB object."
+	  ::= { cmConfigGenericObjects 2 }
+      
+cmConfigHfcInterfaceEnable OBJECT-TYPE
+	  SYNTAX         BITS
+	  {
+		telnet(0),
+		reserved1(1),
+		reserved2(2),
+		reserved3(3),
+		reserved4(4),
+		ssh(5)
+	  }
+	  MAX-ACCESS     read-write
+	  STATUS         current
+	  DESCRIPTION
+	    "When set, indicates access into the device is available through the 
+	    HFC interface for a particular function. When cleared, indicates that 
+	    function is disallowed through the HFC interface.
+	    
+	    On MTA products, similar functionality is available via 
+	    btiHfcInterfaceEnable MIB object."
+	  ::= { cmConfigGenericObjects 3 }
+
+-- 
+-- cmConfigNotifications 
+--
+
+cmConfigResetToDefaultsTrap NOTIFICATION-TYPE
+    OBJECTS
+	{
+	    docsDevDateTime, 
+	    sysDescr
+	}
+	STATUS current
+    DESCRIPTION
+            "Trap for the event when cmResetToDefaults is set to true, or factory
+            reset button is pressed, or if factory reset occured via local web 
+            page."
+	::= { cmConfigNotifications 1 }
+
+
+-- giCmConfig Compliance 
+
+-- *******************************************************************
+-- *   compliance statements
+-- *******************************************************************
+
+cmConfigConformance OBJECT IDENTIFIER ::= { cmConfigPrivateBase 1000 }
+cmConfigGroups OBJECT IDENTIFIER ::= { cmConfigConformance 1 }
+cmConfigCompliances OBJECT IDENTIFIER ::= { cmConfigConformance 2 }
+
+cmConfigCompliance MODULE-COMPLIANCE
+        STATUS  current
+        DESCRIPTION
+            "The compliance statement for the Motorola Private 
+        Configuration MIB objects."
+
+  MODULE
+    MANDATORY-GROUPS { 
+        cmBaseCompliance }
+
+    --GROUP cmTelcoComplianceGroup
+    --  DESCRIPTION
+    --  "Implementation of this grouping is only Mandatory on CM
+    --  products that support Telco Return."
+
+    GROUP cmStandbyComplianceGroup
+      DESCRIPTION
+        "Implementation of this grouping is only Mandatory on CM
+        products that employ a standby switch."
+
+    GROUP cmHybridComplianceGroup
+      DESCRIPTION
+        "Implementation of this grouping is only Mandatory on
+        EuroDOCSIS CM products."
+
+    GROUP cmDocsis20ComplianceGroup
+      DESCRIPTION
+        "Implementation of this grouping is only Mandatory on
+        DOCSIS 2.0 capable CM products."
+
+    GROUP cmGatewayComplianceGroup
+      DESCRIPTION
+        "Implementation of this grouping is only Mandatory on
+        Gateway CM products."
+
+    GROUP cmTurboDoxComplianceGroup
+      DESCRIPTION
+        "Implementation of this grouping is only Mandatory on TI-
+        based   CM products that support TurboDOX."
+    
+    GROUP cmExtendedChannelComplianceGroup
+      DESCRIPTION
+        "Implementation of this grouping is only Mandatory on the
+        SB4220, SB5100, SB5120, and Gateway products."
+    ::= { cmConfigCompliances 1 }
+
+
+cmBaseCompliance OBJECT-GROUP
+
+        OBJECTS { cmConfigFreq1, cmConfigFreq2, cmConfigFreq3, 
+                cmUpstreamChannelId1, cmCarrierFrequencyOffset,
+                cmSnmpHFCPort, cmSnmpHFCTrapPort,
+                cmSnmpDisplayHtml,
+                cmResetToDefaults, cmUpstreamChannelId3,
+                cmUpstreamPower1, cmUpstreamPower2,
+                cmUpstreamPower3, cmUpstreamChannelId2,
+		    modemCmEnableMsoFeatures, modemCmDisablePacketcable }
+        STATUS current
+        DESCRIPTION
+            "The Base Compliance class defines those features
+            that must be supported by all CM products."
+      ::= { cmConfigGroups 1 }
+
+cmStandbyComplianceGroup OBJECT-GROUP
+
+        OBJECTS { cmStandbyMode, cmStandbyCapable }
+        STATUS current
+        DESCRIPTION
+            "The Standby Compliance class defines those objects
+            that must be supported by all CM products that
+            employ a Standby switch."
+      ::= { cmConfigGroups 2 }
+
+cmHybridComplianceGroup OBJECT-GROUP
+
+        OBJECTS { cmFreqPlanType, cmHybridMode }
+        STATUS current
+        DESCRIPTION
+            "The Hybrid Compliance group defines those objects
+            that must be supported by all CM products that
+            support EuroDOCSIS."
+      ::= { cmConfigGroups 3 }
+
+cmDocsis20ComplianceGroup OBJECT-GROUP
+
+        OBJECTS { cmDocsis20Capable }
+        STATUS current
+        DESCRIPTION
+            "The DOCSIS 2.0 Compliance group defines those 
+            objects that must be supported by all CM products
+            that support DOCSIS 2.0."
+      ::= { cmConfigGroups 4 }
+
+cmGatewayComplianceGroup OBJECT-GROUP
+
+        OBJECTS {   cmConfigGatewayDeviceOperMode,
+        -- Index cmConfigGuiSessionUserId,
+        cmConfigGuiSessionPassword,
+        cmConfigGuiSessionInactivityTimeoutEnable,
+        cmConfigGuiSessionInactivityTimeout,            
+            cmConfigGuiSessionStatus }
+        STATUS current
+        DESCRIPTION
+            "The Gateway Compliance group defines those objects
+            that must be supported by all CM products that
+            support Gateway functionality."
+      ::= { cmConfigGroups 5 }
+
+cmTurboDoxComplianceGroup OBJECT-GROUP
+
+        OBJECTS { modemCmTurboDoxEnable,
+                modemCmTurboDoxDeleteTimer,
+                modemCmTurboDoxSlowStartTimer, 
+		    modemCmTurboRemoveAllPorts,
+		    modemCmTurboDoxAddPort }
+        STATUS current
+        DESCRIPTION
+            "The TurboDOX Compliance group defines those objects
+            that must be supported by all CM products based on
+            a TI Chipset that support TurboDOX."
+      ::= { cmConfigGroups 6 }
+
+cmExtendedChannelComplianceGroup OBJECT-GROUP
+
+        OBJECTS { cmUpstreamChannelId3,
+                cmUpstreamPower1, cmUpstreamPower2,
+                cmUpstreamPower3, cmUpstreamChannelId2 }
+        STATUS current
+        DESCRIPTION
+            "The Extended Channel Compliance group defines those objects
+            that support the storage of extended channel information."
+      ::= { cmConfigGroups 7 }
+
+END

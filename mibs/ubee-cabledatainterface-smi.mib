@@ -1,0 +1,45 @@
+--**************************************************************************
+--    Description:
+--
+--		SMI MIB for cableDataInterface branch of Ubee private MIBs
+--		
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+UBEE-CABLEDATAINTERFACE-SMI DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY
+        FROM SNMPv2-SMI
+    ubee
+        FROM UBEE-SMI;
+        
+cableDataInterface MODULE-IDENTITY
+    LAST-UPDATED "200905200000Z"
+    ORGANIZATION "Ubee Interactive Corporation"
+    CONTACT-INFO
+        "	Ubee Interactive Global Headquarters
+
+        Postal: 6F-9, No.38, Taiyuan St.
+        		Jhubei City Hsinchu County 302
+        		Taiwan, R.O.C.
+
+           Tel: +886-3-560-0010
+
+        E-mail: asupport@ubeeinteractive.com"
+    DESCRIPTION
+        "The Structure of Management Information for the Ubee
+         enterprise dealing with Cable Modems, Cable Modem Termination
+         Systems, and related data-over-CATV systems."
+    ::= { ubee 38 }
+
+--cableData OBJECT IDENTIFIER ::= { cableDataInterface 2}
+    
+--cableDataMgmt OBJECT IDENTIFIER ::= { cableData 2 }
+    
+END
+
+

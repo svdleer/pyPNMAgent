@@ -1,0 +1,2894 @@
+    SMC-DORY-MIB DEFINITIONS ::= BEGIN
+    IMPORTS
+
+		OBJECT-TYPE,                      
+        MODULE-IDENTITY,
+        NOTIFICATION-TYPE,
+        Integer32,
+        IpAddress,
+        enterprises                     FROM SNMPv2-SMI
+
+        InetAddress                     FROM INET-ADDRESS-MIB
+
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP                    FROM SNMPv2-CONF
+
+        MacAddress,
+        RowStatus,
+        TruthValue,
+        DisplayString                   FROM SNMPv2-TC;
+   
+
+    smcNetworks    OBJECT IDENTIFIER ::= { enterprises 202 }
+    smcCableModem  OBJECT IDENTIFIER ::= { smcNetworks 80  }
+
+smcDory MODULE-IDENTITY
+    LAST-UPDATED "201005200000Z" -- May 20th, 2010
+    ORGANIZATION "SMC Networks, Inc."
+    CONTACT-INFO
+        "Linmei Shu
+         SMC Networks Inc
+         11940 Jollyville Road STE-220N
+         Austin, TX 78759
+         USA
+         Phone: +1 512 249 9515 ext. 101
+         E-mail: linmei.shu@smc.com"
+    DESCRIPTION
+       "The MIB module to describe the SMC product DORY gateway control functions."
+
+    REVISION "201005200000Z"
+    DESCRIPTION
+        "Initial Compilable Version"
+
+    ::= { smcCableModem 11 }
+
+-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    iface OBJECT IDENTIFIER ::= { smcDory 2 }
+
+        ifaceWan OBJECT IDENTIFIER ::= { iface 1 }
+
+            ifaceWanWanMac OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the wan mac address"
+                ::= { ifaceWan 1 }
+
+--            ifaceWanWanIpv6Enable OBJECT-TYPE
+--                SYNTAX       INTEGER {
+--                    enable(1),
+--                    disable(2)
+--                }
+--                MAX-ACCESS   read-write
+--                STATUS       current
+--                DESCRIPTION 
+--                    "enable/disable wan side's IPv6 function"
+--                ::= { ifaceWan 2 } 
+  
+--            ifaceWanWanIpMode OBJECT-TYPE
+--                SYNTAX       INTEGER {
+--                    same-as-rf-interface(1),
+--                    ipv4-only(2),
+--                    ipv6-only(3),
+--                    dual-stack(4)
+--                }
+--                MAX-ACCESS   read-write
+--                STATUS       current
+--                DESCRIPTION 
+--                    "specify WAN IP mode"
+--                ::= { ifaceWan 1 }
+
+--            ifaceWanStatus OBJECT-TYPE
+--                SYNTAX       DisplayString
+--                MAX-ACCESS   read-only
+--                STATUS       current
+--                DESCRIPTION 
+--                    "status of wan interface"
+--                ::= { ifaceWan 2 }
+
+--            ifaceWanRebootWan OBJECT-TYPE
+--                SYNTAX       TruthValue
+--                MAX-ACCESS   read-write
+--                STATUS       current
+--                DESCRIPTION 
+--                    "Write-only object. Reading this object will result in implementation-specific
+--                     value, generally empty or a string describing the node is write-only.
+--
+--                     reboot wan interface"
+--                ::= { ifaceWan 3 }
+
+--            ifaceWanUsage OBJECT IDENTIFIER ::= { ifaceWan 4 }
+
+--                ifaceWanUsageToday OBJECT-TYPE
+--                    SYNTAX       DisplayString
+--                    MAX-ACCESS   read-only
+--                    STATUS       current
+--                    DESCRIPTION 
+--                        "get flow usage today"
+--                    ::= { ifaceWanUsage 1 }
+
+--                ifaceWanUsageLast7days OBJECT-TYPE
+--                    SYNTAX       DisplayString
+--                    MAX-ACCESS   read-only
+--                    STATUS       current
+--                    DESCRIPTION 
+--                        "get flow usage in last 7 days"
+--                    ::= { ifaceWanUsage 2 }
+
+--                ifaceWanUsageLast30days OBJECT-TYPE
+--                    SYNTAX       DisplayString
+--                    MAX-ACCESS   read-only
+--                    STATUS       current
+--                    DESCRIPTION 
+--                        "get flow usage in last 30 days"
+--                    ::= { ifaceWanUsage 3 }
+
+--                ifaceWanUsageLast3months OBJECT-TYPE
+--                    SYNTAX       DisplayString
+--                    MAX-ACCESS   read-only
+--                    STATUS       current
+--                    DESCRIPTION 
+--                        "get flow usage in last 3 months"
+--                    ::= { ifaceWanUsage 4 }
+
+--                ifaceWanUsageLast1year OBJECT-TYPE
+--                    SYNTAX       DisplayString
+--                    MAX-ACCESS   read-only
+--                    STATUS       current
+--                    DESCRIPTION 
+--                        "get flow usage in last 1 year"
+--                    ::= { ifaceWanUsage 5 }
+
+        ifaceLan OBJECT IDENTIFIER ::= { iface 2 }
+
+            ifaceLanIp OBJECT-TYPE
+                SYNTAX       InetAddress
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "ip address of lan interface,last 16 addresses each sub-net are
+                     reserved"
+                ::= { ifaceLan 1 }
+
+            ifaceLanIpMask OBJECT-TYPE
+                SYNTAX       InetAddress
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "netmask, must not be /28,/29,/30,/31"
+                ::= { ifaceLan 2 }
+
+            ifaceLanRestoreLan OBJECT-TYPE
+                SYNTAX       TruthValue
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "Write-only object. Reading this object will result in implementation-specific
+                     value, generally empty or a string describing the node is write-only.
+
+                     restore lan interface"
+                ::= { ifaceLan 3 }
+
+            ifaceLanDhcpSrvr OBJECT-TYPE
+                SYNTAX       INTEGER {
+                    enable(1),
+                    disable(2)
+                }
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "setting of dhcp server for lan interface"
+                ::= { ifaceLan 4 }
+
+            ifaceLanDhcpSrvrEnblBeginningIp OBJECT-TYPE
+                SYNTAX       InetAddress
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "beginning ip, last 16 addresses each sub-net are reserved"
+                ::= { ifaceLan 5 }
+
+            ifaceLanDhcpSrvrEnblEndingIp OBJECT-TYPE
+                SYNTAX       InetAddress
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "ending ip, last 16 addresses each sub-net are reserved"
+                ::= { ifaceLan 6 }
+
+            ifaceLanDhcpSrvrEnblLeaseTime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "lease time in seconds,The minimum lease time is two minutes"
+                ::= { ifaceLan 7 }
+
+            ifaceLanEnableIpv6 OBJECT-TYPE
+                SYNTAX       INTEGER {
+                    enable(1),
+                    disable(2)
+                }
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "setting of Ipv6 for lan interface"
+                ::= { ifaceLan 8 }
+
+            ifaceLanRestoreIpv6 OBJECT-TYPE
+                SYNTAX       TruthValue
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "Write-only object. Reading this object will result in implementation-specific
+                     value, generally empty or a string describing the node is write-only.
+
+                     restore Ipv6 to default setting"
+                ::= { ifaceLan 9 }
+
+--            ifaceLanDhcpSrvrEnblDomainName OBJECT-TYPE
+--                SYNTAX       DisplayString
+--               MAX-ACCESS   read-write
+--                STATUS       current
+--                DESCRIPTION 
+--                    "dhcp domain name"
+--                ::= { ifaceLan 8 }
+
+--            ifaceLanLanQos OBJECT-TYPE
+--                SYNTAX       TruthValue
+--                MAX-ACCESS   read-write
+--                STATUS       current
+--                DESCRIPTION 
+--                    "enable/disable lan qos"
+--                ::= { ifaceLan 9 }
+
+        ifaceWls OBJECT IDENTIFIER ::= { iface 3 }
+
+            ifaceWlsMac OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the wifi mac address"
+                ::= { ifaceWls 1 }
+
+        ifaceNetworkOperationalMode OBJECT-TYPE
+            SYNTAX       INTEGER {
+                bridge(1),
+                router(2)
+            }
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "operational mode of network"
+            ::= { iface 4 }
+
+--+++++++++++++++++++++ NAT ++++++++++++++++++++++++
+    nat OBJECT IDENTIFIER ::= { smcDory 3 }
+
+    natBase OBJECT IDENTIFIER ::= {nat 1}
+
+        natPortForwardingEnbl OBJECT-TYPE
+	    SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable all port_forwarding rules in port_forwarding table"
+            ::= { natBase 1 }
+
+        natPorttriggerEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable all port_trigger rules in port_trigger table"
+            ::= { natBase 2 }
+	
+        natDmzEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable/disable all rules in 121nat_mapping rules"
+            ::= { natBase 3 }
+
+--        natPortblockingEnbl OBJECT-TYPE
+--            SYNTAX       TruthValue
+--            MAX-ACCESS   read-write
+--            STATUS       current
+--            DESCRIPTION 
+--                "enable all port blocking rules in port blocking table"
+--            ::= { natBase 4 }
+
+    natPortForwardingTable OBJECT-TYPE
+        SYNTAX       SEQUENCE OF NatPortForwardingEntry
+        MAX-ACCESS   not-accessible 
+        STATUS       current
+        DESCRIPTION 
+            "port forwarding table"
+        ::= { nat 2 }
+
+        natPortForwardingEntry OBJECT-TYPE
+            SYNTAX       NatPortForwardingEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "Entry of table natPortForwarding"
+            INDEX        { natPortForwardingIndex }
+            ::= { natPortForwardingTable 1 }
+
+        NatPortForwardingEntry ::=
+        SEQUENCE {
+                natPortForwardingIndex                           Integer32,
+                natPortForwardingRowStatus                       RowStatus,
+                natPortForwardingSrvcName                        DisplayString,
+                natPortForwardingServerip                        IpAddress,
+                natPortForwardingProto                           INTEGER,
+                natPortForwardingPubStartPort                    Integer32,
+                natPortForwardingPubEndPort                      Integer32,
+                natPortForwardingPrivPort                        Integer32,
+                natPortForwardingPrivPortRngEnbl                 TruthValue
+        }
+
+        natPortForwardingIndex OBJECT-TYPE
+            SYNTAX       Integer32(1..100)
+            MAX-ACCESS   not-accessible
+            STATUS       deprecated
+            DESCRIPTION 
+                "Index of natPortForwardingEntry."
+            ::= { natPortForwardingEntry 1 }
+
+        natPortForwardingRowStatus OBJECT-TYPE
+            SYNTAX       RowStatus
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "The status of this conceptual row.
+                 Set createAndGo(4) or createAndWait(5) to create a row in this table.
+                 Set destroy(6) to delete all of the instances associated with an existing
+                 conceptual row."
+            ::= { natPortForwardingEntry 2 }
+
+        natPortForwardingSrvcName OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "service name"
+            ::= { natPortForwardingEntry 3 }
+
+        natPortForwardingServerip OBJECT-TYPE
+            SYNTAX       IpAddress
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "server ip address."
+            ::= { natPortForwardingEntry 4 }
+
+        natPortForwardingProto OBJECT-TYPE
+            SYNTAX       INTEGER {
+                tcp(1),
+                udp(2),
+                tcp-udp(3)
+            }
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "protocol"
+            ::= { natPortForwardingEntry 5 }
+
+        natPortForwardingPubStartPort OBJECT-TYPE
+            SYNTAX       Integer32(1..65535)
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "Public starting port"
+            ::= { natPortForwardingEntry 6 }
+
+        natPortForwardingPubEndPort OBJECT-TYPE
+            SYNTAX       Integer32(1..65535)
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "Public ending port."
+            ::= { natPortForwardingEntry 7 }
+
+	natPortForwardingPrivPort OBJECT-TYPE
+            SYNTAX       Integer32(1..65535)
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "Private port(s)"
+            ::= { natPortForwardingEntry 8 }
+
+        natPortForwardingPrivPortRngEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "Enable port range on private side, the range start with natPortForwardingPrivPort, and offset 
+		 is the interval between natPortForwardingPubEndPort and natPortForwardingPubStartPort"
+            ::= { natPortForwardingEntry 9 }
+
+    natPortTrgrTable OBJECT-TYPE
+        SYNTAX       SEQUENCE OF NatPortTrgrEntry
+        MAX-ACCESS   not-accessible 
+        STATUS       current
+        DESCRIPTION 
+            "port trigger table"
+        ::= { nat 3 }
+
+        natPortTrgrEntry OBJECT-TYPE
+            SYNTAX       NatPortTrgrEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "Entry of table natPortTrgr"
+            INDEX        { natPortTrgrIndex }
+            ::= { natPortTrgrTable 1 }
+
+        NatPortTrgrEntry ::=
+        SEQUENCE {
+                natPortTrgrIndex                                 Integer32,
+                natPortTrgrRowStatus                             RowStatus,
+                natPortTrgrSrvcName                              DisplayString,
+                natPortTrgrTriggeringStartPort                   Integer32,
+                natPortTrgrTriggeringEndPort                     Integer32,
+                natPortTrgrTriggeredStartPort                    Integer32,
+                natPortTrgrTriggeredEndPort                      Integer32,
+                natPortTrgrProto                                 INTEGER,
+		natPortTrgrInterval				 INTEGER
+--              natPortTrgrSrvcUsr                               INTEGER,
+--              natPortTrgrSrvcUsrSnglUsrIp                      IpAddress
+        }
+
+        natPortTrgrIndex OBJECT-TYPE
+            SYNTAX       Integer32(1..100)
+            MAX-ACCESS   not-accessible
+            STATUS       current
+            DESCRIPTION 
+                "Index of natPortTrgrEntry."
+            ::= { natPortTrgrEntry 1 }
+
+        natPortTrgrRowStatus OBJECT-TYPE
+            SYNTAX       RowStatus
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "The status of this conceptual row.
+                 Set createAndGo(4) or createAndWait(5) to create a row in this table.
+                 Set destroy(6) to delete all of the instances associated with an existing
+                 conceptual row."
+            ::= { natPortTrgrEntry 2 }
+
+        natPortTrgrSrvcName OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "service name"
+            ::= { natPortTrgrEntry 3 }
+
+        natPortTrgrTriggeringStartPort OBJECT-TYPE
+            SYNTAX       Integer32(1..65535)
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "triggering starting port"
+            ::= { natPortTrgrEntry 4 }
+
+        natPortTrgrTriggeringEndPort OBJECT-TYPE
+            SYNTAX       Integer32(1..65535)
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "triggering ending port"
+            ::= { natPortTrgrEntry 5 }
+
+        natPortTrgrTriggeredStartPort OBJECT-TYPE
+            SYNTAX       Integer32(1..65535)
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "triggered starting port"
+            ::= { natPortTrgrEntry 6 }
+
+        natPortTrgrTriggeredEndPort OBJECT-TYPE
+            SYNTAX       Integer32(1..65535)
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "triggered ending port"
+            ::= { natPortTrgrEntry 7 }
+
+        natPortTrgrProto OBJECT-TYPE
+            SYNTAX       INTEGER {
+                tcp(1),
+                udp(2),
+                tcp-udp(3)
+            }
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "protocol of triggering"
+            ::= { natPortTrgrEntry 8 }
+	
+	natPortTrgrInterval OBJECT-TYPE
+            SYNTAX       INTEGER (50..30000)
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "Interval"
+            ::= { natPortTrgrEntry 9 }
+
+--        natPortTrgrSrvcUsr OBJECT-TYPE
+--             SYNTAX       INTEGER {
+--                 any(1),
+--                 single(2)
+--             }
+--             MAX-ACCESS   read-create
+--             STATUS       current
+--             DESCRIPTION 
+--                 "service user of trigger"
+--             ::= { natPortTrgrEntry 10 }
+-- 
+--         natPortTrgrSrvcUsrSnglUsrIp OBJECT-TYPE
+--             SYNTAX       IpAddress
+--             MAX-ACCESS   read-create
+--             STATUS       current
+--             DESCRIPTION 
+--                 "ip address of triggered user"
+--             ::= { natPortTrgrEntry 11 }      
+
+    natDmzMappedIp OBJECT-TYPE
+        SYNTAX       IpAddress
+        MAX-ACCESS   read-write
+        STATUS       current
+        DESCRIPTION 
+            "mapped ip address"
+        ::= { nat 4 }
+
+--    natPortBlockingTable OBJECT-TYPE
+--        SYNTAX       SEQUENCE OF NatPortBlockingEntry
+--        MAX-ACCESS   not-accessible 
+--        STATUS       current
+--        DESCRIPTION 
+--            "port blocking table"
+--        ::= { nat 5 }
+--
+--        natPortBlockingEntry OBJECT-TYPE
+--            SYNTAX       NatPortBlockingEntry
+--            MAX-ACCESS   not-accessible 
+--            STATUS       current
+--            DESCRIPTION 
+--                "Entry of table natPortBlocking"
+--            INDEX        { natPortBlockingIndex }
+--            ::= { natPortBlockingTable 1 }
+--
+--        NatPortBlockingEntry ::=
+--        SEQUENCE {
+--                natPortBlockingIndex                             Integer32,
+--                natPortBlockingRowStatus                         RowStatus,
+--                natPortBlockingSrvcName                          DisplayString,
+--                natPortBlockingProto                             INTEGER,
+--                natPortBlockingPort                              Integer32
+--        }
+--
+--        natPortBlockingIndex OBJECT-TYPE
+--            SYNTAX       Integer32
+--            MAX-ACCESS   read-only
+--            STATUS       current
+--            DESCRIPTION 
+--                "Index of natPortBlockingEntry."
+--            ::= { natPortBlockingEntry 1 }
+--
+--        natPortBlockingRowStatus OBJECT-TYPE
+--            SYNTAX       RowStatus
+--            MAX-ACCESS   read-create
+--            STATUS       current
+--            DESCRIPTION 
+--                "The status of this conceptual row.
+--                 Set createAndGo(4) or createAndWait(5) to create a row in this table.
+--                 Set destroy(6) to delete all of the instances associated with an existing
+--                 conceptual row."
+--            ::= { natPortBlockingEntry 2 }
+--
+--        natPortBlockingSrvcName OBJECT-TYPE
+--            SYNTAX       DisplayString
+--            MAX-ACCESS   read-create
+--            STATUS       current
+--            DESCRIPTION 
+--                "service name"
+--            ::= { natPortBlockingEntry 3 }
+--
+--        natPortBlockingProto OBJECT-TYPE
+--            SYNTAX       INTEGER {
+--                tcp(1),
+--                udp(2),
+--                tcp-udp(3)
+--            }
+--            MAX-ACCESS   read-create
+--            STATUS       current
+--            DESCRIPTION 
+--                "protocol"
+--            ::= { natPortBlockingEntry 4 }
+--
+--        natPortBlockingPort OBJECT-TYPE
+--            SYNTAX       Integer32
+--            MAX-ACCESS   read-create
+--            STATUS       current
+--            DESCRIPTION 
+--                "blocking port number"
+--            ::= { natPortBlockingEntry 5 }
+
+    fw OBJECT IDENTIFIER ::= { smcDory 4 }
+
+        fwFwLevel OBJECT-TYPE
+            SYNTAX       INTEGER {
+                high(1),
+                medium(2),
+                low(3),
+                custom(4)
+            }
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "configure firewall level"
+            ::= { fw 1 }
+
+        fwFwLevelCustomBlockHttp OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "block http and https service"
+            ::= { fw 2 }
+
+        fwFwLevelCustomBlockIcmpMsg OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "block icmp messages"
+            ::= { fw 3 }
+
+        fwFwLevelCustomBlockMulticast OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "block multicast message"
+            ::= { fw 4 }
+
+        fwFwLevelCustomBlockP2pApp OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "block peer to peer applications"
+            ::= { fw 5 }
+
+        fwFwLevelCustomBlockIdent OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "block ident service"
+            ::= { fw 6 }
+
+        fwFwLevelCustomEntrieFw OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "disable/enable entire firewall"
+            ::= { fw 7 }
+
+--        fwFwLevelCustomBlockPingFromWan OBJECT-TYPE
+--            SYNTAX       TruthValue
+--            MAX-ACCESS   read-write
+--            STATUS       current
+--            DESCRIPTION 
+--                "enable/disable block ping from WAN"
+--            ::= { fw 8 }
+
+--        fwFwReboot OBJECT-TYPE
+--            SYNTAX       TruthValue
+--            MAX-ACCESS   read-write
+--            STATUS       current
+--            DESCRIPTION 
+--                "Write-only object. Reading this object will result in implementation-specific
+--                 value, generally empty or a string describing the node is write-only.
+--
+--                 reboot firewall"
+--            ::= { fw 9 }
+
+        fwFwRestore OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "Write-only object. Reading this object will result in implementation-specific
+                 value, generally empty or a string describing the node is write-only.
+
+                 restore firewall"
+            ::= { fw 8 }
+
+    usrMgmt OBJECT IDENTIFIER ::= { smcDory 5 }
+
+        usrMgmtMso OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "mso user name"
+            ::= { usrMgmt 1 }
+
+        usrMgmtMsoPwd OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "This value is used as mso user password for TELNET login, 
+		please use Password of the Day(Pod) to login the GUI or SSH.
+		This value must be at least 8 charactors long. 
+		Reading this object always results in an OCTET STRING of length zero."
+            ::= { usrMgmt 2 }
+
+        usrMgmtCusadmin OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "cusadmin user name"
+            ::= { usrMgmt 3 }
+
+        usrMgmtCusadminPwd OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "This value is used as Cusadmin user password, 
+		This value must be at least 8 charactors long. 
+		Reading this object always results in an OCTET STRING of length zero."
+            ::= { usrMgmt 4 }
+
+    remtMgmt OBJECT IDENTIFIER ::= { smcDory 6 }
+
+        remtMgmtHttpEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable/disable remote managment from HTTP"
+            ::= { remtMgmt 1 }
+
+        remtMgmtHttpPortNum OBJECT-TYPE
+            SYNTAX       Integer32
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "port number of remotemanagment from HTTP"
+            ::= { remtMgmt 2 }
+
+        remtMgmtHttpsEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable/disable remote managment from HTTPS"
+            ::= { remtMgmt 3 }
+
+        remtMgmtHttpsPortNum OBJECT-TYPE
+            SYNTAX       Integer32
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "port number of remotemanagment from HTTPS"
+            ::= { remtMgmt 4 }
+
+        remtMgmtTelnetEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable/disable remote managment from TELNET"
+            ::= { remtMgmt 5 }
+
+        remtMgmtTelnetPortNum OBJECT-TYPE
+            SYNTAX       Integer32
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "port number of remotemanagment from TELNET"
+            ::= { remtMgmt 6 }
+
+        remtMgmtSshEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable/disable remote managment from SSH"
+            ::= { remtMgmt 7 }
+
+        remtMgmtSshPortNum OBJECT-TYPE
+            SYNTAX       Integer32
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "port number of remotemanagment from SSH"
+            ::= { remtMgmt 8 }
+
+        remtMgmtSnmpEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable/disable remote managment from SNMP"
+            ::= { remtMgmt 9 }
+
+        remtMgmtSnmpPortNum OBJECT-TYPE
+            SYNTAX       Integer32
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "port number of remotemanagment from SNMP"
+            ::= { remtMgmt 10 }
+
+        remtMgmtHnapEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable/disable remote managment from HNAP"
+            ::= { remtMgmt 11 }
+
+        remtMgmtHnapPortNum OBJECT-TYPE
+            SYNTAX       Integer32
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "port number of remotemanagment from HNAP"
+            ::= { remtMgmt 12 }
+
+        remtMgmtTrustedIp OBJECT-TYPE
+            SYNTAX       INTEGER {
+                any(1),
+                single(2),
+                range(3)
+            }
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "configure ips that can have remote access,it can be ip address,
+                 range, or any"
+            ::= { remtMgmt 13 }
+
+        remtMgmtTrustedIpRngStartIp OBJECT-TYPE
+            SYNTAX       IpAddress
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "start of source ip address range"
+            ::= { remtMgmt 14 }
+
+        remtMgmtTrustedIpRngEndIp OBJECT-TYPE
+            SYNTAX       IpAddress
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "end of source ip address range"
+            ::= { remtMgmt 15 }
+
+    dev OBJECT IDENTIFIER ::= { smcDory 7 }
+        devUpnpEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable or disable upnp for Device Discovery"
+            ::= { dev 1 }
+
+        devUpnpAdPeriod OBJECT-TYPE
+            SYNTAX       Integer32(1..999)
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "Advertisement Period of upnp"
+            ::= { dev 2 }
+
+        devUpnpTTL OBJECT-TYPE
+            SYNTAX       Integer32(1..99)
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "Time To Live of upnp"
+            ::= { dev 3 }
+
+        devEnblZeroCfg OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "enable or disable Zero Config for Device Discovery"
+            ::= { dev 4 }
+
+        devRefreshComputer OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "Write-only object. Reading this object will result in implementation-specific
+                 value, generally empty or a string describing the node is write-only.
+
+                 refresh connected computer table"
+            ::= { dev 5 }
+
+        devRefreshComputerStatus OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "status of refreshing connected computer table."
+            ::= { dev 6 }
+
+        devComputerTable OBJECT-TYPE
+            SYNTAX       SEQUENCE OF DevComputerEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "static and dynamic configuration and information of connected
+                 computers"
+            ::= { dev 7 }
+
+        devComputerEntry OBJECT-TYPE
+            SYNTAX       DevComputerEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "Entry of table devComputer"
+            INDEX        { devComputerIndex }
+            ::= { devComputerTable 1 }
+
+        DevComputerEntry ::=
+        SEQUENCE {
+                devComputerIndex                                 Integer32,
+                devComputerRowStatus                             RowStatus,
+                devComputerMac                                   DisplayString,
+                devComputerComment                               DisplayString,
+                devComputerReservedIp                            IpAddress,
+                devComputerDevName                               DisplayString,
+                devComputerIp                                    IpAddress,
+                devComputerIface                                 DisplayString,
+                devComputerConnection                            INTEGER,
+                devComputerStatus                                INTEGER,
+                devComputerDhcp                                  TruthValue
+        }
+
+        devComputerIndex OBJECT-TYPE
+            SYNTAX       Integer32
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "Index of devComputerEntry."
+            ::= { devComputerEntry 1 }
+
+        devComputerRowStatus OBJECT-TYPE
+            SYNTAX       RowStatus
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "The status of this conceptual row.
+                 Set createAndGo(4) or createAndWait(5) to create a row in this table.
+                 Set destroy(6) to delete all of the instances associated with an existing
+                 conceptual row."
+            ::= { devComputerEntry 2 }
+
+        devComputerMac OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "computer mac address"
+            ::= { devComputerEntry 3 }
+
+        devComputerComment OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "computer description(example cli command to set comment:
+                 device computer [mac] 'home pc')."
+            ::= { devComputerEntry 4 }
+
+        devComputerReservedIp OBJECT-TYPE
+            SYNTAX       IpAddress
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "computer reserved ip address which is fed to dhcp server too"
+            ::= { devComputerEntry 5 }
+
+        devComputerDevName OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "device name of the computer"
+            ::= { devComputerEntry 6 }
+
+        devComputerIp OBJECT-TYPE
+            SYNTAX       IpAddress
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "current computer ip address"
+            ::= { devComputerEntry 7 }
+
+        devComputerIface OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "which DORY interface is connected to the computer"
+            ::= { devComputerEntry 8 }
+
+        devComputerConnection OBJECT-TYPE
+            SYNTAX       INTEGER {
+                ethernet(1),
+                wifi-2-4(2),
+                wifi-5(3)
+            }
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "computer connection interface type"
+            ::= { devComputerEntry 9 }
+
+        devComputerStatus OBJECT-TYPE
+            SYNTAX       INTEGER {
+                online(1),
+                offline(2)
+            }
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "computer connection status"
+            ::= { devComputerEntry 10 }
+
+        devComputerDhcp OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "true if computer ip is assigned by dhcp server"
+            ::= { devComputerEntry 11 }
+
+
+    prntlCtrl OBJECT IDENTIFIER ::= { smcDory 8 }
+	
+	prntlCtrlBase	OBJECT IDENTIFIER ::= {prntlCtrl 1}
+	    
+	    prntlCtrlManagedSitesEnbl  OBJECT-TYPE
+    	    	SYNTAX       TruthValue
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "enable managed sites"
+                ::= { prntlCtrlBase 1 }
+	
+	    prntlCtrlManagedServicesEnbl OBJECT-TYPE
+    	    	SYNTAX       TruthValue
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "enable managed services"
+                ::= { prntlCtrlBase 2 }
+
+	    prntlCtrlManagedComputersEnbl OBJECT-TYPE
+    	    	SYNTAX       TruthValue
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "enable managed computers"
+                ::= { prntlCtrlBase 3 }
+
+        prntlCtrlManagedSites OBJECT IDENTIFIER ::= { prntlCtrl 2 }
+
+            prntlCtrlManagedSitesBlockedSitesTable OBJECT-TYPE
+                SYNTAX       SEQUENCE OF PrntlCtrlManagedSitesBlockedSitesEntry
+                MAX-ACCESS   not-accessible
+                STATUS       current
+                DESCRIPTION 
+                    "blocked sites table"
+                ::= { prntlCtrlManagedSites 1 }
+
+            prntlCtrlManagedSitesBlockedSitesEntry OBJECT-TYPE
+                SYNTAX       PrntlCtrlManagedSitesBlockedSitesEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "Entry of table prntlCtrlManagedSitesBlockedSites"
+                INDEX        { prntlCtrlManagedSitesBlockedSitesIndex }
+                ::= { prntlCtrlManagedSitesBlockedSitesTable 1 }
+
+            PrntlCtrlManagedSitesBlockedSitesEntry ::=
+            SEQUENCE {
+                    prntlCtrlManagedSitesBlockedSitesIndex           Integer32,
+                    prntlCtrlManagedSitesBlockedSitesRowStatus       RowStatus,
+                    prntlCtrlManagedSitesBlockedSitesUrl             DisplayString,
+                    prntlCtrlManagedSitesBlockedSitesTime            INTEGER,
+                    prntlCtrlManagedSitesBlockedSitesTimeTimePeriodFromTime DisplayString,
+                    prntlCtrlManagedSitesBlockedSitesTimeTimePeriodToTime DisplayString,
+                    prntlCtrlManagedSitesBlockedSitesTimeTimePeriodRepeat DisplayString
+            }
+
+            prntlCtrlManagedSitesBlockedSitesIndex OBJECT-TYPE
+                SYNTAX       Integer32(1..30)
+                MAX-ACCESS   not-accessible
+                STATUS       current
+                DESCRIPTION 
+                    "Index of prntlCtrlManagedSitesBlockedSitesEntry."
+                ::= { prntlCtrlManagedSitesBlockedSitesEntry 1 }
+
+            prntlCtrlManagedSitesBlockedSitesRowStatus OBJECT-TYPE
+                SYNTAX       RowStatus
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "The status of this conceptual row.
+                     Set createAndGo(4) or createAndWait(5) to create a row in this table.
+                     Set destroy(6) to delete all of the instances associated with an existing
+                     conceptual row."
+                ::= { prntlCtrlManagedSitesBlockedSitesEntry 2 }
+
+            prntlCtrlManagedSitesBlockedSitesUrl OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "blocked url string"
+                ::= { prntlCtrlManagedSitesBlockedSitesEntry 3 }
+
+            prntlCtrlManagedSitesBlockedSitesTime OBJECT-TYPE
+                SYNTAX       INTEGER {
+                    always(1),
+                    time-period(2)
+                }
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "time value"
+                ::= { prntlCtrlManagedSitesBlockedSitesEntry 4 }
+
+            prntlCtrlManagedSitesBlockedSitesTimeTimePeriodFromTime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "start time(format: HH:MM ;between 00:00 and 23:59)"
+                ::= { prntlCtrlManagedSitesBlockedSitesEntry 5 }
+
+            prntlCtrlManagedSitesBlockedSitesTimeTimePeriodToTime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "end time(format: HH:MM ;between 00:00 and 23:59)"
+                ::= { prntlCtrlManagedSitesBlockedSitesEntry 6 }
+
+            prntlCtrlManagedSitesBlockedSitesTimeTimePeriodRepeat OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "list of weely days to repeat, (format: Mon,Tue,Wed,Thu,Fri,Sat,Sun;)"
+                ::= { prntlCtrlManagedSitesBlockedSitesEntry 7 }
+
+            prntlCtrlManagedSitesBlockedKeywordsTable OBJECT-TYPE
+                SYNTAX       SEQUENCE OF PrntlCtrlManagedSitesBlockedKeywordsEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "blocked keyword table"
+                ::= { prntlCtrlManagedSites 2 }
+
+            prntlCtrlManagedSitesBlockedKeywordsEntry OBJECT-TYPE
+                SYNTAX       PrntlCtrlManagedSitesBlockedKeywordsEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "Entry of table prntlCtrlManagedSitesBlockedKeywords"
+                INDEX        { prntlCtrlManagedSitesBlockedKeywordsIndex }
+                ::= { prntlCtrlManagedSitesBlockedKeywordsTable 1 }
+
+            PrntlCtrlManagedSitesBlockedKeywordsEntry ::=
+            SEQUENCE {
+                    prntlCtrlManagedSitesBlockedKeywordsIndex        Integer32,
+                    prntlCtrlManagedSitesBlockedKeywordsRowStatus    RowStatus,
+                    prntlCtrlManagedSitesBlockedKeywordsKeyword      DisplayString,
+                    prntlCtrlManagedSitesBlockedKeywordsTime         INTEGER,
+                    prntlCtrlManagedSitesBlockedKeywordsTimeTimePeriodFromTime DisplayString,
+                    prntlCtrlManagedSitesBlockedKeywordsTimeTimePeriodToTime DisplayString,
+                    prntlCtrlManagedSitesBlockedKeywordsTimeTimePeriodRepeat DisplayString
+            }
+
+            prntlCtrlManagedSitesBlockedKeywordsIndex OBJECT-TYPE
+                SYNTAX       Integer32(1..30)
+                MAX-ACCESS   not-accessible
+                STATUS       current
+                DESCRIPTION 
+                    "Index of prntlCtrlManagedSitesBlockedKeywordsEntry."
+                ::= { prntlCtrlManagedSitesBlockedKeywordsEntry 1 }
+
+            prntlCtrlManagedSitesBlockedKeywordsRowStatus OBJECT-TYPE
+                SYNTAX       RowStatus
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "The status of this conceptual row.
+                     Set createAndGo(4) or createAndWait(5) to create a row in this table.
+                     Set destroy(6) to delete all of the instances associated with an existing
+                     conceptual row."
+                ::= { prntlCtrlManagedSitesBlockedKeywordsEntry 2 }
+
+            prntlCtrlManagedSitesBlockedKeywordsKeyword OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "blocked keyword string"
+                ::= { prntlCtrlManagedSitesBlockedKeywordsEntry 3 }
+
+            prntlCtrlManagedSitesBlockedKeywordsTime OBJECT-TYPE
+                SYNTAX       INTEGER {
+                    always(1),
+                    time-period(2)
+                }
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "time value"
+                ::= { prntlCtrlManagedSitesBlockedKeywordsEntry 4 }
+
+            prntlCtrlManagedSitesBlockedKeywordsTimeTimePeriodFromTime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "start time(format: HH:MM ;between 00:00 and 23:59)"
+                ::= { prntlCtrlManagedSitesBlockedKeywordsEntry 5 }
+
+            prntlCtrlManagedSitesBlockedKeywordsTimeTimePeriodToTime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "end time(format: HH:MM ;between 00:00 and 23:59)"
+                ::= { prntlCtrlManagedSitesBlockedKeywordsEntry 6 }
+
+            prntlCtrlManagedSitesBlockedKeywordsTimeTimePeriodRepeat OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "list of weely days to repeat, (format: Mon,Tue,Wed,Thu,Fri,Sat,Sun
+                     ;)"
+                ::= { prntlCtrlManagedSitesBlockedKeywordsEntry 7 }
+
+            prntlCtrlManagedSitesTrustComputerTable OBJECT-TYPE
+                SYNTAX       SEQUENCE OF PrntlCtrlManagedSitesTrustComputerEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "trust computer table"
+                ::= { prntlCtrlManagedSites 3 }
+
+            prntlCtrlManagedSitesTrustComputerEntry OBJECT-TYPE
+                SYNTAX       PrntlCtrlManagedSitesTrustComputerEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "Entry of table prntlCtrlManagedSitesTrustComputer"
+                INDEX        { prntlCtrlManagedSitesTrustComputerIndex }
+                ::= { prntlCtrlManagedSitesTrustComputerTable 1 }
+
+            PrntlCtrlManagedSitesTrustComputerEntry ::=
+            SEQUENCE {
+                    prntlCtrlManagedSitesTrustComputerIndex          Integer32,
+                    prntlCtrlManagedSitesTrustComputerRowStatus      RowStatus,
+                    prntlCtrlManagedSitesTrustComputerIp             IpAddress,
+                    prntlCtrlManagedSitesTrustComputerEnbl           TruthValue,
+                    prntlCtrlManagedSitesTrustComputerDevName        DisplayString
+            }
+
+            prntlCtrlManagedSitesTrustComputerIndex OBJECT-TYPE
+                SYNTAX       Integer32(1..20)
+                MAX-ACCESS   not-accessible
+                STATUS       current
+                DESCRIPTION 
+                    "Index of prntlCtrlManagedSitesTrustComputerEntry."
+                ::= { prntlCtrlManagedSitesTrustComputerEntry 1 }
+
+            prntlCtrlManagedSitesTrustComputerRowStatus OBJECT-TYPE
+                SYNTAX       RowStatus
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "The status of this conceptual row.
+                     Set createAndGo(4) or createAndWait(5) to create a row in this table.
+                     Set destroy(6) to delete all of the instances associated with an existing
+                     conceptual row."
+                ::= { prntlCtrlManagedSitesTrustComputerEntry 2 }
+
+            prntlCtrlManagedSitesTrustComputerIp OBJECT-TYPE
+                SYNTAX       IpAddress
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "trust computer ip address"
+                ::= { prntlCtrlManagedSitesTrustComputerEntry 3 }
+
+            prntlCtrlManagedSitesTrustComputerDevName OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "trust computer name"
+                ::= { prntlCtrlManagedSitesTrustComputerEntry 4 }
+
+	    prntlCtrlManagedSitesTrustComputerEnbl OBJECT-TYPE
+                SYNTAX       TruthValue
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION 
+                    "enable/disable this computer as trust computer"
+                ::= { prntlCtrlManagedSitesTrustComputerEntry 5 }
+
+        prntlCtrlManagedServices OBJECT IDENTIFIER ::= { prntlCtrl 3 }
+
+            prntlCtrlManagedServicesBlockedServicesTable OBJECT-TYPE
+                SYNTAX       SEQUENCE OF PrntlCtrlManagedServicesBlockedServicesEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "blocked services table"
+                ::= { prntlCtrlManagedServices 1 }
+
+            prntlCtrlManagedServicesBlockedServicesEntry OBJECT-TYPE
+                SYNTAX       PrntlCtrlManagedServicesBlockedServicesEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "Entry of table prntlCtrlManagedServicesBlockedServices"
+                INDEX        { prntlCtrlManagedServicesBlockedServicesIndex }
+                ::= { prntlCtrlManagedServicesBlockedServicesTable 1 }
+
+            PrntlCtrlManagedServicesBlockedServicesEntry ::=
+            SEQUENCE {
+                    prntlCtrlManagedServicesBlockedServicesIndex     Integer32,
+                    prntlCtrlManagedServicesBlockedServicesRowStatus RowStatus,
+                    prntlCtrlManagedServicesBlockedServicesSrvc      DisplayString,
+                    prntlCtrlManagedServicesBlockedServicesProto     INTEGER,
+                    prntlCtrlManagedServicesBlockedServicesStartPort Integer32,
+                    prntlCtrlManagedServicesBlockedServicesEndPort   Integer32,
+                    prntlCtrlManagedServicesBlockedServicesTime      INTEGER,
+                    prntlCtrlManagedServicesBlockedServicesTimeTimePeriodFromTime DisplayString,
+                    prntlCtrlManagedServicesBlockedServicesTimeTimePeriodToTime DisplayString,
+                    prntlCtrlManagedServicesBlockedServicesTimeTimePeriodRepeat DisplayString
+            }
+
+            prntlCtrlManagedServicesBlockedServicesIndex OBJECT-TYPE
+                SYNTAX       Integer32(1..30)
+                MAX-ACCESS   not-accessible
+                STATUS       current
+                DESCRIPTION 
+                    "Index of prntlCtrlManagedServicesBlockedServicesEntry."
+                ::= { prntlCtrlManagedServicesBlockedServicesEntry 1 }
+
+            prntlCtrlManagedServicesBlockedServicesRowStatus OBJECT-TYPE
+                SYNTAX       RowStatus
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "The status of this conceptual row.
+                     Set createAndGo(4) or createAndWait(5) to create a row in this table.
+                     Set destroy(6) to delete all of the instances associated with an existing
+                     conceptual row."
+                ::= { prntlCtrlManagedServicesBlockedServicesEntry 2 }
+
+            prntlCtrlManagedServicesBlockedServicesSrvc OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "blocked services name"
+                ::= { prntlCtrlManagedServicesBlockedServicesEntry 3 }
+
+            prntlCtrlManagedServicesBlockedServicesProto OBJECT-TYPE
+                SYNTAX       INTEGER {
+                    tcp(1),
+                    udp(2),
+                    tcp-udp(3)
+                }
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "blocked services protocol"
+                ::= { prntlCtrlManagedServicesBlockedServicesEntry 4 }
+
+            prntlCtrlManagedServicesBlockedServicesStartPort OBJECT-TYPE
+                SYNTAX       Integer32(1..65535)
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "starting port of blocked services"
+                ::= { prntlCtrlManagedServicesBlockedServicesEntry 5 }
+
+            prntlCtrlManagedServicesBlockedServicesEndPort OBJECT-TYPE
+                SYNTAX       Integer32(1..65535)
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "ending port of blocked services"
+                ::= { prntlCtrlManagedServicesBlockedServicesEntry 6 }
+
+            prntlCtrlManagedServicesBlockedServicesTime OBJECT-TYPE
+                SYNTAX       INTEGER {
+                    always(1),
+                    time-period(2)
+                }
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "time value"
+                ::= { prntlCtrlManagedServicesBlockedServicesEntry 7 }
+
+            prntlCtrlManagedServicesBlockedServicesTimeTimePeriodFromTime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "start time(format: HH:MM ;between 00:00 and 23:59)"
+                ::= { prntlCtrlManagedServicesBlockedServicesEntry 8 }
+
+            prntlCtrlManagedServicesBlockedServicesTimeTimePeriodToTime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "end time(format: HH:MM ;between 00:00 and 23:59)"
+                ::= { prntlCtrlManagedServicesBlockedServicesEntry 9 }
+
+            prntlCtrlManagedServicesBlockedServicesTimeTimePeriodRepeat OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "list of weely days to repeat,(format: Mon,Tue,Wed,Thu,Fri,Sat,Sun
+                     ;)"
+                ::= { prntlCtrlManagedServicesBlockedServicesEntry 10 }
+
+            prntlCtrlManagedServicesTrustComputerTable OBJECT-TYPE
+                SYNTAX       SEQUENCE OF PrntlCtrlManagedServicesTrustComputerEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "trust computer table"
+                ::= { prntlCtrlManagedServices 2 }
+
+            prntlCtrlManagedServicesTrustComputerEntry OBJECT-TYPE
+                SYNTAX       PrntlCtrlManagedServicesTrustComputerEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "Entry of table prntlCtrlManagedServicesTrustComputer"
+                INDEX        { prntlCtrlManagedServicesTrustComputerIndex }
+                ::= { prntlCtrlManagedServicesTrustComputerTable 1 }
+
+            PrntlCtrlManagedServicesTrustComputerEntry ::=
+            SEQUENCE {
+                    prntlCtrlManagedServicesTrustComputerIndex       Integer32,
+                    prntlCtrlManagedServicesTrustComputerRowStatus   RowStatus,
+                    prntlCtrlManagedServicesTrustComputerIp         IpAddress,
+                    prntlCtrlManagedServicesTrustComputerDevName     DisplayString,
+                    prntlCtrlManagedServicesTrustComputerEnbl        TruthValue
+            }
+
+            prntlCtrlManagedServicesTrustComputerIndex OBJECT-TYPE
+                SYNTAX       Integer32(1..20)
+                MAX-ACCESS   not-accessible
+                STATUS       current
+                DESCRIPTION 
+                    "Index of prntlCtrlManagedServicesTrustComputerEntry."
+                ::= { prntlCtrlManagedServicesTrustComputerEntry 1 }
+
+            prntlCtrlManagedServicesTrustComputerRowStatus OBJECT-TYPE
+                SYNTAX       RowStatus
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "The status of this conceptual row.
+                     Set createAndGo(4) or createAndWait(5) to create a row in this table.
+                     Set destroy(6) to delete all of the instances associated with an existing
+                     conceptual row."
+                ::= { prntlCtrlManagedServicesTrustComputerEntry 2 }
+
+            prntlCtrlManagedServicesTrustComputerIp OBJECT-TYPE
+                SYNTAX       IpAddress
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "trust computer ip address"
+                ::= { prntlCtrlManagedServicesTrustComputerEntry 3 }
+
+            prntlCtrlManagedServicesTrustComputerDevName OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "trust computer name"
+                ::= { prntlCtrlManagedServicesTrustComputerEntry 4 }
+
+	     prntlCtrlManagedServicesTrustComputerEnbl OBJECT-TYPE
+                SYNTAX       TruthValue
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION 
+                    "enable/disable this computer as trust computer"
+                ::= { prntlCtrlManagedServicesTrustComputerEntry 5 }
+        prntlCtrlManagedComputersTable OBJECT-TYPE
+            SYNTAX       SEQUENCE OF PrntlCtrlManagedComputersEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "online computer access table"
+            ::= { prntlCtrl 4 }
+
+        prntlCtrlManagedComputersEntry OBJECT-TYPE
+            SYNTAX       PrntlCtrlManagedComputersEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "Entry of table prntlCtrlManagedComputers"
+            INDEX        { prntlCtrlManagedComputersIndex }
+            ::= { prntlCtrlManagedComputersTable 1 }
+
+        PrntlCtrlManagedComputersEntry ::=
+        SEQUENCE {
+                prntlCtrlManagedComputersIndex                   Integer32,
+                prntlCtrlManagedComputersRowStatus               RowStatus,
+                prntlCtrlManagedComputersDevMac                  DisplayString,
+                prntlCtrlManagedComputersDevName                 DisplayString,
+                prntlCtrlManagedComputersTime                    INTEGER,
+                prntlCtrlManagedComputersTimeTimePeriodFromTime  DisplayString,
+                prntlCtrlManagedComputersTimeTimePeriodToTime    DisplayString,
+                prntlCtrlManagedComputersTimeTimePeriodRepeat    DisplayString
+        }
+
+        prntlCtrlManagedComputersIndex OBJECT-TYPE
+            SYNTAX       Integer32(1..30)
+            MAX-ACCESS   not-accessible
+            STATUS       current
+            DESCRIPTION 
+                "Index of prntlCtrlManagedComputersEntry."
+            ::= { prntlCtrlManagedComputersEntry 1 }
+
+        prntlCtrlManagedComputersRowStatus OBJECT-TYPE
+            SYNTAX       RowStatus
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "The status of this conceptual row.
+                 Set createAndGo(4) or createAndWait(5) to create a row in this table.
+                 Set destroy(6) to delete all of the instances associated with an existing
+                 conceptual row."
+            ::= { prntlCtrlManagedComputersEntry 2 }
+
+        prntlCtrlManagedComputersDevMac OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "computer mac address"
+            ::= { prntlCtrlManagedComputersEntry 3 }
+
+        prntlCtrlManagedComputersDevName OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "online device name"
+            ::= { prntlCtrlManagedComputersEntry 4 }
+
+        prntlCtrlManagedComputersTime OBJECT-TYPE
+            SYNTAX       INTEGER {
+                always(1),
+                time-period(2)
+            }
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "time value"
+            ::= { prntlCtrlManagedComputersEntry 5 }
+
+        prntlCtrlManagedComputersTimeTimePeriodFromTime OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "start time(format: HH:MM ;between 00:00 and 23:59)"
+            ::= { prntlCtrlManagedComputersEntry 6 }
+
+        prntlCtrlManagedComputersTimeTimePeriodToTime OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "end time(format: HH:MM ;between 00:00 and 23:59)"
+            ::= { prntlCtrlManagedComputersEntry 7 }
+
+        prntlCtrlManagedComputersTimeTimePeriodRepeat OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-create
+            STATUS       current
+            DESCRIPTION 
+                "list of weely days to repeat,(format: Mon,Tue,Wed,Thu,Fri,Sat,Sun
+                 ;)"
+            ::= { prntlCtrlManagedComputersEntry 8 }
+
+        prntlCtrlManagedComputersAccesstype OBJECT-TYPE
+            SYNTAX       INTEGER {
+                allowall(1),
+                blockall(2)
+            }
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "list of managed computer access type"
+            ::= { prntlCtrl 5 }
+                
+        prntlCtrlReportTable OBJECT-TYPE
+            SYNTAX       SEQUENCE OF PrntlCtrlReportEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "Reports of parental control, contents depend on prntlCtrlReportType and prntlCtrlReportTimeFrames"
+            ::= { prntlCtrl 6 }
+
+        prntlCtrlReportEntry OBJECT-TYPE
+            SYNTAX       PrntlCtrlReportEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "Entry of table prntlCtrlRptTypeAllTimeTodayTable"
+            INDEX        { prntlCtrlReportIndex }
+            ::= { prntlCtrlReportTable 1 }
+
+            PrntlCtrlReportEntry ::=
+            SEQUENCE {
+                    prntlCtrlReportIndex                   Integer32,
+                    prntlCtrlReportContent                 DisplayString,
+                    prntlCtrlReportTime                    DisplayString,
+                    prntlCtrlReportLevel                   DisplayString
+            }
+   
+            prntlCtrlReportIndex OBJECT-TYPE
+                SYNTAX       Integer32(1..30)
+                MAX-ACCESS   not-accessible
+                STATUS       current
+                DESCRIPTION 
+                    "Index of PrntlCtrlRptEntry."
+                ::= { prntlCtrlReportEntry 1 }
+
+            prntlCtrlReportContent OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "Report content."
+                ::= { prntlCtrlReportEntry 2 }
+
+		     prntlCtrlReportTime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "Report Time."
+                ::= { prntlCtrlReportEntry 3 }
+
+		     prntlCtrlReportLevel OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "Report level."
+                ::= { prntlCtrlReportEntry 4 }
+	
+	prntlCtrlReportType OBJECT-TYPE
+            SYNTAX       INTEGER {
+	    	all(1),
+                managed-sites(2),
+                managed-services(3),
+		managed-devices(4)
+            }
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "Select the type of reports shows in prntlCtrlReportTable. All by default."
+            ::= { prntlCtrl 7 }
+
+	prntlCtrlReportTimeFrames OBJECT-TYPE
+             SYNTAX       INTEGER {
+	    	today(1),
+                yesterday(2),
+                last-week(3),
+		last-wonth(4),
+		last-90days(5)
+            }
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "Select the time from which reports will show in prntlCtrlReportTable. Today by default."
+            ::= { prntlCtrl 8 }
+
+    show OBJECT IDENTIFIER ::= { smcDory 9 }
+        
+        showWanIp OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "show the wan ip address"
+            ::= { show 1 }
+
+        showWanExpiretime OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "show the wan expire time"
+            ::= { show 2 }
+        
+         showPrimaryDnsSrvr OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "primary dns server ip"
+            ::= { show 3 }
+
+        showSecondaryDnsSrvr OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "secondary dns server ip"
+            ::= { show 4 }
+
+        showDhcpLeasesTable OBJECT-TYPE
+            SYNTAX       SEQUENCE OF ShowDhcpLeasesEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "show dhcp lease table"
+            ::= { show 5 }
+
+        showDhcpLeasesEntry OBJECT-TYPE
+            SYNTAX       ShowDhcpLeasesEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "Entry of table showDhcpLeases"
+            INDEX        { showDhcpLeasesIndex }
+            ::= { showDhcpLeasesTable 1 }
+
+        ShowDhcpLeasesEntry ::=
+        SEQUENCE {
+                showDhcpLeasesIndex                              Integer32,
+                showDhcpLeasesIpAddr                             DisplayString,
+                showDhcpLeasesMacAddr                            DisplayString,
+                showDhcpLeasesDevName                            DisplayString
+        }
+
+        showDhcpLeasesIndex OBJECT-TYPE
+            SYNTAX       Integer32
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "Index of showDhcpLeasesEntry."
+            ::= { showDhcpLeasesEntry 1 }
+
+        showDhcpLeasesIpAddr OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "leased ip address"
+            ::= { showDhcpLeasesEntry 2 }
+
+        showDhcpLeasesMacAddr OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "computer mac address"
+            ::= { showDhcpLeasesEntry 3 }
+
+        showDhcpLeasesDevName OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "computer name"
+            ::= { showDhcpLeasesEntry 4 }
+
+        showLanTable OBJECT-TYPE
+            SYNTAX       SEQUENCE OF ShowLanEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "show all lan ip address and netmask"
+            ::= { show 6 }
+
+        showLanEntry OBJECT-TYPE
+            SYNTAX       ShowLanEntry
+            MAX-ACCESS   not-accessible 
+            STATUS       current
+            DESCRIPTION 
+                "Entry of table showLan"
+            INDEX        { showLanIndex }
+            ::= { showLanTable 1 }
+
+        ShowLanEntry ::=
+        SEQUENCE {
+                showLanIndex                                     Integer32,
+                showLanIfName                                    DisplayString,
+                showLanIpAddr                                    DisplayString,
+                showLanMask                                      DisplayString
+        }
+
+        showLanIndex OBJECT-TYPE
+            SYNTAX       Integer32
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "Index of showLanEntry."
+            ::= { showLanEntry 1 }
+
+        showLanIfName OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "interface name"
+            ::= { showLanEntry 2 }
+
+        showLanIpAddr OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "interface ip address"
+            ::= { showLanEntry 3 }
+
+        showLanMask OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "interface netmask"
+            ::= { showLanEntry 4 }
+
+       
+
+    docsis OBJECT IDENTIFIER ::= { smcDory 10 }
+
+        docsisNetwork OBJECT IDENTIFIER ::= { docsis 1 }
+
+            docsisNetworkInternetStatus OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the operational status of network"
+                ::= { docsisNetwork 1 }
+
+            docsisNetworkSysUptime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the system up time"
+                ::= { docsisNetwork 3 }
+
+            docsisNetworkWanipAddr OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the wan ip address"
+                ::= { docsisNetwork 4 }
+
+            docsisNetworkDhcpClientStatus OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the status of dhcp client"
+                ::= { docsisNetwork 5 }
+
+            docsisNetworkDhcpExpireTime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the dhcp expire time"
+                ::= { docsisNetwork 6 }
+
+            docsisNetworkWanMac OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the cm mac address"
+                ::= { docsisNetwork 7 }
+
+            docsisNetworkEmtaMac OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the emta mac address"
+                ::= { docsisNetwork 8 }
+
+            docsisNetworkRfMac OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the rf mac address"
+                ::= { docsisNetwork 9 }
+
+            -- This OID is obsolete
+            -- docsisNetworkMddIpModeOverrideGet OBJECT-TYPE ::= { docsisNetwork 10 }
+
+            -- This OID is obsolete
+            -- docsisNetworkMddIpModeOverrideSet OBJECT-TYPE ::= { docsisNetwork 11 }
+
+        docsisCableModem OBJECT IDENTIFIER ::= { docsis 2 }
+
+            docsisCableModemHwVer OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the hw version"
+                ::= { docsisCableModem 1 }
+
+            docsisCableModemVendor OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the vendor name"
+                ::= { docsisCableModem 2 }
+
+            docsisCableModemBootVer OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the boot version"
+                ::= { docsisCableModem 3 }
+
+            docsisCableModemCoreVer OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the core version"
+                ::= { docsisCableModem 4 }
+
+            docsisCableModemModel OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the model name"
+                ::= { docsisCableModem 5 }
+
+            docsisCableModemProductType OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the product type"
+                ::= { docsisCableModem 6 }
+
+            docsisCableModemFlashPart OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the flash part"
+                ::= { docsisCableModem 7 }
+
+            docsisCableModemDloadVer OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the download version"
+                ::= { docsisCableModem 8 }
+
+            docsisCableModemSerialNum OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the serial num"
+                ::= { docsisCableModem 9 }
+
+            docsisCableModemSysdescr OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the system description"
+                ::= { docsisCableModem 10 }
+
+        docsisDownStream OBJECT IDENTIFIER ::= { docsis 3 }
+
+            docsisDownStreamChannelId OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the channel id"
+                ::= { docsisDownStream 1 }
+
+            docsisDownStreamFrequency OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the frequency"
+                ::= { docsisDownStream 2 }
+
+            docsisDownStreamSnr OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the SNR"
+                ::= { docsisDownStream 3 }
+
+            docsisDownStreamPower OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the power"
+                ::= { docsisDownStream 4 }
+
+            docsisDownStreamModulation OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the modulation"
+                ::= { docsisDownStream 5 }
+
+        docsisUpStream OBJECT IDENTIFIER ::= { docsis 4 }
+
+            docsisUpStreamChannelId OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the channel id"
+                ::= { docsisUpStream 1 }
+
+            docsisUpStreamFrequency OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the frequency"
+                ::= { docsisUpStream 2 }
+
+            docsisUpStreamRangingSrvcId OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the ranging service id"
+                ::= { docsisUpStream 3 }
+
+            docsisUpStreamSymbolRate OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the symbol rate"
+                ::= { docsisUpStream 4 }
+
+            docsisUpStreamPowerLevel OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the power level"
+                ::= { docsisUpStream 5 }
+
+            docsisUpStreamModulation OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the modulation"
+                ::= { docsisUpStream 6 }
+
+--            docsisUpStreamRangingStatus OBJECT-TYPE
+--                SYNTAX       DisplayString
+--                MAX-ACCESS   read-only
+--                STATUS       current
+--                DESCRIPTION 
+--                    "get the ranging status"
+--                ::= { docsisUpStream 7 }
+--
+--            docsisUpStreamTheMap OBJECT-TYPE
+--                SYNTAX       DisplayString
+--                MAX-ACCESS   read-only
+--                STATUS       current
+--                DESCRIPTION 
+--                    "get the map"
+--                ::= { docsisUpStream 8 }
+--
+--            docsisUpStreamModuleType OBJECT-TYPE
+--                SYNTAX       DisplayString
+--                MAX-ACCESS   read-only
+--                STATUS       current
+--                DESCRIPTION 
+--                    "get the module type"
+--                ::= { docsisUpStream 9 }
+
+    puma5 OBJECT IDENTIFIER ::= { smcDory 11 }
+
+        puma5SwVersion OBJECT IDENTIFIER ::= { puma5 1 }
+
+            puma5SwVersionEmtaDocsis OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the emta docsis software version"
+                ::= { puma5SwVersion 1 }
+
+            puma5SwVersionPacketCable OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the packet cable version"
+                ::= { puma5SwVersion 2 }
+
+        puma5HwInfo OBJECT IDENTIFIER ::= { puma5 2 }
+
+            puma5HwInfoHwIdentifier OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the hw identifier"
+                ::= { puma5HwInfo 1 }
+
+            puma5HwInfoProcessorSpeed OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the processor speed"
+                ::= { puma5HwInfo 2 }
+
+            puma5HwInfoDram OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the dram size"
+                ::= { puma5HwInfo 3 }
+
+            puma5HwInfoFlash OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the flash size"
+                ::= { puma5HwInfo 4 }
+
+            puma5HwInfoCpuUsage OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "get the CPU usage"
+                ::= { puma5HwInfo 5 }
+
+--            puma5HwInfoMemFrag OBJECT-TYPE
+--                SYNTAX       DisplayString
+--                MAX-ACCESS   read-only
+--                STATUS       current
+--                DESCRIPTION 
+--                    "get the Memory Fragmentation"
+--                ::= { puma5HwInfo 6 }
+--
+--            puma5HwInfoMemInfo OBJECT-TYPE
+--                SYNTAX       DisplayString
+--                MAX-ACCESS   read-only
+--                STATUS       current
+--                DESCRIPTION 
+--                    "get the Memory Utilization"
+--                ::= { puma5HwInfo 7 }
+--
+--            puma5HwInfoPackageQueue OBJECT-TYPE
+--                SYNTAX       DisplayString
+--                MAX-ACCESS   read-only
+--                STATUS       current
+--                DESCRIPTION 
+--                    "get the current and max package queue lengths"
+--                ::= { puma5HwInfo 8 }
+--
+--            puma5HwInfoUsbEtherTime OBJECT-TYPE
+--                SYNTAX       DisplayString
+--                MAX-ACCESS   read-only
+--                STATUS       current
+--                DESCRIPTION 
+--                    "get the USB ether time"
+--                ::= { puma5HwInfo 9 }
+        
+        puma5Btry OBJECT IDENTIFIER ::= { puma5 3 }
+
+	    puma5BtryPowerStatus OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "power status"
+                ::= { puma5Btry 1 }
+
+	    puma5BtryInstalled OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "is baterry installed"
+                ::= { puma5Btry 2 }
+
+	    puma5BtryCondition OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "battery condition"
+                ::= { puma5Btry 3 }
+
+	    puma5BtryRemCharge OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "remaining charge"
+                ::= { puma5Btry 4 }
+
+	    puma5BrtyRemTime OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "remaining time"
+                ::= { puma5Btry 5 }
+
+	    puma5BtryModelID OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "battery model identifier"
+                ::= { puma5Btry 6 }
+
+	    puma5BtrySN OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION 
+                    "battery serial number"
+                ::= { puma5Btry 7 }
+	    
+--        puma5Reset OBJECT-TYPE
+--            SYNTAX       INTEGER {
+--                puma5-reboot(1),
+--                reset-factory-settings(2)
+--            }
+--            MAX-ACCESS   read-write
+--            STATUS       current
+--            DESCRIPTION 
+--                "Write-only object. Reading this object will result in implementation-specific
+--                 value, generally empty or a string describing the node is write-only.
+--
+--                 Reset Gateway Settings/Reboot Gateway"
+--            ::= { puma5 4 }
+
+    sysinfo OBJECT IDENTIFIER ::= { smcDory 12 }
+
+        sysinfoDev OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "show device name"
+            ::= { sysinfo 1 }
+
+        sysinfoVendor OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "show vendor name"
+            ::= { sysinfo 2 }
+
+        sysinfoModel OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "show model name"
+            ::= { sysinfo 3 }
+
+        sysinfoModelDescription OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "show model description"
+            ::= { sysinfo 4 }
+
+        sysinfoSerial OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "show serial number"
+            ::= { sysinfo 5 }
+
+        sysinfoSwVer OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "show product firmware version"
+            ::= { sysinfo 6 }
+
+        sysinfoSwDate OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-only
+            STATUS       current
+            DESCRIPTION 
+                "show the date of product firmware generation"
+            ::= { sysinfo 7 }
+
+--        sysinfoPresentationUrl OBJECT-TYPE
+--            SYNTAX       DisplayString
+--            MAX-ACCESS   read-only
+--            STATUS       current
+--            DESCRIPTION 
+--                "url for the web-based user interface used for configuration"
+--            ::= { sysinfo 8 }
+
+        sysinfoRestore OBJECT-TYPE
+            SYNTAX       INTEGER {
+                dory(1),
+                wifi-router(2)
+            }
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "Write-only object. Reading this object will result in implementation-specific
+                 value, generally empty or a string describing the node is write-only.
+
+                 restore factory default configuration of the whole system or
+                 a specific module"
+            ::= { sysinfo 9 }
+
+        sysinfoReboot OBJECT-TYPE
+            SYNTAX       INTEGER {
+                dory(1),
+                wifi-router(2),
+                hsi(3),
+                telephoneline(4)
+            }
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION 
+                "Write-only object. Reading this object will result in implementation-specific
+                 value, generally empty or a string describing the node is write-only.
+
+                 reboot the whole system or a specific module"
+            ::= { sysinfo 10 }
+            
+	troubleshooting OBJECT IDENTIFIER ::= { smcDory 13 }
+		
+		 logs OBJECT IDENTIFIER ::= { troubleshooting 1 }
+
+			showEventlogsTable OBJECT-TYPE
+        		SYNTAX       SEQUENCE OF EventlogsEntry
+        		MAX-ACCESS   not-accessible 
+        		STATUS       current
+       			DESCRIPTION 
+            		"show system logs table"
+        		::= { logs 1 }
+
+        	eventlogsEntry OBJECT-TYPE
+       	    	SYNTAX       EventlogsEntry
+            	MAX-ACCESS   not-accessible 
+            	STATUS       current
+            	DESCRIPTION 
+                	"Entry of table System logs"
+            		INDEX        { eventlogsIndex }
+            		::= { showEventlogsTable 1 }
+
+        	EventlogsEntry ::=
+                SEQUENCE {
+        	    eventlogsIndex           Integer32,
+                    eventLogs                OCTET STRING,
+                    eventLogstime            OCTET STRING
+                }
+
+			eventlogsIndex OBJECT-TYPE
+            	SYNTAX       Integer32(1..5)
+            	MAX-ACCESS   not-accessible
+           	 	STATUS       deprecated
+            	DESCRIPTION 
+                "Index of eventlogsEntry."
+            		::= { eventlogsEntry 1 }
+				
+			eventLogs OBJECT-TYPE
+           		SYNTAX       OCTET STRING
+            	MAX-ACCESS   read-only
+            	STATUS       current
+            	DESCRIPTION 
+                	"show event logs"
+            		::= { eventlogsEntry 2 }
+
+            eventLogstime OBJECT-TYPE
+           		SYNTAX       OCTET STRING
+            	MAX-ACCESS   read-only
+            	STATUS       current
+            	DESCRIPTION 
+                	"show event logs"
+            		::= { eventlogsEntry 3 }
+
+			showFwlogsTable OBJECT-TYPE
+        		SYNTAX       SEQUENCE OF FwlogsEntry
+        		MAX-ACCESS   not-accessible 
+        		STATUS       current
+       			DESCRIPTION 
+            		"show fw logs table"
+        		::= { logs 2 }
+
+        	fwlogsEntry OBJECT-TYPE
+       	    	SYNTAX       FwlogsEntry
+            	MAX-ACCESS   not-accessible 
+            	STATUS       current
+            	DESCRIPTION 
+                	"Entry of table fw logs"
+            		INDEX        { eventlogsIndex }
+            		::= { showFwlogsTable 1 }
+
+        	FwlogsEntry ::=
+        		SEQUENCE {
+        		fwlogsIndex        		   Integer32,
+                fwLogs                      OCTET STRING,
+                fwLogstime					OCTET STRING	
+       			 }
+
+			fwlogsIndex OBJECT-TYPE
+            	SYNTAX       Integer32(1..5)
+            	MAX-ACCESS   not-accessible
+           	 	STATUS       deprecated
+            	DESCRIPTION 
+                "Index of fwlogsEntry."
+            		::= { fwlogsEntry 1 }
+				
+			fwLogs OBJECT-TYPE
+           		SYNTAX       OCTET STRING
+            	MAX-ACCESS   read-only
+            	STATUS       current
+            	DESCRIPTION 
+                	"show fw logs"
+            		::= { fwlogsEntry 2 }
+
+            fwLogstime OBJECT-TYPE
+           		SYNTAX       OCTET STRING
+            	MAX-ACCESS   read-only
+            	STATUS       current
+            	DESCRIPTION 
+                	"show fw logs time"
+            		::= { fwlogsEntry 3 }
+
+            showSyslogsTable OBJECT-TYPE
+        		SYNTAX       SEQUENCE OF SyslogsEntry
+        		MAX-ACCESS   not-accessible 
+        		STATUS       current
+       			DESCRIPTION 
+            		"show system logs table"
+        		::= { logs 3 }
+
+        	syslogsEntry OBJECT-TYPE
+       	    	SYNTAX       SyslogsEntry
+            	MAX-ACCESS   not-accessible 
+            	STATUS       current
+            	DESCRIPTION 
+                	"Entry of table System logs"
+            		INDEX        { eventlogsIndex }
+            		::= { showSyslogsTable 1 }
+
+        	SyslogsEntry ::=
+        		SEQUENCE {
+        		syslogsIndex        		   Integer32,
+                sysLogs                      OCTET STRING,
+                sysLogstime                      OCTET STRING
+       			 }
+
+			syslogsIndex OBJECT-TYPE
+            	SYNTAX       Integer32(1..5)
+            	MAX-ACCESS   not-accessible
+           	 	STATUS       deprecated
+            	DESCRIPTION 
+                "Index of systemlogsEntry."
+            		::= { syslogsEntry 1 }
+				
+			sysLogs OBJECT-TYPE
+           		SYNTAX       OCTET STRING
+            	MAX-ACCESS   read-only
+            	STATUS       current
+            	DESCRIPTION 
+                	"show system logs"
+            		::= { syslogsEntry 2 }
+            		
+            sysLogstime OBJECT-TYPE
+           		SYNTAX       OCTET STRING
+            	MAX-ACCESS   read-only
+            	STATUS       current
+            	DESCRIPTION 
+                	"show system logs time"
+            		::= { syslogsEntry 3 }
+
+		diagnosticTestUrl OBJECT IDENTIFIER ::= { troubleshooting 2 }
+
+            diagnosticUrlAddress OBJECT-TYPE
+                SYNTAX       DisplayString
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION
+                    "Destination Url Address"
+                ::= { diagnosticTestUrl 1 }
+
+            diagnosticUrlCount OBJECT-TYPE
+                SYNTAX       Integer32
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION
+                    "how many packet to send"
+                ::= { diagnosticTestUrl 2 }
+            diagnosticUrlExecute OBJECT-TYPE
+                SYNTAX       TruthValue
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION
+                    "start test"
+                ::= { diagnosticTestUrl 3 }
+            diagnosticUrlExecuteStatus OBJECT-TYPE
+                SYNTAX       TruthValue
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION
+                    "the status of this test"
+                ::= { diagnosticTestUrl 4 }
+            diagnosticUrlExecuteReceived OBJECT-TYPE
+                SYNTAX       Integer32
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION
+                    "the result of this test"
+                ::= { diagnosticTestUrl 5 }
+
+
+            diagnosticTestIp OBJECT IDENTIFIER ::= { troubleshooting 3 }
+
+            diagnosticIpAddress OBJECT-TYPE
+                SYNTAX       IpAddress
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION
+                    "Destination Ip Address"
+                ::= { diagnosticTestIp 1 }
+
+            diagnosticIpCount OBJECT-TYPE
+                SYNTAX       Integer32
+                MAX-ACCESS   read-write
+                STATUS       current
+               DESCRIPTION
+                    "how many packet to send"
+                ::= { diagnosticTestIp 2 }
+            diagnosticIpExecute OBJECT-TYPE
+                SYNTAX       TruthValue
+                MAX-ACCESS   read-write
+                STATUS       current
+                DESCRIPTION
+                    "start test"
+                ::= { diagnosticTestIp 3 }
+            diagnosticIpExecuteStatus OBJECT-TYPE
+                SYNTAX       TruthValue
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION
+                    "the status of this test"
+                ::= { diagnosticTestIp 4 }
+            diagnosticIpExecuteResult OBJECT-TYPE
+                SYNTAX       INTEGER {
+                    online(1),
+                    offline(2)
+                }
+                MAX-ACCESS   read-only
+                STATUS       current
+                DESCRIPTION
+                    "the result of this test"
+                ::= { diagnosticTestIp 5 }
+
+
+    emlNtf OBJECT IDENTIFIER ::= { smcDory 14 }
+        emlNtfSmtpSrv OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "The SMTP server address used to send the notification mail."
+            ::= { emlNtf 1 }
+        emlNtfSenderMailAddr    OBJECT-TYPE
+            SYNTAX              DisplayString
+            MAX-ACCESS          read-write
+            STATUS              current
+            DESCRIPTION
+                "The Sender's email address that will displayed in the notification mail header."
+            ::= { emlNtf 2 }
+        emlNtfSmtpUser OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "The username used to login to SMTP server."
+            ::= { emlNtf 3 }
+        emlNtfSmtpPwd OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "The password used to login to SMTP server."
+            ::= { emlNtf 4 }
+        emlNtfRecipientMailAddr OBJECT-TYPE
+            SYNTAX       DisplayString
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "The Recipient's email address to which the notification mail is sent."
+            ::= { emlNtf 5 }
+        emlNtfTypeFwBreach OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "Send notification mail when firewall breach."
+            ::= { emlNtf 6 }
+        emlNtfTypePrntlCtrlBreach OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "Send notification mail when parental control breach."
+            ::= { emlNtf 7 }
+        emlNtfTypeAw OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "Alerts or Warnings"
+            ::= { emlNtf 8 }
+        emlNtfTypeSendLog OBJECT-TYPE
+            SYNTAX       TruthValue
+            MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "Send Logs"
+            ::= { emlNtf 9 }
+
+    ddns OBJECT IDENTIFIER ::= { smcDory 15 }
+    
+    ddnsEnbl OBJECT-TYPE
+            SYNTAX       TruthValue
+	    MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "Enable Dynamic DNS"
+            ::= { ddns 1 }
+	ddnsSrvcProvider OBJECT-TYPE
+            SYNTAX       INTEGER{
+	    	dyndns-org(1),
+		changeip-com(2),
+		freedns-afraid-org(3)
+	    }	
+	    MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "DDNS service provider"
+            ::= { ddns 2 }
+	ddnsUsername OBJECT-TYPE
+            SYNTAX       DisplayString
+	    MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "User Name"
+            ::= { ddns 3 }
+    ddnsPassword OBJECT-TYPE
+            SYNTAX       DisplayString
+	    MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "Password"
+            ::= { ddns 4 }
+	ddnsHostname OBJECT-TYPE
+            SYNTAX       DisplayString
+	    MAX-ACCESS   read-write
+            STATUS       current
+            DESCRIPTION
+                "Host Name"
+            ::= { ddns 5 }
+	
+    rtProt  OBJECT IDENTIFIER ::= { smcDory 16 }
+        ripTable OBJECT-TYPE
+                SYNTAX       SEQUENCE OF RIPEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "RIP infomation table"
+                ::= { rtProt 1 }
+    
+            ripEntry OBJECT-TYPE
+                SYNTAX       RIPEntry
+                MAX-ACCESS   not-accessible 
+                STATUS       current
+                DESCRIPTION 
+                    "Entry of table prntlCtrlRptTypeAllTimeTodayTable"
+                INDEX        { ripIndex }
+                ::= { ripTable 1 }
+    
+                RIPEntry ::=
+                SEQUENCE {
+                    ripIndex            Integer32,
+                    ripRowstatus        RowStatus,
+                    ripInterface        DisplayString,
+                    ripSndVersion       INTEGER,
+                    ripRcvVersion       INTEGER,
+                    ripUpdateInterval   INTEGER,
+                    ripDefaultMetric    INTEGER,
+                    ripAuthType         INTEGER,
+                    ripAuthKey          OCTET STRING,
+                    ripAuthKeyID        INTEGER,
+                    ripNeighbor         IpAddress
+                }
+               
+	        ripIndex OBJECT-TYPE
+                    SYNTAX       Integer32
+                    MAX-ACCESS   not-accessible
+                    STATUS       current
+                    DESCRIPTION 
+                        "Index of ripEntry."
+                    ::= { ripEntry 1 }
+
+	        ripRowstatus OBJECT-TYPE
+                    SYNTAX       RowStatus
+                    MAX-ACCESS   read-write
+                    STATUS       current
+                    DESCRIPTION 
+                        "rowstatus of ripEntry."
+                    ::= { ripEntry 2 }
+
+	        ripInterface OBJECT-TYPE
+                    SYNTAX       DisplayString
+                    MAX-ACCESS   read-only
+                    STATUS       current
+                    DESCRIPTION 
+                        "RIP interface."
+                    ::= { ripEntry 3 }
+
+	        ripSndVersion OBJECT-TYPE
+                    SYNTAX       INTEGER{
+		        doNotSend(1),
+			ripv1(2),
+			ripv1Or2(3),
+			ripv2(4)
+		    }
+                    MAX-ACCESS   read-write
+                    STATUS       current
+                    DESCRIPTION 
+                        "RIP send version"
+                    ::= { ripEntry 4 }
+
+	        ripRcvVersion OBJECT-TYPE
+                    SYNTAX       INTEGER{
+			ripv1(1),
+			ripv2(2),
+			ripv1Or2(3),
+		        doNotReceive(4)
+		    }
+                    MAX-ACCESS   read-write
+                    STATUS       current
+                    DESCRIPTION 
+                        "This indicates which version of RIP updates are to be accepted."
+                    ::= { ripEntry 5 }
+
+	        ripUpdateInterval OBJECT-TYPE
+                    SYNTAX       INTEGER(1..180)
+                    MAX-ACCESS   read-write
+                    STATUS       current
+                    DESCRIPTION 
+                        "The Interval after which another RIP update is sent."
+                    ::= { ripEntry 6 }
+
+	        ripDefaultMetric OBJECT-TYPE
+                    SYNTAX       INTEGER(1..15)
+                    MAX-ACCESS   read-write
+                    STATUS       current
+                    DESCRIPTION 
+                        "The metric that is to be used for the default route entry in RIP updates originated on this interface. "
+                    ::= { ripEntry 7 }
+
+                ripAuthType OBJECT-TYPE
+                    SYNTAX       INTEGER{
+		        noAuthentication(1),
+			simplePassword(2),
+			md5(3)
+		    }
+                    MAX-ACCESS   read-write
+                    STATUS       current
+                    DESCRIPTION 
+                        "The type of Authentication used on this interface."
+                    ::= { ripEntry 8 }
+
+		ripAuthKey OBJECT-TYPE
+                    SYNTAX       OCTET STRING
+                    MAX-ACCESS   read-write
+                    STATUS       current
+                    DESCRIPTION 
+                        "The value to be used as the Authentication Key whenever the corresponding instance of ripAuthType has a value other than noAuthentication.
+			Reading this object always results in an  OCTET STRING of length zero;"
+                    ::= { ripEntry 9 }
+
+		ripAuthKeyID OBJECT-TYPE
+                    SYNTAX       INTEGER(0..255)
+                    MAX-ACCESS   read-write
+                    STATUS       current
+                    DESCRIPTION 
+                        "The KeyID identifies the key used to create the Authentication Data for this RIP-2 message"
+                    ::= { ripEntry 10 }
+
+		ripNeighbor OBJECT-TYPE
+                    SYNTAX       IpAddress
+                    MAX-ACCESS   read-write
+                    STATUS       current
+                    DESCRIPTION 
+                        "RIP Neighbor"
+                    ::= { ripEntry 11 }
+  END

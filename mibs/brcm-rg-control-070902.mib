@@ -1,0 +1,74 @@
+--**************************************************************************
+--                                                                          
+--    Copyright 2002 Broadcom Corporation                                   
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--             Broadcom Corporation                                         
+--             16251 Laguna Canyon Road                                     
+--             Irvine, California  92618                                    
+--    All information contained in this document is Broadcom Corporation    
+--    company private, proprietary, and trade secret.                       
+--                                                                          
+--                                                                          
+--                                                                          
+--**************************************************************************
+--    Filename: brcm-rg-control.mib
+--    Author:   Kevin O'Neal
+--    Creation Date: 9-July-2002
+--
+--**************************************************************************
+--    Description:
+--
+--		Residential Gateway Control MIB for Broadcom enterprise
+--		
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+BRCM-RG-CONTROL-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    enterprises
+        FROM SNMPv2-SMI;
+
+-- Broadcom private OIDs        
+broadcom    OBJECT IDENTIFIER ::= { enterprises 4413 }
+cableData   OBJECT IDENTIFIER ::= { broadcom 2 }
+        
+rgControl MODULE-IDENTITY 
+    LAST-UPDATED "200207090000Z"
+    ORGANIZATION "Broadcom Corporation"
+    CONTACT-INFO
+        "	BANANA (Broadcom Assigned Numbers and Naming Authority)
+                Broadcom Corporation
+
+        Postal: 4385 River Green Parkway
+                Duluth, GA  30096
+                USA
+
+           Tel: +1 770 232-0018
+
+        E-mail: banana@broadcom.com"
+    DESCRIPTION
+        "A MIB to allow run-time control of residential gateway operation."
+    ::= { cableData 9999 }        
+        
+rgMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                    disabled(1),
+                    residentialGateway(2),
+                    cableHomeVersion1(3),
+                    cableHomeVersion2(4)
+                }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the operational mode of the device with regard to residential
+         gateway behaviour."
+    ::= { rgControl 1 }
+
+END

@@ -1,0 +1,54 @@
+--**************************************************************************
+--    Description:
+--
+--		private MIB for runtime (not factory) CableHome management
+--		
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+UBEE-CABLEHOME-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE
+        FROM SNMPv2-SMI
+    cableDataMgmtMIBObjects
+        FROM UBEE-CABLEDATA-MGMT-MIB;
+                
+cablehomeMgmt MODULE-IDENTITY
+    LAST-UPDATED "200702050000Z"
+    ORGANIZATION "Ubee Interactive Corporation"
+    CONTACT-INFO
+        "	Ubee Interactive Global Headquarters
+
+        Postal: 6F-9, No.38, Taiyuan St.
+        		Jhubei City Hsinchu County 302
+        		Taiwan, R.O.C.
+
+           Tel: +886-3-560-0010
+
+        E-mail: asupport@ubeeinteractive.com"
+    DESCRIPTION
+        "Ubee proprietary MIB for runtime management of CableHome devices."
+    ::= { cableDataMgmtMIBObjects 3 }
+    
+chMgmtBase OBJECT IDENTIFIER ::= { cablehomeMgmt 1 }
+
+chCsaOperMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                disabled(0),
+                csa10(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the operational mode of the device with regards to CSA 
+         (Commercial Services Annex) support.  Note that CSA is defined as an
+         annex to the CableHome 1.1 specification, so rgOperMode must be set to 
+         cableHome11(4) for this object to be meaningfully set to any value
+         other than disabled(0)."
+    ::= { chMgmtBase 1 }
+        
+END

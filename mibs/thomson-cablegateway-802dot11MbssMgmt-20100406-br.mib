@@ -1,0 +1,953 @@
+--*****************************************************************
+--
+-- THOMSON-CABLEGATEWAY.MIB:  Thomson Inc.
+--
+-- Copyright (c) 2008 by Thomson Inc.
+-- All rights reserved.
+-- 
+--*****************************************************************
+
+--**************************************************************************
+--                                                                          
+--    Copyright 2008 Thomson Inc.
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--             Thomson Inc.                                   
+--             101 W 103rd St.                                   
+--             Indianapolis, IN  46290  USA                                   
+--    All information contained in this document is Thomson Inc.    
+--    company private, proprietary, and trade secret.                       
+--                                                                          
+--**************************************************************************
+--
+--    Filename:      thomson-cablegateway-802cg802dot11MbssMgmt.mib
+--    Author:        
+--    Creation Date: September 25, 2008
+--    Revised      : 
+--
+--**************************************************************************
+--
+--    Description:
+--
+--      Thomson Cable Modem MIB.
+--      
+--**************************************************************************
+
+THOMSON-CABLEGATEWAY-DOT11-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Integer32,
+    Unsigned32,
+    IpAddress
+        FROM SNMPv2-SMI
+    TruthValue,
+    DisplayString,
+    MacAddress,
+    PhysAddress,
+    RowStatus
+        FROM SNMPv2-TC
+    InetAddressType,
+    InetAddress
+        FROM INET-ADDRESS-MIB
+    ifIndex
+        FROM IF-MIB
+    cableGateway
+	FROM THOMSON-BROADBAND-MIB 
+    InetAddress
+	FROM INET-ADDRESS-MIB;
+
+                      
+--*****************************************************************
+--
+-- Thomson cable modem objects.
+-- 
+--*****************************************************************
+
+cableGatewayBase OBJECT IDENTIFIER 
+        ::= { cableGateway 1 }
+
+     
+-- 2008/09/25 added for TT2225     
+-- cg802dot11MgmtGroup group has the settings from the Enable, Basic, and Advanced
+-- web pages.
+
+cg802dot11MgmtGroup OBJECT IDENTIFIER ::= { cableGatewayBase 30 }
+cg802dot11MgmtBase OBJECT IDENTIFIER ::= { cg802dot11MgmtGroup 1 }
+
+cg802dot11MbssUserControl OBJECT-TYPE
+    SYNTAX      INTEGER 
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the number of user controlled Wifi networks.
+		    0 <--- The user has no control over wireless. No 802.11 web pages will be displayed. 
+			       For now, we don't need to support this. An attempt to set it to zero can just 
+				   return an error.
+			1 <--- The user has control over the primary wireless network only. No guest network 
+			       page is displayed.
+			2 <--- The user has control over the primary wireless network and one guest network. 
+			       No drop down menu (or only 1 item in the menu) for additional guest network 
+				   configuration.
+			3 <--- Same as above with 2 guest networks
+			4 <--- Same as above with 3 guest networks (Our current implementation)."
+    DEFVAL { 100 }
+    ::= { cg802dot11MgmtBase 14 }
+
+cg802dot11MgmtMbss OBJECT IDENTIFIER ::= { cg802dot11MgmtGroup 4 }
+
+--
+-- cg802dot11MbssBase contains objects used to configure basic operation
+-- of each service set.
+--
+
+cg802dot11MbssBase OBJECT IDENTIFIER ::= { cg802dot11MgmtMbss 1 }
+
+cg802dot11BssTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cg802dot11BssEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of entries in an MBSS system."
+    ::= { cg802dot11MbssBase 14 }
+    
+cg802dot11BssEntry OBJECT-TYPE
+    SYNTAX      Cg802dot11BssEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry describing the characteristics of an individual BSS.  An
+         entry exists in this table for each entry of type ieee80211 (71) in
+         the ifTable."
+    INDEX   { ifIndex }
+    ::= { cg802dot11BssTable 1 }
+
+Cg802dot11BssEntry ::= 
+    SEQUENCE    {
+                cg802dot11BssId                      PhysAddress,
+                cg802dot11BssEnable                  TruthValue,
+                cg802dot11BssSsid                    OCTET STRING,
+                cg802dot11BssNetworkBridge           INTEGER,
+                cg802dot11BssSecurityMode            INTEGER,
+                cg802dot11BssClosedNetwork           TruthValue,
+                cg802dot11BssAccessMode              INTEGER
+    }
+    
+cg802dot11BssId OBJECT-TYPE
+    SYNTAX      PhysAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The physical address associated with this service set."
+    ::= { cg802dot11BssEntry 1 }
+    
+cg802dot11BssEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables this service set."
+    ::= { cg802dot11BssEntry 2 }
+    
+cg802dot11BssSsid OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the service set identifier for this BSS."
+    ::= { cg802dot11BssEntry 3 }
+    
+cg802dot11BssNetworkBridge OBJECT-TYPE
+    SYNTAX      INTEGER {
+                lan(1),
+                guest(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "If set to lan(1), this service set will be authorized as a member of
+         the local area network.  If set to guest(2), this service set will
+         have access to the wide area internet, but will have restricted access
+         to the local area network."
+    ::= { cg802dot11BssEntry 4 }
+    
+cg802dot11BssSecurityMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                disabled(0),
+                wep(1),
+                wpaPsk(2),
+                wpa2Psk(3),
+                wpaEnterprise(4),
+                wpa2Enterprise(5),
+                radiusWep(6),
+                wpaPsk-or-wpa2Psk(23)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Security mode may be chosen from Disable, WEP, WPA-PSK, WPA2-PSK,
+         WPA-Enterprise, WPA2-Enterprise or RADIUS-WEP.  All devices on the 
+         network must use the same security mode in order to communicate.
+
+         If set to disabled(0):
+            Open system. No authentication or encryption.
+
+         If set to wep(1) then the following parameters must be set:
+            Default Transmit Key (cg802dot11BssWepDefaultKey):
+                Choose which Key to use.
+            WEP Key Bit (cg802dot11BssWepEncryptionMode):
+                May select from 64-Bit or 128-Bit encryption.
+            Passphrase (cg802dot11BssWepPassPhrase):
+                Enter a passphrase consisting of any keyboard character
+                to be used to generate a hex WEP key.
+            Key 1-4 (cg802dot11BssWep64BitKeyTable or cg802dot11BssWep128BitKeyTable):
+                Enter a WEP key manually. Must use only hex character (0-9 and A-F).
+                64-bit WEP requires 10 hex characters, 128-Bit WEP requires the use of
+                26 hex characters.
+                
+         If set to wpaPsk(2) then the following parameters must be set:
+            WPA Algorithm (cg802dot11BssWpaAlgorithm):
+                TKIP or AES.
+            WPA Pre-Shared Key (cg802dot11BssWpaPreSharedKey):
+                Choose a unique key to authenticate with other devices on the network.
+                The Pre-Shared Key must be between 8 and 63 characters in length.
+            Group Key Renewal (cg802dot11BssWpaGroupRekeyInterval):
+                This settingss determines how often the group key changes.
+
+         If set to wpa2Psk(3) then the following parameters must be set:
+            WPA2 Algorithm (cg802dot11BssWpaAlgorithm):
+                AES or TKIP+AES.
+            WPA2 Pre-Shared Key (cg802dot11BssWpaPreSharedKey):
+                Choose a unique key to authenticate with other devices on the network.
+                The Pre-Shared Key must be between 8 and 63 characters in length.
+            Group Key Renewal (cg802dot11BssWpaGroupRekeyInterval):
+                This settingss determines how often the group key changes.
+                
+         If set to wpaEnterprise(4) then the following parameters must be set:
+            WPA Algorithm (cg802dot11BssWpaAlgorithm):
+                TKIP or AES.
+            RADIUS Server Address (cg802dot11BssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (cg802dot11BssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (cg802dot11BssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Key Renewal Timeout (cg802dot11BssRadiusReAuthInterval):
+                Determines how often the keys should be renened.
+                
+         If set to wpa2Enterprise(5) then the following parameters must be set:
+            WPA2 Algorithm (cg802dot11BssWpaAlgorithm):
+                AES or TKIP+AES.
+            RADIUS Server Address (cg802dot11BssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (cg802dot11BssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (cg802dot11BssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Key Renewal Timeout (cg802dot11BssRadiusReAuthInterval):
+                Determines how often the keys should be renened.
+                
+         If set to radiusWep(6) then the following parameters must be set:
+            RADIUS Server Address (cg802dot11BssRadiusAddressType / cg802dot11BssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (cg802dot11BssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (cg802dot11BssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Default Transmit Key (cg802dot11BssWepDefaultKey):
+                Choose which Key to use.
+            WEP Key Bit (cg802dot11BssWepEncryptionMode):
+                May select from 64-Bit or 128-Bit encryption.
+            Passphrase (cg802dot11BssWepPassPhrase):
+                Enter a passphrase consisting of any keyboard character
+                to be used to generate a hex WEP key.
+            Key 1-4 (cg802dot11BssWep64BitKeyTable or cg802dot11BssWep128BitKeyTable):
+                Enter a WEP key manually. Must use only hex character (0-9 and A-F).
+                64-bit WEP requires 10 hex characters, 128-Bit WEP requires the use of
+                26 hex characters.
+
+         If set to wpaPsk-or-wpa2Psk(23) then the following parameters must be set:
+            WPA Algorithm (cg802dot11BssWpaAlgorithm):
+                TKIP, AES or TKIP+AES.
+            WPA Pre-Shared Key (cg802dot11BssWpaPreSharedKey):
+                Choose a unique key to authenticate with other devices on the network.
+                The Pre-Shared Key must be between 8 and 63 characters in length.
+            Group Key Renewal (cg802dot11BssWpaGroupRekeyInterval):
+                This settingss determines how often the group key changes."
+    ::= { cg802dot11BssEntry 5 }
+    
+cg802dot11BssClosedNetwork OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls whether the device will operate in closed network mode.  If
+         set to true(1), then the network mode is closed and the SSID will not
+         be broadcast in beacon packets.  If set to false(2), then the network
+         mode is open and the SSID will be broadcast in beacon packets."
+    ::= { cg802dot11BssEntry 6 }
+
+cg802dot11BssAccessMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                allowAny(1),
+                allowList(2),
+                denyList(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls what stations will be given access to the device.  If set to
+         allowAny(1), then any station will be allowed to connect.  If set
+         to restrictToList(2), then only stations whose MAC address appears in
+         the cg802dot11BssAccessTable will be allowed to connect.  If set to 
+         denyList(3), any station will be allowed to connect except those in 
+         the cg802dot11BssAccessTable."
+    ::= { cg802dot11BssEntry 7 }
+    
+--
+-- cg802dot11MbssSecurity contains objects used to configure security options
+-- of each service set.
+--    
+    
+cg802dot11MbssSecurity OBJECT IDENTIFIER ::= { cg802dot11MgmtMbss 2 }
+
+-- Objects used to control WEP based security modes
+
+cg802dot11BssWepTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cg802dot11BssWepEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table used to configure settings related to the WEP security modes."
+    ::= { cg802dot11MbssSecurity 1 }
+    
+cg802dot11BssWepEntry OBJECT-TYPE
+    SYNTAX      Cg802dot11BssWepEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry defining the WPA characteristics of an individual service set.
+         A row exists in this table for each row in the cg802dot11BssTable for which
+         cg802dot11BssSecurityMode is set to wep(1) or radiusWep(6)."
+    INDEX   { ifIndex }
+    ::= { cg802dot11BssWepTable 1 }
+    
+Cg802dot11BssWepEntry ::= 
+    SEQUENCE    {
+                cg802dot11BssWepDefaultKey           Unsigned32,
+                cg802dot11BssWepEncryptionMode       INTEGER,
+                cg802dot11BssWepPassPhrase           DisplayString
+    }
+    
+cg802dot11BssWepDefaultKey OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the default key which will be used when 64 or
+         128 bit encryption is enabled.  Indicates the entry from the 
+         cg802dot11BssWep64BitKeyTable if cg802dot11EncryptionMode is set to wep64(1), or
+         the entry from the cg802dot11BssWep128BitKeyTable if cg802dot11BssSecurityMode 
+         is set to wep128(2).
+         
+         This object may only be set to indicate an active row in the 
+         cg802dot11BssWep64BitKeyTable or cg802dot11BssWep128BitKeyTable.  If the value 
+         corresponds to a row which does not exist or a row which is not
+         active, the set will be rejected with an inconsistentValue error."
+    ::= { cg802dot11BssWepEntry 1 }
+    
+cg802dot11BssWepEncryptionMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                wep64(1),
+                wep128(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Selects the WEP encryption method used by this service set.
+         If set to wep64(1), then 64 bit WEP encryption will be
+         used with the keys from the cg802dot11BssWep64BitKeyTable.  If set to 
+         wep128(2), then 128 bit WEP encryption will be used with keys from 
+         the cg802dot11BssWep128BitKeyTable."
+    ::= { cg802dot11BssWepEntry 2 }
+    
+cg802dot11BssWepPassPhrase OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The passphrase used for WEP security."
+    ::= { cg802dot11BssWepEntry 3 }
+    
+    
+cg802dot11BssWep64BitKeyTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cg802dot11BssWep64BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of 40 bit key values used when operating in WEP 64 mode."
+    ::= { cg802dot11MbssSecurity 2 }
+    
+cg802dot11BssWep64BitKeyEntry OBJECT-TYPE
+    SYNTAX      Cg802dot11BssWep64BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A key to be used by the row in the cg802dot11BssTable identified by the 
+         value of ifIndex in the row index."
+    INDEX   { ifIndex, cg802dot11BssWep64BitKeyIndex }
+    ::= { cg802dot11BssWep64BitKeyTable 1 }
+    
+Cg802dot11BssWep64BitKeyEntry ::= 
+    SEQUENCE    {
+                cg802dot11BssWep64BitKeyIndex           Integer32,
+                cg802dot11BssWep64BitKeyValue           OCTET STRING,
+                cg802dot11BssWep64BitKeyStatus          RowStatus
+    }
+    
+cg802dot11BssWep64BitKeyIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..4)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Identifies an instance of a key among those used by the service set 
+         identified by the value of ifIndex in the row index."
+    ::= { cg802dot11BssWep64BitKeyEntry 1 }
+    
+cg802dot11BssWep64BitKeyValue OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(5))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A 40 bit key to be used when the corresponding instance of
+         cg802dot11BssSecurityMode is set to wep(1) and the corresponding instance
+         of cg802dot11BssWepEncryptionMode is set to wep64(1)."
+    ::= { cg802dot11BssWep64BitKeyEntry 2 }
+    
+cg802dot11BssWep64BitKeyStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         cg802dot11BssAccessStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of cg802dot11BssWep64BitKeyValue has been set.
+         
+         Only rows with a status of active(1) will be applied.
+         
+         This object may not be set to a value of notInService(2) or destroy(6)
+         if the corresponding instance of cg802dot11BssWepDefaultKey identifies
+         this row as they current key in use.  Such an attempt will be rejected
+         with an inconsistentValue error."
+    ::= { cg802dot11BssWep64BitKeyEntry 3 }
+    
+    
+cg802dot11BssWep128BitKeyTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cg802dot11BssWep128BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of 104 bit key values used when operating in WEP 128 mode."
+    ::= { cg802dot11MbssSecurity 3 }
+    
+cg802dot11BssWep128BitKeyEntry OBJECT-TYPE
+    SYNTAX      Cg802dot11BssWep128BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A key to be used by the row in the cg802dot11BssTable identified by the 
+         value of ifIndex in the row index."
+    INDEX   { ifIndex, cg802dot11BssWep128BitKeyIndex }
+    ::= { cg802dot11BssWep128BitKeyTable 1 }
+    
+Cg802dot11BssWep128BitKeyEntry ::= 
+    SEQUENCE    {
+                cg802dot11BssWep128BitKeyIndex           Integer32,
+                cg802dot11BssWep128BitKeyValue           OCTET STRING,
+                cg802dot11BssWep128BitKeyStatus          RowStatus
+    }
+    
+cg802dot11BssWep128BitKeyIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..4)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Identifies an instance of a key among those used by the service set 
+         identified by the value of ifIndex in the row index."
+    ::= { cg802dot11BssWep128BitKeyEntry 1 }
+    
+cg802dot11BssWep128BitKeyValue OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(13))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A 104 bit key to be used when the corresponding instance of
+         cg802dot11BssSecurityMode is set to wep(1) and the corresponding instance
+         of cg802dot11BssWepEncryptionMode is set to wep128(128)."
+    ::= { cg802dot11BssWep128BitKeyEntry 2 }
+    
+cg802dot11BssWep128BitKeyStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         cg802dot11BssAccessStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of cg802dot11BssWep128BitKeyValue has been set.
+         
+         Only rows with a status of active(1) will be applied.
+         
+         This object may not be set to a value of notInService(2) or destroy(6)
+         if the corresponding instance of cg802dot11BssWepDefaultKey identifies
+         this row as they current key in use.  Such an attempt will be rejected
+         with an inconsistentValue error."
+    ::= { cg802dot11BssWep128BitKeyEntry 3 }
+
+-- Objects used to control WPA based security modes
+    
+cg802dot11BssWpaTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cg802dot11BssWpaEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table used to configure settings related to the WPA security modes."
+    ::= { cg802dot11MbssSecurity 4 }
+    
+cg802dot11BssWpaEntry OBJECT-TYPE
+    SYNTAX      Cg802dot11BssWpaEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry defining the WPA characteristics of an individual service set.
+         A row exists in this table for each row in the cg802dot11BssTable for which
+         cg802dot11BssSecurityMode is set to wpaPsk(2), wpa2Psk(3), wpaEnterprise(4), 
+         or wpa2Enterprise(5)."
+    INDEX   { ifIndex }
+    ::= { cg802dot11BssWpaTable 1 }
+    
+Cg802dot11BssWpaEntry ::=
+    SEQUENCE    {
+                cg802dot11BssWpaAlgorithm            INTEGER,
+                cg802dot11BssWpaPreSharedKey         OCTET STRING,
+                cg802dot11BssWpaGroupRekeyInterval   Unsigned32
+    }
+    
+cg802dot11BssWpaAlgorithm OBJECT-TYPE
+    SYNTAX      INTEGER {
+                tkip(1),
+                aes(2),
+                tkipPlusAes(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the WPA encryption mode used by the service set.  
+         The WPA algorithm for WPA-PSK and WPA-Enterprise security mode is either
+         tkip(1) or aes(2).
+        
+         The WPA algorithm for WPA2-PSK and WPA2-Enterprise security mode is either
+         aes(2) or tkipPlusAes(3)."
+    ::= { cg802dot11BssWpaEntry 1 }
+    
+cg802dot11BssWpaPreSharedKey OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (8..64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPA Pre-Shared Key (PSK) used by this service set.  This 
+         value MUST be either a 64 byte hexadecimal number, OR an 8 to 63 
+         character ASCII string."
+    ::= { cg802dot11BssWpaEntry 2 }
+    
+cg802dot11BssWpaGroupRekeyInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPA Group Rekey Interval for this service set. If set to zero, 
+         periodic rekeying is disabled for this service set."
+    ::= { cg802dot11BssWpaEntry 3 }
+    
+-- Objects used to control RADIUS based security modes
+
+cg802dot11BssRadiusTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cg802dot11BssRadiusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table used to configure settings related to the RADIUS security 
+         modes, including WPA-Enterprise, WPA2-Enterprise and RADIUS-WEP."
+    ::= { cg802dot11MbssSecurity 5 }
+    
+cg802dot11BssRadiusEntry OBJECT-TYPE
+    SYNTAX      Cg802dot11BssRadiusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+         "An entry defining the RADIUS characteristics of an individual service 
+          set.  A row exists in this table for each row in the cg802dot11BssTable 
+          for which cg802dot11BssSecurityMode is set to wpaEnterprise(4), 
+          wpa2Enterprise(5), or radiusWep(6)."
+    INDEX   { ifIndex }
+    ::= { cg802dot11BssRadiusTable 1 }
+    
+Cg802dot11BssRadiusEntry ::= 
+    SEQUENCE    {
+                cg802dot11BssRadiusAddressType       InetAddressType,
+                cg802dot11BssRadiusAddress           InetAddress,
+                cg802dot11BssRadiusPort              Unsigned32,
+                cg802dot11BssRadiusKey               DisplayString,
+                cg802dot11BssRadiusReAuthInterval    Unsigned32
+    }
+    
+cg802dot11BssRadiusAddressType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The type of internet address used for cg802dot11BssRadiusAddress."
+    ::= { cg802dot11BssRadiusEntry 1 }
+    
+cg802dot11BssRadiusAddress OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The internet address of the RADIUS server for this service set."
+    ::= { cg802dot11BssRadiusEntry 2 }
+    
+cg802dot11BssRadiusPort OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The UDP port used to communicate with the RADIUS server for this 
+         service set."
+    ::= { cg802dot11BssRadiusEntry 3 }
+    
+cg802dot11BssRadiusKey OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The RADIUS key."
+    ::= { cg802dot11BssRadiusEntry 4 }
+    
+cg802dot11BssRadiusReAuthInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The network re-authentication interval.  If set to zero, no
+         re-authentication will be performed."
+    ::= { cg802dot11BssRadiusEntry 5 }
+    
+--
+-- cg802dot11MbssAccess contains objects used to configure access restrictions
+-- of each service set.
+--
+    
+cg802dot11MbssAccess OBJECT IDENTIFIER ::= { cg802dot11MgmtMbss 3 }
+
+cg802dot11BssAccessTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cg802dot11BssAccessEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of MAC addresses which defines the MAC address based access 
+         restrictions for the system."
+    ::= { cg802dot11MbssAccess 1 }
+    
+cg802dot11BssAccessEntry OBJECT-TYPE
+    SYNTAX      Cg802dot11BssAccessEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A row in the table which specifies a single MAC address for a given
+         service set."
+    INDEX   { ifIndex, cg802dot11BssAccessIndex }
+    ::= { cg802dot11BssAccessTable 1 }
+    
+Cg802dot11BssAccessEntry ::= 
+    SEQUENCE    {
+                cg802dot11BssAccessIndex       Integer32,
+                cg802dot11BssAccessStation     PhysAddress,
+                cg802dot11BssAccessStatus      RowStatus
+    }
+    
+cg802dot11BssAccessIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..16)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Indicates the instance of this table row."
+    ::= { cg802dot11BssAccessEntry 1 }
+    
+cg802dot11BssAccessStation OBJECT-TYPE
+    SYNTAX      PhysAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A MAC address of a station which will be allowed to connect to the 
+         service set if cg802dot11BssAccessMode is set to restrictToList(2), or
+         forbidden if cg802dot11BssAccessMode is set to denyList(3)."
+    ::= { cg802dot11BssAccessEntry 2 }
+    
+cg802dot11BssAccessStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         cg802dot11BssAccessStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of cg802dot11BssAccessStation has been set.
+         
+         Only rows with a status of active(1) will be applied."
+    ::= { cg802dot11BssAccessEntry 3 }
+    
+--    
+cg802dot11MbssNetwork OBJECT IDENTIFIER ::= { cg802dot11MgmtMbss 4 }
+
+cg802dot11MbssNetworkTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cg802dot11MbssNetworkEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of mbss LAN network information."
+    ::= { cg802dot11MbssNetwork 1 }
+    
+cg802dot11MbssNetworkEntry OBJECT-TYPE
+    SYNTAX      Cg802dot11MbssNetworkEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A row in the table which specifies a single mbss LAN network."
+    INDEX   { ifIndex }
+    ::= { cg802dot11MbssNetworkTable 1 }
+    
+Cg802dot11MbssNetworkEntry ::= 
+    SEQUENCE    {
+                cg802dot11MbssDhcpServerEnable  TruthValue,
+                cg802dot11MbssGatewayIp         IpAddress,
+                cg802dot11MbssSubnetMask        IpAddress,
+                cg802dot11MbssLeasePoolStart    IpAddress,
+                cg802dot11MbssLeasePoolEnd      IpAddress,
+                cg802dot11MbssLeaseTime         Integer32,
+                cg802dot11MbssTypeOfService     Integer32
+    }
+    
+cg802dot11MbssDhcpServerEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables the DHCP function."
+    ::= { cg802dot11MbssNetworkEntry 1 }
+
+cg802dot11MbssGatewayIp OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Set the LAN network gateway IP."
+    ::= { cg802dot11MbssNetworkEntry 2 }
+    
+cg802dot11MbssSubnetMask OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Set the LAN network subnet mask."
+    ::= { cg802dot11MbssNetworkEntry 3 }
+
+cg802dot11MbssLeasePoolStart OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Set the first IP of DHCP server lease pool."
+    ::= { cg802dot11MbssNetworkEntry 4 }
+
+cg802dot11MbssLeasePoolEnd OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Set the last IP of DHCP server lease pool."
+    ::= { cg802dot11MbssNetworkEntry 5 }
+    
+cg802dot11MbssLeaseTime OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Set the DHCP server lease time."
+    ::= { cg802dot11MbssNetworkEntry 6 }
+    
+cg802dot11MbssTypeOfService OBJECT-TYPE
+    SYNTAX      Integer32 (0..255)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Fills ToS bits in IP header from LAN side packets."
+    ::= { cg802dot11MbssNetworkEntry 10 }
+
+	cg802dot11ConnectedDevicesGroup OBJECT IDENTIFIER ::= { cg802dot11MbssNetwork 2 }
+
+cg802dot11ConnectedDevicesRefresh  OBJECT-TYPE
+    SYNTAX	INTEGER	{
+		done(1),
+		inProgress(2),
+		start(3)
+		}
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Setting this Object to start(3) will cause the device to start the wireless connected devices Table refresh.
+		The refresh will cause an update of the entries in the connectedDevicesTable.  Non-connected devices 
+		entries present in the connectedDevicesTable will be removed.  Only a value of start(3) can be written.  
+		Reading this value will either return done(1) if the refresh is complete, or inProgress(2) if the refresh 
+		is still in progress."
+	DEFVAL { 1 }
+    ::= { cg802dot11ConnectedDevicesGroup 1 }
+
+cg802dot11ConnectedDevicesNumberTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cg802dot11ConnectedDevicesNumberEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "a table to display how many connected devices."
+    ::= { cg802dot11ConnectedDevicesGroup 2 }
+
+cg802dot11ConnectedDevicesNumberEntry OBJECT-TYPE
+    SYNTAX      Cg802dot11ConnectedDevicesNumberEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A row in the table specifies connected devices number per SSID"
+    INDEX   { ifIndex }
+    ::= { cg802dot11ConnectedDevicesNumberTable 1 }
+    
+Cg802dot11ConnectedDevicesNumberEntry ::= 
+    SEQUENCE    {
+                cg802dot11ConnectedDevicesNumber    Integer32
+    }
+
+cg802dot11ConnectedDevicesNumber  OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Display how many connected devices."
+    ::= { cg802dot11ConnectedDevicesNumberEntry 1 }
+    
+cg802dot11ConnectedDevicesTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cg802dot11ConnectedDevicesEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of connected devices information."
+    ::= { cg802dot11ConnectedDevicesGroup 3 }
+    
+cg802dot11ConnectedDevicesEntry OBJECT-TYPE
+    SYNTAX      Cg802dot11ConnectedDevicesEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A row in the table specifies a connected device."
+    INDEX   { cg802dot11ConnectedDevicesMacAddress }
+    ::= { cg802dot11ConnectedDevicesTable 1 }
+    
+Cg802dot11ConnectedDevicesEntry ::= 
+    SEQUENCE    {
+                cg802dot11IfIndex                    Integer32,
+                cg802dot11ConnectedDevicesMacAddress   PhysAddress,
+                cg802dot11ConnectedDevicesName	       DisplayString,
+                cg802dot11ConnectedDevicesIpAddress    IpAddress
+    }
+
+cg802dot11IfIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Display MBSS index of the connected device."
+    ::= { cg802dot11ConnectedDevicesEntry 1 }
+    
+cg802dot11ConnectedDevicesMacAddress OBJECT-TYPE
+    SYNTAX      PhysAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Display IP address of the connected device."
+    ::= { cg802dot11ConnectedDevicesEntry 2 }
+
+cg802dot11ConnectedDevicesName OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"Display name of the connected Device, same as Computer Name"
+	::= { cg802dot11ConnectedDevicesEntry 3 }
+    
+cg802dot11ConnectedDevicesIpAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Display IP address of the connected device."
+    ::= { cg802dot11ConnectedDevicesEntry 4 }
+    
+-- cg802dot11ApplySettings: do 'on the fly' config with settings from above.
+-- This scalar object was placed by itself at ieee802cg802dot11Mgmt 100 because
+-- it applies all settings from all current and possibly future 802.11
+-- groups.  Wanted to leave plenty of room to add new groups in the future.
+
+cg802dot11ApplySettings OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If set to true(1), the wi-fi driver will be restarted using the 
+         current configuration from non-volatile storage.  This object may be 
+         used to invoke an immediate reconfiguration of the wi-fi system without 
+         requiring a full reboot.  
+
+         Unless this object is explicitly set to true(1), any settings made via 
+         other objects in this MIB will be stored to non-volatile storage, but 
+         will not take effect until the next reboot.  
+
+         Always returns false(2) when read."
+    ::= { cg802dot11MgmtGroup 100 }
+
+
+    
+END

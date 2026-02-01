@@ -1,0 +1,277 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: Ntgr-docsis-mgmt.mib
+--    Creation Date: May 4, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--      private MIB for docsis management
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-DOCSIS-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, MODULE-IDENTITY, enterprises, 
+	Integer32
+		FROM SNMPv2-SMI
+	TruthValue
+		FROM SNMPv2-TC
+	cableMgmt
+		FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrDocsisMgmt MODULE-IDENTITY
+	LAST-UPDATED "201305230000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"This is the MIB Module for Netgear Cable Gateway device."
+::= { cableMgmt 1 }
+
+
+-- -
+-- - Netgear Group
+-- -
+
+
+-- May 4, 2012
+-- 
+-- Object Definitions
+-- 
+-- 
+-- MIB objects
+-- 
+
+scanPlanBase         OBJECT IDENTIFIER ::= { ntgrDocsisMgmt 1 }
+
+scanPlanCommitSettings  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { scanPlanBase 1 }
+
+startupFrequency  OBJECT-TYPE
+	SYNTAX     Integer32 (0..1000000000)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { scanPlanBase 2 }
+
+defaultLKFFrequency  OBJECT-TYPE
+	SYNTAX     Integer32 (0..1000000000)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { scanPlanBase 3 }
+
+cflIterationNumber  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { scanPlanBase 4 }
+
+baseIterationNumber  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { scanPlanBase 5 }
+
+globalIterationNumber  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { scanPlanBase 6 }
+
+cflFrequencyTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF CflFrequencyEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { scanPlanBase 7 }
+
+cflFrequencyEntry  OBJECT-TYPE
+	SYNTAX 	CflFrequencyEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { cflStartFrequency }
+	::= { cflFrequencyTable 1 }
+
+CflFrequencyEntry ::= SEQUENCE {
+	cflStartFrequency
+		Integer32,
+	cflEndFrequency
+		Integer32,
+	cflStepFrequency
+		Integer32,
+	cflAnnexMode
+		INTEGER
+}
+
+cflStartFrequency  OBJECT-TYPE
+	SYNTAX     Integer32 (0..1000000000)
+	UNITS 	"hertz"
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { cflFrequencyEntry 1 }
+
+cflEndFrequency  OBJECT-TYPE
+	SYNTAX     Integer32 (0..1000000000)
+	UNITS 	"hertz"
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { cflFrequencyEntry 2 }
+
+cflStepFrequency  OBJECT-TYPE
+	SYNTAX     Integer32 (0..1000000000)
+	UNITS 	"hertz"
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { cflFrequencyEntry 3 }
+
+cflAnnexMode  OBJECT-TYPE
+	SYNTAX     INTEGER {
+		annexB (0),
+		annexA (1),
+		annexC (2),
+		other (3),
+		unknown (4)
+	}
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { cflFrequencyEntry 4 }
+
+baseFrequencyTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF BaseFrequencyEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { scanPlanBase 8 }
+
+baseFrequencyEntry  OBJECT-TYPE
+	SYNTAX 	BaseFrequencyEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { baseStartFrequency }
+	::= { baseFrequencyTable 1 }
+
+BaseFrequencyEntry ::= SEQUENCE {
+	baseStartFrequency
+		Integer32,
+	baseEndFrequency
+		Integer32,
+	baseStepFrequency
+		Integer32,
+	baseAnnexMode
+		INTEGER
+}
+
+baseStartFrequency  OBJECT-TYPE
+	SYNTAX     Integer32 (0..1000000000)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { baseFrequencyEntry 1 }
+
+baseEndFrequency  OBJECT-TYPE
+	SYNTAX     Integer32 (0..1000000000)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { baseFrequencyEntry 2 }
+
+baseStepFrequency  OBJECT-TYPE
+	SYNTAX     Integer32 (0..1000000000)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { baseFrequencyEntry 3 }
+
+baseAnnexMode  OBJECT-TYPE
+	SYNTAX     INTEGER {
+		annexB (0),
+		annexA (1),
+		annexC (2),
+		other (3),
+		unknown (4)
+	}
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { baseFrequencyEntry 4 }
+
+tftpBase         OBJECT IDENTIFIER ::= { ntgrDocsisMgmt 2 }
+
+tftpBlkSize  OBJECT-TYPE
+	SYNTAX     Integer32 (-1..65463)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The TFTP block size settings MUST be persistently configurable via SNMP 
+		 to the maximum supported size as defined in [RFC-2348]. 
+		 The behavior of TFTP block size negotiation MUST comply with [RFC-1350], 
+		 [RFC-1782], and [RFC-2348]. 
+		 
+		 The valid values of block size range are between 512 and 65464 octets.
+		 512 < block size < 65464
+		 
+		 0: If the TFTP block size setting for IPv4 or IPv6 is set to 0, 
+		    then TFTP Block size negotiation MUST not occur for that protocol 
+		   (i.e. the default block size from the server must be used by the device).
+		 
+		-1: Default block size setting in IPv4 mode MUST be 1448; 
+		    for IPv6 mode it MUST be 1428."
+	DEFVAL { -1 }
+	::= { tftpBase 1 }
+
+END

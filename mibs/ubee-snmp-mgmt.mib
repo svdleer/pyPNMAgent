@@ -1,0 +1,87 @@
+--**************************************************************************
+--    Description:
+--
+--		private MIB for runtime (not factory) SNMP management
+--		
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+UBEE-SNMP-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Unsigned32,
+    Integer32
+        FROM SNMPv2-SMI
+    cableDataMgmtBase
+        FROM UBEE-CABLEDATA-MGMT-MIB;
+                
+snmpMgmt MODULE-IDENTITY
+    LAST-UPDATED "200702050000Z"
+    ORGANIZATION "Ubee Interactive Corporation"
+    CONTACT-INFO
+        "	Ubee Interactive Global Headquarters
+
+        Postal: 6F-9, No.38, Taiyuan St.
+        		Jhubei City Hsinchu County 302
+        		Taiwan, R.O.C.
+
+           Tel: +886-3-560-0010
+
+        E-mail: asupport@ubeeinteractive.com"
+    DESCRIPTION
+        "Ubee proprietary MIB for runtime management and configuration
+         of objects related to SNMP."
+    ::= { cableDataMgmtBase 2 }
+    
+snmpUdpPort OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the UDP port which will be listened for
+         as the destination port on received SNMP packets and used as the 
+         source port on subsequent SNMP replies.
+         
+         Setting this object will result in an immediate change of the SNMP
+         port number, although the SNMP reply to the set request which modifies
+         this value will still be sent using the port on which it was received.
+         This prevents the sending SNMP manager from receiving a timeout on the 
+         set request.  
+         
+         This value is NOT stored to non-volatile storage and will revert to the 
+         default value on system reboot."
+    DEFVAL { 161 }
+    ::= { snmpMgmt 1 }
+
+snmpNotifyUdpPort OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the UDP port which will be used as the 
+         destination port in SNMP notify packets, including traps and informs.
+         
+         This value is NOT stored to non-volatile storage and will revert to 
+         the default value on system reboot."
+    DEFVAL { 162 }
+    ::= { snmpMgmt 2 }
+    
+snmpDscpTag OBJECT-TYPE
+   SYNTAX       Integer32 (0..63)
+   MAX-ACCESS   read-write
+   STATUS       current
+   DESCRIPTION
+       "This object controls the value for the DSCP field (previously known as 
+        ToS) in the IP header which will be used for all SNMP packets 
+        originating from this device.
+        
+        This value is NOT stored to non-volatile storage and will revert to 
+        the default value on system reboot."
+   DEFVAL { 0 }
+ ::= { snmpMgmt 3 }
+ 
+END

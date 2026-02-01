@@ -1,0 +1,212 @@
+CADANT-IRDP-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, Integer32, Unsigned32
+        FROM SNMPv2-SMI
+    RowStatus, TruthValue
+        FROM SNMPv2-TC
+    InterfaceIndex
+        FROM IF-MIB
+    InetAddressIPv4or6
+        FROM CADANT-TC
+    cadLayer3
+        FROM CADANT-PRODUCTS-MIB;
+
+cadIrdpMib MODULE-IDENTITY
+    LAST-UPDATED "200108070000Z"  -- 2001, August 7th, midnight
+    ORGANIZATION "Cadant Inc"
+    CONTACT-INFO "Email: support@cadant.com"
+
+    DESCRIPTION
+        "This MIB module defines objects to manage the ICMP Router
+        Discovery Protocol (IRDP) in the Cadant CMTS."
+    ::= { cadLayer3 7 }
+
+--
+--  The IRDP Interface Table
+--
+
+cadIrdpInterfaceTable OBJECT-TYPE
+    SYNTAX       SEQUENCE OF CadIrdpInterfaceEntry
+    MAX-ACCESS   not-accessible
+    STATUS       current
+    DESCRIPTION
+        "This table describes the router advertisement variables
+        per interface."
+    ::= { cadIrdpMib 1 }
+
+cadIrdpInterfaceEntry OBJECT-TYPE
+    SYNTAX   CadIrdpInterfaceEntry
+    MAX-ACCESS not-accessible
+    STATUS     current
+    DESCRIPTION
+        "An entry representing an interface on which IRDP is enabled."
+    INDEX      { cadIrdpInterfaceIfIndex }
+    ::= { cadIrdpInterfaceTable 1 }
+
+CadIrdpInterfaceEntry ::= SEQUENCE {
+    cadIrdpInterfaceIfIndex                   InterfaceIndex,
+    cadIrdpInterfaceAdvertiseMulticast        TruthValue,
+    cadIrdpInterfaceMaxAdvertisementInterval  Unsigned32,
+    cadIrdpInterfaceMinAdvertisementInterval  Unsigned32,
+    cadIrdpInterfaceAdvertisementLifetime     Unsigned32,
+    cadIrdpInterfacePreferenceLevel           Integer32,
+    cadIrdpInterfaceStatus                    RowStatus
+}
+
+cadIrdpInterfaceIfIndex OBJECT-TYPE
+    SYNTAX     InterfaceIndex
+    MAX-ACCESS not-accessible
+    STATUS     current
+    DESCRIPTION
+        "The ifIndex value of the interface for which IRDP is enabled."
+    ::= { cadIrdpInterfaceEntry 1 }
+
+cadIrdpInterfaceAdvertiseMulticast OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS read-create
+    STATUS     current
+    DESCRIPTION
+        "If true then multicast Router Advertisements are sent to the
+        all-systems multicast address (224.0.0.1), else multicast
+        Router Advertisements are sent to the broadcast address
+        (255.255.255.255)."
+    DEFVAL { true }
+    ::= { cadIrdpInterfaceEntry 2 }
+
+cadIrdpInterfaceMaxAdvertisementInterval OBJECT-TYPE
+    SYNTAX     Unsigned32 (4..1800)
+    UNITS      "seconds"
+    MAX-ACCESS read-create
+    STATUS     current
+    DESCRIPTION
+        "The maximum time allowed between sending multicast Router
+        Advertisements from the interface, in seconds."
+    DEFVAL { 600 }
+    ::= { cadIrdpInterfaceEntry 3 }
+
+cadIrdpInterfaceMinAdvertisementInterval OBJECT-TYPE
+    SYNTAX     Unsigned32 (3..1800)
+    UNITS      "seconds"
+    MAX-ACCESS read-create
+    STATUS     current
+    DESCRIPTION
+        "The minimum time allowed between sending multicast Router
+        Advertisements from the interface, in seconds."
+    DEFVAL { 450 }
+    ::= { cadIrdpInterfaceEntry 4 }
+
+cadIrdpInterfaceAdvertisementLifetime OBJECT-TYPE
+    SYNTAX     Unsigned32 (4..9000)
+    UNITS      "seconds"
+    MAX-ACCESS read-create
+    STATUS     current
+    DESCRIPTION
+        "The value to be placed in the Lifetime field of Router
+        Advertisements sent from the interface, in seconds."
+    DEFVAL { 1800 }
+    ::= { cadIrdpInterfaceEntry 5 }
+
+cadIrdpInterfacePreferenceLevel OBJECT-TYPE
+    SYNTAX     Integer32
+    MAX-ACCESS read-create
+    STATUS     current
+    DESCRIPTION
+        "The preferability of all addresses not contained in the address
+        table as a default router address, relative to other router
+        addresses on the same subnet. A 32-bit signed, twos-complement
+        integer, with higher values meaning more preferable. The minimum
+        value (hex 80000000) is used to indicate that an address, even
+        though it may be advertised, is not to be used by neighboring hosts
+        as a default router address."
+    DEFVAL { 0 }
+    ::= { cadIrdpInterfaceEntry 6 }
+
+cadIrdpInterfaceStatus OBJECT-TYPE
+    SYNTAX     RowStatus
+    MAX-ACCESS read-create
+    STATUS     current
+    DESCRIPTION
+        "The activation of a row enables IRDP on the interface.  The
+        destruction of a row disables IRDP on the interface."
+    ::= { cadIrdpInterfaceEntry 7 }
+
+--
+--  The IRDP Address Table
+--
+
+cadIrdpAddressTable OBJECT-TYPE
+    SYNTAX       SEQUENCE OF CadIrdpAddressEntry
+    MAX-ACCESS   not-accessible
+    STATUS       current
+    DESCRIPTION
+        "This table describes the router advertisement variables
+        per address on an interface."
+    ::= { cadIrdpMib 2 }
+
+cadIrdpAddressEntry OBJECT-TYPE
+    SYNTAX   CadIrdpAddressEntry
+    MAX-ACCESS not-accessible
+    STATUS     current
+    DESCRIPTION
+        "An entry representing an address in the address table."
+    INDEX      { cadIrdpAddressIpAddress, cadIrdpAddressIfIndex }
+    ::= { cadIrdpAddressTable 1 }
+
+CadIrdpAddressEntry ::= SEQUENCE {
+    cadIrdpAddressIpAddress               InetAddressIPv4or6,
+    cadIrdpAddressIfIndex                 InterfaceIndex,
+    cadIrdpAddressAdvertised              TruthValue,
+    cadIrdpAddressPreferenceLevel         Integer32,
+    cadIrdpAddressStatus                  RowStatus
+}
+
+cadIrdpAddressIpAddress OBJECT-TYPE
+    SYNTAX     InetAddressIPv4or6
+    MAX-ACCESS not-accessible
+    STATUS     current
+    DESCRIPTION
+        "The IP address for which this entry contains information."
+    ::= { cadIrdpAddressEntry 1 }
+
+cadIrdpAddressIfIndex OBJECT-TYPE
+    SYNTAX     InterfaceIndex
+    MAX-ACCESS not-accessible
+    STATUS     current
+    DESCRIPTION
+        "The interface for which this entry contains information for
+        an IP address."
+    ::= { cadIrdpAddressEntry 2 }
+
+cadIrdpAddressAdvertised OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS read-create
+    STATUS     current
+    DESCRIPTION
+        "A flag indicating whether or not the address is to be advertised."
+    DEFVAL { true }
+    ::= { cadIrdpAddressEntry 3 }
+
+cadIrdpAddressPreferenceLevel OBJECT-TYPE
+    SYNTAX     Integer32
+    MAX-ACCESS read-create
+    STATUS     current
+    DESCRIPTION
+        "The preferability of the address as a default router address,
+        relative to other router addresses on the same subnet. A 32-bit
+        signed, twos-complement integer, with higher values meaning more
+        preferable. The minimum value (hex 80000000) is used to indicate
+        that the address, even though it may be advertised, is not to be
+        used by neighboring hosts as a default router address."
+    DEFVAL { 0 }
+    ::= { cadIrdpAddressEntry 4 }
+
+cadIrdpAddressStatus OBJECT-TYPE
+    SYNTAX     RowStatus
+    MAX-ACCESS read-create
+    STATUS     current
+    DESCRIPTION
+        "The status of this entry."
+    ::= { cadIrdpAddressEntry 5 }
+
+END

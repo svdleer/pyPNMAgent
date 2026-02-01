@@ -1,0 +1,317 @@
+CL-PW-TC-MIB DEFINITIONS ::= BEGIN 
+   
+  IMPORTS 
+     MODULE-IDENTITY, Unsigned32, Integer32 
+        FROM SNMPv2-SMI               -- [RFC2578]  
+     clabProjDocsis
+        FROM CLAB-DEF-MIB
+   
+     TEXTUAL-CONVENTION 
+        FROM SNMPv2-TC;               -- [RFC2579]    
+  
+ -- pwStdMIB  OBJECT IDENTIFIER   ::= { xxx xx }  
+
+   
+  teaPwTcMIB MODULE-IDENTITY      
+--     LAST-UPDATED "200507121200Z"  
+                                     -- 12 July 2005 12:00:00 GMT
+ --    ORGANIZATION "Pseudo Wire Edge to Edge Emulation (PWE3) Working
+ --                  Group" 
+ --    CONTACT-INFO 
+ --    " Thomas D. Nadeau 
+ --      Email:  tnadeau@cisco.com 
+  -- 
+ --      David Zelig 
+ --      E-mail: davidz@corrigent.com 
+ --
+--       The PWE3 Working Group (email distribution pwe3@ietf.org, 
+--       http://www.ietf.org/html.charters/pwe3-charter.html) 
+--      " 
+--
+--     DESCRIPTION 
+--             "Copyright (C) The Internet Society (2005). The
+--              initial version of this MIB module was published
+--              in RFC 3811. For full legal notices see the RFC
+--              itself or see:
+--              http://www.ietf.org/copyrights/ianamib.html
+--
+--              This MIB module defines TEXTUAL-CONVENTIONs
+--              for concepts used in Pseudo Wire Edge-to-Edge
+--              networks.
+--             "    
+     -- Revision history. 
+   
+--     REVISION "200507121200Z"  
+                                  -- 12 July 2005 12:00:00 GMT 
+--     DESCRIPTION "Initial version published as part of RFC XXXX."
+
+           LAST-UPDATED    "200611081400Z" -- Nov 8, 2006 
+           ORGANIZATION "Cable Television Laboratories, Inc."
+           CONTACT-INFO
+               " 
+                 Postal: Cable Television Laboratories, Inc. 
+                 858 Coal Creek Circle
+                 Louisville, Colorado 80027-9750 
+                 U.S.A. 
+                 Phone: +1 303-661-9100 
+                 Fax: +1 303-661-9199
+                 E-mail: mibs@cablelabs.com" 
+             DESCRIPTION 
+              "This MIB module defines the textual conventions of the
+               Pseudo Wire MIBs. This is
+               to be rooted under the DOCSIS project in the CableLabs private 
+               enterprise branch until IANA assignment."
+
+             REVISION 
+              "200611081400Z" -- Nov 8, 2006
+             DESCRIPTION
+              "Changed MIB Module root from clabProjDocsis.14 to
+               clabProjDocsis.17."
+
+             REVISION 
+              "200511111700Z" -- Nov 11, 2005
+             DESCRIPTION
+              "This revision, published as CL-PW-TC-MIB."  
+              
+            ::= { clabProjDocsis  17 }                          
+            
+    
+  TeaPwGroupID ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+          "An administrative identification mechanism for grouping a 
+           set of service-specific pseudo-wire services. May only 
+           have local significance." 
+     SYNTAX  Unsigned32 
+   
+  TeaPwIDType ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+          "Pseudo-Wire Identifier. Used to identify the PW  
+           (together with some other fields) in the signaling  
+           session. Zero if the PW is set-up manually." 
+     SYNTAX  Unsigned32 
+   
+  TeaPwIndexType ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+          "Pseudo Wire Index. Locally unique index for indexing 
+           several MIB tables associated with a particular PW." 
+     SYNTAX  Unsigned32 
+   
+  TeaPwVlanCfg ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+          "VLAN configuration for Ethernet PW.  
+           Values between 0 to 4095 indicate the actual VLAN field 
+           value.  
+           A value of 4096 indicates that the object refer to  
+           untagged frames, i.e., frames without 802.1Q field. 
+           A value of 4097 indicates that the object is not  
+           relevant." 
+     SYNTAX  Integer32 (0..4097) 
+   
+
+  TeaPwOperStatusTC ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+        "Indicates the operational status of the PW. 
+
+         
+        - up(1):            Ready to pass packets.  
+        - down(2):          If PW signaling has not yet finished, or 
+                            indications available at the service  
+                            level indicate that the VC is not  
+                            passing packets. 
+        - testing(3):       If AdminStatus at the PW level is set to 
+                            test. 
+        - dormant(4):       The PW is not available because of the 
+                            required resources are occupied PW with 
+                            higher priority PWs. 
+        - notPresent(5):    Some component is missing to accomplish 
+                            the set up of the PW. 
+        - lowerLayerDown(6):The underlying PSN or outer tunnel is not 
+                            in OperStatus 'up' state.  
+        " 
+   SYNTAX   INTEGER { 
+       up(1), 
+       down(2), 
+       testing(3), 
+       unknown(4), 
+       dormant(5), 
+       notPresent(6), 
+       lowerLayerDown(7) 
+       } 
+             
+  TeaPwPsnTypeTC ::= TEXTUAL-CONVENTION  
+       STATUS      current  
+       DESCRIPTION 
+          "Identifies the PSN type which the PW will use over the  
+           network." 
+       SYNTAX   INTEGER {  
+          mpls       (1),   
+          l2tp       (2),  
+          ip         (3),  
+          mplsOverIp (4),   
+          gre        (5),  
+          other      (6)  
+          } 
+ 
+  TeaPwTypeTC ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+        "Indicates the PW type (i.e., the carried service). 
+        " 
+   SYNTAX   INTEGER { 
+      other(0), 
+      frameRelayDlci(1), 
+      atmAal5SduVcc(2), 
+      atmTransparent(3), 
+      ethernetTagged(4), 
+      ethernet(5), 
+      hdlc(6), 
+      ppp(7), 
+      cem(8),  -- old format 
+      atmCellNto1Vcc(9), 
+      atmCellNto1Vpc(10), 
+      ipLayer2Transport(11), 
+      atmCell1to1Vcc(12), 
+      atmCell1to1Vpc(13), 
+      atmAal5PduVcc(14), 
+      frameRelayPortMode(15), 
+      cep(16), 
+      e1Satop(17), 
+      t1Satop(18), 
+      e3Satop(19), 
+      t3Satop(20), 
+      basicCesPsn(21), 
+      basicTdmIp(22), 
+      tdmCasCesPsn(23), 
+      tdmCasTdmIp(24),
+        frDlci(25) 
+       }       
+   
+  TeaPwAttachmentIdentifierType ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+        "An octet string used in the generalized FEC element for 
+         identifying attachment forwarder and groups. The NULL  
+         identifier is of zero length. 
+        " 
+   SYNTAX    OCTET STRING (SIZE (0..255)) 
+   
+  TeaPwCwStatusTC ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+        "Indicates the status of the control word negotiation based 
+         on the local configuration and the indications received from 
+         the peer node.   
+          
+         waitingForNextMsg(1) indicates that the node is waiting for  
+         another label mapping from the remote. 
+          
+         sentWrongBitErrorCode(2) indicates that the local node has  
+         notified the peer about mismatch in the C bit. 
+          
+         rxWithdrawWithWrongBitErrorCode(3) indicates that a withdraw  
+         message has been received with the wrong C-bit error code. 
+          
+         illegalReceivedBit(4) indicates a C bit configuration with 
+         the remote which is not compatible with the PW type. 
+          
+         cwPresent(5) indicates that the CW is present for this PW: 
+         if signaling is used - C bit is set and agreed between the 
+         peers, and for manual configured PW the local configuration 
+         require the use of the CW. 
+   
+         cwNotPresent(6) indicates that the CW is not present for  
+         this PW: if signaling is used - C bit is reset and agreed  
+         between the peers, and for manual configured PW the local  
+         configuration requires that CW would not be used. 
+         notYetKnown(7) indicate that a label mapping has not yet  
+         received from the peer. 
+        " 
+   SYNTAX    INTEGER { 
+                waitingForNextMsg (1), 
+                sentWrongBitErrorCode (2), 
+                rxWithdrawWithWrongBitErrorCode (3), 
+                illegalReceivedBit (4), 
+                cwPresent (5), 
+                cwNotPresent (6), 
+                notYetKnown(7) 
+                } 
+   
+  TeaPwCapabilities ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+        "Indicates the optional capabilities of the control protocol. 
+         A value of zero indicates the basic LDP PW signaling. 
+         Values may be added in the future based on new capabilities 
+         introduced in IETF documents. 
+        " 
+   SYNTAX   BITS { 
+      pwStatusIndication (0) 
+       }       
+   
+  TeaPwStatus ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+        "The status of the PW and the interfaces affecting this PW. 
+         If none of the bits are set, it indicate no faults are 
+         reported. 
+        " 
+   SYNTAX   BITS { 
+      pwNotForwarding (0), 
+      customerFacingPwRxFault (1), 
+      customerFacingPwTxFault (2), 
+      psnFacingPwRxFault  (3), 
+      psnFacingPwTxFault  (4) 
+       }       
+   
+  TeaPwFragSize ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+        "If set to value other than zero, it indicates desired 
+         fragmentation to the value set. If set to zero, 
+         fragmentation is not desired for PSN bound packets. 
+        " 
+   SYNTAX   Unsigned32  
+   
+  TeaPwFragStatus ::= TEXTUAL-CONVENTION 
+     STATUS      current 
+     DESCRIPTION 
+        "The status of the fragmentation process based on local 
+         configuration and the remote capability. 
+   
+         noFrag(0) bit indicates that local configuration is for no 
+         fragmentation. 
+   
+         cfgFragGreaterThanPsnMtu(1) bit indicates the local desire 
+         to fragment, but the fragmentation size desired is greater 
+         than the MTU available at the PSN between peers.  
+         Fragmentation is not done in this case. 
+          
+         cfgFragButRemoteIncapable(2) bit indicates that the local 
+         configuration indicates the desire for fragmentation but 
+         the remote is not capable of fragmentation. 
+   
+         cfgFragFcsLengthMismatch(3) bit indicates that there is a 
+         mismatch between the FCS size between the local  
+         configuration and the remote configuration. 
+   
+         fragEnabled(4) bit indicates that both the local was  
+         configured for fragmentation and the remote has the  
+         capability to accept fragmented packets, and the FCS size is 
+         equal in both peers. 
+        " 
+   SYNTAX   BITS { 
+      noFrag (0), 
+      cfgFragGreaterThanPsnMtu (1), 
+      cfgFragButRemoteIncapable (2), 
+      remoteFragCapable (3), 
+      fragEnabled (4) 
+       }       
+      
+     
+  END
+

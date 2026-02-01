@@ -1,0 +1,183 @@
+-- ****************************************************************************
+-- *  Copyright © 1996,  Tollgrade Communications, Inc.  All Rights Reserved.
+-- ****************************************************************************
+-- *
+-- *  Module Name:   TGGENRIC.MIB
+-- *
+-- *  Description:   Implements MIB definitions for the generic Tollgrade 
+-- *                 variables.
+-- *
+-- *  Notes:
+-- *
+-- *  Revision History:
+-- *
+-- *     $Log: TOLLGRADE-LIGHTHOUSE-NE-TLGDNE-GENERIC-MIB.mib,v $
+-- *     Revision 1.1  2004/07/27 20:48:16  fshimer
+-- *     Description: Added to support firmware download
+-- *     Developer: Frank Shimer
+-- *     PTR: N/A
+-- *     Tester Comments: N/A
+-- *
+-- * 
+-- *    Rev 5.1   Aug 28 2002 13:12:32   CBrewer
+-- * Corrected conflict in tlgdtree.mib with hms definitions:
+-- * Modified tlgdtree.mib to match the hms version.  Moved 
+-- * HEC-specific defines to TlgdtreeHec.mib where 
+-- * "TOLLGRADE-LIGHTHOUSE-TREE-HEC-MIB" is now defined.  
+-- * Modified all legacy mibs to import from this instead of
+-- * TOLLGRADE-LIGHTHOUSE-TREE-MIB.
+-- * 
+-- *    Rev 5.0   Jun 28 2001 10:00:30   CBrewer
+-- * (HPR1197) Removed MAC addr indexing.  Tables that used only
+-- *              MAC indexing were converted to scalar lists.  Otherwise,
+-- *              the MAC index was removed, leaving the other indices.
+-- *              (All MACaddress parms were changed from mandatory
+-- *               to obsolete.)
+-- * 
+-- *    Rev 2.15   May 15 2001 09:13:04   CBrewer
+-- * Modified Copyright statement.
+-- * 
+-- *    Rev 2.14   Jun 03 1999 17:12:54   JOstrosky
+-- * Fixed some minor errors that the MCG
+-- * compiler caught.  Updated HEC agent
+-- * text.
+-- * 
+-- *    Rev 2.13   Jan 11 1999 14:06:26   HWhitefield
+-- * Updated mib module name. Added bit threshold.
+-- * 
+-- *    Rev 2.12.1.1   Jan 06 1999 14:56:00   HWhitefield
+-- * Added bit threshold parameter.
+-- * 
+-- *    Rev 2.12.1.0   Nov 16 1998 11:27:18   HWhitefield
+-- * Mods to module name (not file name).
+-- * 
+-- *    Rev 2.12   Oct 16 1998 16:46:06   HWhitefield
+-- * Added the firmwareVersion parameter.
+-- * 
+-- *    Rev 2.11   Sep 25 1998 10:19:18   HWhitefield
+-- * Renamed parameters with NEAddress syntax to contain MACAddress.
+-- * 
+-- *    Rev 2.10   Sep 10 1998 11:40:24   HWhitefield
+-- * END return for clean SNMPc compile.
+-- * 
+-- *    Rev 2.9   Sep 08 1998 10:52:12   HWhitefield
+-- * Added parameterChanges variable to this file.
+-- * 
+-- *    Rev 2.8   Sep 03 1998 16:52:18   HWhitefield
+-- * 80 character line formatting.
+-- * 
+-- *    Rev 2.7   Sep 01 1998 15:45:52   HWhitefield
+-- * Renamed file from tlgdgen.mib to be consistent
+-- * with other file names.
+-- * 
+-- *    Rev 2.6   Sep 01 1998 11:34:24   HWhitefield
+-- * Removed all "tg" prefixes from variable names.
+-- * 
+-- *    Rev 2.5   Aug 14 1998 15:57:12   HWhitefield
+-- * Modifications to descriptions for gramatical purposes.
+-- * 
+-- *    Rev 2.4   Jul 22 1998 14:38:00   HWhitefield
+-- * Added tgGenAddress for indexing into this table. Added 
+-- * tgPowerRestored variable to table.
+-- * 
+-- *    Rev 2.3   Jul 16 1998 10:27:22   HWhitefield
+-- * First cut at adding tollgrade generic 
+-- * parameters.
+-- * 
+-- *    Rev 2.2   Jul 15 1998 11:38:38   HWhitefield
+-- * First cut at new MIB architecture. All files
+-- * successfully compiled.
+-- * 
+-- *    Rev 2.0   Jul 15 1998 10:28:56   HWhitefield
+-- * Initial creation of TLGD Generic MIB file.
+-- * 
+-- * 
+-- * Reproduction of this document is authorized on condition that this
+-- * copyright notice is included.  This SNMP MIB Specification
+-- * embodies proprietary intellectual property.  The copyright
+-- * retains all title and ownership in the specification, including any
+-- * revisions. 
+-- * 
+-- * This specification is supplied "AS IS," and no
+-- * warranty, either express or implied, as to the use, operation,
+-- * condition, or performance of the specification, is made.
+-- * 
+-- * The right to change this MIB without notification is retained.
+-- * 
+-- * 
+-- * Agents supporting this MIB: Tollgrade Head End Controller, Software Rev: 2.xxx
+-- * 
+-- ****************************************************************************
+
+TOLLGRADE-LIGHTHOUSE-NE-TLGDNE-GENERIC-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+     OBJECT-TYPE
+          FROM RFC-1212
+     tollgradeNE
+          FROM TOLLGRADE-LIGHTHOUSE-TREE-HEC-MIB
+     Digital, NEAddress, Uint16, DisplayString
+          FROM TOLLGRADE-LIGHTHOUSE-MIB
+     ;
+
+genericNE OBJECT IDENTIFIER   ::= { tollgradeNE 4 }
+genericNEInfo OBJECT IDENTIFIER   ::= { genericNE 1 }
+
+-- ***************************************
+-- * Tollgrade Generic Table Description *
+-- ***************************************
+
+genericMACAddress OBJECT-TYPE
+     SYNTAX NEAddress
+     ACCESS read-only
+     STATUS obsolete
+     DESCRIPTION
+          "Transponder MAC address for index into the generic table."
+     ::= { genericNEInfo 1 }
+
+neReset OBJECT-TYPE
+     SYNTAX Digital
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "This parameter is really write-only.  When set to On, causes the 
+          transponder to reset."
+     ::= { genericNEInfo 2 }
+
+parameterChanges OBJECT-TYPE
+     SYNTAX Uint16
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "When a non-volatile parameter is changed to a value DIFFERENT
+          from its current value, this value is incremented by 1.  The
+          value is limited to 65535 (MAX for Uint16), then wraps to 0."
+     ::= { genericNEInfo 3 }
+
+firmwareVersion OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..255 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Version of firmware in the transponder."
+     ::= { genericNEInfo 4 }
+
+powerRestored OBJECT-TYPE
+     SYNTAX Digital
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "This parameter is used ONLY for the generation of a power restored 
+          alarm. An On indicates power has been restored. This parameter has 
+          no meaning when read."
+     ::= { genericNEInfo 5 }
+
+bitThreshold OBJECT-TYPE
+     SYNTAX OCTET STRING ( SIZE ( 2 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Bit threshold for raw analog/digital readings."
+     ::= { genericNEInfo 6 }
+
+END

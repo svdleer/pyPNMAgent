@@ -1,0 +1,142 @@
+-- ****************************************************************************
+-- *  Copyright © 1996,  Tollgrade Communications, Inc.  All Rights Reserved.
+-- ****************************************************************************
+-- *
+-- *  Module Name:   TGDOWNLD.MIB
+-- *
+-- *  Description:   Implements MIB definitions for Tollgrade Download 
+-- *                 features.
+-- *
+-- *  Notes:
+-- *
+-- *  Revision History:
+-- *
+-- *     $Log: TOLLGRADE-LIGHTHOUSE-NE-TLGDNE-DOWNLOAD-MIB.mib,v $
+-- *     Revision 1.1  2004/08/17 20:44:38  fshimer
+-- *     Description: Added to support CheetahLight Legacy Xponder downloads
+-- *     Developer: Frank Shimer
+-- *     Tester Comments: Verify that firmware downloads can be performed to CheetahLight legacy transponders.
+-- *     PTR: 4593
+-- *
+-- * 
+-- *    Rev 5.2   Aug 28 2002 13:12:32   CBrewer
+-- * Corrected conflict in tlgdtree.mib with hms definitions:
+-- * Modified tlgdtree.mib to match the hms version.  Moved 
+-- * HEC-specific defines to TlgdtreeHec.mib where 
+-- * "TOLLGRADE-LIGHTHOUSE-TREE-HEC-MIB" is now defined.  
+-- * Modified all legacy mibs to import from this instead of
+-- * TOLLGRADE-LIGHTHOUSE-TREE-MIB.
+-- * 
+-- *    Rev 5.1   Jun 28 2001 10:20:38   CBrewer
+-- * (HPR1210) add downloadKey parm.
+-- * 
+-- *    Rev 5.0   Jun 28 2001 10:19:20   CBrewer
+-- * (HPR1197) Removed MAC addr indexing.  Tables that used only
+-- *              MAC indexing were converted to scalar lists.  Otherwise,
+-- *              the MAC index was removed, leaving the other indices.
+-- *              (All MACaddress parms were changed from mandatory
+-- *               to obsolete.)
+-- * 
+-- *    Rev 2.10   May 15 2001 09:13:02   CBrewer
+-- * Modified Copyright statement.
+-- * 
+-- *    Rev 2.9   Jun 03 1999 17:12:54   JOstrosky
+-- * Fixed some minor errors that the MCG
+-- * compiler caught.  Updated HEC agent
+-- * text.
+-- * 
+-- *    Rev 2.8   Jan 11 1999 14:09:10   HWhitefield
+-- * Updated mib module name.
+-- * 
+-- *    Rev 2.7.1.0   Nov 16 1998 11:26:52   HWhitefield
+-- * Mods to module name (not file name).
+-- * 
+-- *    Rev 2.7   Sep 25 1998 10:20:18   HWhitefield
+-- * Renamed parameters with NEAddress syntax to contain MACAddress.
+-- * 
+-- *    Rev 2.6   Sep 10 1998 11:36:14   HWhitefield
+-- * END return for clean SNMPc compile.
+-- * 
+-- *    Rev 2.5   Sep 03 1998 16:53:40   HWhitefield
+-- * 80 character line formatting.
+-- * 
+-- *    Rev 2.4   Sep 01 1998 11:39:46   HWhitefield
+-- * Removed all "tg" prefixes from variable names.
+-- * 
+-- *    Rev 2.3   Aug 14 1998 15:55:48   HWhitefield
+-- * Modifications to descriptions for gramatical purposes.
+-- * 
+-- *    Rev 2.2   Jul 15 1998 11:38:38   HWhitefield
+-- * First cut at new MIB architecture. All files
+-- * successfully compiled.
+-- * 
+-- *    Rev 2.0   Jul 15 1998 10:58:14   HWhitefield
+-- * Initial creation for TG Download MIB file.
+-- * 
+-- *    Rev 1.2   Aug 20 1997 16:37:10   jameso
+-- * No change.
+-- * 
+-- * Reproduction of this document is authorized on condition that this
+-- * copyright notice is included.  This SNMP MIB Specification
+-- * embodies proprietary intellectual property.  The copyright
+-- * retains all title and ownership in the specification, including any
+-- * revisions. 
+-- * 
+-- * This specification is supplied "AS IS," and no
+-- * warranty, either express or implied, as to the use, operation,
+-- * condition, or performance of the specification, is made.
+-- * 
+-- * The right to change this MIB without notification is retained.
+-- * 
+-- * 
+-- * Agents supporting this MIB: Tollgrade Head End Controller, Software Rev: 2.xxx
+-- * 
+-- ****************************************************************************
+
+TOLLGRADE-LIGHTHOUSE-NE-TLGDNE-DOWNLOAD-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+     OBJECT-TYPE
+          FROM RFC-1212
+     tollgradeNE
+          FROM TOLLGRADE-LIGHTHOUSE-TREE-HEC-MIB
+     NEAddress, DisplayString
+          FROM TOLLGRADE-LIGHTHOUSE-MIB
+     ;
+
+fwDownload OBJECT IDENTIFIER   ::= { tollgradeNE 5 }
+fwDownloadInfo OBJECT IDENTIFIER     ::= { fwDownload 1 }
+
+-- /****************************************
+-- * The Tollgrade Downloadable Code Group *
+-- ****************************************/
+
+downloadMACAddress OBJECT-TYPE
+     SYNTAX NEAddress
+     ACCESS read-only
+     STATUS obsolete
+     DESCRIPTION
+          "Transponder MAC address, used as an index to download table. 
+          Unique for each transponder."
+     ::= { fwDownloadInfo 1 }
+
+downloadString OBJECT-TYPE
+     SYNTAX OCTET STRING ( SIZE ( 1..255 ) )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Access as write-only field.  Write network element downloadable code
+          string here."
+     ::= { fwDownloadInfo 2 }
+
+downloadKey  OBJECT-TYPE
+    SYNTAX  DisplayString ( SIZE ( 1..50 ) )
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION 
+        "This string is used to enable downloads.  The transponder 
+         will not allow a download to proceed unless it is valid."
+    ::= { fwDownloadInfo 3 }
+
+
+END

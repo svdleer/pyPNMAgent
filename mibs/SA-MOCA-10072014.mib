@@ -1,0 +1,879 @@
+--**************************************************************************
+--                                                                          
+--    Copyright 2008 Cisco Systems                                   
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any
+--    form without the written permission of:                                                
+--             Scientific Atlanta                                          
+--             5030 Sugarloaf Pkwy                                     
+--             Lawrenceville, Georgia 30044                                    
+--                                                                          
+--**************************************************************************
+
+SA-MOCA-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+        MODULE-IDENTITY, 
+        OBJECT-TYPE,enterprises, 
+        Integer32
+                FROM SNMPv2-SMI
+        ifIndex
+                FROM IF-MIB
+        RowStatus,
+        DisplayString,
+        MacAddress,
+        PhysAddress,
+        TruthValue,
+        DateAndTime
+                FROM SNMPv2-TC
+        InetAddressType,
+        InetAddress,
+        InetPortNumber
+                FROM INET-ADDRESS-MIB
+        SnmpAdminString 
+                FROM SNMP-FRAMEWORK-MIB ;
+
+sa           OBJECT IDENTIFIER ::= { enterprises 1429 }
+saModules    OBJECT IDENTIFIER ::= { sa 79 }
+                
+saMoca  MODULE-IDENTITY
+        LAST-UPDATED    "201409240000Z"
+        ORGANIZATION    "Cisco Systems, Inc."
+        CONTACT-INFO    "http://support.cisco.com"
+        DESCRIPTION
+            "Controls the behavior of MoCA fuctions.
+             Can be part of CM configuration file."
+
+        -- History
+        REVISION     "200803240000Z"
+        DESCRIPTION
+            "Updated to support MoCA 1.1"
+
+        REVISION     "200707110000Z"
+        DESCRIPTION
+            "Initial release"
+
+        REVISION     "201309170000Z"
+        DESCRIPTION
+            "Added three (3) new OID's for XB3: saMocaDevTabooEnable,
+             saMocaDevTabooMask, and saMocaDevNcMacAddress."  
+       
+       REVISION "201409240000Z"
+       DESCRIPTION "Modified Organization and Contact Info.
+       				Changed the format of revision date.
+       				Added saMocaStatsNodeSummary"
+
+        ::= { saModules 4 }
+
+
+   SaMocaFrequencies ::= TEXTUAL-CONVENTION  
+       STATUS       current  
+       DESCRIPTION    
+           "All MoCA frequencies.
+            Note: frequencies below 1125MHz may not be supported."
+       SYNTAX BITS { 
+           f1500(3),
+           f1475(4),
+           f1450(5),
+           f1425(6),
+           f1400(7),
+           f1375(8),
+           f1350(9),
+           f1325(10),
+           f1300(11),
+           f1275(12),
+           f1250(13),
+           f1225(14),
+           f1200(15),
+           f1175(16),
+           f1150(17),
+           f1125(18)
+           --f1100(19),
+           --f1075(20),
+           --f1050(21),
+           --f1025(22),
+           --f1000(23),
+           --f975(24),
+           --f950(25),
+           --f925(26),
+           --f900(27),
+           --f875(28),
+           --f850(29),
+           --f825(30),
+           --f800(31)
+           }
+
+
+-- MoCA Device
+
+saMocaDevice   OBJECT IDENTIFIER ::=  { saMoca 1 }
+
+saMocaDeviceBase   OBJECT IDENTIFIER ::=  { saMocaDevice 1 }
+
+saMocaDevEnable OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "Stored in non-vol.
+         Default value after facory reset is Enable."
+    ::= { saMocaDeviceBase 1 }
+
+saMocaDevResetNow OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "Reset all MoCA settings to their original factory default values. 
+	This acts as a toggle. When set to true it returns to false automatically"
+    DEFVAL { false }
+    ::= { saMocaDeviceBase 2 }
+
+saMocaDevEncryptionEnable OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "Stored in non-vol.
+         Default value after factory reset is Enable."
+    ::= { saMocaDeviceBase 3 }
+
+saMocaDevEncryptionPassword OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE(20))
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "The SHA-1 of the password seed. All nodes must use the
+         same password.
+         This is stored in non-vol."
+    ::= { saMocaDeviceBase 4 }
+
+saMocaDevPreferred OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "Set this object to true to make this node a node coordinator.
+         Stored in non-vol.
+         Default value after factory reset is false."
+    ::= { saMocaDeviceBase 5 }
+
+saMocaDevMixedMode OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "Set this object to true to allow older MoCA version to join
+         the network if this node is a node coordinator.
+         Stored in non-vol.
+         Default value after factory reset is true."
+    ::= { saMocaDeviceBase 6 }
+
+saMocaDevTabooEnable OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "Stored in non-vol.
+         Default value after facory reset is Disable."
+    ::= { saMocaDeviceBase 7 }
+
+saMocaDevTabooMask OBJECT-TYPE 
+    SYNTAX SaMocaFrequencies
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "Specifies channels on which the node may not form a link.
+         Stored in non-vol.
+         Default value after factory reset is taken from moca plan."
+    ::= { saMocaDeviceBase 8 }
+
+saMocaDevNcMacAddress OBJECT-TYPE
+    SYNTAX      MacAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The MAC address of the current Network Coordinator (NC) for
+        the MoCA network."
+     ::= { saMocaDeviceBase 9 }
+
+saMocaDeviceChannel OBJECT IDENTIFIER ::=  { saMocaDevice 2 }
+
+saMocaDevChannelScanning OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "Disables scanning if set to false. Useful when only 1 channel
+         is to be used.
+         Stored in non-vol.
+         Default value after factory reset is true."
+    ::= { saMocaDeviceChannel 1 }
+
+saMocaDevChannelMask OBJECT-TYPE 
+    SYNTAX SaMocaFrequencies
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "Specifies channels on which the node may form a link.
+         Stored in non-vol.
+         Default value after factory reset is taken from moca plan."
+    ::= { saMocaDeviceChannel 3 }
+
+saMocaDevChannelScanMask OBJECT-TYPE 
+    SYNTAX SaMocaFrequencies
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "Specifies channels that must be scanned at least once
+         to discover existing networks.
+         Stored in non-vol.
+         Default value after factory reset is taken from moca plan."
+    ::= { saMocaDeviceChannel 4 }
+
+saMocaDevChannelLast OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "MHz"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "Last operating frequency. This is the channel to be visited
+         first when enabling the device.
+         Stored in non-vol.
+         Default value after factory reset is 1150."
+    ::= { saMocaDeviceChannel 5 }
+
+
+saMocaDevicePower OBJECT IDENTIFIER ::=  { saMocaDevice 3 }
+
+saMocaDevPwrAPCEnable OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "Controls Automatic Power Control.
+         Stored in non-vol.
+         Default value after factory reset is Enable."
+    ::= { saMocaDevicePower 1 }
+
+saMocaDevPwrTxMax OBJECT-TYPE
+    SYNTAX INTEGER {
+        minus50(0),
+        minus47(1),
+        minus44(2),
+        minus41(3),
+        minus38(4),
+        minus35(5),
+        minus32(6),
+        minus29(7),
+        minus26(8),
+        minus23(9),
+        minus20(10)
+        }
+    UNITS "dBm"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "Maximum transmit power. Can be changed in 3dB increments only.
+         Stored in non-vol.
+         Default value after factory reset is minus29(7)."
+    ::= { saMocaDevicePower 2 }
+
+saMocaDevPwrCtrlPhyRate OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "Mbps"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "Rate target for APC. APC finds the minimum power for desired speed.
+         The MoCA default is 235 Mbps.
+         Stored in non-vol.
+         Default value after factory reset is 235."
+    ::= { saMocaDevicePower 3 }
+
+saMocaDevPwrBeaconLevel OBJECT-TYPE
+    SYNTAX INTEGER {
+        zero(0),
+        minusThree(-3),
+        minusSix(-6),
+        minusNine(-9)
+        }
+    UNITS "dB"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This object can be used to reduce the beacon power if it is found
+         to cause interference.
+         Stored in non-vol.
+         Default value after factory reset is zero(0)."
+    ::= { saMocaDevicePower 4 }
+
+
+-- ===============
+-- MoCA statistics
+-- ===============
+
+saMocaStats   OBJECT IDENTIFIER ::=  { saMoca 2 }
+
+saMocaStatsNodeInfo OBJECT IDENTIFIER ::=  { saMocaStats 1 }
+
+saMocaStatsNodeBase OBJECT IDENTIFIER ::=  { saMocaStatsNodeInfo 1 }
+
+saMocaStatsNodeMacAddress OBJECT-TYPE
+    SYNTAX PhysAddress
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Node MAC address"
+    ::= { saMocaStatsNodeBase 1 }
+
+saMocaStatsNodeId OBJECT-TYPE
+    SYNTAX INTEGER
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Node ID"
+    ::= { saMocaStatsNodeBase 2 }
+
+saMocaStatsNodeIsCyclemaster OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Is the node the network scheduler."
+    ::= { saMocaStatsNodeBase 3 }
+
+saMocaStatsNodeNcId OBJECT-TYPE
+    SYNTAX INTEGER
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Network Coordinator Node ID"
+    ::= { saMocaStatsNodeBase 4 }
+
+saMocaStatsNodeBestNcId OBJECT-TYPE
+    SYNTAX INTEGER
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Best Coordinator Node ID"
+    ::= { saMocaStatsNodeBase 5 }
+
+saMocaStatsNodeBackupNcId OBJECT-TYPE
+    SYNTAX INTEGER
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Backup Network Coordinator Node ID"
+    ::= { saMocaStatsNodeBase 6 }    
+    
+    
+saMocaStatsNodeSummary OBJECT IDENTIFIER ::=  { saMocaStatsNodeInfo 2 }   
+
+saMocaStatsTotalNodes OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only
+	STATUS current
+	DESCRIPTION 
+		" Provides total number of MoCA nodes connected to the gateway"
+	::= { saMocaStatsNodeSummary 1 }
+
+saMocaStatsExternal OBJECT IDENTIFIER ::=  { saMocaStats 3 }
+-- stats on the external interface (towards RF)
+
+
+saMocaStatsExternalBase OBJECT IDENTIFIER ::=  { saMocaStatsExternal 1 }
+
+saMocaStatsExtClear OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "Clears all internal statistics when set to true. Returns false."
+    ::= { saMocaStatsExternalBase 1 }
+
+saMocaStatsExtLinkStatus OBJECT-TYPE
+    SYNTAX INTEGER
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsExternalBase 2 }
+
+
+saMocaStatsExtCountTable OBJECT-TYPE
+    SYNTAX SEQUENCE OF SaMocaStatsExtCountEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+            "Counters on MoCA RF interface."
+    ::= { saMocaStatsExternal 2 }
+
+saMocaStatsExtCountEntry OBJECT-TYPE
+    SYNTAX      SaMocaStatsExtCountEntry
+    MAX-ACCESS  not-accessible
+    STATUS     current
+    DESCRIPTION
+            ""
+    INDEX { saMocaStatsExtCountIndex } 
+    ::= { saMocaStatsExtCountTable 1 }
+
+SaMocaStatsExtCountEntry ::= SEQUENCE {
+    saMocaStatsExtCountIndex INTEGER,
+    saMocaStatsExtCountMap INTEGER,
+    saMocaStatsExtCountRsrv INTEGER,
+    saMocaStatsExtCountLc INTEGER,
+    saMocaStatsExtCountAdm INTEGER,
+    saMocaStatsExtCountProbe INTEGER,
+    saMocaStatsExtCountAsync INTEGER
+    }
+
+saMocaStatsExtCountIndex OBJECT-TYPE
+    SYNTAX INTEGER {
+        rx(1),
+        tx(2),
+        rxErr(3),
+        txErr(4),
+        rxDrop(5)
+        }
+    MAX-ACCESS not-accessible
+    STATUS     current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsExtCountEntry 1 }
+
+saMocaStatsExtCountMap OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "frames"
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsExtCountEntry 2 }
+
+saMocaStatsExtCountRsrv OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "frames"
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsExtCountEntry 3 }
+
+saMocaStatsExtCountLc OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "frames"
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsExtCountEntry 4 }
+
+saMocaStatsExtCountAdm OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "frames"
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsExtCountEntry 5 }
+
+saMocaStatsExtCountProbe OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "frames"
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsExtCountEntry 6 }
+
+saMocaStatsExtCountAsync OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "frames"
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsExtCountEntry 7 }
+
+
+-- Aggregation stats
+
+saMocaStatsExtAggr OBJECT IDENTIFIER ::=  { saMocaStatsExternal 3 }
+
+saMocaStatsExtAggrBase OBJECT IDENTIFIER ::=  { saMocaStatsExtAggr 1 }
+
+saMocaStatsExtAggrAverageTx OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    UNITS "frames"
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "The average number of frames per sent aggregate frame."
+    ::= { saMocaStatsExtAggrBase 1 }
+
+saMocaStatsExtAggrAverageRx OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    UNITS "frames"
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "The average number of frames per received aggregate frame."
+    ::= { saMocaStatsExtAggrBase 2 }
+
+
+saMocaStatsExtAggrCountTable OBJECT-TYPE
+    SYNTAX SEQUENCE OF SaMocaStatsExtAggrCountEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+            "Counters on MoCA RF interface."
+    ::= { saMocaStatsExtAggr 2 }
+
+saMocaStatsExtAggrCountEntry OBJECT-TYPE
+    SYNTAX      SaMocaStatsExtAggrCountEntry
+    MAX-ACCESS  not-accessible
+    STATUS     current
+    DESCRIPTION
+            ""
+    INDEX { saMocaStatsExtAggrCountIndex } 
+    ::= { saMocaStatsExtAggrCountTable 1 }
+
+SaMocaStatsExtAggrCountEntry ::= SEQUENCE {
+    saMocaStatsExtAggrCountIndex INTEGER,
+    saMocaStatsExtAggrCountTx INTEGER,
+    saMocaStatsExtAggrCountRx INTEGER
+    }
+
+saMocaStatsExtAggrCountIndex OBJECT-TYPE
+    SYNTAX INTEGER (1..6)
+    MAX-ACCESS not-accessible
+    STATUS     current
+    DESCRIPTION
+        "The number if aggregated frames."
+    ::= { saMocaStatsExtAggrCountEntry 1 }
+
+saMocaStatsExtAggrCountTx OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "frames"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "The number of frames sent as n-aggregated frames, where n
+         is the index.
+         If there were 4 aggregated frames sent, each containing n
+         frames, this object shows 4*n frames."
+    ::= { saMocaStatsExtAggrCountEntry 2 }
+
+saMocaStatsExtAggrCountRx OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "frames"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "The number of frames received as n-aggregated frames, where n
+         is the index.
+         If there were 4 aggregated frames received, each containing n
+         frames, this object shows 4*n frames."
+    ::= { saMocaStatsExtAggrCountEntry 3 }
+
+
+
+saMocaStatsNetNode OBJECT IDENTIFIER ::=  { saMocaStats 4 }
+-- stats for other nodes
+
+saMocaStatsNetNodeBase OBJECT IDENTIFIER ::=  { saMocaStatsNetNode 1 }
+
+saMocaStatsNetNodeTable OBJECT-TYPE
+    SYNTAX SEQUENCE OF SaMocaStatsNetNodeEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+            "Statistics per each node connected to my node."
+    ::= { saMocaStatsNetNode 2 }
+
+saMocaStatsNetNodeEntry OBJECT-TYPE
+    SYNTAX      SaMocaStatsNetNodeEntry
+    MAX-ACCESS  not-accessible
+    STATUS     current
+    DESCRIPTION
+            ""
+    INDEX { saMocaStatsNetNodeId }
+    ::= { saMocaStatsNetNodeTable 1 }
+
+SaMocaStatsNetNodeEntry ::= SEQUENCE {
+    saMocaStatsNetNodeId              INTEGER,
+    saMocaStatsNetNodeMacAddress      PhysAddress,
+    saMocaStatsNetNodePktsRx          INTEGER,
+    saMocaStatsNetNodePktsErrRx       INTEGER,
+    saMocaStatsNetNodeRateTx          INTEGER,
+    saMocaStatsNetNodeRateRx          INTEGER,
+    saMocaStatsNetNodeRateBroadcastTx INTEGER,
+    saMocaStatsNetNodeRateBroadcastRx INTEGER
+    }
+
+saMocaStatsNetNodeId OBJECT-TYPE
+    SYNTAX INTEGER
+    MAX-ACCESS not-accessible
+    STATUS     current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsNetNodeEntry 1 }
+
+saMocaStatsNetNodeMacAddress OBJECT-TYPE
+    SYNTAX PhysAddress
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "Node MAC address"
+    ::= { saMocaStatsNetNodeEntry 2 }
+
+saMocaStatsNetNodePktsRx OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "packets"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsNetNodeEntry 3 }
+
+saMocaStatsNetNodePktsErrRx OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "packets"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsNetNodeEntry 4 }
+
+saMocaStatsNetNodeRateTx OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "bps"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsNetNodeEntry 5 }
+
+saMocaStatsNetNodeRateRx OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "bps"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsNetNodeEntry 6 }
+
+saMocaStatsNetNodeRateBroadcastTx OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "bps"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsNetNodeEntry 7 }
+
+saMocaStatsNetNodeRateBroadcastRx OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "bps"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsNetNodeEntry 8 }
+
+
+saMocaStatsPeer OBJECT IDENTIFIER ::=  { saMocaStats 5 }
+-- stats for peer nodes
+
+saMocaStatsPeerBase OBJECT IDENTIFIER ::=  { saMocaStatsPeer 1 }
+
+saMocaStatsPeerTable OBJECT-TYPE
+    SYNTAX SEQUENCE OF SaMocaStatsPeerEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+            "Peer stats. 2-dimentional table showing
+             all nodes connected to each other."
+    ::= { saMocaStatsPeer 2 }
+
+saMocaStatsPeerEntry OBJECT-TYPE
+    SYNTAX      SaMocaStatsPeerEntry
+    MAX-ACCESS  not-accessible
+    STATUS     current
+    DESCRIPTION
+            ""
+    INDEX { saMocaStatsPeerIndex, saMocaStatsPeerIndex }
+    ::= { saMocaStatsPeerTable 1 }
+
+SaMocaStatsPeerEntry ::= SEQUENCE {
+    saMocaStatsPeerIndex INTEGER,
+    saMocaStatsPeerSpeed INTEGER 
+    }
+
+saMocaStatsPeerIndex OBJECT-TYPE
+    SYNTAX INTEGER
+    MAX-ACCESS not-accessible
+    STATUS     current
+    DESCRIPTION
+        ""
+    ::= { saMocaStatsPeerEntry 1 }
+
+saMocaStatsPeerSpeed OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "Mbps"
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "If a node is not available, this object does not show
+         for the specific index."
+    ::= { saMocaStatsPeerEntry 2 }
+
+
+
+-- ===============
+-- MoCA PQoS
+-- ===============
+
+saMocaPqos   OBJECT IDENTIFIER ::=  { saMoca 3 }
+
+saMocaPqosBase OBJECT IDENTIFIER ::=  { saMocaPqos 1 }
+
+saMocaPqosFlowTable OBJECT-TYPE
+    SYNTAX SEQUENCE OF SaMocaPqosFlowEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+            "Peer stats. 2-dimentional table showing
+             all nodes connected to each other."
+    ::= { saMocaPqos 2 }
+
+saMocaPqosFlowEntry OBJECT-TYPE
+    SYNTAX      SaMocaPqosFlowEntry
+    MAX-ACCESS  not-accessible
+    STATUS     current
+    DESCRIPTION
+            ""
+    INDEX { saMocaStatsPeerIndex, saMocaStatsPeerIndex }
+    ::= { saMocaPqosFlowTable 1 }
+
+SaMocaPqosFlowEntry ::= SEQUENCE {
+    saMocaPqosFlowIndex INTEGER,
+    saMocaPqosFlowStatus RowStatus,
+    saMocaPqosFlowId MacAddress,
+    saMocaPqosFlowIngressNode MacAddress,
+    saMocaPqosFlowEgressNode MacAddress,
+    saMocaPqosFlowTimeLeft INTEGER,
+    saMocaPqosFlowDestination MacAddress,
+    saMocaPqosFlowPacketSize INTEGER,
+    saMocaPqosFlowPeekDataRate INTEGER,
+    saMocaPqosFlowBurstSize INTEGER,
+    saMocaPqosFlowTag OCTET STRING
+    }
+
+saMocaPqosFlowIndex OBJECT-TYPE
+    SYNTAX INTEGER (1..16)
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "Indicates the instance of this table row."
+    ::= { saMocaPqosFlowEntry 1 }
+    
+saMocaPqosFlowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+         Until instances of all corresponding columns are appropriately 
+         configured, is 'notReady'.
+         Only rows with a status of active(1) will be applied."
+    ::= { saMocaPqosFlowEntry 2 }
+
+saMocaPqosFlowId OBJECT-TYPE
+    SYNTAX MacAddress
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+	"Flow ID"
+    ::= { saMocaPqosFlowEntry 3 }
+    
+saMocaPqosFlowIngressNode OBJECT-TYPE
+    SYNTAX MacAddress
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+	"Ingress node ID"
+    ::= { saMocaPqosFlowEntry 4 }
+
+saMocaPqosFlowEgressNode OBJECT-TYPE
+    SYNTAX MacAddress
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+	"Egress node ID"
+    ::= { saMocaPqosFlowEntry 5 }
+
+saMocaPqosFlowTimeLeft OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "seconds"
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+	"Time until the flow exires. If 0, it never expires."
+    DEFVAL { 0 }
+    ::= { saMocaPqosFlowEntry 6 }
+
+saMocaPqosFlowDestination OBJECT-TYPE
+    SYNTAX MacAddress
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+	"Destination MAC address that will uses this flow."
+    ::= { saMocaPqosFlowEntry 7 }
+
+saMocaPqosFlowPacketSize OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "bytes"
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+        "The PDU length in bytes of each packet of the Flow. The cost
+         of the flow is calculated using this value of packet size."
+    ::= { saMocaPqosFlowEntry 8 }
+
+saMocaPqosFlowPeekDataRate OBJECT-TYPE
+    SYNTAX INTEGER
+    UNITS "kbps"
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+        "The maximum number of kilobits of payload that
+         the PQoS Flow transfers over a one second period
+         in the MoCA Network."
+    ::= { saMocaPqosFlowEntry 9 }
+
+saMocaPqosFlowBurstSize OBJECT-TYPE
+    SYNTAX INTEGER (1..9)
+    UNITS "kbps"
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+        "The number of Flow packets used to calculate the Injection Bit
+         Rate and the Injection PDU Rate"
+    ::= { saMocaPqosFlowEntry 10 }
+
+saMocaPqosFlowTag OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE(4))
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+        "This field may be used by an upper layer application
+         for auditing and tracking purpose. The contents of
+         this field can be queried by any node."
+    DEFVAL { '00000000'h }
+    ::= { saMocaPqosFlowEntry 11 }
+
+
+END

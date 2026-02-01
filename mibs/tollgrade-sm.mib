@@ -1,0 +1,411 @@
+--***************************************************************************
+-- NOTICE:  All rights reserved.  This material contains the
+--  trade secrets and confidential information of Tollgrade Communications
+--  Inc., which embody substantial creative effort, ideas and expressions.
+--  No part of this material may be reproduced or transmitted in any form 
+--  or by any means, electronic, mechanical, optical or otherwise, 
+--  including photocopying and recording or in connection with any 
+--  information storage or retrieval system, without specific written 
+--  permission from Tollgrade Communications Inc.
+--  
+--  CopyRight Tollgrade Communications Inc. 2004. All rights reserved world-wide.
+--***************************************************************************
+--
+--  Module Name:   TLGDStatusMon.MIB
+--
+--  Description:   TLGD Status-Monitor device MIB
+--
+--  Notes:
+--
+--  Revision History:
+--
+-- $Log: TLGDStatusMon.mib,v $
+-- Revision 1.1  2006/10/05 19:11:13  mcimbala
+-- PTR 6572 - Added new MIB branch to implement Docsis-similar downloading control for Dallas firmware.
+--
+--
+--***************************************************************************
+
+TOLLGRADE-SM-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    Integer32, MODULE-IDENTITY, OBJECT-TYPE, IpAddress
+		 FROM SNMPv2-SMI
+    OBJECT-GROUP, MODULE-COMPLIANCE
+		 FROM SNMPv2-CONF
+    DateAndTime, DisplayString
+         FROM SNMPv2-TC   
+    SnmpAdminString
+         FROM SNMP-FRAMEWORK-MIB -- RFC2571
+    statusmonitor
+         FROM TOLLGRADE-LIGHTHOUSE-TREE-MIB	 
+	;
+
+
+-- ****************
+-- * Status-Monitor
+-- ****************
+
+statMonIdentity MODULE-IDENTITY
+	LAST-UPDATED "200605190000Z"
+ORGANIZATION "Tollgrade Communications, Inc."
+	CONTACT-INFO 
+		"Tollgrade Communications, Inc."
+	DESCRIPTION 
+		"The MIB module is for operation with DOCSIS transponders.
+         It contains configuration and operational data for the
+         Status-Monitor portion of the device, including any attached
+         serial devices."
+
+   
+    REVISION "200605190000Z"
+	DESCRIPTION 
+		"Original
+		This version published as 'TLGDStatusMon.mib'
+          This version obsoletes 'nothing'."
+
+::= { statusmonitor 1 }
+
+
+statMonMIBObjects	OBJECT IDENTIFIER ::= { statMonIdentity 1 }
+
+statMonSoftware         OBJECT IDENTIFIER ::= { statMonMIBObjects 1 }
+
+statMonConformance  	OBJECT IDENTIFIER ::= { statMonIdentity 2 }
+statMonCompliances  	OBJECT IDENTIFIER ::= { statMonConformance 1 }
+statMonGroups       	OBJECT IDENTIFIER ::= { statMonConformance 2 } 
+
+
+-- ****************
+-- * Download table
+-- ****************
+
+smswConfigTable     OBJECT-TYPE
+	SYNTAX SEQUENCE OF SmswConfigEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"A table that contains download descriptors for each possible
+		Status-Monitor device personality type."
+	::= { statMonSoftware 1 }
+
+
+smswConfigEntry OBJECT-TYPE
+	SYNTAX 	SmswConfigEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"Information about each Software Download entry."
+	INDEX { smswConfigIndex }
+	::= { smswConfigTable 1 }
+
+
+SmswConfigEntry ::= SEQUENCE {
+	smswConfigIndex
+		INTEGER,
+	smswConfigDevType
+	    SnmpAdminString,
+	smswConfigServer
+		IpAddress,
+	smswConfigFilename
+	    SnmpAdminString,
+	smswConfigPreserveSettings
+	    INTEGER,
+}
+
+             
+smswConfigIndex OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+          "Index of Status Monitor software Download descriptors. 1..10" 
+	::= { smswConfigEntry 1 }
+             
+
+smswConfigDevType OBJECT-TYPE
+        SYNTAX      SnmpAdminString (SIZE (0..16))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The device type (Personality) to which this entry applies.
+             Each of the attached devices will match one of these entries,
+             and the rest of the entry contains the default software download
+             specifications for that device type.  This entry is loaded once
+             from the configuration file on reboot, and cannot be
+             subsequently changed."
+	::= { smswConfigEntry 2 }
+
+smswConfigServer OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The address of the default TFTP server used for software
+            upgrades for devices of this type.  If there is no default
+            TFTP server set, this value reads 0.0.0.0.  This entry is loaded
+            once from the configuration file on reboot, and cannot be
+            subsequently changed."
+	::= { smswConfigEntry 3 }
+
+smswConfigFilename OBJECT-TYPE
+        SYNTAX      SnmpAdminString (SIZE (0..64))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The default file name of the software image to be loaded into
+             devices of this type.  If there is no default file name set,
+             then the string '(unknown)' is returned.  This entry is loaded
+             once from the configuration file on reboot, and cannot be
+             subsequently changed."	
+    ::= { smswConfigEntry 4 }
+
+smswConfigPreserveSettings OBJECT-TYPE
+        SYNTAX INTEGER {
+            false(0),
+            true(1)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Determines whether or not the settings data for devices of this
+             type will be preserved the next time a new firmware file is
+             downloaded.  This entry is loaded once from the configuration
+             file on reboot, and cannot be subsequently changed.  Possible
+             values are (1) true, which is the default, and (0) false.
+             *** IMPORTANT *** Setting this value to (0) false may cause
+             inadvertent loss of configuration settings information.  The
+             normal value for this field is (1) true and should not be changed
+             without fully understanding the consequences."
+    ::= { smswConfigEntry 5 }
+
+
+-- *****************
+-- * Runtime controls
+-- ***************** 
+
+smswRuntime         OBJECT IDENTIFIER ::= { statMonSoftware 2 }
+
+smswRuntimeDevType OBJECT-TYPE
+        SYNTAX      SnmpAdminString (SIZE (0..16))
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The device type (Personality) of the attached device.
+             If an entry with this device type appears in smswConfigTable,
+             then the default download parameters for this device will be
+             taken from that table entry."
+	::= { smswRuntime 1 }
+
+smswRuntimeServer OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The address of the TFTP server to be used for SNMP-initiated
+             software upgrades to this device. Unless set via SNMP, this
+             server address defaults to that specified by the provisioning
+             server for devices of this type.  If the TFTP server is unknown,
+             returns 0.0.0.0."
+	::= { smswRuntime 2 }
+
+smswRuntimeFilename OBJECT-TYPE
+        SYNTAX      SnmpAdminString (SIZE (0..64))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The file name of the software image to be loaded into this
+             device in the event of a SNMP-initiated software upgrade.
+             Unless set via SNMP, this file name defaults to that
+             specified by the provisioning server for devices of this
+             type.  If the file name is not set, the string '(unknown)'
+             is returned."
+	::= { smswRuntime 3 }
+
+smswRuntimePreserveSettings OBJECT-TYPE
+        SYNTAX INTEGER {
+            false(0),
+            true(1)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Determines whether or not the settings data for this device
+             will be preserved the next time a new firmware file is
+             downloaded.  Unless set via SNMP, this entry defaults to
+             that specified by the provisioning server for devices of this
+             type.  Possible values are (1) true, which is the default,
+             and (0) false.
+             *** IMPORTANT *** Setting this value to (0) false may cause
+             inadvertent loss of configuration settings information.  The
+             normal value for this field is (1) true and should not be changed
+             without fully understanding the consequences."
+    ::= { smswRuntime 4 }
+
+smswRuntimeAdminStatus OBJECT-TYPE
+        SYNTAX INTEGER {
+            upgradeFromMgt(1),
+            allowProvisioningUpgrade(2),
+            ignoreProvisioningUpgrade(3)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "If set to upgradeFromMgt(1), the device will initiate a
+             TFTP software image download using the smswRuntimeFilename for
+             this device.  After successfully receiving an image,
+             the device will set its state to ignoreProvisioningUpgrade(3)
+             and reboot.  If the download process is interrupted by a
+             reset or power failure, the device will run the previous image
+             and, after re-initialization, continue to attempt loading
+             the image specified in smswRuntimeFilename.
+             If set to allowProvisioningUpgrade(2), the device will
+             use the software version information supplied by the
+             provisioning server when next rebooting (Setting this value
+             to allowProvisioningUpgrade(2) does not cause a reboot).
+
+             When set to ignoreProvisioningUpgrade(3), the device
+             will disregard software image upgrade information from the
+             provisioning server.
+
+             Note that reading this object can return upgradeFromMgt(1).
+             This indicates that a software download is currently in
+             progress, and that the device will reboot after
+             successfully receiving an image.
+
+             At initial startup, this object has the default value of
+             allowProvisioningUpgrade(2)."
+	::= { smswRuntime 5 }
+
+smswRuntimeOperStatus OBJECT-TYPE
+        SYNTAX INTEGER {
+            inProgress(1),
+            completeFromProvisioning(2),
+            completeFromMgt(3),
+            failed(4),
+            other(5)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "InProgress(1) indicates that a TFTP download is underway,
+             either as a result of a version mismatch at provisioning
+             or as a result of a upgradeFromMgt request.
+             CompleteFromProvisioning(2) indicates that the last
+             software upgrade was a result of version mismatch at
+             provisioning. CompleteFromMgt(3) indicates that the last
+             software upgrade was a result of setting
+             statMonSwAdminStatus to upgradeFromMgt(1).
+             Failed(4) indicates that the last attempted download
+             failed, ordinarily due to TFTP timeout or file not found."
+	::= { smswRuntime 6 }
+
+
+smswRuntimeCurrentVers1 OBJECT-TYPE
+    SYNTAX      SnmpAdminString (SIZE (0..16))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The software version currently loaded into image 1 in this device.
+            The value of smswRuntimeCurrentImage indicates whether or not this image
+            is the one that is actually running.
+            This object should be in the syntax used by the individual
+            vendor to identify software versions."
+	::= { smswRuntime 7 }
+
+
+smswRuntimeCurrentVers2 OBJECT-TYPE
+    SYNTAX      SnmpAdminString (SIZE (0..16))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The software version currently loaded into image 2 in this device.
+            The value of smswRuntimeCurrentImage indicates whether or not this image
+            is the one that is actually running.
+            This object should be in the syntax used by the individual
+            vendor to identify software versions."
+	::= { smswRuntime 8 }
+
+
+smswRuntimeCurrentImage OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+          "The software image that is currently running in the device.  A value
+          of 1 means that the device is running Image 1; a value of 2 means the
+          device is running Image 2.  This value, along with smswRuntimeCurrentVers1
+          or smswRuntimeCurrentVers2, can be used to determine the currently running
+          sofware version." 
+	::= { smswRuntime 9 }
+
+--
+-- Conformance definitions
+--
+
+statMonCompliance MODULE-COMPLIANCE
+        STATUS  current
+        DESCRIPTION
+            "The compliance statement for Tollgrade Status Monitoring devices
+            attached to Docsis Cable Modems."
+
+MODULE  -- statMon
+
+-- group compliance descriptions
+
+GROUP statMonSoftwareConfigGroup
+        DESCRIPTION
+            "Mandatory in Tollgrade Status Monitoring devices that are attached
+            to Docsis Cable Modems, including RDP devices."
+
+GROUP statMonSoftwareRuntimeGroup
+        DESCRIPTION
+            "Mandatory in Tollgrade Status Monitoring devices that are attached
+            to Docsis Cable Modems, including RDP devices."
+         ::= { statMonCompliances 1 }
+
+
+statMonSoftwareConfigGroup OBJECT-GROUP
+        OBJECTS {
+            smswConfigDevType,
+            smswConfigServer,
+            smswConfigFilename,
+            smswConfigPreserveSettings
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects for specifying software download file,
+            server address, and settings preservation control for the various
+            types of Status Monitoring devices that may be attached."
+        ::= { statMonGroups 1 }
+
+statMonSoftwareRuntimeGroup OBJECT-GROUP
+        OBJECTS {
+            smswRuntimeDevType,
+            smswRuntimeServer,
+            smswRuntimeFilename,
+            smswRuntimePreserveSettings,
+            smswRuntimeAdminStatus,
+            smswRuntimeOperStatus,
+            smswRuntimeCurrentVers1,
+            smswRuntimeCurrentVers2,
+            smswRuntimeCurrentImage
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects for controlling and reporting the
+            software download state for attached Status Monitoring devices."
+        ::= { statMonGroups 2 }
+
+END
+--  Revision History:
+--$Log: TLGDStatusMon.mib,v $
+--Revision 1.1  2006/10/05 19:11:13  mcimbala
+--PTR 6572 - Added new MIB branch to implement Docsis-similar downloading control for Dallas firmware.
+--
+--Revision 1.1  2006/09/14 mcimbala
+--	Added smswConfigPreserveSettings and smswRuntimePreserveSettings objects.
+--  Removed RunTime table, and made all of its entries into scalars under the smswRuntime object
+--Revision 1.0  2006/05/19 14:44:59  mcimbala
+--  Initial version, released only internally during development
+--

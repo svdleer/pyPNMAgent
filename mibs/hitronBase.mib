@@ -1,0 +1,15 @@
+HITRON-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        enterprises FROM SNMPv2-SMI;
+
+-- Hitron Enterprise number is 8595
+-- Enterprise number must be changed for other vendors
+        hitronMib        OBJECT IDENTIFIER ::= { enterprises 8595 }
+--      hitronDOCSIS  OBJECT IDENTIFIER ::= { hitronMib 2 }
+--      For implementation see hitronDOCSIS.mib 
+--      hitronMTA  OBJECT IDENTIFIER ::= { hitronMib 3 }
+--      For implementation see hitronMTA.mib 
+
+END
+

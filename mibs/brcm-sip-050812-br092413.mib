@@ -1,0 +1,1680 @@
+--**************************************************************************
+-- Copyright (c) 2006-2013 Broadcom Corporation
+-- 
+-- This program  is the  proprietary software  of Broadcom  Corporation and/or  its
+-- licensors, and may only be used, duplicated, modified or distributed pursuant to
+-- the  terms and  conditions of  a separate,  written license  agreement executed
+-- between you and Broadcom (an "Authorized  License").  Except as set forth in  an
+-- Authorized License, Broadcom  grants no license  (express or implied),  right to
+-- use, or waiver of any kind with respect to the Software, and Broadcom  expressly
+-- reserves all rights in and to the Software and all intellectual property  rights
+-- therein.  IF YOU HAVE NO AUTHORIZED LICENSE, THEN YOU HAVE NO RIGHT TO USE  THIS
+-- SOFTWARE IN ANY WAY, AND SHOULD IMMEDIATELY NOTIFY BROADCOM AND DISCONTINUE  ALL
+-- USE OF THE SOFTWARE.  
+--  
+-- Except as expressly set forth in the Authorized License,
+--  
+-- 1.      This  program,  including  its  structure,  sequence  and  organization,
+-- constitutes  the valuable  trade secrets  of Broadcom,  and you  shall use  all
+-- reasonable  efforts to  protect the  confidentiality thereof,  and to  use this
+-- information only  in connection  with your  use of  Broadcom integrated  circuit
+-- products.
+--  
+-- 2.     TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED "AS  IS"
+-- AND  WITH  ALL  FAULTS  AND  BROADCOM  MAKES  NO  PROMISES,  REPRESENTATIONS  OR
+-- WARRANTIES, EITHER EXPRESS,  IMPLIED, STATUTORY, OR  OTHERWISE, WITH RESPECT  TO
+-- THE SOFTWARE.  BROADCOM SPECIFICALLY DISCLAIMS ANY AND ALL IMPLIED WARRANTIES OF
+-- TITLE, MERCHANTABILITY, NONINFRINGEMENT, FITNESS FOR A PARTICULAR PURPOSE,  LACK
+-- OF  VIRUSES,  ACCURACY OR  COMPLETENESS,  QUIET ENJOYMENT,  QUIET  POSSESSION OR
+-- CORRESPONDENCE TO DESCRIPTION. YOU ASSUME THE ENTIRE RISK ARISING OUT OF USE  OR
+-- PERFORMANCE OF THE SOFTWARE.
+-- 
+-- 3.     TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL BROADCOM OR ITS
+-- LICENSORS BE  LIABLE FOR  (i) CONSEQUENTIAL,  INCIDENTAL, SPECIAL,  INDIRECT, OR
+-- EXEMPLARY DAMAGES WHATSOEVER ARISING OUT OF  OR IN ANY WAY RELATING TO  YOUR USE
+-- OF OR INABILITY  TO USE THE  SOFTWARE EVEN IF  BROADCOM HAS BEEN  ADVISED OF THE
+-- POSSIBILITY OF SUCH DAMAGES; OR (ii) ANY AMOUNT IN EXCESS OF THE AMOUNT ACTUALLY
+-- PAID FOR THE SOFTWARE ITSELF OR U.S. $1, WHICHEVER IS GREATER. THESE LIMITATIONS
+-- SHALL APPLY  NOTWITHSTANDING ANY  FAILURE OF  ESSENTIAL PURPOSE  OF ANY  LIMITED
+-- REMEDY.
+--**************************************************************************
+--    Filename: brcm-sip.mib
+--    Author:   Kurt Krieger/Pierre Couillaud
+--    Creation Date: February 20, 2005
+--
+--**************************************************************************
+--    Description:
+--
+--      private MIB for runtime (not factory) SIP management
+--
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+BRCM-SIP-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Unsigned32,
+    IpAddress,
+     NOTIFICATION-TYPE
+        FROM SNMPv2-SMI
+    DateAndTime,
+    TruthValue,
+    RowStatus
+        FROM SNMPv2-TC
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    NOTIFICATION-GROUP
+        FROM SNMPv2-CONF
+    InetPortNumber,
+    InetAddressType,
+    InetAddress
+        FROM INET-ADDRESS-MIB
+    SnmpAdminString
+        FROM SNMP-FRAMEWORK-MIB
+    emtaMgmt
+        FROM BRCM-EMTA-MGMT-MIB
+    PktcCodecType
+        FROM PKTC-IETF-SIG-MIB
+    ifIndex
+        FROM IF-MIB;
+
+sip MODULE-IDENTITY
+    LAST-UPDATED "201205080000Z"
+    ORGANIZATION "Broadcom Corporation"
+    CONTACT-INFO
+        "   BANANA-CABLEDATA
+                (cableData branch of the
+                Broadcom Assigned Numbers and Naming Authority)
+                Broadcom Corporation
+
+        Postal: 4385 River Green Parkway
+                Duluth, GA  30096
+                USA
+
+           Tel: +1 770 232-0018
+
+        E-mail: banana-cabledata@broadcom.com"
+    DESCRIPTION
+        "Broadcom MIB for runtime management of SIP device."
+    REVISION      "201205080000Z"
+    DESCRIPTION
+            "Initial version of this MIB module."
+    ::= { emtaMgmt 8 }
+--KK : Note we could move the root of the MIB depending on where we want this to sit.
+
+
+sipDevice                OBJECT IDENTIFIER ::= { sip 1 }
+sipEndPnt                OBJECT IDENTIFIER ::= { sip 2 }
+sipCallFeatures          OBJECT IDENTIFIER ::= { sip 3 }
+sipObjects               OBJECT IDENTIFIER ::= { sip 4 }
+
+sipConformance           OBJECT IDENTIFIER ::= { sip 5 }
+
+--
+-- sipDevice - objects for SIP, that are configurable per device
+--
+
+sipDeviceConfigLocalSignalingPort OBJECT-TYPE
+    SYNTAX      InetPortNumber (0|1025..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "sipDeviceConfigLocalSignalingPort: SIP signaling port the device will use.
+         The value of '0' is a reserved value which tells the SIP stack to use the default
+         signaling port for SIP processing (which happens to be 5060).
+         When setting the value '0' furthermore, the SIP stack will not add port information
+         for any SIP URI generated by it.  Some third party SIP entities are sensible to
+         SIP URI format and are not able to properly parse a SIP URI containing the
+         port number, in order to work around this restriction, the SIP stack will not
+         insert the port number in the SIP URI if the port number to be used
+         is the default SIP port number: 5060.
+         Therefore the configured value of 0 should be used to prevent
+         SIP URI format with the port number information."
+    DEFVAL {0}
+    ::= { sipDevice 1 }
+
+sipDeviceConfigLocalSignalingTransport OBJECT-TYPE
+    SYNTAX      BITS {
+                signalingTransportUDP(0),
+                signalingTransportTCP(1),
+                signalingTransportTLS(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "SIP signaling transport for the device.
+         Value is a bit-field with 3 defined bits used: one for UDP, one for TCP and one for TLS.
+         If not set, is signalingTransportUDP(0)"
+    DEFVAL {signalingTransportUDP}
+    ::= { sipDevice 2 }
+
+sipDeviceConfigStunServerId  OBJECT-TYPE
+    SYNTAX SnmpAdminString (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The STUN server where STUN messages are directed"
+    DEFVAL {"0.0.0.0"}
+    ::= { sipDevice 3}
+
+sipDeviceConfigStunServerPort OBJECT-TYPE
+    SYNTAX      InetPortNumber (0| 1025..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The port number for STUN server messages.
+         The value of '0' is a reserved value which tells the SIP stack to use the default
+         port.  When setting the value '0' furthermore, the SIP stack will not add port information
+         for any SIP URI generated by it.  Some third party SIP entities are sensible to
+         SIP URI format and are not able to properly parse a SIP URI containing the
+         port number.  Therefore, the configured value of 0 should be used to prevent
+         SIP URI format with the port number information."
+    DEFVAL {0}
+    ::= { sipDevice 4 }
+
+sipDeviceConfigRegistrationExpiry OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The preferred time-to-live advertized for registration"
+    DEFVAL {3600}
+    ::= { sipDevice 5 }
+
+sipDeviceConfigDTMFRelayPayloadType OBJECT-TYPE
+    SYNTAX     Unsigned32
+    MAX-ACCESS  read-write
+    STATUS     current
+    DESCRIPTION
+        "The preferred RTP payload type to be advertized for NTE (RFC 2833) events reporting.
+        This value will be used when negotiation for media takes place during call establishment."
+    DEFVAL {101}
+    ::= { sipDevice 6 }
+
+sipDeviceConfigHookFlashRelay OBJECT-TYPE
+    SYNTAX  INTEGER {      hookFlashIgnored(0),
+                           hookFlashProcessed(1),
+                           hookFlashReported(2),
+                           hookFlashRfc2833Relay(3)
+                }
+
+    MAX-ACCESS  read-write
+    STATUS  current
+    DESCRIPTION
+        "Hook Flash Relay: This MIB controls how and if hook flash events are to
+         be reported (via SIP signaling) to the peer during a call:
+
+         hookFlashIgnored - hook flash is ignored
+         hookFlashProcessed - hook flash is processed, but NOT notified via SIP INFO
+         hookFlashReported  - hook flash is not processed, but reported via SIP INFO
+         hookFlashRfc2833Relay - hook flash is hook flash is not processed, but relayed via RFC2833"
+    DEFVAL{ hookFlashprocessed }
+    ::= { sipDevice 7}
+
+sipDeviceConfigURIStarEscapeEnabled OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS  current
+    DESCRIPTION
+        "This MIB controls the escaping of the star ('*') character from a SIP URI.
+         When enabled (true), the star character will be escaped with the '%2a' sequence in the SIP URI.
+         Note that escaping the star character from a SIP URI is in violation with RFC 2396.
+         Default value is disabled (false)"
+    DEFVAL{ false }
+    ::= { sipDevice 8}
+
+sipDeviceConfigDNSSRVLookUpDisabled OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS  current
+    DESCRIPTION
+        "This MIB controls the usage of DNS SRV requests for SIP server location.
+         When enabled (true), the SIP application will not make usage of DNS SRV lookup.
+         Note that this could result in a non functional SIP MTA if the DNS server
+         is not updated accordingly."
+    DEFVAL{ false }
+    ::= { sipDevice 9}
+
+sipDeviceConfigNatWanId  OBJECT-TYPE
+    SYNTAX SnmpAdminString (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Those are the address used by the stack when it is setup behind a NAT"
+    DEFVAL {"0.0.0.0"}
+    ::= { sipDevice 10}
+
+sipDeviceConfigNatWanPort OBJECT-TYPE
+    SYNTAX      InetPortNumber (0|1025..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The port number for sending to the NAT.
+         The value of '0' is a reserved value which tells the SIP stack to use the default
+         port.  When setting the value '0' furthermore, the SIP stack will not add port information
+         for any SIP URI generated by it.  Some third party SIP entities are sensible to
+         SIP URI format and are not able to properly parse a SIP URI containing the
+         port number.  Therefore, the configured value of 0 should be used to prevent
+         SIP URI format with the port number information."
+    DEFVAL {0}
+    ::= { sipDevice 11 }
+
+sipDeviceConfigNatKeepAliveMsgType OBJECT-TYPE
+    SYNTAX      INTEGER {     keepAliveNone(0),
+                           keepAliveNotifySip(1),
+                           keepAliveRegisterSip(2),
+                           keepAlivePingSip(3)
+                }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "controls whether or not NAT keep alive messages are needed to be sent by the MTA
+        and if so what kind.  Value is enum with the following values:
+        0 (default): no NAT keep alive,
+        1: use NOTIFY SIP method for NAT keepalive,
+        2: use REGISTER SIP method for NAT keepalive,
+        3: use PING SIP method for NAT keepalive.
+        "
+    DEFVAL {keepAliveNone}
+    ::= { sipDevice 12 }
+
+sipDeviceConfigNatKeepAliveTO OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Time out for NAT keep alive messages when feature is enabled"
+    DEFVAL {30}
+    ::= { sipDevice 13 }
+
+sipDeviceConfigNatKeepAliveFqdn OBJECT-TYPE
+    SYNTAX  SnmpAdminString (SIZE (0..40))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "FQDN (or dotted IP address) of the destination for the NAT keep alive message"
+    DEFVAL {""}
+    ::= { sipDevice 14 }
+
+sipDeviceConfigDebugLogId    OBJECT-TYPE
+    SYNTAX SnmpAdminString (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The destination address for debug messages"
+    DEFVAL {"0.0.0.0"}
+    ::= { sipDevice 15 }
+
+sipDeviceConfigDebugLogPort OBJECT-TYPE
+    SYNTAX      InetPortNumber (0|1025..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The port number for debug messages.
+         The value of '0' indicates that no SIP debug messages will be forwarded"
+    DEFVAL {0}
+    ::= { sipDevice 16 }
+
+sipDeviceConfigSessionExpiry OBJECT-TYPE
+    SYNTAX  Unsigned32 (0|90..4294967295)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The SIP session expiry timer. See draft-ietf-sip-session-timer-08 for more detail."
+    DEFVAL {0}
+    ::= { sipDevice 17 }
+
+sipDeviceConfigSessionMinimum OBJECT-TYPE
+    SYNTAX  Unsigned32 (0|90..4294967295)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Corresponds to MIN-SE SIP header. Refer to draft-ietf-sip-session-timer-08."
+    DEFVAL {0}
+    ::= { sipDevice 18 }
+
+sipDeviceConfigUserAgentHdrCtrl OBJECT-TYPE
+    SYNTAX  INTEGER { fullMode (0),
+                      appMode (1)
+                 }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "controls the content of the SIP User-Agent header field as seen in SIP messaging.
+         Value is enum with two defined values: 0 for full mode, in such mode the User-Agent header
+         contains the user defined part and the call manager defined part, or 1 for application mode,
+         in such mode the User-Agent header contains the user defined part only.
+         The user defined part must be configured in order to show up in the User-Agent field.
+         Default is full mode."
+    DEFVAL {fullMode}
+    ::= { sipDevice 19 }
+
+sipDeviceConfigUserAgentHdr OBJECT-TYPE
+    SYNTAX  SnmpAdminString (SIZE(0..63))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Defines the user defined User-Agent string as mentioned in sipDeviceConfigUserAgentHdrCtrl.  "
+    DEFVAL {""}
+    ::= { sipDevice 20 }
+
+sipDeviceConfigServerHdr OBJECT-TYPE
+    SYNTAX  SnmpAdminString (SIZE(0..63))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Defines the content of the 'Server' SIP header."
+    DEFVAL {""}
+    ::= { sipDevice 21 }
+
+sipDeviceConfigAcceptLanguageHdr OBJECT-TYPE
+    SYNTAX  SnmpAdminString (SIZE(0..63))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Defines the content of the 'Accept-Language' SIP header"
+    DEFVAL {""}
+    ::= { sipDevice 22 }
+
+sipDeviceConfigProxyReqHdr OBJECT-TYPE
+    SYNTAX  SnmpAdminString (SIZE(0..63))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Defines the content of the 'Proxy-Require' SIP header"
+    DEFVAL {""}
+    ::= { sipDevice 23 }
+
+sipDeviceConfigDisplayLocalFqdn OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "When true, the endpoint will use its local FQDN in the SIP
+         contact field, otherwise it will use its IP address."
+    DEFVAL {false}
+    ::= { sipDevice 24 }
+
+sipDeviceConfigSuppServiceDurTO OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The time out (in millisecond) for duration of the supplementary service"
+    DEFVAL {1800000}
+    ::= { sipDevice 25 }
+
+sipDeviceConfigSuppServiceApplyTO OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The time out (in millisecond) for when to apply the supplementary service"
+    DEFVAL {15000}
+    ::= { sipDevice 26 }
+
+sipDeviceConfigSuppServiceProgTO OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The time out (in millisecond) for progress of the supplementary service"
+    DEFVAL {1500}
+    ::= { sipDevice 27 }
+
+sipDeviceConfigWarmLineTO OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The time out (in millisecond) for the warm line feature."
+    DEFVAL {1000}
+    ::= { sipDevice 28 }
+
+sipDeviceConfigReregistrationThreshold OBJECT-TYPE
+    SYNTAX      Unsigned32
+ UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The re-registration threshold used for re-registering prior to registration expiry"
+    DEFVAL {60}
+    ::= { sipDevice 29 }
+
+sipDeviceTimers     OBJECT IDENTIFIER ::= { sipDevice 30 }
+
+sipDeviceTimerT1 OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "T1 from RFC 3261. Round Trip Time estimate in milliseconds."
+    DEFVAL {500}
+    ::= { sipDeviceTimers 1 }
+
+sipDeviceTimerT2 OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "T2 from RFC 3261. The maximum retransmit interval for non-INVITE requests and INVITE"
+    DEFVAL {4000}
+    ::= { sipDeviceTimers 2 }
+
+sipDeviceTimerT4 OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "T4 from RFC 3261. Maximum duration in milliseconds that a message will remain on the network."
+    DEFVAL {5000}
+    ::= { sipDeviceTimers 3 }
+
+sipDeviceTimerB OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "B from RFC 3261. INVITE transaction timeout timer.  The timer is expressed in terms of
+         multiples of the value of T1"
+    DEFVAL {64}
+    ::= { sipDeviceTimers 4 }
+
+sipDeviceTimerF OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "F from RFC 3261. non-INVITE transaction timeout timer. The timer is expressed in terms of
+         multiples of the value of T1"
+    DEFVAL {64}
+    ::= { sipDeviceTimers 5 }
+
+sipDeviceTimerH OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "H from RFC 3261. Wait time for ACK receipt. The timer is expressed in terms of
+         multiples of the value of T1"
+    DEFVAL {64}
+    ::= { sipDeviceTimers 6 }
+
+sipDeviceTimerD OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "D from RFC 3261. Wait time in milli seconds for response retransmits.  Defaults to
+         32000 for UDP, 0 for TCP"
+    DEFVAL {32000}
+    ::= { sipDeviceTimers 7 }
+
+sipDeviceTimerJ OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "J from RFC 3261. Wait time for non-INVITE request retransmits.
+         The timer is expressed in terms of multiples of the value of T1"
+    DEFVAL {64}
+    ::= { sipDeviceTimers 8 }
+
+sipDeviceConfigTlsPort OBJECT-TYPE
+    SYNTAX      InetPortNumber (0|1025..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The TLS port number that will be used for SIP communication.
+         The value of '0' is a reserved value which tells the SIP stack to use the default
+         port.  When setting the value '0' furthermore, the SIP stack will not add port information
+         for any SIP URI generated by it.  Some third party SIP entities are sensible to
+         SIP URI format and are not able to properly parse a SIP URI containing the
+         port number.  Therefore, the configured value of 0 should be used to prevent
+         SIP URI format with the port number information. "
+    DEFVAL {0}
+    ::= { sipDevice 31 }
+
+sipDeviceConfigStatus OBJECT-TYPE
+    SYNTAX INTEGER {  notReady(1),
+                      ready(2)
+                    }
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+    "  This MIB reports the current state of the SIP application.
+       notReady(1) - the SIP application is not ready to provide service.
+       ready(2) - the SIP application is ready to provide service."
+::= { sipDevice 32 }
+
+sipDeviceConfigRprSupport OBJECT-TYPE
+    SYNTAX INTEGER {  rprSupported(0),
+                      rprRequired(1),
+                      rprDisabled(2)
+                    }
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+    "  This element is used to control the usage of the reliability of provisional
+    responses feature of SIP by the device.  Refer to RFC 3262 for a definition of PRACK usage."
+    DEFVAL{rprDisabled}
+::= { sipDevice 33 }
+
+sipDeviceConfigToTagMatchingEnabled OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "This object can be used to disable the to-tag matching process when matching responses to SIP requests.
+     
+     IMPORTANT : This variable MUST NOT be used to be RFC 3261 compliant 
+                 (RFC3261 section 8.2.6.2, second paragraph).
+     Setting this variable to 'false' disables the to-tag matching in the responses, and matches responses 
+     with the request even if the to-tag are different.
+ 
+     WARNING : Setting the variable to false :
+       - breaks the forking request support
+       - breaks the PRACK functionnality when provisional responses are
+         received with different to-tags. Only the first to-tag will be used
+         in PRACK requests.
+       - breaks the UPDATE functionnality when an update is received with a
+         different to-tag than the first 1xx response. Also, only the first
+         1xx to-tag will be used in sent UPDATE requests."
+    DEFVAL {true}
+::= { sipDevice 34 }
+
+sipDeviceConfigURIPoundEscapeEnabled OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS  current
+    DESCRIPTION
+        "This MIB controls the escaping of the pound ('#') character from a SIP URI.
+         When enabled (true), the pound character will be escaped with 
+         the '%23' sequence in the SIP URI.
+         Note that not escaping the pound character from a SIP URI is in violation with RFC 2396.
+         Default value is enabled (true)"
+    DEFVAL{ true }
+::= { sipDevice 35 }
+
+sipDeviceConfigSetSdpAllCapsEnabled OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+       "This object can be used to determine whether to advertise all media capabilities at once 
+        within an initial INVITE for a call.  Advertising all media capabilities means 
+        advertising support for audio media and image (fax) media as necessary 
+        (or configured to do so).  Not advertising all media capabilities means advertising 
+        only support for the current neccessary media for the time being of the session.  
+        This does not affect the ability to automatically reINVITE for switching between 
+        different media based on the current condition (audio or image).  In particular, 
+        this feature can be used when working with non RFC 3264 compliant third party 
+        devices which tend to only process a single media within an INVITE potentially 
+        leading to SDP negotiation failure (in such case, set this value to 'false')."
+    DEFVAL {true}
+::= { sipDevice 36 }
+
+sipDeviceConfigUseToURIInRefer OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+       "Normally the 'Refer-To' header of a REFER request is set to the 'Contact' URI 
+       of the Transfer Target. By setting this to 'true' the 'Refer-To' header will contain 
+       the 'To' URI of the Transfer Target instead (also known as the AoR or Address of Record). 
+       Note that this is alternate standard behaviour which may be necessary for 
+       interoperability with some systems."
+    DEFVAL {false}
+::= { sipDevice 37 }
+
+sipDeviceConfigDNSNAPTRDisabled OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+       "This MIB controls the usage of DNS NAPTR requests for SIP server location.
+        When enabled (true), the SIP application will not make usage of DNS NAPTR lookup.
+        Note that this could result in a non functional SIP MTA if the DNS server
+        is not updated accordingly."
+    DEFVAL {false}
+::= { sipDevice 38 }
+
+sipDeviceConfigHookFlashRelayMimeType OBJECT-TYPE
+    SYNTAX  SnmpAdminString (SIZE(0..63))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Hook Flash Relay Content-Type:  This MIB controls how the Content-Type of the hook 
+         flash relay event is reported."
+    DEFVAL {"audio/telephone-event"}
+::= { sipDevice 39 }
+
+sipDeviceConfigHookFlashRelayEventString OBJECT-TYPE
+    SYNTAX  SnmpAdminString (SIZE(0..63))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Hook Flash Relay Event String:  This MIB controls how the event string of the hook 
+         flash relay event is reported."
+    DEFVAL {"Signal=!\nDuration=250"}
+::= { sipDevice 40 }
+
+sipDeviceConfigNoAnswerTO OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The time out (in milliseconds) for the no answer timeout feature. This feature defines
+         how long the device will remain in the ringing state before disconnecting the incoming
+         call. Must be set to a non-zero value to enable the feature."
+    DEFVAL {0}
+    ::= { sipDevice 41 }
+
+sipDeviceConfigBypassAckBranchIdCheck  OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object can be used to bypass the branch ID check in ACK. Setting this MIB
+        to 'true' disables the branch ID check in the ACK message, and allows the branch ID 
+        in the ACK message to be identical to the one from the 2xx response.
+        Note: setting this MIB to true is not compliant to Section 8.1.1.7 of RFC 3261."
+    DEFVAL {false}
+    ::= { sipDevice 42 }
+
+sipDeviceConfigBestEffortSdpMatching  OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object can be used to enable best effort Sdp Matching. Setting this MIB
+        to 'true' would relax SDP negotiation. For example, the number of 'm=' lines in
+        the answer do not need to match the number of lines from the offer if the MIB is 
+        enabled. 
+
+        Note: when this MIB is set to 'true', the SIP application will still attempt to 
+        negotiate per the rules of RFC 3264. Only if this negotiation failed then the best 
+        effort Sdp negotiation would be performed."
+    DEFVAL {false}
+    ::= { sipDevice 43 }
+
+sipDeviceConfigDomainOverride OBJECT-TYPE
+    SYNTAX  SnmpAdminString (SIZE (0..40))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "FQDN (or dotted IP address) of the domain name of all outbound SIP signalling 
+        messages."
+    DEFVAL {""}
+    ::= { sipDevice 44}
+
+sipDeviceConfigPrivacyEnabled OBJECT-TYPE
+    SYNTAX  TruthValue
+    MAX-ACCESS  read-write
+    STATUS  current
+    DESCRIPTION
+        "This MIB controls whether privacy support is enabled or not."
+    DEFVAL { false }
+    ::= { sipDevice 45 }
+
+--
+-- sipEndPnt - objects for SIP, that are configurable per endpoint
+--
+
+-- Registrar Table --
+sipEndPntConfigRegistrarTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF SipEndPntConfigRegistrarEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table contains SIP Registrar items that are configurable per endpoint "
+    ::=  { sipEndPnt 1 }
+
+sipEndPntConfigRegistrarEntry    OBJECT-TYPE
+    SYNTAX        SipEndPntConfigRegistrarEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains SIP Registrart objects for the particular endpoint indexed
+        by the corresponding ifIndex."
+    INDEX { ifIndex }
+    ::=  { sipEndPntConfigRegistrarTable 1 }
+
+SipEndPntConfigRegistrarEntry  ::= SEQUENCE {
+       sipEndPntConfigRegistrarId     SnmpAdminString,
+       sipEndPntConfigRegistrarSigPort          InetPortNumber,
+       sipEndPntConfigRegistrarRetryTimeout  Unsigned32,
+       sipEndPntConfigRegistrarStatus       INTEGER,
+       sipEndPntConfigRegistrarRetryTimerMin Unsigned32,
+       sipEndPntConfigRegistrarRetryTimerMax Unsigned32
+    }
+
+sipEndPntConfigRegistrarId  OBJECT-TYPE
+    SYNTAX SnmpAdminString (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "SIP registrar: this can be a FQDN or an IP address (in string format).
+         If not set, default is '0.0.0.0'"
+    DEFVAL {"0.0.0.0"}
+    ::= { sipEndPntConfigRegistrarEntry 1}
+
+
+sipEndPntConfigRegistrarSigPort OBJECT-TYPE
+    SYNTAX      InetPortNumber (0|1025..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "SIP registrar port: this is the port number used for signaling to the registration server.
+         The value of '0' is a reserved value which tells the SIP stack to use the default
+         port.  When setting the value '0' furthermore, the SIP stack will not add port information
+         for any SIP URI generated by it.  Some third party SIP entities are sensible to
+         SIP URI format and are not able to properly parse a SIP URI containing the
+         port number.  Therefore, the configured value of 0 should be used to prevent
+         SIP URI format with the port number information."
+    DEFVAL { 0 }
+    ::= { sipEndPntConfigRegistrarEntry 2 }
+
+sipEndPntConfigRegistrarRetryTimeout    OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      obsolete
+    DESCRIPTION
+        "The preferred time-to-live advertized for registration"
+    DEFVAL {3600}
+    ::= { sipEndPntConfigRegistrarEntry 3 }
+
+sipEndPntConfigRegistrarStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                            registered(1),
+                            notRegistered(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object contains the current status of the endpoint with the registrar
+         in sipEndPntConfigRegistrarId"
+    ::= { sipEndPntConfigRegistrarEntry 4 }
+
+sipEndPntConfigRegistrarRetryTimerMin    OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Defines the minimum wait time for exponential retry and backoff when EMTA fails
+          to register."
+    DEFVAL {30}
+    ::= { sipEndPntConfigRegistrarEntry 5 }
+
+sipEndPntConfigRegistrarRetryTimerMax    OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Defines the maximum wait time for exponential retry and backoff when EMTA fails
+          to register."
+    DEFVAL {1800}
+    ::= { sipEndPntConfigRegistrarEntry 6 }
+
+
+-- Proxy table --
+
+sipEndPntConfigProxyTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF SipEndPntConfigProxyEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table contains SIP Proxy items that are configurable per endpoint "
+    ::=  { sipEndPnt 2 }
+
+sipEndPntConfigProxyEntry    OBJECT-TYPE
+    SYNTAX        SipEndPntConfigProxyEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains SIP Proxy objects for the particular endpoint indexed
+        by the corresponding ifIndex."
+    INDEX { ifIndex }
+    ::=  { sipEndPntConfigProxyTable 1 }
+
+SipEndPntConfigProxyEntry  ::= SEQUENCE {
+       sipEndPntConfigProxyId     SnmpAdminString,
+       sipEndPntConfigProxySigPort          InetPortNumber
+    }
+
+sipEndPntConfigProxyId  OBJECT-TYPE
+    SYNTAX SnmpAdminString  (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "SIP Proxy Id: this can be a FQDN or an IP address (in string format).
+         If not set, default is '0.0.0.0'"
+    DEFVAL {"0.0.0.0"}
+    ::= { sipEndPntConfigProxyEntry 1}
+
+
+sipEndPntConfigProxySigPort OBJECT-TYPE
+    SYNTAX      InetPortNumber (0|1025..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "SIP proxy port: this is the port number used for signaling to the proxy.
+         The value of '0' is a reserved value which tells the SIP stack to use the default
+         port.  When setting the value '0' furthermore, the SIP stack will not add port information
+         for any SIP URI generated by it.  Some third party SIP entities are sensible to
+         SIP URI format and are not able to properly parse a SIP URI containing the
+         port number.  Therefore, the configured value of 0 should be used to prevent
+         SIP URI format with the port number information."
+    DEFVAL { 0 }
+    ::= { sipEndPntConfigProxyEntry 2 }
+
+
+-- User Table --
+
+sipEndPntConfigUserTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF SipEndPntConfigUserEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table contains SIP User items that are configurable per endpoint "
+    ::=  { sipEndPnt 3 }
+
+sipEndPntConfigUserEntry    OBJECT-TYPE
+    SYNTAX        SipEndPntConfigUserEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains SIP User objects for the particular endpoint indexed
+        by the corresponding ifIndex."
+    INDEX { ifIndex }
+    ::=  { sipEndPntConfigUserTable 1 }
+
+SipEndPntConfigUserEntry  ::= SEQUENCE {
+       sipEndPntConfigUserId      SnmpAdminString,
+       sipEndPntConfigUserName     SnmpAdminString,
+       sipEndPntConfigUserPassword      SnmpAdminString,
+       sipEndPntConfigUserAuthName  SnmpAdminString,
+       sipEndPntConfigUserDigitMap  OCTET STRING,
+       sipEndPntConfigUserPin       SnmpAdminString,
+       sipEndPntConfigUserCallBarringDigitMap       OCTET STRING,
+       sipEndPntConfigUserPacketPeriod  INTEGER,
+       sipEndPntConfigUserVADMode       INTEGER,
+       sipEndPntConfigUserUseCodecTable  TruthValue,
+       sipEndPntConfigUserDataMode      INTEGER,
+       sipEndPntConfigUserEcanEnabled   TruthValue,
+       sipEndPntConfigUserIpDialingEnabled TruthValue,
+       sipEndPntConfigUserEuroEnabled   TruthValue,
+       sipEndPntConfigUserCLIDEnabled   TruthValue,
+       sipEndPntConfigUserVoiceMailURI  SnmpAdminString,
+       sipEndPntConfigUserCSAURI        SnmpAdminString,
+       sipEndPntConfigUserSubscribeMsgWaitPkg  TruthValue,
+       sipEndPntConfigUserCustomRingbackOnNet  TruthValue,
+       sipEndPntConfigUserDfltWarmLine  OCTET STRING,
+       sipEndPntConfigUserDfltForward   OCTET STRING,
+       sipEndPntConfigUserVmwiCtrl   TruthValue,
+       sipEndPntConfigUserCNGMode    INTEGER,
+       sipEndPntConfigUserHoldMethod INTEGER,
+       sipEndPntConfigUserGoodProxyEnabled TruthValue,
+       sipEndPntConfigUserAddToWhiteList   TruthValue,
+       sipEndPntConfigUserLocalHoldReminder TruthValue,
+       sipEndPntConfigUserPreferredVBDCodec INTEGER,
+       sipEndPntConfigUserConfBridgeURI  SnmpAdminString 
+       }
+
+sipEndPntConfigUserId  OBJECT-TYPE
+    SYNTAX SnmpAdminString  (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Specifies the value to be used in the 'user' field of the local SIP
+         URI. This is usually the phone number, but may be any character string
+         if a proxy is doing the translation to a phone number. For example,
+         the string '5551234' in the following SIP URI.
+         
+            sip:5551234@broadcom.com
+            
+         See Section 19.1.1 of RFC 3261."
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 1}
+
+sipEndPntConfigUserName  OBJECT-TYPE
+    SYNTAX SnmpAdminString  (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Specifies the display-name portion of the name-addr field used in many
+         SIP headers such as To, From and Contact. For example the string 'Bob'
+         in the following name-addr.
+         
+            Bob <sip:5551234@broadcom.com>
+
+         See Section 20.10 of RFC 3261."
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 2}
+
+sipEndPntConfigUserPassword  OBJECT-TYPE
+    SYNTAX SnmpAdminString   (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This is the password associated with this user for authentication.
+         Defaults to an empty string if not set."
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 3}
+
+sipEndPntConfigUserAuthName  OBJECT-TYPE
+    SYNTAX SnmpAdminString   (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Specifies the header field value to be used for the 'username' header
+         field in the Authorization header. See section 20.7 of RFC 3261."
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 4}
+
+sipEndPntConfigUserDigitMap  OBJECT-TYPE
+    SYNTAX OCTET STRING  (SIZE (0..2048))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The digit map associated with the endpoint, used for outgoing call dialing"
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 5}
+
+sipEndPntConfigUserPin  OBJECT-TYPE
+    SYNTAX SnmpAdminString   (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "A user defined PIN number that can be used for activating certain features."
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 6}
+
+sipEndPntConfigUserCallBarringDigitMap  OBJECT-TYPE
+    SYNTAX OCTET STRING  (SIZE (0..2048))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "A digit map that is used in conjunction with the call barring feature (see sipCallFeatureTable).
+         When the feature is enabled and this digit map is used,
+         all outgoing calls which dial plan match this digit map will be rejected."
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 7}
+
+sipEndPntConfigUserPacketPeriod OBJECT-TYPE
+    SYNTAX      INTEGER {
+                packetPeriod10ms(10),
+                packetPeriod20ms(20),
+                packetPeriod30ms(30)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The preferred packetization period in milliseconds to be used for media exchange.
+        This is the preferred value advertized when negotiating media during call establishment"
+    DEFVAL {packetPeriod20ms}
+    ::= { sipEndPntConfigUserEntry 8 }
+
+sipEndPntConfigUserVADMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                vadModeNoVad(0),
+                vadModeTransparent(1),
+                vadModeConservative(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The preferred voice activity detection mode to be used for media exchange.
+        This is the preferred value advertized when negotiating media during call
+        establishment. The voice activity detection (silence suppression) mode advertized 
+        by the remote UA determines whether or not RTP Comfort Noise packets are generated 
+        and sent to the remote endpoint. The local setting of vadModeTransparent or 
+        vadModeConservative affects the local threshold used if Comfort Noise packets are 
+        generated. Changes cannot be detected by the local user."
+    DEFVAL {vadModeTransparent}
+    ::= { sipEndPntConfigUserEntry 9 }
+
+sipEndPntConfigUserUseCodecTable OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The indicator of whether to use the list of preferred codecs, provided in the
+         sipEndPntConfigCodecTable, exclusively when negotiating codecs.  True inidicates
+         using the sipEndPntConfigCodecTable exclusively"
+    DEFVAL {false}
+    ::= { sipEndPntConfigUserEntry 10 }
+
+sipEndPntConfigUserDataMode OBJECT-TYPE
+    SYNTAX     INTEGER{ dataModeNoPreference(0),
+                        dataModeVBD(1),
+                        dataModeT38(2)
+                      }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The preferred mode for data exchange."
+    DEFVAL {dataModeVBD}
+    ::= { sipEndPntConfigUserEntry 11 }
+
+sipEndPntConfigUserEcanEnabled OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Flag set to true(1) if echo cancellation should be enabled by default for audio call,
+         false(2) otherwise."
+    DEFVAL {true}
+    ::= { sipEndPntConfigUserEntry 12 }
+
+sipEndPntConfigUserIpDialingEnabled OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Flag set to true(1) if dialing by IP address should be enabled by default for the endpoint,
+         false(2) otherwise."
+    DEFVAL {true}
+    ::= { sipEndPntConfigUserEntry 13 }
+
+sipEndPntConfigUserEuroEnabled OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Flag set to true(1) if Euro features (on hook flash) should be enabled by default for the endpoint,
+         false(2) otherwise."
+    DEFVAL {false}
+    ::= { sipEndPntConfigUserEntry 14 }
+
+sipEndPntConfigUserCLIDEnabled OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Flag set to true(1) if CLID (caller line identification) should be enabled by default for the endpoint,
+         false(2) otherwise."
+    DEFVAL {true}
+    ::= { sipEndPntConfigUserEntry 15 }
+
+sipEndPntConfigUserVoiceMailURI  OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The URI for the voice mail server associated with this endpoint."
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 16}
+
+sipEndPntConfigUserCSAURI  OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "URI of the call statistics agent,
+         which is where call statistics collected by the endpoint are reported"
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 17}
+
+sipEndPntConfigUserSubscribeMsgWaitPkg OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "When true the endpoint will subscribe to message waiting event package."
+    DEFVAL {true}
+    ::= { sipEndPntConfigUserEntry 18 }
+
+sipEndPntConfigUserCustomRingbackOnNet OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "When set, on-net calls (calls which are received without
+         SDP information in the 180 response to SIP INVITE) use a custom ringback tone."
+    DEFVAL {false}
+    ::= { sipEndPntConfigUserEntry 19 }
+
+sipEndPntConfigUserDfltWarmLine  OBJECT-TYPE
+    SYNTAX OCTET STRING  (SIZE (0..32))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "String containing a default E.164 or URI to be used as warm line number."
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 20}
+
+
+sipEndPntConfigUserDfltForward  OBJECT-TYPE
+    SYNTAX OCTET STRING  (SIZE (0..32))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "String containing a default E.164 or URI to be used as forward to number."
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 21}
+
+sipEndPntConfigUserVmwiCtrl OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Visual message waiting indicator control. When false, visual message waiting
+         indicator is not activated on the line when new messages are received."
+    DEFVAL {false}
+    ::= { sipEndPntConfigUserEntry 22 }
+
+sipEndPntConfigUserCNGMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+    cngModeNoCNG(0),
+    cngModeWhiteNoise(1),
+    cngModeHothNoise(2),
+    cngModeMatchSpectrum(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The preferred comfort noise generation mode to be used during media exchange.
+        This is the preferred comfort noise spectrum to be played out the endpoint when RTP 
+        Comfort Noise packets are received. If cngModeNoCNG value is chosen, silence is played 
+        out during silence periods. This setting affects only the local user and has no impact 
+        on the RTP stream or the remote endpoint."
+    DEFVAL {cngModeMatchSpectrum}
+    ::= { sipEndPntConfigUserEntry 23 }
+
+sipEndPntConfigUserHoldMethod  OBJECT-TYPE
+    SYNTAX      INTEGER {
+    holdMethodHeaderPlusAttribute(0),
+    holdMethodAttributeonly(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The method that will be used for sending SIP INVITE packet for holding remote party.
+         Set to holdMethodHeaderPlusAttribute(0) to use the SDP Content (C) SIP header along with the SDP 'a'
+         attribute when sending the SIP INVITE packet to put the remote caller on hold.
+         Set to holdMethodAttributeOnly(1) to use the SDP attribute only when sending the SIP INVITE packet to
+         put the remote caller on hold."
+    DEFVAL {holdMethodHeaderPlusAttribute}
+    ::= { sipEndPntConfigUserEntry 24 }
+
+sipEndPntConfigUserGoodProxyEnabled OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "When true, the end point will accept packets originating from a known SIP proxy only.
+        If the packets originate from an unknown SIP Proxy they are not processed."
+    DEFVAL {false}
+    ::= { sipEndPntConfigUserEntry 25 }
+
+sipEndPntConfigUserAddToWhiteList OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "When true, the endpoint's location (IP address) will be added to the white list
+         each endpoint maintains. Enable this if sipEndPntConfigUserGoodProxyEnabled is true
+         to allow calls originating from one endpoint to be accepted by the other on the same device."
+    DEFVAL {true}
+    ::= { sipEndPntConfigUserEntry 26 }
+
+sipEndPntConfigUserLocalHoldReminder OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls the hold-reminder feature.  Hold reminder is a local tone being played to the user
+         when there are calls on hold other than the current active call."
+    DEFVAL {true}
+    ::= { sipEndPntConfigUserEntry 27 }
+
+sipEndPntConfigUserPreferredVBDCodec OBJECT-TYPE
+    SYNTAX      INTEGER {
+                vbdModeNonePreferred(0),
+                vbdModePCMU(1),
+                vbdModePCMA(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This MIB is used to set the preferred voice band data codec to be used during media 
+         communication.  If the value of 'NonePreferred' is selected, the voice band data codec chosen 
+         will follow the preferred voice encoder setting like so: it will be PCMA if the preferred audio
+         codec is PCMA, it will be PCMU otherwise."
+    DEFVAL {vbdModeNonePreferred}
+    ::= { sipEndPntConfigUserEntry 28 }
+
+sipEndPntConfigUserConfBridgeURI  OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The URI for the conference bridge associated with this endpoint. If set to NULL, 
+         conferencing is hosted locally."
+    DEFVAL {""}
+    ::= { sipEndPntConfigUserEntry 29}
+
+
+-- Outbound Proxy table --
+
+sipEndPntConfigOutboundProxyTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF SipEndPntConfigOutboundProxyEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table contains SIP Outbound Proxy items that are configurable per endpoint "
+    ::=  { sipEndPnt 4 }
+
+sipEndPntConfigOutboundProxyEntry    OBJECT-TYPE
+    SYNTAX        SipEndPntConfigOutboundProxyEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains SIP Outbound Proxy objects for the particular endpoint indexed
+        by the corresponding ifIndex."
+    INDEX { ifIndex }
+    ::=  { sipEndPntConfigOutboundProxyTable 1 }
+
+SipEndPntConfigOutboundProxyEntry  ::= SEQUENCE {
+       sipEndPntConfigOutboundProxyId     SnmpAdminString,
+       sipEndPntConfigOutboundProxySigPort          InetPortNumber
+    }
+
+sipEndPntConfigOutboundProxyId  OBJECT-TYPE
+    SYNTAX SnmpAdminString  (SIZE (0..40))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "SIP Outbound Proxy Id: this can be a FQDN or an IP address (in string format).
+         If not set, default is '0.0.0.0'"
+    DEFVAL {"0.0.0.0"}
+    ::= { sipEndPntConfigOutboundProxyEntry 1}
+
+
+sipEndPntConfigOutboundProxySigPort OBJECT-TYPE
+    SYNTAX      InetPortNumber (0|1025..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "SIP Outbound proxy port: this is the port number used for signaling to the outbound proxy.
+         The value of '0' is a reserved value which tells the SIP stack to use the default
+         port.  When setting the value '0' furthermore, the SIP stack will not add port information
+         for any SIP URI generated by it.  Some third party SIP entities are sensible to
+         SIP URI format and are not able to properly parse a SIP URI containing the
+         port number.  Therefore, the configured value of 0 should be used to prevent
+         SIP URI format with the port number information."
+    DEFVAL { 5060 }
+    ::= { sipEndPntConfigOutboundProxyEntry 2 }
+
+--endpoint codec list
+sipEndPntConfigCodecTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF SipEndPntConfigCodecEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table contains a list of preferred codecs for each endpoint"
+    ::=  { sipEndPnt 5 }
+
+sipEndPntConfigCodecEntry    OBJECT-TYPE
+    SYNTAX        SipEndPntConfigCodecEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains the preferred codec list for each ifIndex."
+    INDEX { ifIndex, sipEndPntConfigCodecRank }
+    ::=  { sipEndPntConfigCodecTable 1 }
+
+SipEndPntConfigCodecEntry  ::= SEQUENCE {
+       sipEndPntConfigCodecRank   INTEGER,
+       sipEndPntConfigCodecType    PktcCodecType
+    }
+
+sipEndPntConfigCodecRank  OBJECT-TYPE
+    SYNTAX INTEGER (1..6)
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Index for specifying the rank of a given codec for the endpoint.
+         For example, a value of 1 means most preferred. "
+    ::= { sipEndPntConfigCodecEntry 1}
+
+
+sipEndPntConfigCodecType OBJECT-TYPE
+    SYNTAX      PktcCodecType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The codec to be used.  
+         Note that since neither G.722 and G.722.2 are defined in the 
+         enumeration, the following temporary numeration could be used 
+         for these two codecs:
+             g722      (100),
+             g722at64  (101),
+             g722at56  (102),
+             g722at48  (103),
+             amrwb     (104),
+             bv32      (105),
+             g723      (106)
+         Once there is an enum from PktcCodecType for G.722 and G.722.2,
+         the above enums would be removed."
+    ::= { sipEndPntConfigCodecEntry 2 }
+
+-- sip call features
+-- Call Feature Table --
+SipCallFeatureType ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        " This textual convention defines various SIP call features
+          that MAY be supported. The description for each
+          enumeration is listed below:
+          Enumeration                   Description
+          clidBlock                 CLID blocking
+          clidBlockOnce             CLID blocking once
+          clidUnblockOnce               CLID unblocking once
+          anonymousCallReject         Anonymous Call Rejection
+          forwardingToNumber            Call Forwariding to Number
+          forwardingPermanent          Permanent Call Forwarding
+          forwardingNoAnswer          Call Forwarding on no answer
+          forwardingBusy               Call Forward on busy
+          autoRedial                    Redial
+          lastCallReturn                Last Call Return
+          callwaiting                   Call Waiting Overall
+          callwaitingOnce             Call Waiting Once
+          callhold                      Call Hold
+          threeway                      3 way calling
+          callTransfer                  Call Transfer
+          pstnIntegration               PSTN Integration
+          distinctiveRing               Distinctive ringing
+          completionOnBusy          Call Completion on busy subscriber
+          datarecord                   Call Data Record
+          warmline                      Warm Line
+          doNotDisturb              Do Not Disturb
+          outgoingBarring               Outgoing Call Barring
+          speedDialling             Speed Dialling
+          incomingHandling              Caller Dependant
+                                        Incoming Call Handling
+          networkPrivacy                Network Provided Privacy
+                                      "
+    SYNTAX INTEGER {
+               clidBlock        (1),
+               clidBlockOnce  (2),
+               clidUnblockOnce  (3),
+               anonymousCallReject   (4),
+               forwardingToNumber    (5),
+               forwardingPermanent    (6),
+               forwardingNoAnswer      (7),
+               forwardingBusy  (8),
+               autoRedial       (9),
+               lastCallReturn   (10),
+               callwaiting      (11),
+               callwaitingOnce (12),
+               callhold     (13),
+               threeway     (14),
+               callTransfer (15),
+               pstnIntegration  (16),
+               distinctiveRing  (17),
+               completionOnBusy (18),
+               datarecord       (19),
+               warmline     (20),
+               doNotDisturb (21),
+               outgoingBarring  (22),
+               speedDialling    (23),
+               incomingHandling (24),
+               networkPrivacy    (25)
+    }
+
+sipCallFeatureTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF SipCallFeatureEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table contains Call features (features) that are configurable"
+    ::=  { sipCallFeatures 1 }
+
+sipCallFeatureEntry    OBJECT-TYPE
+    SYNTAX        SipCallFeatureEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains the configuration for a particular call feature
+         The index is the call feature Id."
+    INDEX { ifIndex, sipCallFeatureId }
+    ::=  { sipCallFeatureTable 1 }
+
+SipCallFeatureEntry  ::= SEQUENCE {
+       sipCallFeatureId               SipCallFeatureType,
+       sipCallFeatureEnabled          TruthValue,
+       sipCallFeatureEnableVSC   SnmpAdminString,
+       sipCallFeatureDisableVSC  SnmpAdminString,
+       sipCallFeatureAction			  INTEGER,
+       sipCallFeatureDescrText   SnmpAdminString,
+       sipCallFeatureAutoActivate     TruthValue
+    }
+
+sipCallFeatureId  OBJECT-TYPE
+    SYNTAX SipCallFeatureType
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Id for the call feature being configured.  See textual
+        convention defining SipCallFeaturesType"
+    ::= { sipCallFeatureEntry 1}
+
+sipCallFeatureEnabled  OBJECT-TYPE
+    SYNTAX         TruthValue
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This object indicates whether the given feature can enabled
+         or disabled via use of the appropriate VSC."
+    ::= { sipCallFeatureEntry 2}
+
+sipCallFeatureEnableVSC  OBJECT-TYPE
+    SYNTAX SnmpAdminString  (SIZE(0..4))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Vertical Service Code (VSC) for enabling the call feature.
+         To successfully SET this object the value
+         MUST contain a * followed by numbers (0-9), otherwise
+         an 'inconsistent value' error will be returned.  Note each feature 
+         should be assigned a unique VSC."
+    ::= { sipCallFeatureEntry 3}
+
+sipCallFeatureDisableVSC  OBJECT-TYPE
+    SYNTAX SnmpAdminString  (SIZE(0..4))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Vertical Service Code (VSC) for disabling the call feature. If there
+         is no seperate code for disabling a feature, then
+         this object will be an empty string.
+         To successfully SET this object the value
+         MUST contain a * followed by numbers (0-9), otherwise
+         an 'inconsistent value' error will be returned.  Note each feature 
+         should be assigned a unique VSC."
+    ::= { sipCallFeatureEntry 4}
+
+sipCallFeatureAction OBJECT-TYPE
+    SYNTAX      INTEGER {  actionConfirm(0),
+                     actionSendToNetwork(1),
+                     actionCollectDigits(2),
+                     actionRecallDialtone(3),
+                     actionSpecialMatch(4)
+            }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls what to do when a feature code is detected in order to process the feature
+         further.  Value is enum with the following values:
+        0 (default): play confirmation tone to the user,
+        1: send the feature information to the network to deal with the feature,
+        2: collect more digits after detecting the feature code,
+        3: play a confirmation tone, then recall the dial tone,
+        4: handle this feature as part of the special matching case.
+        "
+    DEFVAL {action_confirm}
+    ::= { sipCallFeatureEntry 5}
+
+sipCallFeatureDescrText  OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Human readable textual description of the call feature."
+    ::= { sipCallFeatureEntry 6}
+
+sipCallFeatureAutoActivate  OBJECT-TYPE
+    SYNTAX         TruthValue
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This object indicates whether the feature is currently
+         active for the user.  True means feature is active, false means
+         feature is not activated"
+    ::= { sipCallFeatureEntry 7}
+
+--
+-- Compliance Sstatements
+--
+sipCompliances  OBJECT IDENTIFIER ::= { sipConformance 1 }
+sipGroups       OBJECT IDENTIFIER ::= { sipConformance 2 }
+
+sipCompliance  MODULE-COMPLIANCE
+    STATUS      current
+    DESCRIPTION
+        "This compliance statement applies to MTA implementations
+        that support Broadcom SIP MIB requirements.
+        It is left to manufacturers to determine whether to support
+        this MIB and/or its subset depending on the particular
+        requierements in the field."
+
+    MODULE
+    MANDATORY-GROUPS {
+               sipGroups
+    }
+    ::= { sipCompliances 1 }
+
+
+sipObjectGroup OBJECT-GROUP
+    OBJECTS {
+        sipDeviceConfigLocalSignalingPort,
+        sipDeviceConfigLocalSignalingTransport,
+        sipDeviceConfigStunServerId,
+        sipDeviceConfigStunServerPort,
+        sipDeviceConfigRegistrationExpiry,
+        sipDeviceConfigDTMFRelayPayloadType,
+        sipDeviceConfigHookFlashRelay,
+        sipDeviceConfigURIStarEscapeEnabled,
+        sipDeviceConfigDNSSRVLookUpDisabled,
+        sipDeviceConfigNatWanId,
+        sipDeviceConfigNatWanPort,
+        sipDeviceConfigNatKeepAliveMsgType,
+        sipDeviceConfigNatKeepAliveTO,
+        sipDeviceConfigNatKeepAliveFqdn,
+        sipDeviceConfigDebugLogId,
+        sipDeviceConfigDebugLogPort,
+        sipDeviceConfigSessionExpiry,
+        sipDeviceConfigSessionMinimum,
+        sipDeviceConfigUserAgentHdrCtrl,
+        sipDeviceConfigUserAgentHdr,
+        sipDeviceConfigServerHdr,
+        sipDeviceConfigAcceptLanguageHdr,
+        sipDeviceConfigProxyReqHdr,
+        sipDeviceConfigDisplayLocalFqdn,
+        sipDeviceConfigSuppServiceDurTO,
+        sipDeviceConfigSuppServiceApplyTO,
+        sipDeviceConfigSuppServiceProgTO,
+        sipDeviceConfigWarmLineTO,
+        sipDeviceConfigReregistrationThreshold,
+        sipDeviceConfigTlsPort,
+        sipDeviceConfigStatus,
+        sipDeviceConfigRprSupport,
+        sipDeviceConfigToTagMatchingEnabled,
+        sipDeviceConfigSetSdpAllCapsEnabled,
+        sipDeviceConfigURIPoundEscapeEnabled,
+        sipDeviceConfigUseToURIInRefer,
+        sipDeviceConfigDNSNAPTRDisabled,
+        sipDeviceConfigHookFlashRelayMimeType,
+        sipDeviceConfigHookFlashRelayEventString,
+        sipDeviceConfigNoAnswerTO,
+        sipDeviceConfigBypassAckBranchIdCheck,
+        sipDeviceConfigBestEffortSdpMatching,
+        sipDeviceConfigDomainOverride,
+        sipDeviceConfigPrivacyEnabled,
+        sipEndPntConfigRegistrarId,
+        sipEndPntConfigRegistrarSigPort,
+        sipEndPntConfigRegistrarRetryTimerMin,
+        sipEndPntConfigRegistrarRetryTimerMax,
+        sipEndPntConfigRegistrarStatus,
+        sipEndPntConfigProxyId,
+        sipEndPntConfigProxySigPort,
+        sipEndPntConfigUserId,
+        sipEndPntConfigUserName,
+        sipEndPntConfigUserPassword,
+        sipEndPntConfigUserAuthName,
+        sipEndPntConfigUserDigitMap,
+        sipEndPntConfigUserPin,
+        sipEndPntConfigUserCallBarringDigitMap,
+        sipEndPntConfigUserPacketPeriod,
+        sipEndPntConfigUserVADMode,
+        sipEndPntConfigUserCNGMode,
+        sipEndPntConfigUserUseCodecTable,
+        sipEndPntConfigUserDataMode,
+        sipEndPntConfigUserEcanEnabled,
+        sipEndPntConfigUserIpDialingEnabled,
+        sipEndPntConfigUserEuroEnabled,
+        sipEndPntConfigUserCLIDEnabled,
+        sipEndPntConfigUserVoiceMailURI,
+        sipEndPntConfigUserCSAURI,
+        sipEndPntConfigUserSubscribeMsgWaitPkg,
+        sipEndPntConfigUserCustomRingbackOnNet,
+        sipEndPntConfigUserDfltWarmLine,
+        sipEndPntConfigUserDfltForward,
+        sipEndPntConfigUserVmwiCtrl,
+        sipEndPntConfigUserHoldMethod,
+        sipEndPntConfigUserGoodProxyEnabled,
+        sipEndPntConfigUserAddToWhiteList,
+        sipEndPntConfigUserLocalHoldReminder,
+        sipEndPntConfigUserPreferredVBDCodec,
+        sipEndPntConfigOutboundProxyId,
+        sipEndPntConfigOutboundProxySigPort,
+        sipEndPntConfigCodecType,
+        sipCallFeatureId,
+        sipCallFeatureEnabled,
+        sipCallFeatureEnableVSC,
+        sipCallFeatureDisableVSC,
+        sipCallFeatureAction,
+        sipCallFeatureDescrText,
+        sipCallFeatureAutoActivate
+    }
+    STATUS      current
+    DESCRIPTION
+        "This group defines a collection of the MIB objects to meet the customers
+        requirements in SIP functionality for the MTA which is complementary to the 'standard'
+        PacketCable features."
+    ::= { sipGroups 1 }
+
+
+END

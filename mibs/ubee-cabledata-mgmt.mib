@@ -1,0 +1,46 @@
+--**************************************************************************
+--    Description:
+--
+--		private MIB for cableData products
+--		
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+UBEE-CABLEDATA-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE
+        FROM SNMPv2-SMI
+    cableDataMgmt
+        FROM UBEE-CABLEDATA-SMI;
+                
+cableDataMgmtMIB MODULE-IDENTITY
+    LAST-UPDATED "200905200000Z"
+    ORGANIZATION "Ubee Interactive Corporation"
+    CONTACT-INFO
+        "	Ubee Interactive Global Headquarters
+
+        Postal: 6F-9, No.38, Taiyuan St.
+        		Jhubei City Hsinchu County 302
+        		Taiwan, R.O.C.
+
+           Tel: +886-3-560-0010
+
+        E-mail: asupport@ubeeinteractive.com"
+    DESCRIPTION
+        "Ubee proprietary MIB for runtime management and configuration
+         of objects related to cableData products."
+    ::= { cableDataMgmt 2 }
+        
+cableDataMgmtMIBObjects OBJECT IDENTIFIER ::= { cableDataMgmtMIB 1}
+
+cableDataMgmtBase OBJECT IDENTIFIER ::= { cableDataMgmtMIBObjects 1 }
+
+cableDataMgmtVendor OBJECT IDENTIFIER ::= { cableDataMgmt 99 }
+
+ubeeCableDataMgmt OBJECT IDENTIFIER ::= { cableDataMgmtVendor 4684 }
+
+END

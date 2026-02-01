@@ -1,0 +1,1956 @@
+    SMC-ROUTER-MIB  DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Counter32,
+        Integer32,
+        Unsigned32,
+        IpAddress,
+        experimental,
+        private,
+        enterprises,
+        transmission            FROM SNMPv2-SMI
+        
+        InetAddressType, 
+        InetAddress			   	FROM INET-ADDRESS-MIB
+                
+    	MODULE-COMPLIANCE,
+    	OBJECT-GROUP            FROM SNMPv2-CONF
+    	
+    	TEXTUAL-CONVENTION,
+    	MacAddress,
+	    PhysAddress,
+    	RowStatus,
+    	TruthValue,
+        DateAndTime,
+	    TimeStamp,
+    	DisplayString           FROM SNMPv2-TC
+    	    	
+        ifIndex		            FROM IF-MIB;
+            
+-- Textual Conventions
+	smcNetworks		OBJECT IDENTIFIER ::= { enterprises 202 }
+
+    smcRouter MODULE-IDENTITY
+    LAST-UPDATED "201204240000Z" -- April 24, 2012
+    ORGANIZATION "SMC Networks, Inc."
+    CONTACT-INFO
+        " aRyeh Elkon
+        	SMC Networks Inc
+            1873 S Bellaire St	
+            Suite 1025	
+            Denver, CO 80222
+            USA
+            Phone: +1 949 679 8267
+            E-mail: elkon@smc.com"
+
+  DESCRIPTION
+        " The MIB module to describe the router device functions. "
+
+
+ REVISION "201204240000Z"
+	DESCRIPTION
+		"  Add:   option for  routerDhcpv6SrvrConfType   to support both  "
+
+ REVISION "201204130000Z"
+	DESCRIPTION
+		"  Add:   routerConfigFileEncryptionStatus   smcRouterConfigFile 7 
+                          routerActiveConfigInDefaultMode smcRouterConfigFile 8
+
+
+                   Changes
+                          routerDhcpv6SrvrDuid: Change to read-only "
+
+ REVISION "201203190000Z"
+	DESCRIPTION
+		"  Add: routerWanPrefixValidLifetime      smcWanIpConfigEntry 19 
+                        reouterWanPrefixPreferredLifetime smcWanIpConfigEntry 20  "
+
+ REVISION "201201160000Z"
+	DESCRIPTION
+		" editorial changes "
+
+
+ REVISION "201201130000Z"
+	DESCRIPTION
+		" Add:    routerLocalMgmtHnapPort  smcRouterLocalMgmt 9 "
+
+ REVISION "201201050000Z"
+	DESCRIPTION
+		" Add:                       smcWanIpConfigTable                 
+                  Update explanation for:    routerDhcpv6SrvrIPv6Prefix           "
+
+ REVISION "201112270000Z"
+	DESCRIPTION
+		" Add:
+                  routerLoginHnapUsername      smcRouterLogin 8
+                   routerLoginHnapPassword      smcRouterLogin 9
+                  "
+
+ REVISION "201112090000Z"
+	DESCRIPTION
+		" 
+                 Rename  routerCwmpAllowDocsisConfig            (smcRouterCwmp 9)
+                 to      routerCwmpForceAcsParametersByDocsisConfig  
+
+                 And add explanation     "
+
+ REVISION "201111300000Z"
+	DESCRIPTION
+		"  additions to Cwmp
+                (Cpe Wan Management Protocol AKA TR-069):
+                smcRouterCwmp         smcRouter      22
+	           routerCwmpCrUser            smcRouterCwmp 7 
+                   routerCwmpCrPassword        smcRouterCwmp 8 
+                   routerCwmpAllowDocsisConfig smcRouterCwmp 9
+
+                 Change format of the following OID to TruthValue:
+                   routerCwmpStatus            smcRouterCwmp 1
+                   routerCwmpInformStatus      smcRouterCwmp 5 "
+
+    REVISION "201109210000Z"
+	DESCRIPTION
+		"  Change the term TR-069 to Cwmp
+                (Cpe wan management protocol):
+                smcRouterCwmp         smcRouter      22
+			routerCwmpStatus            smcRouterCwmp 1
+			routerCwmpAcsUrl            smcRouterCwmp 2
+          (routerTr069Url was renamed to routerCwmpAcsUrl) 
+			routerCwmpAcsUser           smcRouterCwmp 3 
+			routerCwmpAcsPassword       smcRouterCwmp 4 
+			routerCwmpInformStatus      smcRouterCwmp 5 
+			routerCwmpInformInterval    smcRouterCwmp 6 "
+
+   
+    REVISION "201109090000Z"
+	DESCRIPTION
+		"  add  routerDhcpv6SrvrTable "
+   
+
+     REVISION "201104260000Z"
+	DESCRIPTION
+		"  add routerRemoteMgmtAclRowStatus to RouterRemoteMgmtAcl Table. 
+             Explain how to add sigle IP address to the table "
+    
+
+      REVISION "201103160000Z"
+	DESCRIPTION
+		"  Change write-only access to read-write 
+              with comments that read should always retun NULL
+              to protect data. 
+              Affected:
+              routerTr069AcsPassword
+              routerLoginAdminPassword "
+
+      REVISION "201103130000Z"
+	DESCRIPTION
+	"  Adding smcRouterTr069	smcRouter      22
+	routerTr069Status  		smcRouterTr069 1
+      routerTr069Url  			smcRouterTr069 2
+	routerTr069AcsUser  		smcRouterTr069 3 
+	routerTr069AcsPassword  	smcRouterTr069 4 
+      routerTr069InformStatus    	smcRouterTr069 5 
+	routerTr069InformInterval  	smcRouterTr069 6 "
+	
+      REVISION "201102010000Z"
+	DESCRIPTION
+		"  Adding routerTelnetEnabl	smcRouterSystem  9
+		routerSshEnable			smcRouterSystem  10
+		routerReinit 			smcRouterSystem  11 "
+
+	REVISION "201012220000Z"
+	DESCRIPTION
+		"update user/pw min length to 2 
+             change routerLoginAdminPassword to write-only"
+
+	REVISION "201009080000Z"
+	DESCRIPTION
+		"Add routerLoginMaxSession."
+			
+    REVISION "201008040000Z"
+    DESCRIPTION
+        "Change routerConfigFileForceConfig value list."
+
+    REVISION "201007280000Z"
+    DESCRIPTION
+        "Add smcRouterConfigFile."
+
+    REVISION "201005190000Z"
+    DESCRIPTION
+        "Add routerHnapEnable."
+
+    REVISION "201005040000Z"
+    DESCRIPTION
+        "Add routerOperationMode."
+
+    REVISION "201003220000Z"
+    DESCRIPTION
+        "Replaced routerRemoteMgmtStartIp and routerRemoteMgmtEndIp with routerRemoteMgmtTable."
+
+    REVISION "201001060000Z"
+    DESCRIPTION
+        "Add smcRouterLanAddrTable."
+
+    REVISION "200910010000Z"
+    DESCRIPTION
+        "Initial Compile Version"
+ 
+    REVISION "200912090000Z"
+    DESCRIPTION
+        "Add routerLocalMgmtHttpsEnable and routerLocalMgmtHttpsPort."
+
+    ::= { smcNetworks 61 }
+
+    -- Generic information
+
+    smcRouterSystem	 		OBJECT IDENTIFIER ::= {  smcRouter 10 }
+    smcRouterRemoteMgmt 	OBJECT IDENTIFIER ::= {  smcRouter 11 }
+    smcRouterLocalMgmt  	OBJECT IDENTIFIER ::= {  smcRouter 12 }
+    smcRouterLogin   		OBJECT IDENTIFIER ::= {  smcRouter 13 }
+    smcRouterLan  			OBJECT IDENTIFIER ::= {  smcRouter 14 }
+    smcRouterVpn			OBJECT IDENTIFIER ::= {  smcRouter 15 }
+    smcRouterPort			OBJECT IDENTIFIER ::= {  smcRouter 16 }
+    smcRouterDhcps		  	OBJECT IDENTIFIER ::= {  smcRouter 19 }
+    smcRouterConfigFile	  	OBJECT IDENTIFIER ::= {  smcRouter 20 }
+    smcRouterCwmp		OBJECT IDENTIFIER ::= {  smcRouter 22 }
+    smcWanIp                    OBJECT IDENTIFIER ::= {  smcRouter 23 }
+
+	
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Gateway System 
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    routerFirewallEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether firewall is enabled/disabled."
+	    ::= { smcRouterSystem 1 }
+
+    routerContentFilterEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether content filter is enabled/disabled."
+	    ::= { smcRouterSystem 2 }
+
+    routerIdsEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether Intrusion Detection Service 
+		        is enabled/disabled."
+	    ::= { smcRouterSystem 3 }
+
+    routerQosEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether Quality Of Service is enabled/disabled."
+	    ::= { smcRouterSystem 4 }
+
+    routerUpnpIgdEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether UPnP IGD service is enabled/disabled."
+	    ::= { smcRouterSystem 5 }
+
+    routerRipEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether RIP is enabled/disabled."
+	    ::= { smcRouterSystem 6 }
+
+    routerOperationMode OBJECT-TYPE
+        SYNTAX INTEGER
+        		{
+                    residential(1),
+                    commercial(2)
+                 }
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "To choose the residential/commercial features enabled on the router."
+        ::= { smcRouterSystem 7 }   
+
+    routerHnapEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether HNAP 
+		        is enabled/disabled."
+	    ::= { smcRouterSystem 8 }
+    routerTelnetEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		      "This object identifies whether Telnet server is enabled/disabled.
+			 This is global flag - not relate to specific interface.
+			Default values depend on product definition"
+	    ::= { smcRouterSystem 9 }
+
+    routerSshEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		      "This object identifies whether SSH Server is enabled/disabled.
+			 This is global flag - not relate to specific interface.
+			Default values depend on product definition"
+	    ::= { smcRouterSystem 10 }
+
+    routerReinit OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Setting this object to true(1) causes the device to do a reinit RG.
+             Reading this object always returns false(2)."
+        ::= { smcRouterSystem 11 }
+
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Gateway Remote Management
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    routerRemoteMgmtHttpEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether HTTP server is enabled/disabled for 
+		        the WAN side remote management."
+	    ::= { smcRouterRemoteMgmt 1 }
+
+    routerRemoteMgmtHttpPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The HTTP server port for WAN side remote management."
+	    ::= { smcRouterRemoteMgmt 2 }
+
+    routerRemoteMgmtTelnetEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether Telnet server is enabled/disabled for 
+		        the WAN side remote management."
+	    ::= { smcRouterRemoteMgmt 3 }
+
+    routerRemoteMgmtTelnetPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The Telnet server port for WAN side remote management."
+	    ::= { smcRouterRemoteMgmt 4 }
+
+    routerRemoteMgmtSshEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether SSH server is enabled/disabled for 
+		        the WAN side remote management."
+	    ::= { smcRouterRemoteMgmt 5 }
+
+    routerRemoteMgmtSshPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The SSH server port for WAN side remote management."
+	    ::= { smcRouterRemoteMgmt 6 }
+
+    routerRemoteMgmtAllowCusAdminLogin OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Allow/Deny the HTTP server WAN side access for the customer login 
+                account. If set to FALSE, only service operator login account is 
+                allowed to access HTTP server from WAN side."
+        DEFVAL { false }
+        ::= { smcRouterRemoteMgmt 7 }
+
+    routerRemoteMgmtAccess OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        everyone(1),
+                        ipAddressRange(2),
+                        onlyThisIp(3)
+                    }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The Access control for the users who want to remotely manage the gateway."
+        DEFVAL { everyone }
+        ::= { smcRouterRemoteMgmt 8 }
+
+    routerRemoteMgmtAccessSingleIp OBJECT-TYPE
+        SYNTAX      InetAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The IP address when routerRemoteMgmtAccess is onlyThisIp(3)."
+        ::= { smcRouterRemoteMgmt 11 }
+
+    routerRemoteMgmtAclTable OBJECT-TYPE 
+           SYNTAX      SEQUENCE OF RouterRemoteMgmtAclEntry 
+           MAX-ACCESS  not-accessible 
+           STATUS      current 
+           DESCRIPTION 
+                   "This table is a list of remote management access IP address ranges,
+                   which are only effective when routerRemoteMgmtAccess is ipAddressRange (2).
+                   If you wish to add few single IPs just make EndIp=StartIp in the table entry"
+        ::= { smcRouterRemoteMgmt 12 }
+    
+    routerRemoteMgmtAclEntry OBJECT-TYPE 
+        SYNTAX      RouterRemoteMgmtAclEntry 
+        MAX-ACCESS  not-accessible 
+        STATUS      current 
+        DESCRIPTION 
+                "List of IP address ranges." 
+        INDEX { routerRemoteMgmtAclIndex } 
+        ::= { routerRemoteMgmtAclTable 1 } 
+    
+    RouterRemoteMgmtAclEntry ::= SEQUENCE { 
+        routerRemoteMgmtAclIndex		INTEGER,
+        routerRemoteMgmtAclStartIp      InetAddress, 
+        routerRemoteMgmtAclEndIp      	InetAddress,
+        routerRemoteMgmtAclRowStatus          RowStatus 
+        } 
+      
+    routerRemoteMgmtAclIndex OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The index of ACL entry."
+        ::= { routerRemoteMgmtAclEntry 1 }
+
+    routerRemoteMgmtAclStartIp OBJECT-TYPE
+        SYNTAX      InetAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The start IP address of access range."
+        ::= { routerRemoteMgmtAclEntry 2 }
+
+    routerRemoteMgmtAclEndIp OBJECT-TYPE
+        SYNTAX      InetAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The end IP address of access range."
+        ::= { routerRemoteMgmtAclEntry 3 }
+
+    routerRemoteMgmtAclRowStatus OBJECT-TYPE 
+        SYNTAX      RowStatus 
+        MAX-ACCESS  read-create 
+        STATUS      current 
+        DESCRIPTION 
+                "The RowStatus interlock for creation and deletion of row
+                entries. The device must not allow the NMS to set RowStatus
+                to notInService(2). The device must assign a RowStatus of
+                notInService(2) to any new row entry created with a
+                non-unique, routerLanAddrClientID value. The device must
+                assign a RowStatus of notReady(3) to any new row entry
+                created without a routerLanAddrClientID.  The device will
+                prevent modification of this table's columns and return an
+                inconsistentValue error, if the NMS attempts to make such 
+                modifications while the RowStatus is active(1)." 
+        ::= { routerRemoteMgmtAclEntry 4 } 
+
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Local Management Port 
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    routerLocalMgmtHttpEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether HTTP server is enabled/disabled for 
+		        the LAN side management."
+	    ::= { smcRouterLocalMgmt 1 }
+
+    routerLocalMgmtHttpPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The HTTP server port for LAN side management."
+	    ::= { smcRouterLocalMgmt 2 }
+
+    routerLocalMgmtTelnetEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether Telnet server is enabled/disabled for 
+		        the LAN side management."
+	    ::= { smcRouterLocalMgmt 3 }
+
+    routerLocalMgmtTelnetPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The Telnet server port for LAN side management."
+	    ::= { smcRouterLocalMgmt 4 }
+
+    routerLocalMgmtSshEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether SSH server is enabled/disabled for 
+		        the LAN side management."
+	    ::= { smcRouterLocalMgmt 5 }
+
+    routerLocalMgmtSshPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The SSH server port for LAN side management."
+	    ::= { smcRouterLocalMgmt 6 }
+
+    routerLocalMgmtHttpsEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether HTTP server is enabled/disabled for 
+		        the LAN side management."
+	    ::= { smcRouterLocalMgmt 7 }
+
+    routerLocalMgmtHttpsPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The HTTP server port for LAN side management."
+	    ::= { smcRouterLocalMgmt 8 }
+
+    routerLocalMgmtHnapPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The HNAP Listening port for LAN side management."
+	    ::= { smcRouterLocalMgmt 9 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Password Management
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    routerLoginAdminUsername OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Username for service provider login"
+	    ::= { smcRouterLogin 1 }
+
+    routerLoginAdminPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Password for service provider login
+                     Read this OID must return NULL to protect the data"
+	    ::= { smcRouterLogin 2 }
+
+    routerLoginCusAdminPWDCtrl OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        disable(0),
+                        enable(1)
+                    }
+      MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Enable/Disable password configuration for CusAdmin user."
+	    ::= { smcRouterLogin 3 }
+
+    routerLoginCusAdminEnable OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        disable(0),
+                        enable(1)
+                    }
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Enable/Disable CusAdmin login."
+	    ::= { smcRouterLogin 4 }
+
+    routerLoginCusAdminUsername OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Username for CusAdmin login."
+	    ::= { smcRouterLogin 5 }
+
+    routerLoginCusAdminPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Password for CusAdmin login."
+	    ::= { smcRouterLogin 6 }
+
+	routerLoginMaxSession OBJECT-TYPE
+        SYNTAX      INTEGER 
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Number of maximum GUI login sessions. 0 is unlimited."
+		DEFVAL { 0 }
+	    ::= { smcRouterLogin 7 }   
+
+     routerLoginHnapUsername OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Username for Home Seurity over Hnap ."
+	    ::= { smcRouterLogin 8 }
+
+    routerLoginHnapPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..64))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Password for Home Seurity over Hnap.
+                         Read this OID must return NULL to protect the data"
+	    ::= { smcRouterLogin 9 }
+	    
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Local Network Management
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    routerPrivateLanIP OBJECT-TYPE
+        SYNTAX      InetAddress
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure Private LAN gateway IP address."
+	    ::= { smcRouterLan 1 }
+
+    routerPrivateLanIPMask OBJECT-TYPE
+        SYNTAX      InetAddress
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure Private LAN subnet mask."
+	    ::= { smcRouterLan 2 }
+
+    routerPublicLanIP OBJECT-TYPE
+        SYNTAX      InetAddress
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure Public LAN gateway IP address."
+	    ::= { smcRouterLan 3 }
+
+    routerPublicLanIPMask OBJECT-TYPE
+        SYNTAX      InetAddress
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure Public LAN subnet mask."
+	    ::= { smcRouterLan 4 }
+
+    routerExtraPublicLanIP OBJECT-TYPE
+        SYNTAX      InetAddress
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure extra Public LAN gateway IP address."
+	    ::= { smcRouterLan 5 }
+
+    routerExtraPublicLanIPMask OBJECT-TYPE
+        SYNTAX      InetAddress
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure extra Public LAN subnet mask."
+	    ::= { smcRouterLan 6 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             The LAN Device Table                            |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    routerLanAddrTable OBJECT-TYPE 
+           SYNTAX      SEQUENCE OF RouterLanAddrEntry 
+           MAX-ACCESS  not-accessible 
+           STATUS      current 
+           DESCRIPTION 
+                   "This table is a list of LAN client parameters.
+                   This table has one row entry for each allocated
+                   LAN IP address.  Each row must have at least a
+                   valid routerLanAddrMethod, a unique routerLanAddrIp, and a unique
+                   routerLanAddrClientId value.
+
+                   Static/Manual address assignment: To create a new DHCP
+                   address reservation, the NMS creates a row with: an
+                   index comprised of a new routerLanAddrIp and its
+                   routerLanAddrIpType, a new unique
+                   routerLanAddrClientID, (an empty LeaseCreateTime and
+                   empty LeaseExpireTime,) and a
+                   routerLanDataAddrRowStatus of createAndGo(4).  If the
+                   syntax and values of the new row - indicating a
+                   reservation - are valid, the device must set
+                   routerLanAddrMethod to reservationInactive(1) and
+                   routerLanDataAddrRowStatus to active(1).  When the device
+                   grants a lease for a reserved IP, it must set the
+                   routerLanAddrMethod object for that row to
+                   reservationActive(2).  When a lease for a reserved IP
+                   expires, the device must set the corresponding row's
+                   routerLanAddrMethod object to reservationInactive(1).
+                   For row entries that represent lease reservations - rows
+                   in which the routerLanAddrMethod object has a value of
+                   either reservationInactive(1) or reservationActive(2) -
+                   the routerLanAddrIpType, routerLanAddrIp,
+                   routerLanAddrClientID, routerLanAddrMethod, and
+                   routerLanAddrHostName object values must persist across
+                   device reboots.
+
+                   Dynamic address assignment:  When the device grants a lease
+                   for a non-reserved IP, it must set the
+                   routerLanAddrMethod object for that row to
+                   dynamicActive(4).  When a lease for a non-reserved IP
+                   expires, the device must set the corresponding row's
+                   routerLanAddrMethod object to dynamicInactive(3).  The
+                   device must create new row entries using routerLanAddrIp
+                   values that are unique to this table.  If all
+                   routerLanAddrIp values in the range defined by
+                   routerLanPoolStart and routerLanPoolEnd are in use in
+                   this table, the device may overwrite the
+                   routerLanAddrClientId of a row that has a
+                   routerLanAddrMethod object with a value of
+                   dynamicInactive(3) with a new routerLanAddrClientId
+                   value and use that routerLanAddrIp as part of a new
+                   lease.  For row entries that represent active leases -
+                   rows in which the routerLanAddrMethod object has a
+                   value of dynamicActive(4) - the routerLanAddrIpType,
+                   routerLanAddrIp, routerLanAddrClientID,
+                   routerLanAddrMethod, and routerLanAddrHostName object
+                   values must persist across device reboots."
+        ::= { smcRouterLan 7 } 
+    
+    routerLanAddrEntry OBJECT-TYPE 
+        SYNTAX      RouterLanAddrEntry 
+        MAX-ACCESS  not-accessible 
+        STATUS      current 
+        DESCRIPTION 
+                "List of general parameters pertaining to LAN IP
+                address reservations and leases." 
+        INDEX { routerLanAddrIp } 
+        ::= { routerLanAddrTable 1 } 
+    
+    RouterLanAddrEntry ::= SEQUENCE { 
+        routerLanAddrIp                 IpAddress, 
+        routerLanAddrClientID           PhysAddress, 
+        routerLanAddrLeaseCreateTime    DateAndTime, 
+        routerLanAddrLeaseExpireTime    DateAndTime, 
+        routerLanAddrMethod             INTEGER, 
+        routerLanAddrHostName           OCTET STRING, 
+        routerLanAddrRowStatus          RowStatus 
+        } 
+      
+    routerLanAddrIp OBJECT-TYPE 
+        SYNTAX      IpAddress 
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION  
+                "The address assigned to the LAN IP Device. This parameter
+                is entered by the gateway when the DHCP server grants a lease to a
+                LAN IP Device and creates a row
+                in this table. Alternatively, this parameter can be
+                entered by the NMS through the CMP, when the NMS creates
+                a new DHCP address reservation.  Each routerLanAddrIp
+                in the table must fall within the range of IPs defined
+                inclusively by routerLanPoolStart and 
+                routerLanPoolEnd.  The device must return an 
+                inconsistentValue error if the NMS attempts to
+                create a row entry with a routerLanAddrIP value that falls
+                outside of this range or is not unique from all existing
+                routerLanAddrIP entries in this table. The address type of
+                this object is specified by routerLanAddrIpType."
+        ::= { routerLanAddrEntry 2 } 
+    
+    routerLanAddrClientID OBJECT-TYPE 
+        SYNTAX      PhysAddress 
+        MAX-ACCESS  read-create 
+        STATUS      current 
+        DESCRIPTION 
+                "The client's (i.e., LAN IP Device's) hardware address as
+                indicated in the chaddr field of its DHCP REQUEST message.
+                There is a one-to-one relationship between the hardware
+                address and the LAN IP Device. This parameter is entered
+                by the device when the DHCP server grants a lease to a LAN IP
+                Device and creates a row in this
+                table. Alternatively this parameter can be created by the
+                NMS through the MIB, when the NMS creates a new DHCP
+                address reservation by accessing the 
+                routerLanDataAddrRowStatus object with an index 
+                comprised of a unique routerLanAddrIp and creating
+                a row with a unique routerLanAddrClientID."
+        ::= { routerLanAddrEntry 3 } 
+
+    routerLanAddrLeaseCreateTime OBJECT-TYPE 
+        SYNTAX      DateAndTime
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "This is the date and time when the LAN IP lease was
+                created (if it has not yet been renewed) or last renewed.
+                This MIB object contains a zero valued 11 byte string
+                when a reservation is created for a LAN IP address
+                and it maintains this value until the LAN IP Device
+                acquires its lease and routerLanAddrMethod
+                becomes reservationActive(2)."
+        ::= { routerLanAddrEntry 4 }
+    
+    routerLanAddrLeaseExpireTime OBJECT-TYPE 
+        SYNTAX      DateAndTime
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "This is the date and time when the LAN IP address lease
+                expired or will expire. This MIB object contains a zero
+                valued 11 byte string when a reservation is created for
+                a LAN IP address and it maintains this value until the
+                LAN IP Device acquires its lease and
+                routerLanAddrMethod becomes reservationActive(2)."
+        ::= { routerLanAddrEntry 5 }
+    
+    routerLanAddrMethod OBJECT-TYPE 
+        SYNTAX      INTEGER { 
+                        mgmtReservationInactive(1),
+                        mgmtReservationActive(2),
+                        dynamicInactive(3),
+                        dynamicActive(4),
+                        gwReservationInactive(5),
+                        gwReservationActive(6)  
+                    } 
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "The IP allocation method indicated by this row.
+
+                The value of mgmtReservationInactive(1)
+                indicates an externally provisioned IP address
+                reservation that has not yet been leased or that
+                has an expired lease. This indicates an IP address
+                lease reservation created either by an operator or
+                a user.
+            
+                The value of mgmtReservationActive(2)
+                indicates an externally provisioned IP address
+                reservation that has an active lease. This indicates
+                an IP address lease reservation created either
+                by an operator or a user.
+
+                The value of dynamicInactive(3) indicates an
+                IP address that was once dynamically assigned to a 
+                LAN client by the device but currently
+                has an expired lease.
+ 
+                The value of dynamicActive(4)indicates an IP 
+                Address that was dynamically assigned to a
+                LAN device by the gateway and has a current
+                active lease.
+            
+                The value of gwReservationInactive(5)
+                indicates an IP address reservation created by some
+                internal process of the gateway and has not yet been
+                leased or has an expired lease.
+            
+                The value of gwReservationActive(6)
+                indicates an IP address reservation created by some
+                internal process of the device that has an active lease." 
+        ::= { routerLanAddrEntry 6 } 
+    
+    routerLanAddrHostName OBJECT-TYPE 
+        SYNTAX      OCTET STRING (SIZE(0..80)) 
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "This is the Host Name of the LAN IP address, based on DCHP
+                option 12." 
+        ::= { routerLanAddrEntry 7 } 
+    
+    routerLanAddrRowStatus OBJECT-TYPE 
+        SYNTAX      RowStatus 
+        MAX-ACCESS  read-create 
+        STATUS      current 
+        DESCRIPTION 
+                "The RowStatus interlock for creation and deletion of row
+                entries. The device must not allow the NMS to set RowStatus
+                to notInService(2). The device must assign a RowStatus of
+                notInService(2) to any new row entry created with a
+                non-unique, routerLanAddrClientID value. The device must
+                assign a RowStatus of notReady(3) to any new row entry
+                created without a routerLanAddrClientID.  The device will
+                prevent modification of this table's columns and return an
+                inconsistentValue error, if the NMS attempts to make such 
+                modifications while the RowStatus is active(1)." 
+        ::= { routerLanAddrEntry 8 } 
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --                                                              |
+    --             The Router Port Table                            |
+    --                                                              |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    
+    routerPortTable OBJECT-TYPE
+            SYNTAX     SEQUENCE OF RouterPortEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "A list of configuration entries for individually
+                     switched ports."
+            ::= { smcRouterPort 1 }
+    
+    routerPortEntry OBJECT-TYPE
+            SYNTAX     RouterPortEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "Configuration parameters for an individually
+                     switched port."
+            INDEX   { routerPortIndex }
+            ::= { routerPortTable 1 }
+    
+    RouterPortEntry ::=
+            SEQUENCE {
+                    routerPortIndex
+                            INTEGER,
+                    routerPortLinkAdmin
+                            INTEGER,
+                    routerPortLinkStatus
+                            INTEGER,
+                    routerPortAutoNegotiation
+                            INTEGER,
+                    routerPortDuplexAdmin
+                            INTEGER,
+                    routerPortDuplexStatus
+                            INTEGER,
+                    routerPortSpeedAdmin
+                            INTEGER,
+                    routerPortSpeedStatus
+                            INTEGER
+            }
+    
+    routerPortIndex OBJECT-TYPE
+            SYNTAX     INTEGER
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                    "The port number."
+            ::= { routerPortEntry 1 }
+    
+    routerPortLinkAdmin OBJECT-TYPE
+            SYNTAX     INTEGER { down(0), up(1) }
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                    "The link setting of the port."
+            ::= { routerPortEntry 2 }
+
+    routerPortLinkStatus OBJECT-TYPE
+            SYNTAX     INTEGER { noLink(0), link(1) }
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                    "The link status of the port."
+            ::= { routerPortEntry 3 }
+    
+    routerPortAutoNegotiation OBJECT-TYPE
+            SYNTAX     INTEGER { off(0), on(1) }
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                    "The Auto-Negotiation setting of the port."
+            ::= { routerPortEntry 4 }
+    
+   routerPortDuplexAdmin OBJECT-TYPE
+            SYNTAX     INTEGER {
+                                halfDuplex(0),
+                                fullDuplex(1)
+                               }
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                   "Set to fullDuplex(1) to operate in full duplex mode:
+                    port will allow simultaneous transmit and receive
+                    which can double its bandwidth. Set to halfDuplex(2)
+                    to operate in normal mode."
+            DEFVAL { fullDuplex }
+            ::= { routerPortEntry 5 }
+    
+    routerPortDuplexStatus OBJECT-TYPE
+            SYNTAX     INTEGER {
+                                halfDuplex(0),
+                                fullDuplex(1)
+                               }
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                   "The operating duplex mode of the port."
+            ::= { routerPortEntry 6 }
+    
+    routerPortSpeedAdmin OBJECT-TYPE
+            SYNTAX     INTEGER {
+                                tenMbps(1),
+                                oneHundredMbps(2),
+                                oneThousandMbps(3)
+                               }
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                   "Set to tenMbps(1) to operate in 10Mbps speed mode.
+                    Set to oneHundredMbps(2) to operate in 100Mbps speed mode. 
+                    Set to oneThousandMbps(3) to operate in 1000Mbps speed mode."
+            DEFVAL { oneHundredMbps }
+            ::= { routerPortEntry 7 }
+    
+    routerPortSpeedStatus OBJECT-TYPE
+            SYNTAX     INTEGER {
+                                tenMbps(1),
+                                oneHundredMbps(2),
+                                oneThousandMbps(3)
+                               }
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                   "The operating speed of the port."
+            ::= { routerPortEntry 8 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Gateway VPN Configuration
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    routerIpsecEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether IPSec VPN is enabled/disabled."
+	    ::= { smcRouterVpn 1 }
+
+    routerPptpEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether PPTP server is enabled/disabled."
+	    ::= { smcRouterVpn 2 }
+
+    routerL2tpEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether L2TP server is enabled/disabled."
+	    ::= { smcRouterVpn 3 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- DHCP Server Address Pool Table
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    routerAddrPoolTable OBJECT-TYPE
+            SYNTAX     SEQUENCE OF RouterAddrPoolEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "A list of configuration entries for individually
+                     address pools."
+            ::= { smcRouterDhcps 1 }
+    
+    routerAddrPoolEntry OBJECT-TYPE
+            SYNTAX     RouterAddrPoolEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "Configuration parameters for an individually
+                     address ppol."
+            INDEX   { routerAddrPoolIndex }
+            ::= { routerAddrPoolTable 1 }
+    
+    RouterAddrPoolEntry ::=
+            SEQUENCE {
+                    routerAddrPoolIndex
+                            INTEGER,
+                    routerAddrPoolType
+                            InetAddressType,
+                    routerAddrPoolStart
+                            InetAddress,
+                    routerAddrPoolEnd
+                            InetAddress,
+                    routerAddrPoolDomainName
+                            DisplayString,
+                    routerAddrPoolDnsServer1
+                            InetAddress,
+                    routerAddrPoolDnsServer2
+                            InetAddress,
+                    routerAddrPoolLeaseTime
+                            Unsigned32
+            }
+    
+    routerAddrPoolIndex OBJECT-TYPE
+            SYNTAX     INTEGER
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                    "The port number."
+            ::= { routerAddrPoolEntry 1 }
+    
+	routerAddrPoolType OBJECT-TYPE
+	    SYNTAX      InetAddressType
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The Address type of LAN IP Addresses."
+	    DEFVAL { ipv4 }    
+	    ::= { routerAddrPoolEntry 2 }
+	
+	routerAddrPoolStart OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The start of range LAN IP Addresses. The type of
+	            this address is specified by DhcpsAddrPoolType."
+	    DEFVAL { 'c0a8000a'h }    -- 192.168.0.10 
+	    -- 192.168.0.0 is the network number
+	    -- 192.168.0.255 is broadcast 
+	    -- address and 192.168.0.1
+	    -- is reserved for the router
+	    ::= { routerAddrPoolEntry 3 }
+
+	routerAddrPoolEnd OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The end of range for LAN IP Addresses. The type of
+	            this address is specified by DhcpsAddrPoolType."
+	    DEFVAL { 'c0a800fe'h }    -- 192.168.0.254
+	    ::= { routerAddrPoolEntry 4 }
+
+	routerAddrPoolDomainName OBJECT-TYPE
+	    SYNTAX      DisplayString
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The gateway MUST provide the value of this MIB object
+	            in the Option 15 (Domain Name Option) of the DHCP
+	            OFFER and ACK messages sent to the LAN IP Device."
+	    DEFVAL { "" }
+	    ::= { routerAddrPoolEntry 5 }
+	
+	routerAddrPoolDnsServer1 OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The default value of this MIB object is the
+	            same as the value of the gateway LAN IP.
+	            The NMS may set the value of this
+	            object to a different value (e.g. DNS server in the
+	            cable data network) so that a LAN IP Device can direct its
+	            DNS queries to a server other than the gateway DNS
+	            proxy server. The type of this address is specified
+	            by DhcpsAddrPoolType. The device MUST
+	            provide the value of this MIB object as the first IP in the list  
+	            in Option 6 (Domain Name Server) of DHCP OFFER and ACK
+	            messages sent to a LAN IP Device."
+	    ::= { routerAddrPoolEntry 6 }
+	
+	routerAddrPoolDnsServer2 OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The default value of this MIB object is the
+	            same as the value of the gateway LAN IP.
+	            The NMS may set the value of this
+	            object to a different value (e.g. DNS server in the
+	            cable data network) so that a LAN IP Device can direct its
+	            DNS queries to a server other than the gateway DNS
+	            proxy server. The type of this address is specified
+	            by DhcpsAddrPoolType. The device MUST
+	            provide the value of this MIB object as the 2nd IP in the list  
+	            in Option 6 (Domain Name Server) of DHCP OFFER and ACK
+	            messages sent to a LAN IP Device."
+	    ::= { routerAddrPoolEntry 7 }
+	
+	routerAddrPoolLeaseTime OBJECT-TYPE
+	    SYNTAX      Unsigned32
+	    UNITS       "seconds"
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The gateway MUST provide the value of this MIB object in the
+	            Option 51 (IP Address lease time) of the DHCP OFFER and
+	            ACK messages sent to the LAN IP Device."
+	    DEFVAL { 3600 }
+	    ::= { routerAddrPoolEntry 8 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- DHCPv6 Server Address Pool Table
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+     routerDhcpv6SrvrTable OBJECT-TYPE
+            SYNTAX     SEQUENCE OF RouterDhcpv6SrvrEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "A list of configuration entries for individually
+                     address pools."
+            ::= { smcRouterDhcps 2 }
+    
+     routerDhcpv6SrvrEntry OBJECT-TYPE
+            SYNTAX     RouterDhcpv6SrvrEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "Configuration parameters for an individually address pool."
+            INDEX   { routerDhcpv6SrvrIndex }
+            ::= { routerDhcpv6SrvrTable 1 }
+    
+    RouterDhcpv6SrvrEntry  ::=
+            SEQUENCE {
+                    routerDhcpv6SrvrIndex          INTEGER,
+                    routerDhcpv6SrvrEnable         TruthValue,
+                    routerDhcpv6SrvrType           InetAddressType,
+                    routerDhcpv6SrvrConfType       INTEGER,
+                    routerDhcpv6SrvrAutoConf       TruthValue,
+                    routerDhcpv6SrvrDhcpStart      OCTET STRING,
+                    routerDhcpv6SrvrDhcpEnd        OCTET STRING,
+                    routerDhcpv6SrvrDomainName     DisplayString,
+                    routerDhcpv6SrvrDns            TruthValue,
+                    routerDhcpv6SrvrDnsPri         InetAddress,
+                    routerDhcpv6SrvrDnsSec         InetAddress,
+                    routerDhcpv6SrvrDhcpLease      Unsigned32,
+                    routerDhcpv6SrvrIPv6Prefix     OCTET STRING,
+                    routerDhcpv6SrvrIPv6PrefixCompletion OCTET STRING,
+                    routerDhcpv6SrvrDuid           OCTET STRING,
+                    routerDhcpv6SrvrLanIpv6        InetAddress,
+                    routerDhcpv6SrvrLanIpv6Mask    InetAddress
+                     }
+
+     routerDhcpv6SrvrIndex OBJECT-TYPE
+            SYNTAX     INTEGER
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                    "The port number."
+            ::= { routerDhcpv6SrvrEntry 1 }
+      
+    routerDhcpv6SrvrEnable  OBJECT-TYPE
+         SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether DHCPv6 is enabled/disabled for the specific port
+
+                    Enable  (1)
+                    Disable (2)
+
+             Default per product and other special settings"
+            ::= { routerDhcpv6SrvrEntry 2 }
+
+     routerDhcpv6SrvrType OBJECT-TYPE
+	    SYNTAX      InetAddressType
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The Address type of LAN IP Addresses."
+	    DEFVAL { ipv6 }    
+	    ::= { routerDhcpv6SrvrEntry 3 }
+
+     routerDhcpv6SrvrConfType     OBJECT-TYPE
+            SYNTAX       INTEGER {
+                               stateless(1),
+                               stateful(2),
+                               both (3)
+                               } 
+            MAX-ACCESS	 read-write
+	    STATUS		current
+	    DESCRIPTION
+		         "Configuration type stateless(1) or stateful(2) or both (3) at the same time."
+          DEFVAL { both }
+	    ::= { routerDhcpv6SrvrEntry 4 }
+
+     routerDhcpv6SrvrAutoConf    OBJECT-TYPE
+            SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether disable LAN side DHCPv6 autoconfiguration
+                                                        is enabled/disabled for the specific port
+
+                    Enable  (1)
+                    Disable (2)
+
+             Default per product and other special settings"
+            ::= { routerDhcpv6SrvrEntry 5 }
+
+      routerDhcpv6SrvrDhcpStart    OBJECT-TYPE
+	    SYNTAX       OCTET STRING (SIZE (8))
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The start of the range for LAN IPv6 Host ID. 
+                    Default value may differ per product"
+           DEFVAL { '00000000c0a80064'h }    
+            ::= {  routerDhcpv6SrvrEntry  6 }
+
+      routerDhcpv6SrvrDhcpEnd    OBJECT-TYPE
+	    SYNTAX       OCTET STRING (SIZE (8))
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The End of the range for LAN IPv6 Host ID. 
+                     Default value may differ per product"
+           DEFVAL { '00000000c0a800fe'h }    
+            ::= {  routerDhcpv6SrvrEntry 7 }
+
+       routerDhcpv6SrvrDomainName   OBJECT-TYPE
+	    SYNTAX      DisplayString
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The gateway MUST provide the value of this MIB object
+	            in the Option 15 (Domain Name Option) of the DHCP
+	            OFFER and ACK messages sent to the LAN IP Device.
+                    Need toverify if this aplicable in IPv6 "
+            ::= {  routerDhcpv6SrvrEntry 8 }
+
+        routerDhcpv6SrvrDns      OBJECT-TYPE
+         SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies manual assignment DNS servers
+                    is enabled/disabled for the specific port
+
+                    Enable  (1)
+                    Disable (2)
+
+             Default per product and other special settings"
+            ::= {  routerDhcpv6SrvrEntry 9 }
+
+       routerDhcpv6SrvrDnsPri OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The default value of this MIB object is the
+	            same as the value of the gateway LAN IPv6.
+	            The NMS may set the value of this
+	            object to a different value (e.g. DNS server in the
+	            cable data network) so that a LAN IP Device can direct its
+	            DNS queries to a server other than the gateway DNS
+	            proxy server. The type of this address is specified
+	            by DhcpsAddrPoolType. The device MUST
+	            provide the value of this MIB object as the first IP in the list  
+	            in Option 6 (Domain Name Server) of DHCP OFFER and ACK
+	            messages sent to a LAN IP Device."
+            ::= {  routerDhcpv6SrvrEntry 10 }
+
+
+       routerDhcpv6SrvrDnsSec  OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The default value of this MIB object is the
+	            same as the value of the gateway LAN IP.
+	            The NMS may set the value of this
+	            object to a different value (e.g. DNS server in the
+	            cable data network) so that a LAN IP Device can direct its
+	            DNS queries to a server other than the gateway DNS
+	            proxy server. The type of this address is specified
+	            by DhcpsAddrPoolType. The device MUST
+	            provide the value of this MIB object as the 2nd IP in the list  
+	            in Option 6 (Domain Name Server) of DHCP OFFER and ACK
+	            messages sent to a LAN IP Device."
+            ::= {  routerDhcpv6SrvrEntry 11 }
+
+
+       routerDhcpv6SrvrDhcpLease  OBJECT-TYPE
+	    SYNTAX      Unsigned32
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "In cases we set Gateway (WAN) interface."
+       	    DEFVAL { 10080 }
+            ::= {  routerDhcpv6SrvrEntry 12 }
+
+
+       routerDhcpv6SrvrIPv6Prefix  OBJECT-TYPE
+	    SYNTAX      OCTET STRING (SIZE (8))
+	    MAX-ACCESS  read-only
+	    STATUS      current
+	    DESCRIPTION
+	            "IPv6 Prefix.
+                     The Prefix should be delegate from WAN Interface that is associated
+                     with this subnet.
+                     In case Delegated Prefix is shorter then /64 (/56 to /63), the prefix will be 
+                     complete to /64 accordingto  routerDhcpv6SrvrIPv6PrefixCompletion.
+                     In case WAN Interface has not been provided with IPv6, Gateway may 
+                     use default prefix.   
+                     Default Value may differ between products .
+                 
+                    Jan 05, 2012, AE:
+                    See routerWanIpv6DeligatedPrefixLength on how to set the length of this prefix request.  "
+            ::= {  routerDhcpv6SrvrEntry 13 }
+
+       routerDhcpv6SrvrIPv6PrefixCompletion  OBJECT-TYPE
+	    SYNTAX      OCTET STRING (SIZE (1))
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "If we set the WAN to request shorter prefix (/56 to /63)
+                      we must be able to complete the LAN prefix to /64.
+                      This will be the prefix used for SLAAC and in RA on the LAN.
+                      Default Value for main LAN subnet will be 0x01."
+            ::= {  routerDhcpv6SrvrEntry 14 }
+
+       routerDhcpv6SrvrDuid  OBJECT-TYPE
+	    SYNTAX      OCTET STRING (SIZE (8))
+	    MAX-ACCESS  read-only
+	    STATUS      current
+	    DESCRIPTION
+	            "DUID for DHCPv6 Option.  
+                      Default TBD."
+            ::= {  routerDhcpv6SrvrEntry 15 }
+
+       routerDhcpv6SrvrLanIpv6      OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "LAN IPv6 address that associated to this subnet (DHCP IPv6 Pool)."
+            ::= {  routerDhcpv6SrvrEntry 16 }
+
+
+
+        routerDhcpv6SrvrLanIpv6Mask      OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "LAN IPv6 address that associated to this subnet (DHCP IPv6 Pool)."
+            ::= {  routerDhcpv6SrvrEntry 17 }
+
+
+
+  -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  -- Rg Config File 
+  -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	routerConfigFileServer OBJECT-TYPE
+        SYNTAX      InetAddress
+        MAX-ACCESS  read-write
+        STATUS      deprecated
+        DESCRIPTION
+            "The address of the TFTP server used for config file
+             backup/restore.  If the TFTP server is unknown or is a
+             non-IPv4 address, return 0.0.0.0."
+        ::= { smcRouterConfigFile 1 }
+
+	routerConfigFileFilename OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..64))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The filename of the config file to be backed up or restored via
+             TFTP. It may include the file path.
+
+             If the value of this object is the zero-length, use router RF 
+             MAC address followed by .cfg. For standalone router, use WAN
+             MAC address followed by .cfg."
+        ::= { smcRouterConfigFile 2 }
+
+	routerConfigFileIndex OBJECT-TYPE
+        SYNTAX INTEGER {
+            running-config(1),
+            backup-config(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Backup or restore the router config file.
+
+             Note that reading this object always return
+             backup(1)."
+        DEFVAL { 1 }
+        ::= { smcRouterConfigFile 3 }
+
+	routerConfigFileForceConfig OBJECT-TYPE
+        SYNTAX INTEGER {
+            updateOnlyDefaultParams(0),     
+            forceNewConfig(1),
+            updateListedParams(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "
+ 			0 - Only update parameters that currently at the factory default values 
+ 			1 - Force new configuration on top of default configuration. 
+     			(All parameters that are not exist(mentioned) in the loaded config file will be set to default). 
+ 			2 - Update only listed parameters. This will allow updating partial configuration. 
+            "
+        DEFVAL { 0 }
+        ::= { smcRouterConfigFile 4 }
+
+	routerConfigFileAdminStatus OBJECT-TYPE
+        SYNTAX INTEGER {
+            backup(1),
+            restore(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Backup or restore the router config file.
+             Note that reading this object always return
+             backup(1)."
+        DEFVAL { 1 }
+        ::= { smcRouterConfigFile 5 }
+
+	routerConfigFileOperStatus OBJECT-TYPE
+        SYNTAX INTEGER {
+            inProgress(1),
+            completeBackup(2),
+            completeRestore(3),
+            failed(4),
+            other(5)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "InProgress(1) indicates that a TFTP or HTTP download/upload is
+             underway.
+
+             completeBackup(2) indicates that the backup operation is completed.
+
+             completeRestore(3) indicates that the restore operation is completed.
+
+             Failed(4) indicates that the last attempted download/upload
+             failed, ordinarily due to TFTP or HTTP timeout."
+        ::= { smcRouterConfigFile 6 }
+
+	routerConfigFileEncryptionStatus OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Backup or restore router config file could be Encrypted or not.
+             If Gateway support the option to set it, this OID could be used 
+             via SNMP manager or in the docsis-cm-config firl to override the default
+             which is product depended.
+             Encrypted (1)
+             Not Encrypted (2)    "
+        ::= { smcRouterConfigFile 7 }
+
+	routerActiveConfigInDefaultMode OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            " Global flag to determine if the active Gateway setting had been 
+             change by operator or by customer.
+                Active RG-Config is in default mode (1)
+                Active RG-Config had been change (2)    "
+        ::= { smcRouterConfigFile 8 }
+
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Cpe Wan Management Protocol [CWMP] (TR-069) 
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+     routerCwmpStatus OBJECT-TYPE
+        SYNTAX       TruthValue 
+            MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Enable/Disable TR-069 module.
+                         Enable  (1)
+                         Disable (2)"
+	    ::= { smcRouterCwmp 1 }
+
+
+     routerCwmpAcsUrl OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..256))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "ACS URL 
+                     Default will be set per product. if not specify use http://my.acs.com"
+	    ::= { smcRouterCwmp 2 }
+
+	routerCwmpAcsUser OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..64))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "ACS username"
+	    ::= { smcRouterCwmp 3 }
+
+	routerCwmpAcsPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..64))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+	        "ACS Password.
+                 Read this OID MUST always retun NULL to protect data "
+	    ::= { smcRouterCwmp 4 }
+
+     routerCwmpInformStatus OBJECT-TYPE
+        SYNTAX      TruthValue
+            MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Enable/Disable TR-069 Inform.
+                         Enable  (1)
+                         Disable (2)"
+	    ::= { smcRouterCwmp 5 }
+
+	routerCwmpInformInterval OBJECT-TYPE
+        SYNTAX      INTEGER 
+        MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "TR-069 Inform Interval. (In Sec)
+			   Default value 30 Sec  	"
+	    ::= { smcRouterCwmp 6 }
+
+	routerCwmpCrUser OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..64))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "CR username: Device Management Server ConnectionRequestUsername parameter from [TR-181i2a3]"
+	    ::= { smcRouterCwmp 7 }
+
+	routerCwmpCrPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..64))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+	        "CR Password: Device Management Server ConnectionRequestUsername parameter from [TR-181i2a3].
+                 Read this OID MUST always retun NULL to protect data "
+	    ::= { smcRouterCwmp 8 }
+
+          routerCwmpForceAcsParametersByDocsisConfig OBJECT-TYPE
+        SYNTAX      TruthValue
+            MAX-ACCESS	        read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Force-DOCSIS-Config-ACS-Parameters:
+                        ACS credentials and URL, could be updated by the ACS. In that case, we do not want a
+                        modem reset to override the parameters set by the ACS.
+                        If this parameter is included in the CM-DOCSIS-Config file, the modem will enforce 
+                        the parameters set in the CM-DOCSIS-Config.
+                         (X_Allow_DOCSIS_Config) .
+                         Enable  (1) = Force
+                         Disable (2)"
+	    ::= { smcRouterCwmp 9 }
+
+
+--------------------------------------------------------------------
+--  WAN Interface IP Paramaters
+-- AE, 2012 Jan 5
+--------------------------------------------------------------------
+ smcWanIpConfigTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF SmcWanIpConfigEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table provide WAN Interface IP parameters and allow settings of few of them"
+       
+        ::= { smcWanIp 1 }
+
+   smcWanIpConfigEntry OBJECT-TYPE
+        SYNTAX      SmcWanIpConfigEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An entry provides a list of IP parameters for the WAN interface
+             An entry in this table exists for each WAN interface per its ifIndex.
+             Per eRouter SPEC, the 1st WAN interface has index 1 if the gateway is in eRouter mode which is equvalent 
+             to SMC Router(Gateway) mode.
+             All the OIDs will return NULL if gateway is setto bridge mode. "
+        INDEX { ifIndex }
+        ::= {  smcWanIpConfigTable 1 }
+
+   SmcWanIpConfigEntry ::= SEQUENCE {
+            routerWanMacAddress                 OCTET STRING,
+            routerWanIpMode                     INTEGER,
+            routerWanIpv4Mode                   INTEGER,
+            routerWanIpv4Address                InetAddress, 
+            routerWanIpv4Mask                   InetAddress, 
+            routerWanIpv4DefaultGateway         InetAddress, 
+            routerWanIpv4LeaseTime              Unsigned32,
+            routerWanIpv4DnsManual              TruthValue, 
+            routerWanIpv4DnsPrimary                 InetAddress, 
+            routerWanIpv4DnsSec                     InetAddress, 
+            routerWanIpv4ParametersStatus        INTEGER,
+            routerWanIpv6LinkLocal              InetAddress, 
+            routerWanIpv6Address                InetAddress,
+            routerWanIpv6DnsPri                 InetAddress,
+            routerWanIpv6DnsSec                 InetAddress,
+            routerWanIpv6DefaultGateway         InetAddress,
+            routerWanIpv6Prefix                  OCTET STRING,
+            routerWanIpv6DeligatedPrefixLength  INTEGER,
+            routerWanPrefixValidLifetime         Unsigned32,
+            reouterWanPrefixPreferredLifetime    Unsigned32 
+       }
+
+            routerWanMacAddress  OBJECT-TYPE
+            SYNTAX              OCTET STRING 
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface MAC Address "
+	    ::= { smcWanIpConfigEntry 1 }
+
+
+     
+            routerWanIpMode     OBJECT-TYPE
+            SYNTAX              INTEGER {
+                         noIp4WanInterface(0),
+                         ipv4Only(1),
+                         ipv6Only(2),
+                         apm(3),
+                         dpm(4)
+                         } 
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IP  version set as was set acording to MDD and MDDOveride feature (SMC OID or eRouter TLVs)
+                         If WAN interface is not active, or for any reason has not aquired IP - the results will show '0' "
+	    ::= { smcWanIpConfigEntry 2 }
+
+
+            routerWanIpv4Mode            OBJECT-TYPE
+            SYNTAX              INTEGER {
+                         wanInterfaceNotActive-BridgeMode(0),
+                         dhcp(1),
+                         static(2),
+                         true-Static(3)
+                         } 
+            MAX-ACCESS          read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv4 mode.
+                         This OID can be used to set WAN interface mode between DHCP/Stati/True-static.
+                         DHCP (Auto) mode will follow the IP-version managment and will not interfear with 
+                         MDD-Override of SMC OID or eRouter TLVs.
+  
+                         This may vary between products according to products definition.
+
+                         SNMP-Set: can accept only values of 1-3.
+                         SNMP-Get: If Gateway is set to Bridge Mode, or if WAN is setto IPv6-Only, this OID will return '0' for SNMP-Get.   
+                         "
+            DEFVAL { dhcp }           
+	    ::= { smcWanIpConfigEntry 3 }
+
+
+            routerWanIpv4Address          OBJECT-TYPE
+            SYNTAX              InetAddress
+            MAX-ACCESS          read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv4 address.
+                         This OID can be used to set WAN Interface IPv4 address only if it is in Static on True-Static mode "
+	    ::= { smcWanIpConfigEntry 4 }
+
+
+            routerWanIpv4Mask            OBJECT-TYPE
+            SYNTAX              InetAddress
+            MAX-ACCESS          read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv4 Mask.
+                         This OID can be used to set WAN Interface IPv4 address Mask only if it is in Static on True-Static mode "
+	    ::= { smcWanIpConfigEntry 5 }
+
+            routerWanIpv4DefaultGateway  OBJECT-TYPE
+            SYNTAX              InetAddress
+            MAX-ACCESS          read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv4 Default Gateway IP.
+                         This OID can be used to set WAN Interface IPv4 Default Gateway IP only if it is in Static on True-Static mode "
+	    ::= { smcWanIpConfigEntry 6 }
+
+  
+            routerWanIpv4LeaseTime        OBJECT-TYPE
+            SYNTAX              Unsigned32
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv4 IP Lease time.
+                         This OID can be used to set WAN Interface IPv4 IP Lease time only if it is DHCP mode.
+                         In other modes it will show '0000' "
+	    ::= { smcWanIpConfigEntry 7 }
+
+  
+            routerWanIpv4DnsManual         OBJECT-TYPE
+            SYNTAX      TruthValue
+    	    MAX-ACCESS  read-write
+    	    STATUS      current
+	    DESCRIPTION
+		    "Set this OID to '1' will allow setting routerWanIpv4DnsPrimary and routerWanIpv4DnsSec.
+                     When  routerWanIpv4Mode=DHCP(1) this OID will always return (2).
+                    True-Enable  (1)  
+                    False- Disable (2)
+
+             Default per product and other special setting "
+             DEFVAL { false }
+            ::= { smcWanIpConfigEntry 8 }
+
+ 
+            routerWanIpv4DnsPrimary       OBJECT-TYPE
+            SYNTAX              InetAddress
+            MAX-ACCESS          read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv4 Primary DNS server IP.
+                         If WAN Ipv4 is set to DHCP, this OID can be used to read the automatically assigned Primary DNS server IP address. 
+                         If  routerWanIpv4DnsManual is set (1), this OID can be used to set the Primary DNS server IP address. "
+	    ::= { smcWanIpConfigEntry 9 }
+    
+            routerWanIpv4DnsSec           OBJECT-TYPE
+            SYNTAX              InetAddress
+            MAX-ACCESS          read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv4 Secondary DNS server IP.
+                         If WAN Ipv4 is set to DHCP, this OID can be used to read the automatically assigned Secondary DNS server IP address. 
+                         If  routerWanIpv4DnsManual is set (1), this OID can be used to set the Secondary DNS server IP address. "
+	    ::= { smcWanIpConfigEntry 10 }
+
+
+            routerWanIpv4ParametersStatus        OBJECT-TYPE
+            SYNTAX              INTEGER {
+
+                      factoryDefaultsOrAuto(1),
+                      manuallySetAndStored(2),
+                      pendingManuallUpdate(3)
+                         } 
+            MAX-ACCESS          read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Parameters Status:
+            
+                  Set:
+                    (1) - Reset WanIpv4 to factory Defaults value, which will set them according to DHCP process if IPv4 applys. 
+                    (2) - Commit pending values and save them the nonevalotile memory (RG-Config-Script) this may reinit the WAN Interface.
+                  Read: 
+                    (1) - WAN IPv4 parameters at Factory Defaults Value. 
+                    (2) - WAN IPv4 parameters had been set mabually to values other than factory defaults             .
+                    (3) - Pending parameters update - without commit - the pending values will be lost during Gateway Reaet
+                    "
+	    ::= { smcWanIpConfigEntry 11 }
+
+            routerWanIpv6LinkLocal        OBJECT-TYPE
+            SYNTAX              InetAddress
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv6 Link Local address
+                         This OID will show '0' in cases WAN interface is set to IPv4-only "
+	    ::= { smcWanIpConfigEntry 12 }
+
+            routerWanIpv6Address         OBJECT-TYPE
+            SYNTAX              InetAddress
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv6 address.
+                         This OID will show '0' in cases WAN interface is set to IPv4-only "
+	    ::= { smcWanIpConfigEntry 13 }
+
+            routerWanIpv6DnsPri          OBJECT-TYPE
+            SYNTAX              InetAddress
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv6 Primary DNS server IPv6 address.
+                         This OID will show '0' in cases WAN interface is set to IPv4-only "
+	    ::= { smcWanIpConfigEntry 14 }
+
+            routerWanIpv6DnsSec           OBJECT-TYPE
+            SYNTAX              InetAddress
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv6 Secondary DNS server IPv6 address.
+                         This OID will show '0' in cases WAN interface is set to IPv4-only "
+	    ::= { smcWanIpConfigEntry 15 }
+
+
+            routerWanIpv6DefaultGateway   OBJECT-TYPE
+            SYNTAX              InetAddress
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv6 Default Gateway.
+                         This OID will show '0' in cases WAN interface is set to IPv4-only "
+	    ::= { smcWanIpConfigEntry 16 }
+
+
+            routerWanIpv6Prefix            OBJECT-TYPE
+            SYNTAX              OCTET STRING (SIZE (8))
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        "WAN Interface IPv6 Address Prefix - all the 64 bits (8 Octet).
+                         This OID will show '0' in cases WAN interface is set to IPv4-only "
+	    ::= { smcWanIpConfigEntry 17 }
+
+
+            routerWanIpv6DeligatedPrefixLength  OBJECT-TYPE
+            SYNTAX              INTEGER 
+            MAX-ACCESS          read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "IPv6 Deligated Prefix Legth.
+                         Gateway can request Prefix shoter than /64 so it can assign different /64 prifixes 
+                         to each Isolated Subnet on it's LAN subnets "
+	    ::= { smcWanIpConfigEntry 18 }
+
+        routerWanPrefixValidLifetime          OBJECT-TYPE
+            SYNTAX              Unsigned32
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        " Valid Life time of the Prefix Delegated to the WAN interface "
+            ::= { smcWanIpConfigEntry 19 }
+ 
+
+        reouterWanPrefixPreferredLifetime        OBJECT-TYPE
+            SYNTAX              Unsigned32
+            MAX-ACCESS          read-only
+	    STATUS		current
+	    DESCRIPTION
+		        " Preferred Life time of the Prefix Delegated to the WAN interface "
+            ::= { smcWanIpConfigEntry 20 }
+ 
+
+END

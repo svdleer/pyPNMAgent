@@ -1,0 +1,174 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-upnp-mgmt.mib
+--    Creation Date: June 1, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--		private MIB for upnp management.
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-UPNP-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,
+	Integer32,
+	NOTIFICATION-TYPE       FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION      FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP      FROM SNMPv2-CONF
+	SnmpAdminString         FROM SNMP-FRAMEWORK-MIB
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6         FROM INET-ADDRESS-MIB
+    ifIndex                 FROM IF-MIB
+    PositiveInteger         FROM UPS-MIB
+    cableMgmt               FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- Netgear Group
+-- 
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrUpnpMgmt MODULE-IDENTITY
+	LAST-UPDATED "201205100000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"Initial version of this MIB module."
+::= { cableMgmt 18 }
+
+
+upnpEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrUpnpMgmt 1 }
+
+upnpAdverPeriod  OBJECT-TYPE
+	SYNTAX     Integer32 (1..1440)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrUpnpMgmt 2 }
+
+upnpAdverTtl  OBJECT-TYPE
+	SYNTAX     Integer32  (1..255)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrUpnpMgmt 3 }
+
+upnpPortmapTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF UpnpPortmapEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrUpnpMgmt 4 }
+
+upnpPortmapEntry  OBJECT-TYPE
+	SYNTAX 	UpnpPortmapEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { upnpPortmapActive }
+	::= { upnpPortmapTable 1 }
+
+UpnpPortmapEntry ::= SEQUENCE {
+	upnpPortmapActive
+		TruthValue,
+	upnpPortmapProtocol
+		INTEGER,
+	upnpPortmapInternalPort
+		Integer32,
+	upnpPortmapExternalPort
+		Integer32,
+	upnpPortmapIpAddr
+		InetAddress
+}
+
+upnpPortmapActive  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { upnpPortmapEntry 1 }
+
+upnpPortmapProtocol  OBJECT-TYPE
+	SYNTAX     INTEGER {
+                tcp(0),
+                udp(1),
+                both(2)                
+    }
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { upnpPortmapEntry 2 }
+
+upnpPortmapInternalPort  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { upnpPortmapEntry 3 }
+
+upnpPortmapExternalPort  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { upnpPortmapEntry 4 }
+
+upnpPortmapIpAddr  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { upnpPortmapEntry 5 }
+END
+

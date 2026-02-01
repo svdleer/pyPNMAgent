@@ -1,0 +1,284 @@
+CADANT-CMTS-CABLEGROUP-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, MODULE-IDENTITY, Integer32, Counter32
+		FROM SNMPv2-SMI
+	TenthdB
+		FROM DOCS-IF-MIB
+	DisplayString, RowStatus, TruthValue, TimeStamp
+		FROM SNMPv2-TC
+	cadExperimental
+		FROM CADANT-PRODUCTS-MIB
+	CardId
+		FROM CADANT-TC
+    InterfaceIndex
+        FROM IF-MIB;
+
+cadCableGroupMib MODULE-IDENTITY
+	LAST-UPDATED "200804160000Z" -- Apr 16, 2008
+	ORGANIZATION "Cadant Inc"
+	CONTACT-INFO 
+		" YungNguyen@cadant.com "
+	DESCRIPTION 
+        "This Mib Module describes the concepts and data needed to
+		 configure and control and cable groups defined and implemented
+		 in within the Cadant C4 CMTS."
+
+    REVISION    "200804160000Z" -- Apr 16, 2008
+    DESCRIPTION
+        "Remove cableGroupDownstreamChlCardNumber and cableGroupDownstreamChlDownstreamChlId.
+         Add cableGroupDownstreamChlIfIndex as the index of CableGroupDownstreamChlEntry."
+    REVISION    "200802030000Z"
+    DESCRIPTION
+        "Remove cableGroupKeepOutFreqTable, cableGroupFccGeneral, and 
+                cableGroupFccHistoryEntry."
+    REVISION    "200103160300Z"
+    DESCRIPTION
+        "   v1.1 16-Mar-2001 Bill Hanks
+         Restructured several tables to allow easier provisioning
+         data manipulation between tables."
+         
+    REVISION    "9911010000Z"
+    DESCRIPTION
+        "   v1.0 11-Nov-1999 Yung Nguyen
+         Original version."
+
+	::= { cadExperimental 4 }
+
+--*********************************************************************
+--** All definition related to Cable Groups starts here
+--**
+--*********************************************************************
+--=============== Cable Group ====================
+
+cableGroupFcc        OBJECT IDENTIFIER ::= { cadCableGroupMib 20 }
+cableGroupFccGeneral OBJECT IDENTIFIER ::= { cableGroupFcc 1 }
+
+
+
+--*********************************************************************
+--* Begin the definition of the Cable Group Table structure
+--*********************************************************************
+
+cableGroupTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF CableGroupEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		" Each cable group defines a physical cable which contains
+		a logical set of one or more DownStream Channels and 
+		associated Upstream Channel(s). In addition, each cable group 
+		contains one or more keepout upstream entries. "
+	::= { cadCableGroupMib 1 }
+
+cableGroupEntry OBJECT-TYPE
+	SYNTAX	CableGroupEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		" As explained above. "
+	INDEX	{ cableGroupId }
+	::= { cableGroupTable 1 }
+
+CableGroupEntry ::=
+	SEQUENCE {
+		cableGroupId				            Integer32,
+		cableGroupName				            DisplayString,
+		cableGroupRowStatus			            RowStatus,
+        cableGroupMaxUpPerDownStream            Integer32,
+        cableGroupFccMonitorInterval            Integer32,
+        cableGroupFccUnrecoverableThreshold     Integer32,
+        cableGroupFccSignalNoiseThreshold       TenthdB,
+        cableGroupFccNoiseTimeOut               Integer32,
+		cableGroupFccMaxHistory			        Integer32
+		}
+
+cableGroupId OBJECT-TYPE
+	SYNTAX	Integer32(1..255)
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		" Cable Group Identification. Used as index. "
+	::= { cableGroupEntry 1 }
+
+cableGroupName OBJECT-TYPE
+	SYNTAX	DisplayString
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		" Cable Group Name. "
+	::= { cableGroupEntry 2 }
+
+cableGroupRowStatus OBJECT-TYPE
+	SYNTAX	RowStatus
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		" Control object for row creation and deletion. "
+	::= { cableGroupEntry 3 }
+
+cableGroupMaxUpPerDownStream	OBJECT-TYPE
+	SYNTAX	Integer32(1..8)
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		" The maximum numbers of up stream channels supported 
+		per downstream channel. Theoretically, it could go up to 256:1.
+		For now default value is 8."
+	::= { cableGroupEntry 4 }
+
+cableGroupFccMonitorInterval OBJECT-TYPE
+	SYNTAX      Integer32 (1..60)
+	UNITS		"seconds"
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		" The interval, expressed in seconds, between successive checks 
+		of the quality of the active upstream frequencies for the purposes
+		of determining whether an upstream channel change is necessary. 
+		This interval also controls the minimum time between possible ustream
+		frequency changes. 
+		Note: the changing of this interval will take operational effect until
+		the current interval has expired."
+	DEFVAL { 10 }
+	::= { cableGroupEntry 5}
+
+cableGroupFccUnrecoverableThreshold OBJECT-TYPE
+	SYNTAX	Integer32 (1..1000)
+	UNITS		"unrecoverable codewords per 10,000"
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The number of unrecoverable codewords (out of every 10,000) that
+		 will be tolerated before the system will consider the carrier to
+		 be noisy.
+		 Note that if FCC is disabled then this threshold is not active 
+		 for that carrier."
+	DEFVAL { 100 }
+	::= { cableGroupEntry 6 }
+
+cableGroupFccSignalNoiseThreshold OBJECT-TYPE
+	SYNTAX	TenthdB (10..25)
+	UNITS		"tenths of dB"
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The threshold of signal to noise (in tenths of a dB) before the 
+		 channel is considered noisy.
+
+		 Note that if FCC is disabled then this threshold is not 
+		 active for that carrier."
+	DEFVAL { 25 }
+	::= { cableGroupEntry 7 }
+
+cableGroupFccNoiseTimeOut OBJECT-TYPE
+	SYNTAX	Integer32 (1..10080)
+	UNITS		"minutes"
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The amount of time (in minutes) that the system will consider a
+		 noisy channel to be noisy before returning the channel to the
+		 available spectrum."
+	DEFVAL { 30 }
+	::= { cableGroupEntry 8 }
+
+cableGroupFccMaxHistory 	OBJECT-TYPE
+	SYNTAX	Integer32 (1..28800)
+	UNITS		"entries"
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The number of upstream channel samples that are kept for 
+		 reporting purposes.  Setting this number to be high limits the
+		 amount of system memory that is available for other processing.	 
+		 The maximum value of 28800 will allow 1 hour's worth of 1 second
+		 samples on 8 active upstream channels per cable branch."
+	DEFVAL	{ 2880 }
+	::= { cableGroupEntry 9 }
+
+
+
+--==Down Stream and Up stream channels set Table for each CableGroup--
+
+cableGroupDownstreamChlTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF CableGroupDownstreamChlEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		" The following table defines the set of dowstream
+		channels for each cable group entry in the 
+        cableGroupTable. "
+	
+	::= { cadCableGroupMib 5 }
+
+cableGroupDownstreamChlEntry OBJECT-TYPE
+	SYNTAX	CableGroupDownstreamChlEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		" "
+	INDEX { cableGroupDownstreamChlCableGroupId, cableGroupDownstreamChlIfIndex}
+	::= { cableGroupDownstreamChlTable 1 }
+
+CableGroupDownstreamChlEntry ::=
+	SEQUENCE {
+		cableGroupDownstreamChlCableGroupId		Integer32,
+		cableGroupDownstreamChlRowStatus	    RowStatus,
+		upLoadBalanceControl                    BITS,
+        cableGroupDownstreamChlIfIndex          InterfaceIndex
+		}
+
+cableGroupDownstreamChlCableGroupId OBJECT-TYPE
+	SYNTAX	Integer32(1..255)
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		" Cable Group Index from the cableGroupTable. "
+	::= { cableGroupDownstreamChlEntry 1 }
+
+
+cableGroupDownstreamChlRowStatus OBJECT-TYPE
+	SYNTAX	RowStatus
+	MAX-ACCESS	read-create
+	STATUS	current
+	DESCRIPTION
+		" Control object for row creation and deletion. "
+	::= { cableGroupDownstreamChlEntry 4 }
+
+upLoadBalanceControl OBJECT-TYPE
+    SYNTAX BITS {
+            initial-maintenance(0),
+            ucc(1),
+            services(2),
+			dynamic(3),
+            dcc(4),
+			others(5)
+    }
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "The object is used to activate/deactive upstream load balancing. 
+		 The set bit indicates the corresponding level of load balancing 
+		 is enabled. Note that BITS are encoded most significant bit first. 
+		 For example, if the first bit is set, then the load balanceing 
+		 applied to initial-maintenance is activated, this object is 
+		 encoded as the octet string '80'H."
+    REFERENCE      "Cadant CMTS UpstreamLoadBalancing architecture documentation."
+    ::= { cableGroupDownstreamChlEntry 5 }
+
+cableGroupDownstreamChlIfIndex OBJECT-TYPE
+	SYNTAX	InterfaceIndex
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		" Cable Group Downstream Channel ifIndex. "
+	::= { cableGroupDownstreamChlEntry 6 }
+
+
+--=======================================================--
+
+
+
+-- THIS IS THE END OF THE CABLEGROUPMIB MODULE --
+END

@@ -1,0 +1,202 @@
+----------------------------------------------------------------------------
+----------------------------------------------------------------------------
+--  Unihan modified the original file by Comcast.
+--
+--  Copyright (c) 2008  Unihan Corporation
+--  All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--  written permission of:
+--          Unihan Corporation
+--          No. 150, Lide Rd., Beitou,
+--          Taipei 112, Taiwan
+--  All information contained in this document is Unihan Corporation
+--  company private, proprietary, and trade secret.
+--
+--  update on 2009/04/01
+--  v1.0.4
+----------------------------------------------------------------------------
+COMCAST-COMMERCIAL-GATEWAY-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS 
+   MODULE-IDENTITY, 
+   OBJECT-TYPE, 
+   enterprises					FROM SNMPv2-SMI 
+   TruthValue						FROM SNMPv2-TC 
+   OBJECT-GROUP, 
+   MODULE-COMPLIANCE		FROM SNMPv2-CONF 
+   comcastCommercialServices	FROM COMCAST-COMMERCIAL-SERVICES-MIB;
+                           
+commercialGateway		MODULE-IDENTITY
+	LAST-UPDATED		"200504280000Z" -- April 28, 2005
+	ORGANIZATION 		"Comcast Corporation"
+    CONTACT-INFO
+		"	
+			[Organization]  Comcast Cable Communications
+			[Address]		1500 Market Street
+							9th Floor West Tower
+							Philadelphia, PA 19102
+			[Telephone]		215-981-8530
+			
+	        [Contact]		Jeffrey L. Chin
+			[Email] 		Jeffrey_Chin@cable.comcast.com
+			[Organization]  Comcast Cable Communications
+			[Title]			Commerical Product Development Engineer
+							New Product Deployments
+			[Address]		1500 Market Street
+							9th Floor West Tower
+							Philadelphia, PA 19102
+			[Telephone]		215-640-8944
+		"
+
+	DESCRIPTION
+		"This MIB defines the RIPv2 Passphrase Object and the
+		 Private Key used to decrypt the Comcast Commercial Services
+		 Static IP Flat File."
+            
+    ::= { comcastCommercialServices 1 }
+
+rip2Base			 OBJECT IDENTIFIER ::= { commercialGateway  1 }
+flatFileBase		 OBJECT IDENTIFIER ::= { commercialGateway  2 }
+timerBase			 OBJECT IDENTIFIER ::= { commercialGateway  3 }
+remoteManagementBase OBJECT IDENTIFIER ::= { commercialGateway  4 }
+-----------------------------------------------------------------------------------
+
+rip2Passphrase	OBJECT-TYPE
+	SYNTAX	OCTET STRING (SIZE(0..16))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This object holds the clear-text passpharse from which the RIPv2 MD5 Hash 
+		is derived. The MD5 hash key value must automatically be generated and 
+		applied to the interface on the gateway that is configured to announce the 
+		RIP messages. This must occur each time this object's value changes.
+		
+		When the object value is null, the 'rip2IfConfAuthKey.InterfaceIp' object
+		value must not be changed.
+					
+		This object must persist through device reset (power-cycle).
+		"
+	::= { rip2Base 1 }
+
+flatFilePrivateKey	OBJECT-TYPE
+	SYNTAX	OCTET STRING (SIZE(0..16))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The object holds the private key used to decrypt the values
+		hashed in the Static IP flat file.  The object must be persistent through
+		device resets (power-cycle).
+		"
+	::= { flatFileBase 1 }
+
+timeoutValue	OBJECT-TYPE
+	SYNTAX	Unsigned32
+    UNITS "minutes"
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This object is for timeout value can be configurable.
+		"
+	::= { timerBase 1 }
+
+httpsRmPort	OBJECT-TYPE
+	SYNTAX	INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"HTTPS remote management port.
+		"
+	::= { remoteManagementBase 1 }
+
+httpsRmEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		enabled (1),
+		disabled (2)
+	}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This object enables/disables HTTPS remote management.
+		"
+	::= { remoteManagementBase 2 }
+
+httpRmPort	OBJECT-TYPE
+	SYNTAX	INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"HTTP remote management port.
+		"
+	::= { remoteManagementBase 3 }
+
+httpRmEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		enabled (1),
+		disabled (2)
+	}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This object enables/disables HTTP remote management.
+		"
+	::= { remoteManagementBase 4 }
+
+telnetRmPort	OBJECT-TYPE
+	SYNTAX	INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Telnet remote management port.
+		"
+	::= { remoteManagementBase 5 }
+
+
+telnetRmEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		enabled (1),
+		disabled (2)
+	}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This object enables/disables Telnet remote management.
+		"
+	::= { remoteManagementBase 6 }
+
+msoRmAccessEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		enabled (1),
+		disabled (2)
+	}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This object controls whether device can be remote accessed by mso account.
+		"
+	::= { remoteManagementBase 7 }
+
+cusadminRmAccessEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		enabled (1),
+		disabled (2)
+	}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This object controls whether device can be remote accessed by mso account.
+		"
+	::= { remoteManagementBase 8 }
+
+allIpAccessEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		enabled (1),
+		disabled (2)
+	}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This object controls whether device can be remote accessed by all IP.
+		"
+	::= { remoteManagementBase 9 }
+
+END

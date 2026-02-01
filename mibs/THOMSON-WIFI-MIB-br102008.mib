@@ -1,0 +1,262 @@
+
+--****************************************************************************
+--    Filename: THOMSON-WIFI-MIB.txt
+--    Author:  Clément Moreau 
+--    Creation Date: 2008/01
+--
+--**************************************************************************
+--    Description:
+--
+--		private MIB for management of Wifi Service
+--		
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+THOMSON-WIFI-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Integer32
+        FROM SNMPv2-SMI
+    thomson
+    	FROM THOMSON-MIB
+    DisplayString,
+    TEXTUAL-CONVENTION
+        FROM SNMPv2-TC ;
+
+wifi MODULE-IDENTITY
+    LAST-UPDATED "200808150000Z"
+    ORGANIZATION "Thomson"
+    CONTACT-INFO
+        "	E-mail: "
+    DESCRIPTION
+        "Thomson private MIB for management of Wifi Service"
+    REVISION      "200808150000Z"
+    DESCRIPTION
+        "Add details to descriptions."                      
+    REVISION      "200805270000Z"
+    DESCRIPTION
+        "Added channel and WEP open security mode."                      
+    REVISION      "200802190000Z"
+    DESCRIPTION
+        "Syntax check"                      
+    REVISION      "200802010000Z"
+    DESCRIPTION
+        "Initial version of this MIB module."
+    ::= { thomson 205 200 2 }
+
+--              
+-- Textual Conventions
+--
+
+AssociatedDeviceStatus ::= TEXTUAL-CONVENTION
+    STATUS      current
+    DESCRIPTION
+	"An associatedDevice status"
+    SYNTAX INTEGER  { 
+     		associatedDeviceOk(0),
+     		associatedDeviceError(100)
+		}
+
+SecurityMode ::= TEXTUAL-CONVENTION
+    STATUS      current
+    DESCRIPTION
+	"Security Mode"
+    SYNTAX INTEGER  { 
+     		securityNone(0),
+     		securityWEPOpen(1),
+     		securityWEPShared(2),
+     		securityWPA(3),
+		securityWPA2(4)
+		}
+
+SecurityMacFilterMode ::= TEXTUAL-CONVENTION
+    STATUS      current
+    DESCRIPTION
+	"MAC Filtering Mode"
+    SYNTAX INTEGER  { 
+     		disabled(0),
+     		deny(1),
+     		allow(2)
+		}
+
+--
+-- Wifi status
+--
+cardPresent OBJECT-TYPE
+    SYNTAX Integer32 {
+          notpresent(0),
+          present(1)
+          }
+    MAX-ACCESS  read-only
+    STATUS	current
+    DESCRIPTION
+    "Indicates if Wifi Card is present and recognized by Access Point.
+    0: Card Not Present
+    1: Card Present"
+    ::= { wifi 1 }
+
+cardActivated OBJECT-TYPE
+    SYNTAX Integer32 {
+          disabled(0),
+          enabled(1)
+          }
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+    "Activation status of Wifi Card.
+    0: Not Activated (Disabled)
+    1: Activated (Enabled)"
+    ::= { wifi 2 }
+
+ssid OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+    	"SSID of the wifi access point"
+    ::= { wifi 3 }
+
+securityMode     OBJECT-TYPE
+    SYNTAX	SecurityMode
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+    "Security mode of the access point.
+        securityNone(0),
+        securityWEPOpen(1),
+        securityWEPShared(2),
+        securityWPA(3),
+        securityWPA2(4)    "
+    ::= { wifi 4 }
+
+securityKey      OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+    	"Security key for WEP/WPA"
+    ::= { wifi 5 }
+
+channel OBJECT-TYPE
+    SYNTAX      Integer32 (1..13)
+    MAX-ACCESS  read-only
+    STATUS	current
+    DESCRIPTION
+    "Channel of the access point.
+    Range: 1 to 13"
+    ::= { wifi 6 }
+
+--- Associated Devices Table.
+
+associatedDeviceTable	OBJECT-TYPE
+    SYNTAX	SEQUENCE OF AssociatedDeviceEntry
+    MAX-ACCESS 	not-accessible
+    STATUS	current
+    DESCRIPTION
+    	"List of the associatedDevices"
+    ::= { wifi 7 }
+
+associatedDeviceEntry OBJECT-TYPE
+    SYNTAX	AssociatedDeviceEntry
+    MAX-ACCESS  not-accessible
+    STATUS 	current
+    DESCRIPTION
+    	"An entry containing an associatedDevice"
+    INDEX 	{ associatedDeviceIndex }
+    ::= { associatedDeviceTable 1 }
+
+AssociatedDeviceEntry ::= SEQUENCE {
+    associatedDeviceIndex	Integer32,
+    associatedDeviceMAC		DisplayString,
+    associatedDeviceStatus	AssociatedDeviceStatus
+}
+
+associatedDeviceIndex	OBJECT-TYPE
+    SYNTAX	Integer32 (1..512)
+    MAX-ACCESS	not-accessible
+    STATUS	current
+    DESCRIPTION
+	"Index of the list (limit to 512 associated devices) "
+    ::= { associatedDeviceEntry 1 }
+
+associatedDeviceMAC	OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS	read-only
+    STATUS 	current
+    DESCRIPTION
+	"MAC of the associatedDevice"
+    ::= { associatedDeviceEntry 2 }
+
+associatedDeviceStatus	OBJECT-TYPE
+    SYNTAX	AssociatedDeviceStatus
+    MAX-ACCESS	read-only
+    STATUS	current
+    DESCRIPTION
+    "AssociatedDevice Status:
+        associatedDeviceOk(0),
+        associatedDeviceError(100)    "
+    ::= { associatedDeviceEntry 3 }
+
+--- MAC Filter
+
+securityMacFilter OBJECT IDENTIFIER ::= { wifi 8 }
+
+securityMacFilterMode OBJECT-TYPE
+    SYNTAX      SecurityMacFilterMode
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+    "Mac filter mode:
+        disabled(0),
+        deny(1),
+        allow(2)"
+    DEFVAL { 0 }
+    ::= { securityMacFilter 1 }
+
+--- Authorized Devices Table
+
+authorizedDeviceTable	OBJECT-TYPE
+    SYNTAX	SEQUENCE OF AuthorizedDeviceEntry
+    MAX-ACCESS 	not-accessible
+    STATUS	current
+    DESCRIPTION
+    	"List of the authorizedDevice"
+    ::= { securityMacFilter 2 }
+
+authorizedDeviceEntry OBJECT-TYPE
+    SYNTAX	AuthorizedDeviceEntry
+    MAX-ACCESS  not-accessible
+    STATUS 	current
+    DESCRIPTION
+    	"An entry containing an authorizedDevice"
+    INDEX 	{ authorizedDeviceIndex }
+    ::= { authorizedDeviceTable 1 }
+
+AuthorizedDeviceEntry ::= SEQUENCE {
+    authorizedDeviceIndex	Integer32,
+    authorizedDeviceMAC		DisplayString
+}
+
+authorizedDeviceIndex	OBJECT-TYPE
+    SYNTAX	Integer32 (1..512)
+    MAX-ACCESS	not-accessible
+    STATUS	current
+    DESCRIPTION
+	"Index of the list (limit to 512 authorized devices) "
+    ::= { authorizedDeviceEntry 1 }
+
+authorizedDeviceMAC	OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS	read-write
+    STATUS 	current
+    DESCRIPTION
+	"MAC of the authorizedDevice"
+    ::= { authorizedDeviceEntry 2 }
+
+END
+
+

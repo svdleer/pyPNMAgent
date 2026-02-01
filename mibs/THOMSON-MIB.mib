@@ -1,0 +1,174 @@
+--*****************************************************************
+--
+-- THOMSON.MIB:  Thomson Inc.
+--
+-- Copyright (c) 2004 by Thomson Inc.
+-- All rights reserved.
+-- 
+--*****************************************************************
+
+--**************************************************************************
+--                                                                          
+--    Copyright 2003 Thomson Inc.
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--             Thomson Inc.                                   
+--             101 W 103rd St.                                   
+--             Indianapolis, IN  46290  USA                                   
+--    All information contained in this document is Thomson Inc.    
+--    company private, proprietary, and trade secret.                       
+--                                                                          
+--**************************************************************************
+--
+--    Filename:      thomson.mib
+--    Author:        Gary Gutknecht
+--    Creation Date: March 20, 2003
+--
+--**************************************************************************
+--
+--    Description:
+--
+--      Central repository for product line links off of the IANA assigned
+--      Thomson enterprise (2863).
+--
+--      Please note that in addition to showing how the various Thomson
+--      products fit into the enterprises MIB tree, the below reserved values
+--      must be used as part of the sysObjectID in the system group.  For
+--      example, the sysObjectID for the MIB example project should be as follows:
+--
+--        "1.3.6.1.4.1.2863.1..."  (equivalent to "thomson.1...")
+--      
+--**************************************************************************
+
+THOMSON-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        MODULE-IDENTITY, enterprises
+                FROM SNMPv2-SMI;
+
+thomson MODULE-IDENTITY
+        LAST-UPDATED    "0411040000Z" -- November 4, 2004
+        ORGANIZATION    "Thomson Inc."
+        CONTACT-INFO
+            "        Harold Roberts
+             Postal: Thomson Inc.
+                     101 W 103rd St.
+                     Indianapolis, IN  46290
+                     U.S.A.
+             Phone:  +1 317 587 5329
+             E-mail: harold.roberts@thomson.net"
+        DESCRIPTION
+            "This module defines the Object Identifiers
+             assigned to the root MIB tree for each
+             SNMP enabled product made by Thomson.
+             Only a single OID definition for each product
+             should appear in this MIB and each OID should
+             be assigned a unique identifier. Please contact
+             the person listed in CONTACT-INFO above to
+             reserve a value." 
+        ::= { enterprises 2863 }
+
+--
+-- Reserver:  MIB Example
+-- Location:  Indianapolis, USA
+-- Contact:   Harold Roberts, +1 317 587 5329, harold.roberts@thomson.net
+-- Contact:   Gary Gutknecht, +1 317 587 4097, gary.gutknecht@thomson.net
+-- Status:    Deprecated
+--
+-- mibExample                 OBJECT IDENTIFIER ::= { thomson 1 }
+
+
+--
+-- Reserver:  TCE-DCM105 RCA Cable Modem (CM1 Project)
+-- Location:  Indianapolis, USA
+-- Contact:   Harold Roberts, +1 317 587 5329, harold.roberts@thomson.net
+-- Contact:   Gary Gutknecht, +1 317 587 4097, gary.gutknecht@thomson.net
+-- Status:    Allocated
+--
+tceDCM105root                 OBJECT IDENTIFIER ::= { thomson 105 }
+
+--
+-- Reserver:  DOCSIS Cable Modem
+-- Location:  Indianapolis, USA
+-- Contact:   Harold Roberts, +1 317 587 5329, harold.roberts@thomson.net
+-- Contact:   Gary Gutknecht, +1 317 587 4097, gary.gutknecht@thomson.net
+-- Status:    Allocated
+--
+broadband                     OBJECT IDENTIFIER ::= { thomson 205 }
+
+--
+-- Reserver:  DBS MDU
+-- Location:  Indianapolis, USA
+-- Contact:   Andy Flickner, +1 317 587 4843, andy.flickner@thomson.net
+-- Contact:   Gary Gutknecht, +1 317 587 4097, gary.gutknecht@thomson.net
+-- Status:    Allocated
+--
+mxu                           OBJECT IDENTIFIER ::= { thomson 210 }
+
+--
+-- Reserver:  Cable STB
+-- Location:  Rennes, France
+-- Contact:   Eric Cren, +33 (0)2.99.27.37.05, eric.cren@thomson.net
+-- Contact:   Laurent Phelep, +33 (0)2.99.27.38.29 laurent.phelep@thomson.net
+-- Status:    Allocated
+--
+upcStb                        OBJECT IDENTIFIER ::= { thomson 300 }
+
+--
+-- Reserver:  DSL Modem
+-- Location:  Edegem, Belgium
+-- Contact:   Ben Ismail Waeil, +32/03. 443.6.457, Waeil.benismail@thomson.net
+-- Contact:   Melvyn Jones,	+32/03. 443.6.494. Melvyn.Jones@thomson.net
+-- Status:    Allocated
+--
+ThomsonEdegem                 OBJECT IDENTIFIER ::= { thomson 405 }
+
+--
+-- Reserver:  Various RCA/Thomson Cable Modem Projects
+-- Location:  Indianapolis, USA
+-- Contact:   Harold Roberts, +1 317 587 5329, harold.roberts@thomson.net
+-- Contact:   Gary Gutknecht, +1 317 587 4097, gary.gutknecht@thomson.net
+-- Status:    Deprecated
+--
+-- tceDCM215root              OBJECT IDENTIFIER ::= { thomson 215 }
+-- tceDCM225root              OBJECT IDENTIFIER ::= { thomson 225 }
+-- tceDCM226root              OBJECT IDENTIFIER ::= { thomson 226 }
+-- tceDCM235root              OBJECT IDENTIFIER ::= { thomson 235 }
+-- tceDCM245root              OBJECT IDENTIFIER ::= { thomson 245 }
+-- tceDCM280root              OBJECT IDENTIFIER ::= { thomson 280 }
+-- tceDCM290root              OBJECT IDENTIFIER ::= { thomson 290 }
+-- tceDCM305root              OBJECT IDENTIFIER ::= { thomson 305 }
+-- tceDCM315root              OBJECT IDENTIFIER ::= { thomson 315 }
+-- tceDCM390root              OBJECT IDENTIFIER ::= { thomson 390 }
+-- tceDCM615root              OBJECT IDENTIFIER ::= { thomson 615 }
+
+--
+-- Reserver:  Various TCE Project X.509 OID Assignments
+-- Location:  Indianapolis, USA
+-- Contact:   Ron Ogle, +1 317 587 3367, ron.ogle@thomson.net
+-- Contact:
+-- Status:    Allocated
+--
+tceX509OIDroot                OBJECT IDENTIFIER ::= { thomson 2000 }
+
+--
+-- Reserver:  Directory services (LDAP and X.500) X.509 OID Assignments
+-- Location:  Indianapolis, USA
+-- Contact:   Ron Ogle, +1 317 587 3367, ron.ogle@thomson.net
+-- Contact:   
+-- Status:    Allocated
+--
+tceDirectoryServicesOIDroot   OBJECT IDENTIFIER ::= { thomson 2100 }
+
+--
+-- Reserver:  Digital Home Network Router Project
+-- Location:  Indianapolis, USA
+-- Contact:   John Gervais, +1 317 587 4227, john.gervais@thomson.net
+-- Contact:   Mike Derrenberger, +1 317 587 3888, mike.derrenberger@thomson.net
+-- Status:    Allocated
+--
+tceDHNProjectsRoot            OBJECT IDENTIFIER ::= { thomson 2200 }
+
+
+END

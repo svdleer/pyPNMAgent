@@ -1,0 +1,2227 @@
+CL-PW-MIB DEFINITIONS ::= BEGIN 
+    
+   IMPORTS  
+      NOTIFICATION-TYPE, MODULE-IDENTITY, OBJECT-TYPE,  
+      Integer32, Unsigned32, Counter32, Counter64, TimeTicks  
+         FROM SNMPv2-SMI                    -- [RFC2578] 
+    
+      MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP  
+         FROM SNMPv2-CONF                   -- [RFC2580] 
+    
+      TruthValue, RowStatus, StorageType,  
+      TimeStamp  
+         FROM SNMPv2-TC                     -- [RFC2579] 
+    
+      SnmpAdminString  
+         FROM SNMP-FRAMEWORK-MIB            -- [RFC3411] 
+    
+      InterfaceIndexOrZero  
+         FROM IF-MIB                        -- [RFC2863] 
+    
+      InetAddressType, InetAddress  
+         FROM INET-ADDRESS-MIB              -- [RFC4001] 
+    
+      PerfCurrentCount, PerfIntervalCount  
+         FROM PerfHist-TC-MIB               -- [RFC3593] 
+    
+      HCPerfCurrentCount, HCPerfIntervalCount, HCPerfTimeElapsed,  
+      HCPerfValidIntervals  
+         FROM HC-PerfHist-TC-MIB            -- [RFC3705] 
+    
+      clabProjDocsis
+            FROM CLAB-DEF-MIB
+      
+      TeaPwTypeTC, TeaPwPsnTypeTC,
+      TeaPwIndexType, TeaPwGroupID, TeaPwIDType, TeaPwOperStatusTC,   
+      TeaPwAttachmentIdentifierType, TeaPwCwStatusTC, TeaPwCapabilities,
+      TeaPwStatus, TeaPwFragSize, TeaPwFragStatus   
+         FROM CL-PW-TC-MIB; 
+
+
+ teaPwMIB MODULE-IDENTITY  
+     
+     
+    LAST-UPDATED    "200802150000Z" -- February 15, 2008
+    ORGANIZATION    "Cable Television Laboratories, Inc" 
+    CONTACT-INFO 
+        " 
+         Postal: Cable Television Laboratories, Inc. 
+         858 Coal Creek Circle
+         Louisville, Colorado 80027-9750 
+         U.S.A. 
+         Phone: +1 303-661-9100 
+         Fax: +1 303-661-9199
+         E-mail: mibs@cablelabs.com" 
+    DESCRIPTION 
+          "This version was taken from a snapshot of 
+          draft-ietf-pwe3-pw--mib-07.txt and modified 
+          by David Brief of Resolute Networks to be rooted 
+          in the under DOCSIS projects in the CableLabs 
+          private enterprises branch. The intention is to 
+          support the standard MIBs when they reach RFC status."  
+    REVISION 
+           "200802150000Z" -- February 15, 2008
+    DESCRIPTION
+              "This revision published as CL-PW-MIB in TEI-I04."  
+    REVISION 
+           "200602070000Z" -- February 7, 2006
+    DESCRIPTION
+              "This revision, published as CL-PW-MIB."  
+  ::= { clabProjDocsis  15 } 
+       
+    
+--   PwStdMIB MODULE-IDENTITY  
+--      LAST-UPDATED "200601110000Z"   January 11, 2006  
+--      ORGANIZATION "Pseudo Wire Edge to Edge Emulation (PWE3) Working  
+--                    Group"  
+--      CONTACT-INFO  
+--          "  
+--           David Zelig  
+--           E-mail: davidz@corrigent.com  
+--    
+--           Thomas D. Nadeau  
+--           Email:  tnadeau@cisco.com  
+--    
+--           The PWE3 Working Group (email distribution pwe3@ietf.org,  
+--           http://www.ietf.org/html.charters/pwe3-charter.html)  
+--           "  
+--      REVISION  
+--          "200601041200Z"  
+                             -- 4 January 2004 12:00:00 GMT    
+--      DESCRIPTION  
+--          "Copyright (C) The Internet Society (2006). The initial  
+--           version of this MIB module was published in RFC XXXX.  
+   -- RFC Editor: Please replace XXXX with RFC number & remove this 
+   -- note.  
+    
+--           For full legal notices see the RFC itself or see: 
+--           http://www.ietf.org/copyrights/ianamib.html 
+                  
+--           This MIB module contains managed object definitions for 
+--           Pseudo Wire operation as in [RFC3985][RFC3931][PWCNTRL]. 
+--           architecture', Martini, L., et al, 'Pseudowire Setup and   
+--           Maintenance using LDP', and Townsley, M., et al, 'Layer Two
+--           Tunneling Protocol (Version 3)'.  
+    
+--           This MIB module enables the use of any underlying packet
+--           switched network (PSN). MIB nodules that will support  
+--           PW operations over specific PSN types are defined in   
+--           separate memos.  
+    
+--           The indexes for this MIB module are also used to index the 
+--           PSN-specific tables and the PW-specific tables. The PW Type
+--           dictates which PW-specific MIB module to use.   
+--           "  
+
+ 
+
+    
+   -- Top-level components of this MIB.   
+
+ -- Notifications 
+   teaPwNotifications OBJECT IDENTIFIER  
+                                 ::= { teaPwMIB 0 } 
+  --                                            ::= { pwStdMIB 0 }
+   -- Tables, Scalars 
+   teaPwObjects       OBJECT IDENTIFIER 
+                                 ::= { teaPwMIB 1 }
+  --                                            ::= { pwStdMIB 1 }
+ 
+   -- Conformance 
+   teaPwConformance   OBJECT IDENTIFIER  
+                                 ::= { teaPwMIB 2 } 
+  --                                            ::= { pwStdMIB 2 }
+     
+   -- PW Virtual Connection Table  
+    
+   teaPwIndexNext OBJECT-TYPE  
+      SYNTAX            Unsigned32  
+      MAX-ACCESS        read-only  
+      STATUS            current  
+      DESCRIPTION  
+          "This object contains an appropriate value to be used  
+           for teaPwIndex when creating entries in the  
+           teaPwTable. The value 0 indicates that no  
+           unassigned entries are available.  To obtain the  
+           value of teaPwIndex for a new entry in the  
+           teaPwTable, the manager issues a management  
+           protocol retrieval operation to obtain the current  
+           value of teaPwIndex.  After each retrieval  
+           operation, the agent should modify the value to  
+           reflect the next unassigned index.  After a manager  
+           retrieves a value the agent will determine through  
+           its local policy when this index value will be made  
+           available for reuse."  
+      ::= { teaPwObjects 1 }  
+    
+   teaPwTable   OBJECT-TYPE  
+      SYNTAX        SEQUENCE OF TeaPwEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+          "This table specifies information for configuring and  
+           status monitoring which are common to all service types  
+           and PSN types."  
+      ::= { teaPwObjects 2 }  
+    
+   teaPwEntry   OBJECT-TYPE  
+      SYNTAX        TeaPwEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "A row in this table represents a pseudo wire (PW) virtual  
+            connection across a packet network. It is indexed by  
+            teaPwIndex, which uniquely identifying a singular   
+            connection.   
+            A row is created by the operator or by the agent if the PW 
+            is created by non-SNMP application or due to autodiscovery 
+            process.  
+            None of the read-create objects values can be changed   
+            when teaPwRowStatus is in the active(1) state. Changes are 
+            allowed when the teaPwRowStatus is in notInService(2) or  
+            notReady(3) states only.   
+            If the operator need to change one of the values for an  
+            active row (i.e. in order to fix a mismatch in  
+            configuration between the local node and the peer), the  
+            teaPwRowStatus should be first changed to notInService(2), 
+            the objects may be changed now, and later to active(1)   
+            in order to re-initiate the signaling process with the  
+            new values in effect.  
+            "  
+      INDEX  { teaPwIndex }  
+         ::= { teaPwTable 1 }  
+    
+   TeaPwEntry ::= SEQUENCE {  
+         teaPwIndex               TeaPwIndexType,  
+         teaPwType                TeaPwTypeTC,  
+         teaPwOwner               INTEGER,  
+         teaPwPsnType             TeaPwPsnTypeTC,  
+         teaPwSetUpPriority       Integer32,  
+         teaPwHoldingPriority     Integer32,  
+         teaPwPeerAddrType        InetAddressType,  
+         teaPwPeerAddr            InetAddress,  
+         teaPwAttachedPwIndex     TeaPwIndexType,  
+         teaPwIfIndex             InterfaceIndexOrZero,  
+    
+         teaPwID                  TeaPwIDType,  
+         teaPwLocalGroupID        TeaPwGroupID,  
+         teaPwGroupAttachmentID   TeaPwAttachmentIdentifierType,  
+         teaPwLocalAttachmentID   TeaPwAttachmentIdentifierType,  
+         teaPwPeerAttachmentID    TeaPwAttachmentIdentifierType,  
+    
+         teaPwCwPreference        TruthValue,    
+         teaPwLocalIfMtu          Unsigned32,  
+    
+    
+         teaPwLocalIfString       TruthValue,   
+         teaPwLocalCapabAdvert    TeaPwCapabilities,  
+         teaPwRemoteGroupID       TeaPwGroupID,  
+         teaPwCwStatus            TeaPwCwStatusTC,      
+         teaPwRemoteIfMtu         Unsigned32,  
+         teaPwRemoteIfString      SnmpAdminString,  
+         teaPwRemoteCapabilities  TeaPwCapabilities,  
+    
+         teaPwFragmentCfgSize     TeaPwFragSize,  
+         teaPwRmtFragCapability   TeaPwFragStatus,  
+         teaPwFcsRetentioncfg     INTEGER,  
+         teaPwFcsRetentionStatus  BITS,  
+    
+         teaPwOutboundLabel       Unsigned32,  
+         teaPwInboundLabel        Unsigned32,  
+    
+         teaPwName                SnmpAdminString,  
+         teaPwDescr               SnmpAdminString,  
+         teaPwCreateTime          TimeStamp,  
+         teaPwUpTime              TimeTicks,  
+         teaPwLastChange          TimeTicks,  
+         teaPwAdminStatus         INTEGER,  
+         teaPwOperStatus          TeaPwOperStatusTC,  
+         teaPwLocalStatus         TeaPwStatus,  
+         teaPwRemoteStatusCapable INTEGER,  
+         teaPwRemoteStatus        TeaPwStatus,  
+         teaPwTimeElapsed         HCPerfTimeElapsed,  
+         teaPwValidIntervals      HCPerfValidIntervals,  
+         teaPwRowStatus           RowStatus,  
+         teaPwStorageType         StorageType  
+      }  
+    
+   teaPwIndex OBJECT-TYPE  
+      SYNTAX        TeaPwIndexType  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+          "Index for the conceptual row identifying a PW within   
+           this PW Emulation table."  
+      ::= { teaPwEntry 1 }  
+    
+   teaPwType OBJECT-TYPE  
+      SYNTAX        TeaPwTypeTC  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "This value indicate the service to be carried over  
+           this PW.   
+          "  
+      ::= { teaPwEntry 2 }  
+    
+   teaPwOwner OBJECT-TYPE   
+      SYNTAX   INTEGER {  
+             manual                (1),   
+             pwIdFecSignaling      (2), -- PW signaling with PW ID FEC 
+             genFecSignaling       (3), -- Generalized attachment FEC  
+             l2tpControlProtocol   (4),  
+             other                 (5)  
+                       }  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+           "Set by the operator to indicate the protocol responsible   
+            for establishing this PW.  
+            'manual' is used in all cases where no maintenance  
+            protocol (PW signaling) is used to set-up the PW, i.e.,  
+            require configuration of entries in the PW tables  
+            including PW labels, etc.  
+            'pwIdFecSignaling' is used in case of signaling with the   
+            Pwid FEC element with LDP signaling. 
+            'genFecSignaling' is used of the generalized FEC with LDP   
+            is used for signaling purposes.  
+            'l2tpControlProtocol' indicates the use of L2TP   
+            control protocol.   
+            'other' is used for other types of signaling."   
+      ::= { teaPwEntry 3 }  
+    
+   teaPwPsnType OBJECT-TYPE 
+      SYNTAX   TeaPwPsnTypeTC    
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+           "Set by the operator to indicate the PSN type. Based on  
+            this object, the relevant PSN table entries are created  
+            in the in the PSN specific MIB modules.  
+           "  
+      ::= { teaPwEntry 4 }  
+    
+   teaPwSetUpPriority  OBJECT-TYPE  
+      SYNTAX         Integer32 (0..7)  
+      MAX-ACCESS     read-create  
+      STATUS         current  
+      DESCRIPTION  
+           "This object defines the relative set-up priority of the PW    
+            in a lowest-to-highest fashion, where 0 is the highest   
+            priority. PWs with the same priority are treated with  
+            equal priority. Dropped PW will be set 'dormant' (as  
+            indicated in teaPwOperStatus).  
+            This value is significant if there are competing resources  
+            between PWs and the implementation supports this feature. 
+            Equal priority handling with competing resources is  
+            implementation specific. " 
+      DEFVAL  
+          { 0 }  
+      ::= { teaPwEntry 5 }  
+    
+   teaPwHoldingPriority  OBJECT-TYPE  
+      SYNTAX         Integer32 (0..7)  
+      MAX-ACCESS     read-create  
+      STATUS         current  
+      DESCRIPTION  
+           "This object defines the relative holding priority of the  
+            PW in a lowest-to-highest fashion, where 0 is the highest   
+            priority. PWs with the same priority are treated with  
+            equal priority. Dropped PW will be set 'dormant' (as  
+            indicated in teaPwOperStatus).  
+            This value is significant if there are competing resources  
+            between PWs and the implementation support this feature. 
+            Equal priority handling with competing resources is  
+            implementation specific. " 
+      DEFVAL { 0 }  
+      ::= { teaPwEntry 6 }  
+    
+   teaPwPeerAddrType OBJECT-TYPE  
+      SYNTAX        InetAddressType  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+           "Denotes the address type of the peer node. It should be   
+            set to 'unknown' if PE/PW maintenance protocol is not used  
+            and the address is unknown."  
+      DEFVAL { ipv4 }  
+      ::= { teaPwEntry 8 }  
+    
+   teaPwPeerAddr OBJECT-TYPE  
+      SYNTAX        InetAddress  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+           "This object contains the value of the peer node address 
+            of the PW/PE maintenance protocol entity. This object  
+            SHOULD contain a value of all zeroes if not applicable  
+            (teaPwPeerAddrType is 'unknown')."  
+      ::= { teaPwEntry 9 }  
+    
+   teaPwAttachedPwIndex OBJECT-TYPE  
+      SYNTAX        TeaPwIndexType  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "If the PW is attached to another PW instead of a local   
+           native service, this item indicates the teaPwIndex of the 
+           attached PW, and the PW specific entry in the service MIB 
+           module MUST not be created. Otherwise, this object MUST  
+           be set to zero."  
+      DEFVAL { 0 }  
+             ::= { teaPwEntry 10 }  
+    
+   teaPwIfIndex OBJECT-TYPE  
+      SYNTAX        InterfaceIndexOrZero  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "If the PW is represented in the ifTable as an ifIndex, this 
+           item holds the ifIndex of the PW in the ifTable, otherwise 
+           it MUST be set to zero."  
+      DEFVAL { 0 }  
+      ::= { teaPwEntry 11 }  
+    
+   teaPwID OBJECT-TYPE  
+      SYNTAX        TeaPwIDType  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "Used in the outgoing PW ID field within the 'Virtual  
+           Circuit FEC Element'.  
+           Applicable if teaPwOwner equal 'pwIdFecSignaling' or   
+           'l2tpControlProtocol', should be set to zero otherwise."  
+      REFERENCE  
+          "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+      ::= { teaPwEntry 12 }  
+    
+   teaPwLocalGroupID OBJECT-TYPE  
+      SYNTAX        TeaPwGroupID  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "Used in the Group ID field sent to the peer PWES   
+           within the maintenance protocol used for PW setup.  
+           Applicable if teaPwOwner equal 'pwIdFecSignaling' or   
+           'l2tpControlProtocol', should be set to zero otherwise."  
+      REFERENCE  
+          "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+      ::= { teaPwEntry 13 }  
+    
+   teaPwGroupAttachmentID OBJECT-TYPE  
+      SYNTAX        TeaPwAttachmentIdentifierType  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "This object is an octet string representing the attachment  
+           group identifier (AGI) this PW belongs too, which typically   
+           identifies the VPN ID.  
+           Applicable if teaPwOwner equal 'genFecSignaling'."  
+       REFERENCE  
+          "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+      ::= { teaPwEntry 14 }  
+    
+   teaPwLocalAttachmentID   OBJECT-TYPE  
+      SYNTAX        TeaPwAttachmentIdentifierType  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "This object is an octet string representing the local   
+           forwarder attachment individual identifier (AII) to be   
+           used by this PW. It is used as the SAII for outgoing   
+           signaling messages and the TAII in the incoming messages   
+           from the peer.  
+    
+           Applicable if teaPwOwner equal 'genFecSignaling'."  
+       REFERENCE  
+          "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+      ::= { teaPwEntry 15 }  
+    
+   teaPwPeerAttachmentID   OBJECT-TYPE  
+      SYNTAX        TeaPwAttachmentIdentifierType  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "This object is an octet string representing the peer   
+           forwarder attachment individual identifier (AII) to be   
+           used by this PW. It is used as the TAII for outgoing   
+           signaling messages and the SAII in the incoming messages   
+           from the peer.  
+           Applicable if teaPwOwner equal 'genFecSignaling'. "  
+       REFERENCE  
+          "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+      ::= { teaPwEntry 16 }  
+    
+   teaPwCwPreference OBJECT-TYPE  
+      SYNTAX        TruthValue  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "Defines if the control word will be sent with each packet   
+           by the local node. Some PW types mandate the use of   
+           control word, and in such cases the value configured has   
+           no effect on the existence of the control word."  
+      REFERENCE  
+          "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+      DEFVAL { false }  
+      ::= { teaPwEntry 17 }  
+    
+   teaPwLocalIfMtu OBJECT-TYPE  
+      SYNTAX        Unsigned32 (0..65535)  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "If not equal zero, the optional IfMtu object in the   
+           signaling protocol will be sent with this value,   
+           representing the locally supported MTU size over the   
+           interface (or the virtual interface) associated with the   
+           PW."  
+      REFERENCE  
+          "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+      DEFVAL { 0 }  
+      ::= { teaPwEntry 18 }  
+    
+   teaPwLocalIfString OBJECT-TYPE  
+      SYNTAX        TruthValue  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "A PW MAY be associated to an interface (or a virtual   
+           interface) in the ifTable of the node as part of the  
+           service configuration. This object defines if the   
+           maintenance protocol will send the interface's name as  
+           appears on the ifTable in the name object as part of the  
+           maintenance protocol. If set to false, the optional   
+           element will not be sent."  
+      REFERENCE  
+          "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+      DEFVAL { false }  
+      ::= { teaPwEntry 19 }  
+    
+   teaPwLocalCapabAdvert OBJECT-TYPE  
+      SYNTAX        TeaPwCapabilities  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "Indicates the capabilities to be advertised by this node  
+           to the peer."  
+      REFERENCE  
+          "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+      ::= { teaPwEntry 20 }  
+    
+   teaPwRemoteGroupID OBJECT-TYPE  
+      SYNTAX        TeaPwGroupID  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "Obtained from the Group ID field as received via the   
+           maintenance protocol used for PW setup, zero if not used.   
+           Value of 0xFFFF shall be used if the object is yet to be   
+           defined by the PW maintenance protocol."  
+      REFERENCE  
+         "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+       ::= { teaPwEntry 21 }  
+    
+   teaPwCwStatus OBJECT-TYPE  
+      SYNTAX        TeaPwCwStatusTC  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "If signaling is used for PW establishment, this object   
+           indicates the status of the control word negotiation,   
+           and in both signaling or manual configuration indicates   
+           if CW is to be present or not for this PW."  
+      REFERENCE  
+         "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+       ::= { teaPwEntry 22 }  
+    
+   teaPwRemoteIfMtu OBJECT-TYPE  
+      SYNTAX        Unsigned32   
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "The remote interface MTU as (optionally) received from the  
+           remote node via the maintenance protocol. Should be zero   
+           if this parameter is not available or not used."  
+      REFERENCE  
+         "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+       ::= { teaPwEntry 23 }  
+    
+   teaPwRemoteIfString OBJECT-TYPE  
+      SYNTAX        SnmpAdminString (SIZE (0..80))  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "Indicates the interface description string as received by  
+           the maintenance protocol, MUST be NULL string if not   
+           applicable or not known yet."  
+      REFERENCE  
+          "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+       ::= { teaPwEntry 24 }  
+    
+   teaPwRemoteCapabilities OBJECT-TYPE  
+      SYNTAX        TeaPwCapabilities  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "Indicates the capabilities as advertised by the peer."  
+      REFERENCE  
+         "Martini, et al, 'Pseudowire Setup and Maintenance using  
+           the Label Distribution Protocol.'"  
+       ::= { teaPwEntry 25 }  
+    
+   teaPwFragmentCfgSize OBJECT-TYPE  
+      SYNTAX        TeaPwFragSize  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "If set to value other than zero, indicates that   
+           fragmentation is desired for this PW."  
+      REFERENCE  
+          "Malis A., Townsley M., 'PWE3 Fragmentation and 
+   Reassembly'."  
+      DEFVAL { 0 } -- I.e., fragmentation not desired  
+      ::= { teaPwEntry 26 }  
+    
+   teaPwRmtFragCapability OBJECT-TYPE  
+      SYNTAX        TeaPwFragStatus  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "The status of the fragmentation based on the local   
+           configuration and the peer capabilities as advertised by  
+           the peer if control protocol is used."  
+      REFERENCE  
+          "Malis A., Townsley M., 'PWE3 Fragmentation and 
+   Reassembly'."  
+      ::= { teaPwEntry 27 }  
+    
+   teaPwFcsRetentioncfg OBJECT-TYPE  
+      SYNTAX        INTEGER {  
+                    fcsRetentionDisable  (1),  
+                    fcsRetentionEnable   (2)  
+      }  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "The local configuration of FCS retention for this PW. FCS  
+           retention can be configured for PW types HDLC, PPP and   
+           Ethernet only. If the agent does not support FCS retention  
+           the error should be configured in teaPwFcsRetentionStatus."  
+      REFERENCE  
+          "Malis A., et al.,  'PWE3 Frame Check Sequence Retention'   
+           - work in progress"  
+      DEFVAL { fcsRetentionDisable }   
+     ::= { teaPwEntry 28 }  
+    
+   teaPwFcsRetentionStatus OBJECT-TYPE  
+      SYNTAX   BITS {  
+               remoteIndicationUnknown     (0),  
+               remoteRequestFcsRetention   (1),  
+               fcsRetentionEnabled         (2),  
+               fcsRetentionDisabled        (3),  
+               localFcsRetentionCfgErr     (4),  
+               fcsRetentionFcsSizeMismatch (5)  
+               }        
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+         "The status of the FCS retention negotiation process based on 
+          local configuration and the remote advertisement.  
+          remoteIndicationUnknown - set if a FEC has not been received 
+          from the remote.  
+          remoteRequestFcsRetention - indicates that the peer has   
+          requested for FCS retention. FCS retention will be used if  
+          the local node is capable and configured to use it for this 
+          PW.  
+          fcsRetentionEnabled - FCS retention is enabled (both peers 
+          were configured for FCS retention for signaled PW, or the  
+          local node is configured and capable for FCS retention. 
+          fcsRetentionDisabled - FCS retention is disabled (not  
+          configured locally or not advertised by the peer).  
+          localFcsRetentionCfgErr - Set if the local node has been 
+          configured for FCS retention but is not capable to support 
+          it.  
+          fcsRetentionFcsSizeMismatch - Set if there is a FCS size   
+          mismatch between the local and the peer node.  
+         "  
+      REFERENCE  
+          "Malis A., et al.,  'PWE3 Frame Check Sequence Retention'   
+           - work in progress"  
+      ::= { teaPwEntry 29 }  
+    
+   teaPwOutboundLabel OBJECT-TYPE  
+      SYNTAX        Unsigned32  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "The PW label used in the outbound direction (i.e., toward  
+           the PSN). It may be set up manually if owner is 'manual'  
+           or automatically otherwise. Examples: For MPLS PSN, it  
+           represents the 20 bits of PW tag, for L2TP it represents  
+           the 32 bits Session ID.  
+           If the label is not yet known (signaling in process), the  
+           object should return a value of 0xFFFF."  
+     ::= { teaPwEntry 30 }  
+    
+   teaPwInboundLabel OBJECT-TYPE  
+      SYNTAX        Unsigned32  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "The PW label used in the inbound direction (i.e., packets   
+           received from the PSN. It may be set up manually if owner  
+           is 'manual' or automatically otherwise.   
+           Examples: For MPLS PSN, it represents the 20 bits of PW  
+           tag, for L2TP it represents the 32 bits Session ID.  
+           If the label is not yet known (signaling in process), the   
+           object should return a value of 0xFFFF."  
+      ::= { teaPwEntry 31 }  
+    
+   teaPwName  OBJECT-TYPE  
+      SYNTAX        SnmpAdminString  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "The canonical name assigned to the PW."  
+      ::= { teaPwEntry 32 }  
+    
+   teaPwDescr OBJECT-TYPE  
+      SYNTAX        SnmpAdminString  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "A textual string containing information about the PW.   
+           If there is no description this object contains a zero  
+           length string."  
+      ::= { teaPwEntry 33 }  
+    
+   teaPwCreateTime OBJECT-TYPE  
+      SYNTAX        TimeStamp  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "System time when this PW was created."  
+      ::= { teaPwEntry 34 }  
+    
+   teaPwUpTime  OBJECT-TYPE  
+      SYNTAX        TimeTicks  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "Specifies the total time this PW operStatus has been   
+           Up(1)."  
+      ::= { teaPwEntry 35 }  
+    
+   teaPwLastChange OBJECT-TYPE  
+      SYNTAX        TimeTicks  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+         "The value of sysUpTime at the time the PW entered  
+          its current operational state.  If the current state was  
+          entered prior to the last re-initialization of the local  
+          network management subsystem, then this object contains a  
+          zero value."  
+      ::= { teaPwEntry 36 }  
+    
+   teaPwAdminStatus OBJECT-TYPE  
+      SYNTAX   INTEGER {  
+                   up(1),     -- ready to pass packets  
+                   down(2),  
+                   testing(3) -- in some test mode  
+      }  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "The desired operational status of this PW."  
+      ::= { teaPwEntry 37 }  
+    
+   teaPwOperStatus OBJECT-TYPE  
+      SYNTAX        TeaPwOperStatusTC  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "This object indicates the operational status of the PW, it   
+            does not reflect the status of the CE bound interface.   
+            It is set to down only if pwNotForwarding,   
+            psnFacingPwRxFault, or psnFacingPwTxFault indications are   
+            set in teaPwLocalStatus or teaPwRemoteStatus.     
+            It indicates 'lowerLayerDown' if the only reason for   
+            not being in the 'up' state is either outer tunnel   
+            or physical layer down of the network side is in the down   
+            state.  
+            All other states are declared based on the description in   
+            the textual convention.  
+            "  
+      ::= { teaPwEntry 38 }  
+    
+   teaPwLocalStatus OBJECT-TYPE  
+      SYNTAX        TeaPwStatus  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "Indicates the status of the PW in the local node.  
+            The various indications in this object should be   
+            available independent of the ability of the local node to   
+            advertise them or the remote node to accept these status  
+            indications through the control protocol.  
+           "  
+      ::= { teaPwEntry 39 }  
+    
+   teaPwRemoteStatusCapable OBJECT-TYPE  
+      SYNTAX        INTEGER {  
+             notApplicable    (1),  
+             notYetKnown      (2),  
+             remoteCapable    (3),  
+             remoteNotCapable (4)      
+      }  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "Indicates the remote node capability to advertise the   
+            PW status notification.  
+            notAppicable should be reported for manually set PW, or   
+            if the local node is not capable of sending the status   
+            notification object.  
+            notYetKnown should be reported if the signaling protocol   
+            has not yet finished the process of capability   
+            determination.  
+            remoteCapable and remoteNotcapable should be reported   
+            based on the initial signaling exchange that has   
+            determined the remote node capability.  
+          "  
+      ::= { teaPwEntry 40 }  
+    
+   teaPwRemoteStatus OBJECT-TYPE  
+      SYNTAX        TeaPwStatus  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "Indicates the status of the PW as was advertised by the   
+            remote. If the remote is not capable of advertising the   
+            status object, or the local node is not able to accept   
+            the status object through signaling, then the applicable   
+            bit is 'pwNotForwarding' which is set if the remote has   
+            sent label release or label withdraw for this PW.  
+           "  
+      ::= { teaPwEntry 41 }  
+    
+   teaPwTimeElapsed OBJECT-TYPE  
+       SYNTAX  HCPerfTimeElapsed  
+       MAX-ACCESS  read-only  
+       STATUS  current  
+       DESCRIPTION  
+            "The number of seconds, including partial seconds,  
+             that have elapsed since the beginning of the current  
+             interval measurement period."  
+       ::= { teaPwEntry 42 }  
+    
+   teaPwValidIntervals OBJECT-TYPE  
+       SYNTAX  HCPerfValidIntervals  
+       MAX-ACCESS  read-only  
+       STATUS  current  
+       DESCRIPTION  
+          "The number of previous 15-minute intervals  
+          for which data was collected."  
+       ::= { teaPwEntry 43 }  
+    
+   teaPwRowStatus OBJECT-TYPE  
+      SYNTAX        RowStatus  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "For creating, modifying, and deleting this row. None of the  
+           read-create objects in the conceptual rows may be changed   
+           when this object is in the active(1) state."  
+       ::= { teaPwEntry 44 }  
+    
+   teaPwStorageType OBJECT-TYPE  
+      SYNTAX        StorageType  
+      MAX-ACCESS    read-create  
+      STATUS        current  
+      DESCRIPTION  
+          "This variable indicates the storage type for this  
+           object."  
+       ::= { teaPwEntry 45 }  
+    
+   -- End of PW Virtual Connection Table  
+    
+   -- PW Performance Table.  
+    
+   teaPwPerfCurrentTable  OBJECT-TYPE  
+      SYNTAX        SEQUENCE OF TeaPwPerfCurrentEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "This table provides per-PW performance information for   
+            the current interval."  
+      ::= { teaPwObjects 3 }  
+    
+   teaPwPerfCurrentEntry OBJECT-TYPE  
+      SYNTAX        TeaPwPerfCurrentEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "An entry in this table is created by the agent for  
+            every PW."  
+      INDEX  { teaPwIndex }  
+      ::= { teaPwPerfCurrentTable 1 }  
+    
+   TeaPwPerfCurrentEntry ::= SEQUENCE {  
+         teaPwPerfCurrentInHCPackets         HCPerfCurrentCount,  
+         teaPwPerfCurrentInHCBytes           HCPerfCurrentCount,  
+         teaPwPerfCurrentOutHCPackets        HCPerfCurrentCount,  
+         teaPwPerfCurrentOutHCBytes          HCPerfCurrentCount,  
+         teaPwPerfCurrentInPackets           PerfCurrentCount,  
+         teaPwPerfCurrentInBytes             PerfCurrentCount,  
+         teaPwPerfCurrentOutPackets          PerfCurrentCount,  
+         teaPwPerfCurrentOutBytes            PerfCurrentCount  
+         }  
+    
+   teaPwPerfCurrentInHCPackets OBJECT-TYPE  
+      SYNTAX        HCPerfCurrentCount   
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for number of packets received by  
+            the PW (from the PSN) in the current 15-minute interval.   
+            This is the 64 bit version of teaPwPerfCurrentInPackets,   
+            if teaPwPerfCurrentInHCPackets is supported according to   
+            the rules spelled out in RFC2863."  
+      ::= { teaPwPerfCurrentEntry 1 }  
+    
+   teaPwPerfCurrentInHCBytes OBJECT-TYPE  
+      SYNTAX        HCPerfCurrentCount   
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for number of bytes received by the   
+            PW (from the PSN) in the current 15-minute interval.   
+            This is the 64 bit version of teaPwPerfCurrentInBytes, if   
+            teaPwPerfCurrentInHCBytes is supported according to the   
+            rules spelled out in RFC2863."  
+      ::= { teaPwPerfCurrentEntry 2 }  
+    
+   teaPwPerfCurrentOutHCPackets OBJECT-TYPE  
+      SYNTAX        HCPerfCurrentCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for number of packets forwarded by   
+            the PW (to the PSN) in the current 15-minute interval.  
+            This is the 64 bit version of teaPwPerfCurrentOutPackets,   
+            if teaPwPerfCurrentOutHCPackets is supported according to   
+            the rules spelled out in RFC2863."  
+      ::= { teaPwPerfCurrentEntry 3 }  
+    
+   teaPwPerfCurrentOutHCBytes OBJECT-TYPE  
+      SYNTAX        HCPerfCurrentCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for number of bytes forwarded by   
+            the PW (to the PSN) in the current 15-minute interval.  
+            This is the 64 bit version of teaPwPerfCurrentOutBytes,   
+            if teaPwPerfCurrentOutHCBytes is supported according to   
+            the rules spelled out in RFC2863."  
+      ::= { teaPwPerfCurrentEntry 4 }  
+    
+    
+   teaPwPerfCurrentInPackets OBJECT-TYPE  
+      SYNTAX        PerfCurrentCount   
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "The counter for number of packets received by the PW (from  
+            the PSN) in the current 15-minute interval.   
+            This is the 32 bit version of teaPwPerfCurrentInHCPackets,   
+            if teaPwPerfCurrentInHCPackets is supported according to   
+            the rules spelled out in RFC2863."  
+      ::= { teaPwPerfCurrentEntry 5 }  
+    
+   teaPwPerfCurrentInBytes OBJECT-TYPE  
+      SYNTAX        PerfCurrentCount   
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "The counter for number of bytes received by the   
+            PW (from the PSN) in the current 15-minute interval.   
+            It MUST be equal to the least significant 32 bits of   
+            teaPwPerfCurrentInHCBytes, if teaPwPerfCurrentInHCBytes is   
+            supported according to the rules spelled out in RFC2863."  
+      ::= { teaPwPerfCurrentEntry 6 }  
+    
+   teaPwPerfCurrentOutPackets OBJECT-TYPE  
+      SYNTAX        PerfCurrentCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "The counter for number of packets forwarded by   
+            the PW (to the PSN) in the current 15-minute interval.  
+            It MUST be equal to the least significant 32 bits of   
+            teaPwPerfCurrentOutHCPackets, if   
+            teaPwPerfCurrentOutHCPackets is supported according to the  
+            rules spelled out in RFC2863."  
+      ::= { teaPwPerfCurrentEntry 7 }  
+    
+   teaPwPerfCurrentOutBytes OBJECT-TYPE  
+      SYNTAX        PerfCurrentCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "The counter for number of bytes forwarded by   
+            the PW (to the PSN) in the current 15-minute interval.  
+            It MUST be equal to the least significant 32 bits of   
+            teaPwPerfCurrentOutHCBytes, if teaPwPerfCurrentOutHCBytes is  
+            supported according to the rules spelled out in RFC2863."  
+      ::= { teaPwPerfCurrentEntry 8 }  
+    
+   -- End of PW Perf current Table  
+    
+   -- PW Performance Interval Table.  
+    
+   teaPwPerfIntervalTable  OBJECT-TYPE  
+      SYNTAX        SEQUENCE OF TeaPwPerfIntervalEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "This table provides per-PW performance information for   
+            each interval."  
+      ::= { teaPwObjects 4 }  
+    
+   teaPwPerfIntervalEntry OBJECT-TYPE  
+      SYNTAX        TeaPwPerfIntervalEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "An entry in this table is created by the agent for every 
+            PW."  
+      INDEX  { teaPwIndex, teaPwPerfIntervalNumber }  
+      ::= { teaPwPerfIntervalTable 1 }  
+    
+   TeaPwPerfIntervalEntry ::= SEQUENCE {  
+         teaPwPerfIntervalNumber               Integer32,  
+         teaPwPerfIntervalValidData            TruthValue,  
+         teaPwPerfIntervalTimeElapsed          HCPerfTimeElapsed,  
+         teaPwPerfIntervalInHCPackets          HCPerfIntervalCount,  
+         teaPwPerfIntervalInHCBytes            HCPerfIntervalCount,  
+         teaPwPerfIntervalOutHCPackets         HCPerfIntervalCount,  
+         teaPwPerfIntervalOutHCBytes           HCPerfIntervalCount,  
+         teaPwPerfIntervalInPackets            PerfIntervalCount,  
+         teaPwPerfIntervalInBytes              PerfIntervalCount,  
+         teaPwPerfIntervalOutPackets           PerfIntervalCount,  
+         teaPwPerfIntervalOutBytes             PerfIntervalCount  
+                           }  
+    
+   teaPwPerfIntervalNumber OBJECT-TYPE  
+       SYNTAX  Integer32 (1..96)  
+       MAX-ACCESS  not-accessible  
+       STATUS  current  
+       DESCRIPTION  
+           "A number N, between 1 and 96, which identifies the  
+            interval for which the set of statistics is available.  
+            The interval identified by 1 is the most recently  
+            completed 15 minute interval, and the interval identified  
+            by N is the interval immediately preceding the one  
+            identified by N-1.  
+            The minimum range of N is 1 through 4. The default range  
+            is 1 to 32. The maximum range of N is 1 through 96. "  
+      REFERENCE  
+          "Tesink, K. 'Definitions of Managed Objects for the  
+           SONET/SDH Interface Type', RFC 2558"  
+      ::= { teaPwPerfIntervalEntry 1 }  
+    
+   teaPwPerfIntervalValidData OBJECT-TYPE  
+      SYNTAX        TruthValue  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "This variable indicates if the data for this interval  
+           is valid."  
+      ::= { teaPwPerfIntervalEntry 2 }  
+    
+   teaPwPerfIntervalTimeElapsed OBJECT-TYPE  
+       SYNTAX      HCPerfTimeElapsed   
+       MAX-ACCESS  read-only  
+       STATUS      current  
+       DESCRIPTION  
+         "The duration of this interval in seconds."  
+       ::= { teaPwPerfIntervalEntry 3 }  
+    
+   teaPwPerfIntervalInHCPackets OBJECT-TYPE  
+      SYNTAX        HCPerfIntervalCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for number of packets received by  
+            the PW (from the PSN) during the interval. This is the 64   
+            bit version of teaPwPerfIntervalInPackets, if   
+            teaPwPerfIntervalInHCPackets is supported according to the  
+            rules spelled out in RFC2863."  
+      ::= { teaPwPerfIntervalEntry 4 }  
+    
+   teaPwPerfIntervalInHCBytes OBJECT-TYPE  
+      SYNTAX        HCPerfIntervalCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for number of bytes received by the   
+            PW (from the PSN) during the interval.   
+            This is the 64 bit version of teaPwPerfIntervalInBytes, if   
+            teaPwPerfIntervalInHCBytes is supported according to the   
+            rules spelled out in RFC2863."  
+      ::= { teaPwPerfIntervalEntry 5 }  
+    
+   teaPwPerfIntervalOutHCPackets OBJECT-TYPE  
+      SYNTAX        HCPerfIntervalCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for number of packets forwarded by   
+            the PW (to the PSN) during the interval.  
+            This is the 64 bit version of teaPwPerfIntervalOutPackets,   
+            if teaPwPerfIntervalOutHCPackets is supported according to   
+            the rules spelled out in RFC2863."  
+      ::= { teaPwPerfIntervalEntry 6 }  
+    
+   teaPwPerfIntervalOutHCBytes OBJECT-TYPE  
+      SYNTAX        HCPerfIntervalCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for number of bytes forwarded by   
+            the PW (to the PSN) during the interval.  
+            This is the 64 bit version of teaPwPerfIntervalOutBytes,   
+            if teaPwPerfIntervalOutHCBytes is supported according to   
+            the rules spelled out in RFC2863."  
+      ::= { teaPwPerfIntervalEntry 7 }  
+    
+   teaPwPerfIntervalInPackets OBJECT-TYPE  
+      SYNTAX        PerfIntervalCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "This value represents the number of packets received   
+           by this PW during the interval.   
+           It MUST be equal to the least significant 32 bits of   
+           teaPwPerfIntervalInHCPackets if teaPwPerfIntervalInHCPackets   
+           is supported according to the rules spelled out in   
+           RFC2863."  
+      ::= { teaPwPerfIntervalEntry 8 }  
+    
+   teaPwPerfIntervalInBytes OBJECT-TYPE  
+      SYNTAX        PerfIntervalCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "This value represents the number of bytes received   
+           by this PW during the interval.   
+           It MUST be equal to the least significant 32 bits of   
+           if teaPwPerfIntervalInHCBytes is supported according to  
+           the rules spelled out in RFC2863."  
+      ::= { teaPwPerfIntervalEntry 9 }  
+    
+   teaPwPerfIntervalOutPackets OBJECT-TYPE  
+      SYNTAX        PerfIntervalCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "This value represents the number of packets sent by this   
+           PW during the interval.   
+           It MUST be equal to the least significant 32 bits of   
+           teaPwPerfIntervalOutHCPackets if   
+           teaPwPerfIntervalOutHCPackets is supported according to the  
+           rules spelled out in RFC2863."  
+      ::= { teaPwPerfIntervalEntry 10 }  
+    
+   teaPwPerfIntervalOutBytes OBJECT-TYPE  
+      SYNTAX        PerfIntervalCount  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "This value represents the number of bytes sent by this   
+           PW during the interval.   
+           It MUST be equal to the least significant 32   
+           bits of teaPwPerfIntervalOutHCBytes  
+           if teaPwPerfIntervalOutHCBytes is supported according to  
+           the rules spelled out in RFC2863."  
+      ::= { teaPwPerfIntervalEntry 11 }  
+    
+   -- End of PW Performance Interval Table  
+    
+    
+   -- PW Performance 1 Day Interval Table.  
+    
+   teaPwPerf1DayIntervalTable  OBJECT-TYPE  
+      SYNTAX        SEQUENCE OF TeaPwPerf1DayIntervalEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "This table provides per-PW Performance information for 
+            the current day measurement and the previous days 
+   interval."  
+      ::= { teaPwObjects 5 }  
+    
+   teaPwPerf1DayIntervalEntry OBJECT-TYPE  
+      SYNTAX        TeaPwPerf1DayIntervalEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "An entry in this table is created by the agent for every   
+            PW." 
+      INDEX  { teaPwIndex, teaPwPerf1DayIntervalNumber }  
+    
+      ::= { teaPwPerf1DayIntervalTable 1 }  
+    
+   TeaPwPerf1DayIntervalEntry ::= SEQUENCE { 
+         teaPwPerf1DayIntervalNumber               Unsigned32, 
+         teaPwPerf1DayIntervalValidData            TruthValue, 
+         teaPwPerf1DayIntervalMoniSecs             HCPerfTimeElapsed, 
+         teaPwPerf1DayIntervalInHCPackets          Counter64,  
+         teaPwPerf1DayIntervalInHCBytes            Counter64,  
+         teaPwPerf1DayIntervalOutHCPackets         Counter64,  
+         teaPwPerf1DayIntervalOutHCBytes           Counter64 
+         }  
+    
+   teaPwPerf1DayIntervalNumber OBJECT-TYPE 
+      SYNTAX      Unsigned32(1..31) 
+      MAX-ACCESS  not-accessible 
+      STATUS      current 
+      DESCRIPTION 
+        "History Data Interval number. Interval 1 is the current day 
+         measurement period, Interval 2 is the most recent previous  
+         day; interval 30 is 31 days ago. Intervals 3..31 are  
+         optional." 
+      ::= { teaPwPerf1DayIntervalEntry 1 } 
+    
+   teaPwPerf1DayIntervalValidData OBJECT-TYPE  
+      SYNTAX        TruthValue  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "This variable indicates if the data for this interval  
+           is valid."  
+      ::= { teaPwPerf1DayIntervalEntry 2 }  
+    
+   teaPwPerf1DayIntervalMoniSecs OBJECT-TYPE 
+      SYNTAX       HCPerfTimeElapsed 
+      UNITS        "seconds" 
+      MAX-ACCESS   read-only 
+      STATUS       current 
+      DESCRIPTION 
+        "The amount of time in the 1-day interval over which the 
+         performance monitoring information is actually counted. 
+         This value will be the same as the interval duration except 
+         in a situation where performance monitoring data could not 
+         be collected for any reason or agent clock adjustments." 
+      ::= { teaPwPerf1DayIntervalEntry 3 } 
+    
+   teaPwPerf1DayIntervalInHCPackets OBJECT-TYPE  
+      SYNTAX        Counter64  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for the total number of packets   
+            received by the PW (from the PSN)."  
+      ::= { teaPwPerf1DayIntervalEntry 4 }  
+    
+   teaPwPerf1DayIntervalInHCBytes OBJECT-TYPE  
+      SYNTAX        Counter64  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for the total number of bytes  
+            received by the PW (from the PSN)."  
+      ::= { teaPwPerf1DayIntervalEntry 5 }  
+    
+   teaPwPerf1DayIntervalOutHCPackets OBJECT-TYPE  
+      SYNTAX        Counter64  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for the total number of packets   
+            forwarded by the PW (to the PSN)."  
+      ::= { teaPwPerf1DayIntervalEntry 6 }  
+    
+   teaPwPerf1DayIntervalOutHCBytes OBJECT-TYPE  
+      SYNTAX        Counter64  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "High capacity counter for the total number of bytes   
+            forwarded by the PW (to the PSN)."  
+      ::= { teaPwPerf1DayIntervalEntry 7 }  
+    
+   -- End of PW Perf 1 Day Interval Table  
+    
+   -- Error counter scalar   
+    
+   teaPwPerfTotalErrorPackets OBJECT-TYPE  
+      SYNTAX        Counter32  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+           "Counter for number of error at the PW processing level,   
+            i.e., packets received with unknown PW label."  
+      ::= { teaPwObjects 6 }  
+    
+   -- Reverse mapping tables  
+    
+   -- The PW ID mapping table  
+   teaPwIndexMappingTable  OBJECT-TYPE  
+      SYNTAX        SEQUENCE OF TeaPwIndexMappingEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "This table enables the reverse mapping the unique PWid  
+            parameters <peer IP, PW type and PW ID> and the   
+            teaPwIndex. The table is not applicable for PW created   
+            manually or by using the generalized FEC."  
+      ::= { teaPwObjects 7 }  
+    
+   teaPwIndexMappingEntry OBJECT-TYPE  
+      SYNTAX        TeaPwIndexMappingEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "An entry in this table MUST be created by the agent for   
+            every PW created by the teaPwTable for which teaPwOwner   
+            equals teaPwIdFecSignaling."  
+    
+      INDEX  { teaPwIndexMappingPwType,  teaPwIndexMappingPwID,  
+               teaPwIndexMappingPeerAddrType, teaPwIndexMappingPeerAddr  
+               }  
+      ::= { teaPwIndexMappingTable 1 }  
+    
+   TeaPwIndexMappingEntry ::= SEQUENCE {  
+         teaPwIndexMappingPwType        TeaPwTypeTC,  
+         teaPwIndexMappingPwID          TeaPwIDType,  
+         teaPwIndexMappingPeerAddrType  InetAddressType,  
+         teaPwIndexMappingPeerAddr      InetAddress,  
+         teaPwIndexMappingPwIndex       TeaPwIndexType  
+                          }  
+    
+   teaPwIndexMappingPwType OBJECT-TYPE  
+      SYNTAX        TeaPwTypeTC  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "The PW type (indicates the service) of this PW."  
+      ::= { teaPwIndexMappingEntry 1 }  
+    
+   teaPwIndexMappingPwID OBJECT-TYPE  
+      SYNTAX        TeaPwIDType  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "The PW ID of this PW. Zero if the PW is configured   
+            manually."  
+      ::= { teaPwIndexMappingEntry 2 }  
+    
+   teaPwIndexMappingPeerAddrType OBJECT-TYPE  
+      SYNTAX        InetAddressType  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "IP address type of the peer node."  
+      ::= { teaPwIndexMappingEntry 3 }  
+    
+   teaPwIndexMappingPeerAddr OBJECT-TYPE  
+      SYNTAX        InetAddress  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "IP address type of the peer node."  
+      ::= { teaPwIndexMappingEntry 4 }  
+    
+   teaPwIndexMappingPwIndex  OBJECT-TYPE  
+      SYNTAX        TeaPwIndexType  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "The value that represents the PW in the teaPwTable."  
+      ::= { teaPwIndexMappingEntry 5 }  
+    
+   -- End of the PW ID mapping table  
+    
+   -- The peer mapping table  
+    
+   teaPwPeerMappingTable  OBJECT-TYPE  
+      SYNTAX        SEQUENCE OF TeaPwPeerMappingEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "This table provides reverse mapping of the existing PW   
+            based on PW type and PW ID ordering. This table is   
+            typically useful for EMS ordered query of existing PWs."  
+      ::= { teaPwObjects 8 }  
+    
+   teaPwPeerMappingEntry OBJECT-TYPE  
+      SYNTAX        TeaPwPeerMappingEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "An entry in this table is created by the agent for every   
+            PW configured in teaPwTable. 
+    
+           Implementers need to be aware that if the value of 
+           the teaPwPeerMappingPeerAddr (an OID) or  
+           teaPwPeerMappingPwID (an OID) (or both combined) 
+           has more than 111 sub-identifiers, then OIDs of column 
+           instances in this table will have more than 128 
+           sub-identifiers and cannot be accessed using SNMPv1, 
+    
+    
+           SNMPv2c, or SNMPv3."  
+      INDEX  { teaPwPeerMappingPeerAddrType, teaPwPeerMappingPeerAddr,  
+               teaPwPeerMappingPwType,  teaPwPeerMappingPwID }   
+    
+      ::= { teaPwPeerMappingTable 1 }  
+    
+   TeaPwPeerMappingEntry ::= SEQUENCE {  
+         teaPwPeerMappingPeerAddrType         InetAddressType,  
+         teaPwPeerMappingPeerAddr             InetAddress,  
+         teaPwPeerMappingPwType               TeaPwTypeTC,  
+         teaPwPeerMappingPwID                 TeaPwIDType,  
+         teaPwPeerMappingPwIndex              TeaPwIndexType  
+                          }  
+    
+   teaPwPeerMappingPeerAddrType OBJECT-TYPE  
+      SYNTAX        InetAddressType  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "IP address type of the peer node."  
+      ::= { teaPwPeerMappingEntry 1 }  
+    
+   teaPwPeerMappingPeerAddr OBJECT-TYPE  
+      SYNTAX        InetAddress  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "IP address type of the peer node."  
+      ::= { teaPwPeerMappingEntry 2 }  
+    
+   teaPwPeerMappingPwType OBJECT-TYPE  
+      SYNTAX        TeaPwTypeTC  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "The PW type (indicates the service) of this PW."  
+      ::= { teaPwPeerMappingEntry 3 }  
+    
+   teaPwPeerMappingPwID OBJECT-TYPE  
+      SYNTAX        TeaPwIDType  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "The PW ID of this PW. Zero if the PW is configured   
+            manually."  
+      ::= { teaPwPeerMappingEntry 4 }  
+    
+   teaPwPeerMappingPwIndex  OBJECT-TYPE  
+      SYNTAX        TeaPwIndexType  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "The value that represents the PW in the teaPwTable."  
+      ::= { teaPwPeerMappingEntry 5 }  
+    
+   -- End of the peer mapping table  
+    
+   -- End of reverse mapping tables  
+    
+   teaPwUpDownNotifEnable  OBJECT-TYPE  
+      SYNTAX      TruthValue  
+      MAX-ACCESS  read-write  
+      STATUS      current  
+      DESCRIPTION  
+         "If this object is set to true(1), then it enables  
+          the emission of pwUp and pwDown  
+          notifications; otherwise these notifications are not  
+          emitted."  
+      REFERENCE  
+         "See also [RFC3413] for explanation that  
+          notifications are under the ultimate control of the  
+          MIB module in this document."  
+      DEFVAL { false }  
+      ::= { teaPwObjects 9 }  
+    
+   teaPwDeletedNotifEnable  OBJECT-TYPE  
+      SYNTAX      TruthValue  
+      MAX-ACCESS  read-write  
+      STATUS      current  
+      DESCRIPTION  
+         "If this object is set to true(1), then it enables the   
+          emission of teaPwDeleted notification; otherwise this   
+          notification is not emitted."  
+      REFERENCE  
+         "See also [RFC3413] for explanation that  
+          notifications are under the ultimate control of the  
+          MIB module in this document."  
+      DEFVAL { false }  
+      ::= { teaPwObjects 10 }  
+    
+   teaPwNotifRate  OBJECT-TYPE  
+      SYNTAX      Unsigned32  
+      MAX-ACCESS  read-write  
+      STATUS      current  
+      DESCRIPTION  
+         "This object defines the maximum number of PW notifications  
+          that can be emitted from the device per second."  
+      ::= { teaPwObjects 11 }  
+    
+    
+   -- Notifications - PW  
+    
+   teaPwDown NOTIFICATION-TYPE  
+      OBJECTS { teaPwOperStatus, --start of range  
+                teaPwOperStatus  --end of range  
+      }  
+      STATUS  current  
+      DESCRIPTION  
+          "This notification is generated when the  
+           teaPwOperStatus object for one or more contiguous  
+           entries in teaPwTable are about to enter the  
+           down(2) state from some other state. The included values  
+           of teaPwOperStatus MUST all be set equal to this  
+           down(2) state.  The two instances of teaPwOperStatus  
+           in this notification indicate the range of indexes  
+           that are affected.  Note that all the indexes of the  
+           two ends of the range can be derived from the  
+           instance identifiers of these two objects.  For  
+           cases where a contiguous range of cross-connects  
+           have transitioned into the down(2) state at roughly  
+           the same time, the device SHOULD issue a single  
+           notification for each range of contiguous indexes in  
+           an effort to minimize the emission of a large number  
+           of notifications.  If a notification has to be  
+           issued for just a single cross-connect entry, then  
+           the instance identifier (and values) of the two  
+           teaPwOperStatus objects MUST be identical."  
+      ::= { teaPwNotifications  1 }  
+    
+   teaPwUp NOTIFICATION-TYPE  
+      OBJECTS { teaPwOperStatus, --start of range  
+                teaPwOperStatus  --end of range  
+      }  
+      STATUS  current  
+      DESCRIPTION  
+          "This notification is generated when the  
+           teaPwOperStatus object for one or more contiguous  
+           entries in teaPwTable are about to enter the up(1)  
+           state from some other state. The included values of  
+           teaPwOperStatus MUST both be set equal to this  
+           new state (i.e.,: up(1)).  The two instances of  
+           teaPwOperStatus in this notification indicate the range  
+           of indexes that are affected.  Note that all the indexes  
+           of the two ends of the range can be derived from the  
+           instance identifiers of these two objects.  For  
+           cases where a contiguous range of cross-connects  
+           have transitioned into the up(1) state at roughly  
+           the same time, the device SHOULD issue a single  
+           notification for each range of contiguous indexes in  
+           an effort to minimize the emission of a large number  
+           of notifications.  If a notification has to be  
+           issued for just a single cross-connect entry, then  
+           the instance identifier (and values) of the two  
+           teaPwOperStatus objects MUST be the identical."  
+      ::= { teaPwNotifications 2 }  
+    
+   teaPwDeleted NOTIFICATION-TYPE  
+      OBJECTS { teaPwType,  
+                teaPwID,  
+                teaPwPeerAddrType,  
+                teaPwPeerAddr  
+      }  
+      STATUS  current  
+      DESCRIPTION  
+          "This notification is generated when the PW has been   
+           deleted, i.e., when the teaPwRowStatus has been set to  
+           destroy(6), the PW has been deleted by a non-MIB   
+           application or due to auto discovery process.  
+          "  
+      ::= { teaPwNotifications  3 }  
+    
+   -- End of notifications.  
+    
+   -- conformance information  
+    
+   teaPwGroups      OBJECT IDENTIFIER ::= { teaPwConformance   1 }  
+   teaPwCompliances OBJECT IDENTIFIER ::= { teaPwConformance   2 }  
+    
+   -- Compliance requirement for fully compliant implementations.   
+    
+   pwModuleFullCompliance MODULE-COMPLIANCE  
+       STATUS  current  
+       DESCRIPTION  
+               "The compliance statement for agents that provide full  
+                support for PW MIB Module. Such devices can  
+                then be monitored and also be configured using  
+                this MIB module."  
+    
+       MODULE  -- this module  
+           MANDATORY-GROUPS { teaPwBasicGroup,  
+                              teaPwPerformanceGeneralGroup 
+                            } 
+     ::= { teaPwCompliances 1 } 
+    
+   bsodPwModuleFullCompliance MODULE-COMPLIANCE  
+       STATUS  current  
+       DESCRIPTION  
+               "The compliance statement for the PW MIB module
+                that supports TDM Emulation according to the
+                Business Service over Docsis (BSoD) specification
+                published by CableLabs.  
+                "  
+    
+       MODULE  -- this module  
+           MANDATORY-GROUPS { bsodPwBasicGroup,  
+                              teaPwPerformanceGeneralGroup,
+                              teaPwPeformanceIntervalGroup 
+                            } 
+
+
+      GROUP teaPwNotificationGroup   
+      DESCRIPTION "This group is only mandatory for those  
+                   implementations 
+                   which can efficiently implement the notifications 
+                   contained in this group." 
+    
+      GROUP        teaPwPwIdGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support the PW ID FEC.  
+                  "  
+    
+      GROUP        teaPwGeneralizedFecGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support the generalized PW FEC.  
+                  "  
+    
+      GROUP        teaPwFcsGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support FCS retention."  
+    
+      GROUP        teaPwFragGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support PW fragmentation.  
+                  "  
+    
+      GROUP        teaPwPwStatusGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support PW status notification.  
+                  "  
+    
+      GROUP        teaPwGetNextGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   where the teaPwIndex may be any arbitrary value  
+                   and the EMS would require retrieval of the next  
+                   free index."  
+    
+      GROUP        teaPwPriorityGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support the controlling the PW setup and  
+                   holding priority."  
+    
+      GROUP        teaPwAttachmentGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support attachment of two PWs (PW stitching)."  
+    
+      GROUP        teaPwPeformance1DayIntervalGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support PW performance gathering in 1 day  
+                   intervals."  
+    
+      GROUP        teaPwPerformanceIntervalGeneralGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support PW performance gathering in 15  
+                   minutes intervals."  
+    
+      GROUP        teaPwPeformanceIntervalGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support PW performance gathering in 15  
+                   minutes intervals."  
+    
+      GROUP        teaPwHCPeformanceIntervalGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   where at least one of the interval performance   
+                   counters wraps around too quickly based on the   
+                   criteria specified in RFC 2863 for high-capacity  
+                   counters."  
+    
+      GROUP        teaPwMappingTablesGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support reverse mapping of PW indexes to  
+                   the teaPwIndex and the peer mapping table."  
+    
+      GROUP        teaPwNotificationControlGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support the PW notifications."  
+    
+      OBJECT       teaPwAdminStatus  
+      SYNTAX       INTEGER { up(1), down(2) }  
+      DESCRIPTION "The support of the value testing(3) is not   
+                   required."  
+    
+      OBJECT       teaPwOperStatus  
+      SYNTAX       INTEGER { up(1), down(2), notPresent(6),  
+                   lowerLayerDown(7) }  
+      DESCRIPTION "The support of the values testing(3), unknown(4),  
+                   and dormant(5) is not required."  
+    
+      OBJECT       teaPwRowStatus  
+      SYNTAX       RowStatus { active(1), notInService(2),  
+                               notReady(3) }  
+      WRITE-SYNTAX RowStatus { active(1), notInService(2),  
+                               createAndGo(4), destroy(6)  
+                             }  
+      DESCRIPTION "Support for createAndWait is not required. Support  
+                   of notReady is not required for implementations  
+                   that do not support signaling, or if it is  
+                   guaranteed that the conceptual row has all the  
+                   required information to create the PW when the  
+                   row has been created by the agent."  
+    
+      OBJECT       teaPwPeerAddrType  
+      SYNTAX       InetAddressType { unknown(0), ipv4(1) }  
+      DESCRIPTION "Only unknown(0) and ipv4(1) is required."  
+    
+      OBJECT       teaPwPeerAddr  
+      SYNTAX       InetAddress (SIZE(0|4))  
+      DESCRIPTION "An implementation is only required to support   
+                   0, 4 address sizes."  
+    
+        ::= { teaPwCompliances 2 }  
+    
+   -- Compliance requirement for read only compliant implementations.   
+    
+   teaPwModuleReadOnlyCompliance MODULE-COMPLIANCE  
+       STATUS  current  
+       DESCRIPTION  
+               "The compliance statement for agents that provide read  
+                only support for PW MIB Module. Such devices can  
+                then be monitored but cannot be configured using this  
+                MIB module."  
+    
+       MODULE  -- this module  
+           MANDATORY-GROUPS { teaPwBasicGroup  
+                            }  
+    
+      GROUP teaPwNotificationGroup   
+      DESCRIPTION "This group is only mandatory for those  
+                   implementations 
+                   which can efficiently implement the notifications 
+                   contained in this group." 
+    
+      GROUP        teaPwPwIdGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support the PW ID FEC.  
+                  "  
+    
+      GROUP        teaPwGeneralizedFecGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support the generalized PW FEC.  
+                  "  
+    
+      GROUP        teaPwFcsGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support FCS retention."  
+    
+      GROUP        teaPwFragGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support PW fragmentation.  
+                  "  
+    
+      GROUP        teaPwPwStatusGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support PW status notification.  
+                  "  
+    
+      GROUP        teaPwGetNextGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   where the teaPwIndex may be any arbitrary value  
+                   and the EMS would require retrieval of the next  
+                   free index."  
+    
+      GROUP        teaPwPriorityGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support the controlling the PW setup and  
+                   holding priority."  
+    
+      GROUP        teaPwAttachmentGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support attachment of two PWs (PW stitching)."  
+    
+      GROUP        teaPwPeformance1DayIntervalGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support PW performance gathering in 1 Day  
+                   intervals."  
+    
+      GROUP        teaPwPerformanceIntervalGeneralGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support PW performance gathering in 15  
+                   minutes intervals."  
+    
+      GROUP        teaPwPeformanceIntervalGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support PW performance gathering in 15  
+                   minutes intervals."  
+    
+      GROUP        teaPwHCPeformanceIntervalGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   where at least one of the interval performance   
+                   counters wraps around too quickly based on the   
+                   criteria specified in RFC 2863 for high-capacity  
+                   counters."  
+    
+      GROUP        teaPwMappingTablesGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support reverse mapping of PW indexes to  
+                   the teaPwIndex and the peer mapping table."  
+    
+      GROUP        teaPwNotificationControlGroup  
+      DESCRIPTION "This group is only mandatory for implementations  
+                   that support the PW notifications."  
+    
+      OBJECT       teaPwType  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwOwner  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwPsnType  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwSetUpPriority  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwHoldingPriority  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwPeerAddrType  
+      SYNTAX       InetAddressType { unknown(0), ipv4(1) }  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required. Only unknown(0) and   
+                   ipv4(1) is required."  
+    
+      OBJECT       teaPwPeerAddr  
+      SYNTAX       InetAddress (SIZE(0|4))  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required. An implementation   
+                   is only required to support 0, 4 address sizes."  
+    
+      OBJECT       teaPwAttachedPwIndex  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwIfIndex  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwID  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwLocalGroupID  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwGroupAttachmentID  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwLocalAttachmentID  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwPeerAttachmentID  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwCwPreference  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwLocalIfMtu  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwLocalIfString  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwLocalCapabAdvert  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwFragmentCfgSize  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwFcsRetentioncfg  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwOutboundLabel  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwInboundLabel  
+      MIN-ACCESS   read-only  
+    
+    
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwName  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwDescr  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwAdminStatus  
+      SYNTAX       INTEGER { up(1), down(2) }  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required. The support of value   
+                   testing(3) is not required."  
+    
+      OBJECT       teaPwOperStatus  
+      SYNTAX       INTEGER { up(1), down(2), notPresent(6),   
+                   lowerLayerDown(7) }  
+      DESCRIPTION "The support of the values testing(3), unknown(4),  
+                   and is not required."  
+    
+      OBJECT       teaPwRowStatus  
+      SYNTAX       RowStatus { active(1) }  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwStorageType  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwUpDownNotifEnable  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwDeletedNotifEnable  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+      OBJECT       teaPwNotifRate  
+      MIN-ACCESS   read-only  
+      DESCRIPTION "Write access is not required."  
+    
+        ::= { teaPwCompliances 3 }  
+    
+   -- Units of conformance.  
+    
+   teaPwBasicGroup   OBJECT-GROUP   
+      OBJECTS {  
+               teaPwType,  
+               teaPwOwner,  
+               teaPwPsnType,  
+               teaPwPeerAddrType,  
+               teaPwPeerAddr,  
+               teaPwIfIndex,  
+               teaPwID,  
+               teaPwLocalGroupID,  
+               teaPwCwPreference,  
+               teaPwLocalIfMtu,  
+               teaPwLocalIfString,  
+               teaPwLocalCapabAdvert,  
+               teaPwRemoteGroupID,  
+               teaPwCwStatus,  
+               teaPwRemoteIfMtu,  
+               teaPwRemoteIfString,  
+               teaPwOutboundLabel,  
+               teaPwInboundLabel,  
+               teaPwName,  
+               teaPwDescr,  
+               teaPwCreateTime,  
+               teaPwUpTime,  
+               teaPwLastChange,  
+               teaPwAdminStatus,  
+               teaPwOperStatus,  
+               teaPwLocalStatus,  
+               teaPwRowStatus,  
+               teaPwStorageType  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects that are required in all   
+           implementations that support the PW MIB module."  
+      ::= { teaPwGroups 1 }  
+    
+   teaPwPwIdGroup   OBJECT-GROUP   
+      OBJECTS {  
+               teaPwID  
+              }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects required for PW ID configuration   
+           and signaling."  
+      ::= { teaPwGroups 2 }  
+    
+   teaPwGeneralizedFecGroup   OBJECT-GROUP   
+      OBJECTS {  
+               teaPwGroupAttachmentID,  
+               teaPwLocalAttachmentID,  
+               teaPwPeerAttachmentID  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects required for generalized FEC   
+           configuration and signaling."  
+      ::= { teaPwGroups 3 }  
+    
+   teaPwFcsGroup   OBJECT-GROUP   
+      OBJECTS {  
+               teaPwFcsRetentioncfg,  
+               teaPwFcsRetentionStatus  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects required for FCS retention   
+           configuration and signaling."  
+      ::= { teaPwGroups 4 }  
+    
+   teaPwFragGroup   OBJECT-GROUP   
+      OBJECTS {  
+               teaPwFragmentCfgSize,  
+               teaPwRmtFragCapability  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects required for fragmentation   
+           configuration and signaling."  
+      ::= { teaPwGroups 5 }  
+    
+   teaPwPwStatusGroup   OBJECT-GROUP   
+      OBJECTS {  
+               teaPwRemoteCapabilities,  
+               teaPwRemoteStatusCapable,  
+               teaPwRemoteStatus  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects required for PW status configuration  
+           and signaling."  
+      ::= { teaPwGroups 6 }  
+    
+    
+   teaPwGetNextGroup   OBJECT-GROUP   
+      OBJECTS {  
+               teaPwIndexNext  
+               }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects for getting the next available   
+           index."  
+      ::= { teaPwGroups 7 }  
+    
+   teaPwPriorityGroup   OBJECT-GROUP   
+      OBJECTS {  
+               teaPwSetUpPriority,  
+               teaPwHoldingPriority  
+               }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects for controlling the PW setup and  
+           holding priority."  
+      ::= { teaPwGroups 8 }  
+    
+   teaPwAttachmentGroup   OBJECT-GROUP   
+      OBJECTS {  
+               teaPwAttachedPwIndex  
+               }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects for PW configuration  
+           and signaling."  
+      ::= { teaPwGroups 9 }  
+    
+   teaPwPerformanceGeneralGroup OBJECT-GROUP   
+      OBJECTS {  
+               teaPwPerfTotalErrorPackets  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of general objects needed for managing the  
+           total running performance parameters."  
+      ::= { teaPwGroups 10 }  
+    
+   teaPwPeformance1DayIntervalGroup OBJECT-GROUP   
+      OBJECTS {  
+               teaPwPerf1DayIntervalValidData, 
+               teaPwPerf1DayIntervalMoniSecs, 
+               teaPwPerf1DayIntervalInHCPackets,  
+               teaPwPerf1DayIntervalInHCBytes,  
+               teaPwPerf1DayIntervalOutHCPackets,  
+               teaPwPerf1DayIntervalOutHCBytes  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects needed for PW running 1 day interval   
+           performance collection."  
+      ::= { teaPwGroups 11 }  
+    
+   teaPwPerformanceIntervalGeneralGroup OBJECT-GROUP   
+      OBJECTS {  
+               teaPwTimeElapsed,  
+               teaPwValidIntervals,  
+               teaPwPerfIntervalValidData,  
+               teaPwPerfIntervalTimeElapsed  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of general objects needed for managing the  
+           interval performance parameters."  
+      ::= { teaPwGroups 12 }  
+    
+   teaPwPeformanceIntervalGroup OBJECT-GROUP   
+      OBJECTS {  
+               teaPwPerfCurrentInPackets,  
+               teaPwPerfCurrentInBytes,  
+               teaPwPerfCurrentOutPackets,  
+               teaPwPerfCurrentOutBytes,  
+    
+               teaPwPerfIntervalInPackets,  
+               teaPwPerfIntervalInBytes,  
+               teaPwPerfIntervalOutPackets,  
+               teaPwPerfIntervalOutBytes  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of 32 bits objects needed for PW performance   
+           collection in 15 minutes intervals."  
+      ::= { teaPwGroups 13 }  
+    
+   teaPwHCPeformanceIntervalGroup OBJECT-GROUP   
+      OBJECTS {  
+               teaPwPerfCurrentInHCPackets,  
+               teaPwPerfCurrentInHCBytes,  
+               teaPwPerfCurrentOutHCPackets,  
+               teaPwPerfCurrentOutHCBytes,  
+    
+               teaPwPerfIntervalInHCPackets,  
+               teaPwPerfIntervalInHCBytes,  
+               teaPwPerfIntervalOutHCPackets,  
+               teaPwPerfIntervalOutHCBytes  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of HC objects needed for PW performance   
+           collection in 15 minutes intervals."  
+      ::= { teaPwGroups 14 }  
+    
+   teaPwMappingTablesGroup OBJECT-GROUP   
+      OBJECTS {  
+               teaPwIndexMappingPwIndex,  
+               teaPwPeerMappingPwIndex  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects contained in the reverse  
+           mapping tables."  
+      ::= { teaPwGroups 15 }  
+    
+   teaPwNotificationControlGroup OBJECT-GROUP  
+      OBJECTS {  
+               teaPwUpDownNotifEnable,  
+               teaPwDeletedNotifEnable,  
+               teaPwNotifRate  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects for controlling the PW  
+           notifications."  
+      ::= { teaPwGroups 16 }  
+    
+   teaPwNotificationGroup NOTIFICATION-GROUP  
+      NOTIFICATIONS {  
+               teaPwUp,  
+               teaPwDown,  
+               teaPwDeleted  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection PW notifications objects."  
+      ::= { teaPwGroups 17 }  
+      
+      bsodPwBasicGroup   OBJECT-GROUP   
+      OBJECTS {  
+               teaPwType,  
+               --teaPwOwner,  
+               teaPwPsnType,  
+               teaPwPeerAddrType,  
+               teaPwPeerAddr,  
+               teaPwIfIndex,  
+               --teaPwID,  
+               --teaPwLocalGroupID,  
+               --teaPwCwPreference,  
+               --teaPwLocalIfMtu,  
+               --teaPwLocalIfString,  
+               --teaPwLocalCapabAdvert,  
+               --teaPwRemoteGroupID,  
+               --teaPwCwStatus,  
+               --teaPwRemoteIfMtu,  
+               --teaPwRemoteIfString,  
+               teaPwOutboundLabel,  
+               teaPwInboundLabel,  
+               teaPwName,  
+               teaPwDescr,  
+               teaPwCreateTime,  
+               teaPwUpTime,  
+               teaPwLastChange,  
+               teaPwAdminStatus,  
+               teaPwOperStatus,  
+               teaPwLocalStatus,  
+               teaPwRowStatus  
+               --teaPwStorageType  
+             }  
+    
+      STATUS  current  
+      DESCRIPTION  
+          "Collection of objects that are required in the BSoD PW MIB module."  
+      ::= { teaPwGroups 18 }       
+    
+   END 
+

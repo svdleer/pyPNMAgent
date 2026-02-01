@@ -1,0 +1,434 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-emta-mgmt.mib
+--    Creation Date: November 22, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--		private MIB for Emta management.
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-EMTA-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,
+	Integer32,
+	NOTIFICATION-TYPE       FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION      FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP      FROM SNMPv2-CONF
+	SnmpAdminString         FROM SNMP-FRAMEWORK-MIB
+    ifIndex                 FROM IF-MIB
+    PositiveInteger         FROM UPS-MIB
+    cableMgmt               FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- Netgear Group
+-- 
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ ntgrEmtaMgmt MODULE-IDENTITY
+	LAST-UPDATED "201211220000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"Initial version of this MIB module."
+::= { cableMgmt 2 }
+
+emtaBase OBJECT IDENTIFIER ::= { ntgrEmtaMgmt 1 }
+emtaSignalingBase OBJECT IDENTIFIER ::= { ntgrEmtaMgmt 2 }
+
+emtaBaseRegisterStatus  OBJECT-TYPE
+	SYNTAX     Integer32 
+  {
+	        inProgress(1), 
+ 	        complete(2), 
+ 	        failed(3), 
+ 	        other(4)
+	}
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The status of the VOIP gateway register to the Call agent. 
+ 	    inProgress(1) means the gateway is registering to the Call agent, 
+ 	    complete(2) means the gateway has finished and success to register
+ 	    to the Call agent, failed(3) means the gateway has finished but fail to 
+ 	    register to the Call agent, other(4) means all other case."
+	::= { emtaBase 1 }
+
+emtaBaseProvisionStatus  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"To reflect PacketCable Provision if triggered.
+ 	    If emtaProvisionStatus = false,
+ 	    it means that PacketCable interface is disable by VSIF#67=1 or Option-122-sub-1 equal to 0.0.0.0,
+ 	    and both cases will disable MTA to become as a cable modem mode."
+	::= { emtaBase 2 }
+
+emtaBaseDhcpOption  OBJECT-TYPE
+	SYNTAX     Integer32 
+  {
+	       cableLabsClientConfiguraton(122), 
+ 	       packetCableAndCableHomeObsolete(177)
+	}
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"This object specifies the value of the PacketCable DHCP option which will be
+ 	    used in MTA provisioning. Current PacketCable 1.x Provisioning Specification
+ 	    requires value 122, but certain legacy systems still use the currently obsolete
+ 	    value of 177."
+	::= { emtaBase 3 }
+
+emtaBaseIncludedInCmMaxCpe  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+	  "This object specifies whether the EMTA MAC address will be included when
+      calculating the number of CPEs allowed by the CM as specified in the
+ 	  CM configuration file.  Setting of the MIB takes effect on the next re-boot.
+ 	
+ 	  Note that the eDOCSIS specification requires the value of this object
+ 	  to be true(1) and setting it to false(2) will violate the spec and
+ 	  render the device uncertifiable."
+	::= { emtaBase 4 }  
+
+emtaBaseInhibitSwDownloadDuringCall  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"This object controls the processing logic of software downloading requests when
+ 	   there are specific telephony related EMTA activities. If this object has a value
+ 	   of true(1), DOCSIS software download by way of the docsDevSwAdminStatus MIB object
+ 	   will be inhibited if the value of esafeDevServiceIntImpact for the eMTA entry has
+ 	   a value of significant(1), indicating a call in progress.  If docsDevSwAdminStatus
+ 	   is set to upgradeFromMgt(1) under these conditions,  an error code of
+ 	   resourceUnavailable(13) will be returned and an appropriate event logged to the CM
+ 	   event log."
+	::= { emtaBase 5 }
+
+emtaEndptTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF EmtaEndptEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"The emtaEndptEntry table."
+	::= { emtaBase 6}
+
+emtaEndptEntry  OBJECT-TYPE
+	SYNTAX 	EmtaEndptEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"The emtaEndptEntry entry."
+  INDEX { emtaIndex }  
+	::= { emtaEndptTable 1 }
+
+EmtaEndptEntry ::= SEQUENCE {
+	emtaEndptPhoneInUseStatus
+		Integer32,
+	emtaEndptHookStatus
+		Integer32
+}
+emtaIndex OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Was undefined index"
+    ::= { emtaEndptEntry 9999 }
+
+emtaEndptPhoneInUseStatus  OBJECT-TYPE
+	SYNTAX  Integer32 
+  {
+	       na(0), 
+ 	       idle(1), 
+ 	       dialTone(2), 
+ 	       busyTone(3), 
+ 	       howlerTone(4), 
+ 	       dialing(5), 
+ 	       ringing(6), 
+ 	       ringbackTone(7), 
+ 	       connected(8), 
+ 	       disconnected(9)
+	}
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The phone in use status of the specific endpt, na(0) means the
+ 	   the endpt has not register to voice service yet. idle(1) means
+ 	   the endpt is on-hook, dialTone(2) means the endpt is offHook 
+ 	   and playing a dail Tone, busyTone(3) means the endpt is 
+ 	   offHook and playing a busyTone, howlerTone(4) means the endpt 
+ 	   is offHook and playing a howlerTone, dialing(5) means the 
+ 	   endpt is offHook and the user is dailing the digit but not 
+ 	   match the digit map yet. ringing(6) means the endpt is onHook and ringing, 
+ 	   ringbackTone(7) means the endpt is offHook and hear the 
+ 	   ringbackTone, connected(8) means the endpt is offHook and the 
+ 	   phone has connected, disconnected(9) means the endpt is 
+ 	   offHook and the phone has just disconnected, note that when 
+ 	   the phone is onHook after in disconnected state, it will 
+ 	   return to idle(1) state."
+	::= { emtaEndptEntry 1 }
+
+emtaEndptHookStatus  OBJECT-TYPE
+	SYNTAX  Integer32 
+  {
+	        onhook(0), 
+ 	        offhook(1) 
+	}
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The hook status of the specific endpt, onhook(0) means the
+ 	  the endpt is on hook, offhook(1) means the endpt is off hook."
+	::= { emtaEndptEntry 2 }
+
+emtaSignalingJitterBufferType  OBJECT-TYPE
+	SYNTAX  Integer32 
+  {
+	    jitterBufferTypeFixed(1), 
+      jitterBufferTypeAdaptive(2) 
+	}
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+	"This object contains the type of the jitter buffer. Setting this object
+ 	to jitterBufferTypeFixed(1) causes the eMTA to employ a fixed jitter
+ 	buffer. Setting this object to jitterBufferTypeAdaptive(2) causes the
+ 	eMTA to use an adaptive jitter buffer.
+ 	If the jitter buffer type value is changed through SNMP, then those
+ 	changes take affect starting with the next phone call (in process
+ 	calls are not affected). When the voice jitter buffer is frozen it uses
+ 	the emtaSignalingVoiceJitterNomValue for the fixed size of the jitter
+ 	buffer.
+"
+	::= { emtaSignalingBase 1 }
+  
+emtaSignalingJitterNomValue  OBJECT-TYPE
+	SYNTAX  Unsigned32 
+  UNITS  "milliseconds"  
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+	"If the voice jitter buffer value is changed through SNMP, then those
+ 	changes take affect starting with the next phone call (in process calls
+ 	are not affected). This MIB sets the target hold time for the voice
+ 	jitter buffer in milliseconds. This is the initial hold time for the
+ 	adaptive jitter buffer. The actual target holding time will adapt above
+ 	or below this in response to observed network jitter. The MTA will
+ 	reject all attempts to set the value which is not within the interval
+ 	defined by the emtaSignalingVoiceJitterMinValue and
+ 	emtaSignalingVoiceJitterMaxValue MIB Objects. When the jitter
+ 	buffer is frozen, this MIB controls the static size of the voice jitter
+ 	buffer."
+	::= { emtaSignalingBase 2 } 
+  
+emtaSignalingJitterMinValue  OBJECT-TYPE
+	SYNTAX Unsigned32 (0..200)
+  UNITS  "milliseconds"
+	MAX-ACCESS read-write    
+	STATUS     current
+	DESCRIPTION 
+	"If the voice jitter buffer value is changed through SNMP, then those
+ 	changes take affect starting with the next phone call (in process calls
+ 	are not affected). This MIB sets the minimum hold time for the voice
+ 	jitter buffer in milliseconds. The target hold time cannot take on a
+ 	value below the minimum either through a MIB setting or through
+ 	adaptation. That is, packets will be held in the jitter buffer for at
+ 	least this duration (on average). When a packet is received late it may
+ 	be held for less than this time."
+	::= { emtaSignalingBase 3 }     
+
+emtaSignalingJitterMaxValue  OBJECT-TYPE
+	SYNTAX Unsigned32 (0..200)
+  UNITS  "milliseconds"  
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+	"If the voice jitter buffer value is changed through SNMP, then those
+ 	changes take affect starting with the next phone call (in process calls
+ 	are not affected). This MIB sets the maximum hold time for the voice
+ 	jitter buffer in milliseconds. The maximum size of the jitter buffer is
+ 	only relevant for an adaptive jitter buffer. The target hold time cannot
+ 	take on a value greater than the maximum either through a MIB setting or
+ 	through adaptation. On average, packets will not be held longer than
+ 	this time. However, if a packet is received quite early it may be held
+ 	longer than the max hold time. The default value is 0 which is
+ 	interpreted as the maximum jitter buffer size for the product."
+	::= { emtaSignalingBase 4 }  
+  
+emtaSignalingDtmfRFC2833Support  OBJECT-TYPE
+	SYNTAX  Integer32 
+  {
+	    enabled(1), 
+      disable(2) 
+	}
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+	"This object contains the value which controls the usage of the DTMF
+ 	Relay. Setting this object to 'enabled(1)' causes the MTA to use the
+ 	DTMF Tone Relay as per RFC2833. Setting this object to 'disabled(2)'
+ 	causes the eMTA to pass DTMF tones inband."
+	::= { emtaSignalingBase 5 }
+  
+emtaSignalingFaxT38RelaySupport  OBJECT-TYPE
+	SYNTAX  Integer32 
+  {
+	    enabled(1), 
+      disable(2) 
+	}
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+	"This object contains the value which controls the usage of the T38 Fax Relay.
+ 	Setting this object to 'enabled(1)' causes the EMTA to use the T38 Fax Relay if
+ 	supported by the DSP image. Setting this object to 'disable(2)' causes the EMTA
+ 	not to use T38 Fax Relay, but to use voice-band data mode for fax transmission
+ 	instead."
+	::= { emtaSignalingBase 6 }  
+
+emtaSignalingEchoCanceTailLength  OBJECT-TYPE
+	SYNTAX  Integer32 
+  {
+	    ecanTail8ms(1), 
+ 	    ecanTail16ms(2), 
+ 	    ecanTail24ms(3), 
+ 	    ecanTail32ms(4) 
+	}
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+	"This object specifies the echo cancellation tail length.  
+ 	If the echo cancellation tail length is changed through SNMP, then those
+ 	changes take effect starting with the next phone call (in process calls 
+ 	are not affected).  Also note that the value of this object will persist 
+ 	across a MTA reset."
+	::= { emtaSignalingBase 7 }  
+
+emtaSignalingEndptTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF EmtaSignalingEndptEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"The emtaSignalingEndptEntry table."
+	::= { emtaSignalingBase 8 }
+
+emtaSignalingEndptEntry  OBJECT-TYPE
+	SYNTAX 	EmtaSignalingEndptEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"The emtaSignalingEndptEntry entry."
+  INDEX { emtaSignalIndex }  
+	::= { emtaSignalingEndptTable 1 }
+
+EmtaSignalingEndptEntry ::= SEQUENCE {
+	emtaSignalingEndptTxGain
+		Integer32,
+	emtaSignalingEndptRxGain
+		Integer32,              
+	emtaSignalingEndptPulseDialEnable
+	  TruthValue	
+}
+emtaSignalIndex OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Was undefined index"
+    ::= { emtaSignalingEndptEntry 9999 }
+
+emtaSignalingEndptTxGain OBJECT-TYPE
+    SYNTAX Integer32 (-16..16)
+    UNITS "dB"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This Object represents the per line transmitter (A/D)
+         gain. A positive number reflects a signal gain, a negative
+         number reflects a signal loss.
+
+         This Object does not reflect the desired level at the Telco (POTS)
+         a-b (T/R) terminals as it does not include the affects of the gain
+         settings on the analog interfaces which are pre-configured for a
+         given country specification. The gain setting specified in this MIB
+         object will be applied on top of the preconfigured settings and
+         therefore represents a relative level.
+         
+         The default value of this object may change based on build specific
+         options."
+    DEFVAL { 0 }
+    ::= { emtaSignalingEndptEntry 1 }
+
+emtaSignalingEndptRxGain OBJECT-TYPE
+    SYNTAX Integer32 (-16..16)
+    UNITS "dB"
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This Object represents the per line receiver (D/A) gain. A positive
+        number reflects a signal gain, a negative number reflects a signal loss.
+
+        This MIB Object does not reflect the desired level at
+        the Telco (POTS) a-b (T/R) terminals as it does not include the
+        affects of the gain settings on the analog interfaces which are
+        pre configured for a given country specification. The gain setting
+        specified in this MIB will be applied on top of the preconfigured
+        settings and therefore represents a relative level.
+
+        The default value of this object may change based on build specific
+        options."
+    DEFVAL { 0 }
+    ::= { emtaSignalingEndptEntry 2 }
+
+emtaSignalingEndptPulseDialEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This oject controls pulse dialing detection for the Endpoint.  
+        When set to 'true(1)', pulse and tone dialing detection is enabled.
+        When set to 'false(2)', only tone detection is enabled."
+    ::= { emtaSignalingEndptEntry 3 }
+    
+END
+

@@ -1,0 +1,135 @@
+HITRON-CUSTOMIZATION-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+    , OBJECT-TYPE
+    , enterprises
+    , Integer32
+    , Unsigned32
+    , Counter32
+        FROM SNMPv2-SMI -- RFC2578
+    
+    DisplayString
+    , TruthValue
+    , DateAndTime
+        FROM SNMPv2-TC  -- RFC2579
+    hitronMib
+        FROM HITRON-MIB
+    ; -- End of IMPORTS
+
+hitronCustomization  MODULE-IDENTITY
+    LAST-UPDATED    "201411261500Z" -- Nov. 26, 2014
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "Jun Cao
+        Hitron Technologies, Inc.
+		16F Jinqhope Square, 
+		No.88 Huachi Street, Suzhou Industrial Park, Suzhou PRC 215000
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8112
+        E-mail: caojun@sz.hitrontech.com"
+    DESCRIPTION
+        "MIB module for customer configuration"
+
+    ::= { hitronMib 21 }
+
+-- Wireless Customization	
+hitronCusWls    OBJECT IDENTIFIER  ::= { hitronCustomization 1 }
+
+hitronCusWlsTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF HitronCusWlsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table used to configure settings related to the wireless SSID name and default password.
+		For dual band wireless gateway, the hitronCusWlsSsidIndex 1-4 is for 2.4G while 5-8 is for 5G;
+		2.4G: 1--primary ssid 2--second ssid 3--3rd ssid 4--4th ssid;
+		5G:	  5--primary ssid 6--second ssid 7--3rd ssid 8--4th ssid"
+    ::= { hitronCusWls 1 }
+	
+hitronCusWlsEntry OBJECT-TYPE
+    SYNTAX      HitronCusWlsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Configuration parameters for an individual SSID info."
+    INDEX       { hitronCusWlsSsidIndex }
+    ::= { hitronCusWlsTable 1 }
+	
+HitronCusWlsEntry ::=
+    SEQUENCE {
+        hitronCusWlsSsidIndex      					INTEGER,
+        hitronCusWlsSsidNamingType        			INTEGER,
+        hitronCusWlsSsidNameString        			OCTET STRING,
+        hitronCusWlsSsidPasswordType    			INTEGER,
+        hitronCusWlsSsidPasswordString     			OCTET STRING
+    }
+	
+hitronCusWlsSsidIndex OBJECT-TYPE
+    SYNTAX      INTEGER (0..16)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "For dual band wireless gateway, the hitronCusWlsSsidIndex 1-4 is for 2.4G while 5-8 for 5G;
+		2.4G: 1--primary ssid 2--second ssid 3--3rd ssid 4--4th ssid;
+		5G:	  5--primary ssid 6--second ssid 7--3rd ssid 8--4th ssid"
+        ::= { hitronCusWlsEntry 1 }
+	
+hitronCusWlsSsidNamingType OBJECT-TYPE
+    SYNTAX INTEGER {
+        default(0),
+		pre-pend(1),
+		static(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"default(0) means wireless SSID name use hitron default - model name + last 4 octet of the gateway MAC(e.g, CGNM-[last-4-mac]). In this case, the value of [hitronCusWlsSsidNameString] is ignored; 
+		 pre-pend(1) means wireless SSID name use the [hitronWlsCustomizedSsidNameString]-[last-4-mac];
+		 static(2) means wireless SSID name use the [hitronWlsCustomizedSsidNameString]"
+    ::= { hitronCusWlsEntry 2 }
+
+hitronCusWlsSsidNameString  OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"SSID prefix or complete name.
+		it would be ignored when the [hitronCusWlsSsidNamingType] is 'default'"
+    ::= { hitronCusWlsEntry 3 }
+	
+hitronCusWlsSsidPasswordType  OBJECT-TYPE
+    SYNTAX INTEGER {
+        default(0),
+		serial-number(1),
+		mac-address(2),
+		static(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"default(0) means use the hitron default and it ignores the [hitronCusWlsSsidPasswordString] setting;
+		 serial-number(1) means use the serial number as password and it ignores the [hitronCusWlsSsidPasswordString] setting;;
+		 mac-address(2) means use the MAC address as password and it ignores the [hitronCusWlsSsidPasswordString] setting;; 
+		 static(3) means use the [hitronCusWlsSsidPasswordString] as password"
+    ::= { hitronCusWlsEntry 4 }	
+	
+hitronCusWlsSsidPasswordString  OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"password for a SSID.
+		it only takes effect when the [hitronCusWlsSsidPasswordType] is 'static'"
+    ::= { hitronCusWlsEntry 5 }
+
+hitronCustomizationCommitSettings OBJECT IDENTIFIER ::= {hitronCustomization 99 }	
+hitronCustomizationSettingsValue OBJECT-TYPE
+	SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Commit all customization settings. "
+    ::= { hitronCustomizationCommitSettings 1 }
+	
+END

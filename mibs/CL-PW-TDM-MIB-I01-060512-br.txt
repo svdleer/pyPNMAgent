@@ -1,0 +1,2332 @@
+CL-PW-TDM-MIB DEFINITIONS ::= BEGIN
+
+   IMPORTS
+     MODULE-IDENTITY, OBJECT-TYPE,
+     Integer32, Counter32, Unsigned32
+        FROM SNMPv2-SMI
+
+     MODULE-COMPLIANCE, OBJECT-GROUP
+        FROM SNMPv2-CONF
+
+     TEXTUAL-CONVENTION, TruthValue,  RowStatus, StorageType,
+      TimeStamp, TestAndIncr
+        FROM SNMPv2-TC
+
+     InterfaceIndexOrZero
+        FROM IF-MIB
+
+     PerfCurrentCount, PerfIntervalCount
+        FROM PerfHist-TC-MIB      
+        
+     HCPerfTimeElapsed  
+         FROM HC-PerfHist-TC-MIB            -- [RFC3705]  
+
+     teaPwIndex
+         FROM CL-PW-MIB
+        
+     clabProjDocsis
+        FROM CLAB-DEF-MIB;
+        
+   -- The TDM MIB
+    
+    teaPwTDMMIB MODULE-IDENTITY 
+    LAST-UPDATED    "200602060000Z" -- February 6, 2006
+    ORGANIZATION    "Cable Television Laboratories, Inc" 
+    CONTACT-INFO 
+         "
+         Postal: Cable Television Laboratories, Inc. 
+         858 Coal Creek Circle
+         Louisville, Colorado 80027-9750 
+         U.S.A. 
+         Phone: +1 303-661-9100 
+         Fax: +1 303-661-9199
+         E-mail: mibs@cablelabs.com" 
+    DESCRIPTION 
+          " 
+          This MIB contains managed object definitions for
+          encapsulating TDM (T1,E1, T3, E3, NxDS0) as
+          pseudo-wires over packet-switching networks (PSN).
+
+          This MIB supplements the PW-STD-MIB as in: Zelig, D.,
+          Nadeau,T. 'Pseudo Wire (PW) Management Information Base'.
+          The PW-STD-MIB contains structures and MIB associations
+          generic to Pseudo-Wire (PW) emulation. PW-specific
+          MIBs (such as this) contain config and stats for specific
+          PW types.
+
+          Initial version, published as draft-ietf-pwe3-TDM-mib-00.txt
+          by the 'Pseudo-Wire Emulation Edge-to-Edge (PWE3)
+          Working Group'
+  
+          For more info, see the PWE3 Working Group (email distribution
+          pwe3@ietf.org,
+          http://www.ietf.org/html.charters/pwe3-charter.html)
+
+          This version was taken from a snapshot of 
+          draft-ietf-pwe3-pw-tdm-mib-04.txt 
+          (by Orly Nicklass as noted below)  and modified by David Brief and 
+          Ron Cohen of Resolute Networks to be rooted 
+          in the under DOCSIS projects in the CableLabs 
+          private enterprises branch. The intention is to 
+          support the standard MIBs when they reach RFC status.
+           "
+
+    REVISION 
+           "200602060000Z" -- February 6, 2006
+    DESCRIPTION
+              "This revision, published as CL-PW-TDM-MIB.
+              Changes from ietf-pw-tdm-mib-04
+              -add in tea prefix to make avoid problems when 
+               migrate to RFC
+
+              -add RTP SSRC variable per TDM pw
+
+                    teaPwTDMRtpSSRC
+                    teaPwTDMPeerRtpSSRC
+
+              -add additional objects for configuring policy of IWF:
+                     teaPwTMDCfgFillerPattern
+                     teaPwTDMCfgLflagPayloadPolicy 
+
+              -add additional objects for configuring TOS of packets:
+                     teaPwTDMCfgIPTos 
+               
+              -add additional objects for RTP configuration
+                    teaPwTDMCfgRtpPT
+                    teaPwTDMCfgPeerRtpPT
+                    teaPwTDMCfgRtpTSRef
+                    teaPwTDMCfgPeerRtpTSRef
+                    teaPwTDMCfgSRTPenable
+ 
+              -add in additional table teaPwTDMCfgFramedTable for 
+               configuration of CESoPSN specific information
+
+              -add in additional objects for configuring policies: 
+
+                     teaPwTDMCfgFramedIdlePattern 
+                     teaPwTDMCfgFramedRflagPolicy 
+                     teaPwTDMCfgFramedLflagPolicy 
+                     teaPwTDMCfgFramedRDPolicy    
+                     teaPwTDMCfgFramedLopsPolicy  
+
+              -add in additional objects for configuring signaling mode:
+
+                     teaPwTDMCfgFramedSigPT
+                     teaPwTDMCfgFramedSigPeerPT
+                     teaPwTDMCfgFramedSigIPTos
+                     teaPwTDMCfgFramedSigIdle       
+                     teaPwTDMCfgFramedSigInterval   
+                     teaPwTDMCfgFramedSigMaxInterval
+              "
+
+--   pwVcTDMMIB MODULE-IDENTITY
+--   
+--        LAST-UPDATED "200510230000Z"
+--        ORGANIZATION "Pseudo-Wire Emulation Edge-to-Edge (PWE3)
+--                      Working Group"
+--        CONTACT-INFO
+--            "        Orly Nicklass
+--                     Postal: RAD Data Communications
+--                     24 Raoul Wallenberg St., Bldg C
+--                     Tel Aviv 69719, Israel
+--                     Email: orly_n@rad.com
+--   
+--             The PWE3 Working Group (email distribution pwe3@ietf.org,
+--             http://www.ietf.org/html.charters/pwe3-charter.html)
+--             "
+--   
+--        DESCRIPTION
+--            "This MIB contains managed object definitions for
+--             encapsulating TDM (T1,E1, T3, E3, NxDS0) as
+--             pseudo-wires over packet-switching networks (PSN).
+--   
+--             This MIB supplements the PW-STD-MIB as in: Zelig, D.,
+--             Nadeau,T. 'Pseudo Wire (PW) Management Information Base'.
+--             The PW-STD-MIB contains structures and MIB associations
+--             generic to Pseudo-Wire (PW) emulation. PW-specific
+--             MIBs (such as this) contain config and stats for specific
+--             PW types.
+--   
+--             Copyright (C) The Internet Society (2005).  This version
+--             of this MIB module is part of RFC yyyy;  see the RFC
+--             itself for full legal notices. 
+-- RFC Ed.: replace yyyy with actual RFC number & remove this
+--             note"
+                 
+                   
+         ::= { clabProjDocsis  16 }
+             -- ::= { pwStdMIB XXX }
+
+   
+   -- Local Textual conventions
+
+   TeaPwTDMCfgIndex ::= TEXTUAL-CONVENTION
+     STATUS      current
+     DESCRIPTION
+          "Index into any of the relevant teaPwXXXCfgTable."
+     SYNTAX  Unsigned32
+
+   -- Tables, Scalars
+   teaPwTDMObjects       OBJECT IDENTIFIER
+                                ::= { teaPwTDMMIB 1 }
+   -- Notifications
+   teaPwTDMTraps         OBJECT IDENTIFIER
+                                ::= { teaPwTDMMIB 2 }
+
+   -- Conformance
+   teaPwTDMConformance   OBJECT IDENTIFIER
+                                ::= { teaPwTDMMIB 3 }
+
+   -- TDM PW table
+
+
+   teaPwTDMTable OBJECT-TYPE
+     SYNTAX        SEQUENCE OF TeaPwTDMEntry
+     MAX-ACCESS    not-accessible
+     STATUS        current
+     DESCRIPTION
+         "This table contains basic information including ifIndex,
+          and pointers to entries in the relevant TDM config
+          tables for this TDM PW."
+     ::= { teaPwTDMObjects 1 }
+
+   teaPwTDMEntry OBJECT-TYPE
+     SYNTAX        TeaPwTDMEntry
+     MAX-ACCESS    not-accessible
+     STATUS        current
+     DESCRIPTION
+         "This table is indexed by the same index that was
+          created for the associated entry in the PW Table
+          (in the TEA-PW-MIB).
+
+            - The teaPwIndex.
+
+          An entry is created in this table by the agent for every
+          entry in the teaPwTable with a teaPwType equal to one of the
+          following:
+          e1Satop(17), t1Satop(18), e3Satop(19), t3Satop(20),
+          basicCesPsn(21), basicTdmIp(22),  tdmCasCesPsn(23),
+          tdmCasTdmIp(24)."
+
+     INDEX  { teaPwIndex }
+
+        ::= { teaPwTDMTable 1 }
+
+   TeaPwTDMEntry ::= SEQUENCE {
+
+        teaPwTDMRate                      Integer32,
+        teaPwTDMIfIndex                   InterfaceIndexOrZero,
+        teaPwGenTDMCfgIndex               TeaPwTDMCfgIndex,
+        teaPwRelTDMCfgIndex               TeaPwTDMCfgIndex,
+
+        teaPwTDMConfigError               BITS,
+        teaPwTDMTimeElapsed               Integer32,
+        teaPwTDMValidIntervals            Integer32,
+        teaPwTDMCurrentIndications        BITS,
+        teaPwTDMLatchedIndications        BITS,
+        teaPwTDMLastEsTimeStamp           TimeStamp,
+
+        teaPwTDMRtpSSRC                   Unsigned32,
+        teaPwTDMPeerRtpSSRC               Unsigned32
+        }
+
+
+   teaPwTDMRate OBJECT-TYPE
+     SYNTAX     Integer32
+     MAX-ACCESS    read-write
+     STATUS        current
+     DESCRIPTION
+         "The parameter represents the bit-rate of the TDM service
+          in multiples of the 'basic' 64 Kbit/s rate. It complements
+          the definition of pwType used in PW-STD-MIB.
+          For structure-agnostic the following should be used:
+          a) Satop E1 - 32
+          b) Satop T1 emulation:
+             i)   MUST be set to 24 in the basic emulation mode
+             ii)  MUST be set to 25 for the 'Octet-aligned T1'
+                  emulation mode
+          c) Satop E3 - 535
+          d) Satop T3 - 699
+          For all kinds of structure-aware emulation, this parameter
+          MUST be set to N where N is the number of DS0 channels
+          in the corresponding attachment circuit."
+     REFERENCE
+      "See [TDMCP-EXT]"
+     DEFVAL { 32 }
+     ::= { teaPwTDMEntry 1 }
+
+   teaPwTDMIfIndex OBJECT-TYPE
+     SYNTAX        InterfaceIndexOrZero
+     MAX-ACCESS    read-write
+     STATUS        current
+     DESCRIPTION
+         "This is a unique index within the ifTable. It represents
+          the interface index of the full link or the interface
+          index for the bundle holding the group of
+          time slots to be transmitted via this PW connection.
+
+          A value of zero indicates an interface index that has yet
+          to be determined.
+          Once set, if the TDM ifIndex is (for some reason) later
+          removed, the agent SHOULD delete the associated PW rows
+          (e.g., this teaPwTDMTable entry). If the agent does not
+          delete the rows,  the agent MUST set this object to
+          zero."
+     ::= { teaPwTDMEntry 2 }
+
+   teaPwGenTDMCfgIndex OBJECT-TYPE
+     SYNTAX        TeaPwTDMCfgIndex
+     MAX-ACCESS    read-write
+     STATUS        current
+     DESCRIPTION
+         "Index to the generic parameters in the TDM configuration
+          table that appears in this MIB module. It is likely that
+          multiple TDM PWs of the same characteristic will share
+          a single TDM Cfg entry."
+     ::= { teaPwTDMEntry 3 }
+
+  teaPwRelTDMCfgIndex OBJECT-TYPE
+    SYNTAX        TeaPwTDMCfgIndex
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+  
+        "Index to the relevant TDM configuration table entry
+         that appears in one of the related MIB modules
+         such as TDMoIP or CESoPSN. It is likely that
+         multiple TDM PWs of the same characteristic will share
+         a single configuration entry of the relevant type.
+         The value 0 implies no entry in other related MIB.
+         
+         In this version of the MIB this pointer points to
+         An entry in teaPwTDMCfgFramedTable for CESoPSN TDM
+         PWs. For other PW types it is set to none."
+
+    ::= { teaPwTDMEntry 4 }
+
+   teaPwTDMConfigError OBJECT-TYPE
+     SYNTAX BITS {
+           other                         ( 0),
+           tdmTypeIncompatible           ( 1),
+           peerRtpIncompatible           ( 2),
+           peerPayloadSizeIncompatible   ( 3)
+     }
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Any of the bits are set if the local configuration is
+          not compatible with the peer configuration as available
+          from the various parameters options.
+
+         -tdmTypeIncompatible bit is set if the local configuration
+          is not carrying the same TDM type as the peer configuration.
+
+          -peerRtpIncompatible bit is set if the local configuration
+          is configured to send RTP packets for this PW, and the
+          remote is not capable of accepting RTP packets.
+
+          -peerPayloadSizeIncompatible bit is set if the local
+          configuration is not carrying the same Payload Size as the
+          peer configuration.  "
+     ::= { teaPwTDMEntry 5}
+
+   teaPwTDMTimeElapsed OBJECT-TYPE
+      SYNTAX  Integer32 (1..900)
+      MAX-ACCESS  read-only
+      STATUS  current
+      DESCRIPTION
+          "The number of seconds, including partial seconds,
+           that have elapsed since the beginning of the current
+           measurement period. If, for some reason, such as an
+           adjustment in the system's time-of-day clock, the
+           current interval exceeds the maximum value, the
+           agent will return the maximum value."
+      ::= { teaPwTDMEntry 6}
+
+   teaPwTDMValidIntervals OBJECT-TYPE
+
+      SYNTAX  Integer32 (0..96)
+      MAX-ACCESS  read-only
+      STATUS  current
+      DESCRIPTION
+          "The number of previous 15-minute intervals for which data
+           was collected.
+           An agent with TDM capability must be capable of supporting
+           at least n intervals. The minimum value of n is 4, The
+           default of n is 32 and the maximum value of n is 96.
+           The value will be <n> unless the measurement was (re-)
+           started within the last (<n>*15) minutes, in which case
+           the value will be the number of complete 15 minute
+           intervals for which the agent has at least some data.
+           In certain cases(e.g., in the case where the agent is
+           a proxy) it is possible that some intervals are unavailable.
+           In this case, this interval is the maximum interval number
+           for which data is available. "
+      ::= { teaPwTDMEntry 7}
+
+   teaPwTDMCurrentIndications OBJECT-TYPE
+     SYNTAX BITS {
+           other               ( 0),
+           strayPacket         ( 1),
+           malformedPacket     ( 2),
+           excessivePktLossRate( 3),
+           bufferOverrun       ( 4),
+           bufferUnderrun      ( 5),
+           remotePktLoss       ( 6),
+           pktMisOrder         ( 7),
+           packetLoss          ( 8),
+           tdmFault            ( 9)
+     }
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "The following defects should be detected and reported
+          upon request:
+
+          -Stray packets MAY be detected by the PSN and multiplexing
+          layers. Stray packets MUST be discarded by the CE-bound IWF
+          and their detection MUST NOT affect mechanisms for detection
+          of packet loss.
+
+          -Malformed packets are detected by mismatch between the
+          expected packet size (taking the value of the L bit into
+          account) and the actual packet size inferred from the PSN and
+          multiplexing layers. Malformed in-order packets MUST be
+          discarded by the CE-bound IWF and replacement data generated
+
+          as for lost packets.
+
+          -Excessive packet loss rate is detected by computing the
+          average packet loss rate over the value of
+          teaPwTDMAvePktLossTimeWindow and comparing it with a
+          preconfigured threshold [SATOP].
+
+          -Buffer overrun is detected in the normal operation state
+          when the CE bound IWF's jitter buffer cannot accommodate
+          newly arrived packets.
+
+          -Remote packet loss is indicated by reception of packets with
+          their R bit set.
+
+          -Packet misorder is detected by looking at the Sequence
+          number provided by the control word.
+
+          -TDM Fault, if L bit in the control word is set, it indicates
+          that TDM data carried in the payload is invalid due an
+          attachment circuit fault.  When the L bit is set the payload
+          MAY be omitted in order to conserve bandwidth.
+
+          Note: the algorithm used to capture these indications
+          is implementation specific."
+     ::= { teaPwTDMEntry 8}
+
+   teaPwTDMLatchedIndications OBJECT-TYPE
+     SYNTAX BITS {
+           other               ( 0),
+           staryPacket         ( 1),
+           malformedPacket     ( 2),
+           excessivePktLossRate( 3),
+           bufferOverrun       ( 4),
+           bufferUnderrun      ( 5),
+           remotePktLoss       ( 6),
+           pktMisOrder         ( 7),
+           packetLoss          ( 8),
+           tdmFault            ( 9)
+
+     }
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "The state of TDM indicators when the TDM PW last declared
+          an error second (either as ES, SES or a second with
+          errors inside a UAS) condition. At this time, only LOPS
+          can create a failure. Since indicators other than LOPS are
+          useful, all are latched here. For bit definitions, see
+
+          teaPwTDMCurrentIndications above.
+
+          Note: the algorithm used to latch these indications when
+          entering a defect state is implementation specific."
+     ::= { teaPwTDMEntry 9}
+
+   teaPwTDMLastEsTimeStamp OBJECT-TYPE
+     SYNTAX      TimeStamp
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION
+         "The value of sysUpTime at the most recent occasion at
+          which the TDM PW entered the ES or SES state."
+     ::= { teaPwTDMEntry 10}
+
+
+     teaPwTDMRtpSSRC OBJECT-TYPE
+     SYNTAX               Unsigned32
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "In the case where RTP headers are being used on this PW,
+          this object configures the value of the SSRC field to use
+          in the RTP header "
+
+     ::= { teaPwTDMEntry 11}
+
+
+     teaPwTDMPeerRtpSSRC OBJECT-TYPE
+     SYNTAX               Unsigned32
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "In the case where RTP headers are being used on this PW, 
+          this object configures the value of the SSRC field to 
+          expect in the RTP header.  When this value is non-zero 
+          it may be used to check incoming data frames for validity.  "
+     DEFVAL {0 }
+
+     ::= { teaPwTDMEntry 12}
+
+
+
+   -- End of TDM PW table
+
+   -- PW Generic TDM PW Configuration Table
+
+   teaPwTDMCfgIndexNext OBJECT-TYPE
+     SYNTAX            TestAndIncr
+     MAX-ACCESS        read-only
+     STATUS            current
+     DESCRIPTION
+         "This object contains the value to be used for
+          teaPwTDMCfgIndex when creating entries in the
+          teaPwTDMCfgTable. The value 0 indicates that no
+          unassigned entries are available.  To obtain the
+          value of teaPwTDMCfgIndexNext for a new entry in the
+          teaPwTDMCfgTable, the manager issues a management
+          protocol retrieval operation to obtain the current
+          value of teaPwTDMCfgIndexNext. After each retrieval
+          operation, the agent should modify the value to
+          reflect the next unassigned index.  After a manager
+          retrieves a value the agent will determine through
+          its local policy when this index value will be made
+          available for reuse."
+     ::= { teaPwTDMObjects 2 }
+
+
+   teaPwTDMCfgTable   OBJECT-TYPE
+     SYNTAX                  SEQUENCE OF TeaPwTDMCfgEntry
+     MAX-ACCESS              not-accessible
+     STATUS                  current
+     DESCRIPTION
+         "This table contains a set of parameters that may be
+          referenced by one or more TDM PWs in teaPwTDMTable."
+
+
+     ::= { teaPwTDMObjects 3 }
+
+   teaPwTDMCfgEntry   OBJECT-TYPE
+     SYNTAX            TeaPwTDMCfgEntry
+     MAX-ACCESS        not-accessible
+     STATUS            current
+     DESCRIPTION
+         "These parameters define the characteristics of a
+          TDM PW. They are grouped here to ease NMS burden.
+          Once an entry is created here it may be re-used
+          by many PWs."
+
+     INDEX  { teaPwGenTDMCfgIndex }
+
+        ::= { teaPwTDMCfgTable 1 }
+
+   TeaPwTDMCfgEntry ::= SEQUENCE {
+        teaPwTDMCfgIndex                       TeaPwTDMCfgIndex,
+        teaPwTDMCfgRowStatus                   RowStatus,
+        teaPwTDMCfgConfErr                     BITS,
+        teaPwTDMCfgPayloadSize                 Unsigned32,
+        teaPwTDMCfgPktReorder                  TruthValue,
+        teaPwTDMCfgRtpHdrUsed                  TruthValue, 
+         teaPwTDMCfgJtrBfrDepth                Unsigned32,
+        teaPwTDMCfgPayloadSuppression          INTEGER,
+
+        teaPwTDMCfgConsecPktsInSynch           Unsigned32,
+        teaPwTDMCfgConsecMissPktsOutSynch      Unsigned32,
+        teaPwTDMCfgSetUp2SynchTimeOut          Unsigned32,
+
+        teaPwTDMCfgPktReplacePolicy            INTEGER,
+
+        teaPwTDMCfgAvePktLossTimeWindow        Integer32,
+        teaPwTDMCfgExcessivePktLossThreshold   Unsigned32,
+
+        teaPwTDMCfgAlarmThreshold              Unsigned32,
+        teaPwTDMCfgClearAlarmThreshold         Unsigned32,
+        teaPwTDMCfgMissingPktsToSes            Unsigned32,
+        teaPwTDMCfgTimestampMode               INTEGER, 
+        teaPwTDMCfgStorageType                 StorageType,
+
+-- new parameters added to teaMIB and proposed to pwe3
+
+       teaPwTMDCfgFillerPattern                Unsigned32,
+       teaPwTDMCfgLflagPayloadPolicy           INTEGER,
+       teaPwTDMCfgIPTos                        Unsigned32,
+       teaPwTDMCfgRtpPT                        Unsigned32,
+       teaPwTDMCfgPeerRtpPT                    Unsigned32,
+       teaPwTDMCfgRtpTSRef                     Unsigned32,
+       teaPwTDMCfgPeerRtpTSRef                 Unsigned32,
+       teaPwTDMCfgSRTPenable                   TruthValue
+
+        }
+
+   teaPwTDMCfgIndex   OBJECT-TYPE
+     SYNTAX        TeaPwTDMCfgIndex
+     MAX-ACCESS    not-accessible
+     STATUS        current
+     DESCRIPTION
+
+         "Index to an entry in this table. The value is a copy of the
+          assigned teaPwTDMCfgIndexNext"
+     ::= { teaPwTDMCfgEntry 1 }
+
+
+   teaPwTDMCfgRowStatus    OBJECT-TYPE
+     SYNTAX               RowStatus
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "Object used for creating, modifying, and deleting
+          a row from this table. The following objects should not be
+          modified if the entry is in use and the status is active:
+          teaPwTDMCfgPayloadSize, teaPwTDMCfgJtrBfrDepth, and 
+          teaPwTDMCfgPayloadSuppression.
+          The row should not be deleted if the entry is in used"
+     ::= { teaPwTDMCfgEntry 2 }
+
+   teaPwTDMCfgConfErr OBJECT-TYPE
+     SYNTAX BITS {
+           other           ( 0),
+           payloadSize     ( 1),
+           jtrBfrDepth     ( 2)
+     }
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Various configuration errors. Illegal settings within
+          the teaPwTDMCfg table."
+     ::= { teaPwTDMCfgEntry 3 }
+
+   teaPwTDMCfgPayloadSize OBJECT-TYPE
+     SYNTAX        Unsigned32
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "The value of this object indicates the PayLoad Size (in bytes)
+          to be defined during the PW initialization. Upon TX, 
+          an implementation must be capable of carrying that amount of
+          bytes.
+          Upon RX, when the LEN field is set to 0, the payload of
+          packet MUST assume this size, and if the actual
+          packet size is inconsistent with this length,
+          the packet MUST be considered to be malformed. "
+     ::= { teaPwTDMCfgEntry 4 }
+
+   teaPwTDMCfgPktReorder OBJECT-TYPE
+     SYNTAX        TruthValue
+     MAX-ACCESS    read-create
+     STATUS        current
+
+     DESCRIPTION
+         "If set True: as CE bound packets are queued in the
+          jitter buffer, out of order packets are re-ordered. The
+          maximum sequence number differential (i.e., the range in
+          which re-sequencing can occur) is dependant on the depth
+          of the jitter buffer. See teaPwTDMCfgJtrBfrDepth.
+
+          NOTE: Some implementations may not support this feature.
+          The agent is then required to set this to False."
+       DEFVAL { true }
+     ::= { teaPwTDMCfgEntry 5 }
+
+   teaPwTDMCfgRtpHdrUsed OBJECT-TYPE
+     SYNTAX        TruthValue
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "If set to False: an RTP header is not pre-pended to the
+          TDM packet."
+     REFERENCE
+      "See [SATOP]"
+     DEFVAL {false}
+     ::= { teaPwTDMCfgEntry 6 }
+
+
+   teaPwTDMCfgJtrBfrDepth OBJECT-TYPE
+     SYNTAX        Unsigned32
+     UNITS         "microsecond"
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "The size of this buffer SHOULD be locally
+          configured to allow accommodation to the PSN-specific packet
+          delay variation.
+
+          If configured to a value not supported by the
+          implementation, the agent MUST return an error code
+          'jtrBfrDepth' in 'teaPwTDMConfigError '
+
+          NOTE: jitter buffers are a limited resource to
+          be managed. The actual size should be at least twice as big
+          as the value of teaPwTDMCfgJtrBfrDepth "
+     DEFVAL { 3000 }
+
+     ::= { teaPwTDMCfgEntry 7 }
+
+   teaPwTDMCfgPayloadSuppression  OBJECT-TYPE
+     SYNTAX        INTEGER
+                    {
+                       enable  ( 1),
+                       disable ( 2)
+                    }
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "Selecting 'enable' means: Payload suppression is allowed.
+          Payload MAY be omitted in order to conserve bandwidth.
+          Selecting 'disable' means: no suppression under any
+          condition."
+    DEFVAL { disable }
+
+     ::= { teaPwTDMCfgEntry 8 }
+
+   teaPwTDMCfgConsecPktsInSynch          OBJECT-TYPE
+     SYNTAX        Unsigned32
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "The required number of packets with sequential
+          sequence numbers that are available to be played out of the 
+          jitter buffer in order to exit the LOPS state.  If set to 0, 
+          the LOPS state is exited when the excessive packet loss rate 
+          falls below the excessive packet threshold value for a 
+          complete window time (teaPwTDMCfgAvePktLossTimeWindow)."
+     DEFVAL { 0 }
+     ::= { teaPwTDMCfgEntry 9 }
+
+   teaPwTDMCfgConsecMissPktsOutSynch  OBJECT-TYPE
+     SYNTAX        Unsigned32
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "The number of consecutive missing packets on playout that are
+          required to enter the LOPS state. When the parameter is set to
+          0, the LOPS state is entered when the excessive packet loss
+          threshold has been reached."
+     DEFVAL { 0 }
+     ::= { teaPwTDMCfgEntry 10 }
+
+   teaPwTDMCfgSetUp2SynchTimeOut OBJECT-TYPE
+     SYNTAX        Unsigned32
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "The intermediate state timer is set to this value. The
+          Interworking Function (IWF) is in an intermediate state until
+          teaPwTDMCfgConsecPktsInSynch consecutive TDM packets
+          have been received or until this
+          timer expires. The timer units are (milli-sec)"
+
+     DEFVAL { 5}
+     ::= { teaPwTDMCfgEntry 11 }
+
+   teaPwTDMCfgPktReplacePolicy OBJECT-TYPE
+     SYNTAX        INTEGER
+                                    {ais                (1),
+                                     fillerPattern          (2),
+                                     implementationSpecific (3)
+                         }
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         " This parameter determines the information played out
+          on the TDM-bound interface instead of a missing packet
+          assuming the pseudo wire is not in the LOPS state 
+
+          ais: The AIS pattern is played out
+
+          fillerPattern: The filler pattern configured byte is 
+                         played out
+
+          implementationSpecific: payload is replaced according
+                                  to an implementation specific
+                                  mechanism.
+          "
+
+     DEFVAL { 1 } 
+     ::= { teaPwTDMCfgEntry 12 }
+
+   
+   teaPwTDMCfgAvePktLossTimeWindow OBJECT-TYPE
+     SYNTAX        Integer32
+     UNITS         "millisecond"
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "The length of time over which the average packet
+          loss rate should be computed to detect Excessive packet
+          loss rate"
+     ::= { teaPwTDMCfgEntry 13}
+
+   teaPwTDMCfgExcessivePktLossThreshold OBJECT-TYPE
+     SYNTAX        Unsigned32
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "Excessive packet loss rate is detected by computing the
+          average packet loss rate over a 
+          teaPwTDMCfgAvePktLossTimeWindow
+          amount of time and comparing it with this threshold value. "
+     ::= { teaPwTDMCfgEntry 14 }
+
+
+   teaPwTDMCfgAlarmThreshold OBJECT-TYPE
+     SYNTAX        Unsigned32
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "Alarms are only reported when the defect state persists
+          for the length of time specified by this object.
+
+          The object's unit is millisec"
+     DEFVAL { 2500 }
+     ::= { teaPwTDMCfgEntry 15 }
+
+   teaPwTDMCfgClearAlarmThreshold OBJECT-TYPE
+     SYNTAX        Unsigned32
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "Alarm MUST be cleared after the corresponding defect is
+          undetected for the amount of time specified by this object.
+          The object's unit is millisec"
+     DEFVAL { 10000 }
+     ::= { teaPwTDMCfgEntry 16 }
+
+   teaPwTDMCfgMissingPktsToSes OBJECT-TYPE
+     SYNTAX        Unsigned32
+     UNITS         "seconds"
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "Number of missing packets detected (consecutive or not)
+          within a 1 second window to cause a Severely Error
+          Second (SES) to be counted."
+     DEFVAL { 3 }
+     ::= { teaPwTDMCfgEntry 17 }
+
+   teaPwTDMCfgTimestampMode  OBJECT-TYPE
+     SYNTAX        INTEGER
+                    {
+                     notApplicable (1),
+                     absolute      (2),
+                     differential  (3),
+                     primeDifferential (4)
+                    }
+
+     MAX-ACCESS    read-create
+     STATUS        current
+     DESCRIPTION
+         "Timestamp generation MAY be used in one of the following
+          modes:
+          1. Absolute mode: the PSN-bound IWF sets timestamps
+           using the clock recovered from the incoming TDM attachment
+           circuit. As a consequence, the timestamps are closely
+           correlated with the sequence numbers. All TDM implementations
+           that support usage of the RTP header MUST support this mode.
+          2. Differential mode: Both IWFs have access to a common high-
+           quality timing source, and this source is used for timestamp
+           generation. Support of this mode is OPTIONAL.
+          3. Prime Differential mode: similar to Differential where
+             timestamps are updated according to known constant that is
+             prime relative to the packet rate. Support of this mode is
+             OPTIONAL. "
+
+
+     ::= { teaPwTDMCfgEntry 18 }
+
+
+   teaPwTDMCfgStorageType  OBJECT-TYPE
+     SYNTAX            StorageType
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         "This variable indicates the storage type for this
+          row."
+     ::= { teaPwTDMCfgEntry 19 }
+
+   teaPwTMDCfgFillerPattern  OBJECT-TYPE
+     SYNTAX            Unsigned32  (0..255)
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         "Filler byte pattern played out on the TDM interface
+          if teaPwTDMCfgPktReplacePolicy is set to fillerPattern."
+
+     DEFVAL { 255 }
+
+     ::= { teaPwTDMCfgEntry 20 }
+ 
+   teaPwTDMCfgLflagPayloadPolicy  OBJECT-TYPE
+     SYNTAX            INTEGER
+                                 {
+                                 ignore (1),
+                                 use (2)
+                                 }
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         "This parameter determines whether the payload received
+          in packets with L bit set should be ignored or used.
+ 
+          ignore: discard payload. AIS pattern is played out 
+                  instead of the payload.
+
+          use: do not replace payload. When this option is 
+               selected no further alarm processing of 
+               L-bit is performed." 
+
+     DEFVAL { 1 }
+     ::= { teaPwTDMCfgEntry 21 }
+ 
+ 
+   teaPwTDMCfgIPTos    OBJECT-TYPE
+     SYNTAX            Unsigned32
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         "This variable indicates the TOS value to be used in the IP
+          header."
+
+     ::= { teaPwTDMCfgEntry 22 }
+
+
+    teaPwTDMCfgRtpPT      OBJECT-TYPE
+     SYNTAX               Unsigned32 (0..127)
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "This object configures the payload type to use in 
+          the RTP header of the data frames."
+
+     ::= { teaPwTDMCfgEntry 23 }
+
+     teaPwTDMCfgPeerRtpPT OBJECT-TYPE
+     SYNTAX               Unsigned32 (0..127)
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "This object configures the payload type that the peer uses 
+          in the RTP header of the data frames. When this value is 
+          non-zero it may be used to check incoming data frames for
+          validity. "
+     DEFVAL {0 }
+
+     ::= { teaPwTDMCfgEntry 24 }
+
+
+     teaPwTDMCfgRtpTSRef  OBJECT-TYPE
+     SYNTAX               Unsigned32
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "This object configures the timestamp reference to use. 
+          This is the number of clocks in a 125 microsec period. 
+          For example the following frequencies are represented 
+          as follows: 8k(1), 32k(4), 256k(64), 1.544M(193), 
+          2.048(256), 10.24(1280), 19.44 ( 2430)"
+     DEFVAL {1280 }
+     ::= { teaPwTDMCfgEntry 25 }
+
+     teaPwTDMCfgPeerRtpTSRef  OBJECT-TYPE
+     SYNTAX               Unsigned32  
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "This object configures the timestamp reference 
+          that the peer is using.
+          This is the number of clocks in a 125 microsec period.
+          For example the following frequencies are represented 
+          as follows: 8k(1), 32k(4), 256k(64), 1.544M(193), 
+          2.048(256), 10.24(1280), 19.44 ( 2430)"
+     DEFVAL {1280 }
+
+     ::= { teaPwTDMCfgEntry 26 }
+
+     teaPwTDMCfgSRTPenable  OBJECT-TYPE
+     SYNTAX               TruthValue
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "Object used for enabling use of SRTP for protection 
+          of payload data"
+     DEFVAL {false }
+
+     ::= { teaPwTDMCfgEntry 27 }
+
+   
+
+   -- END of Table
+
+
+
+   -- PW CESoPSN specific Configuration Table
+
+   teaPwTDMCfgFramedIndexNext OBJECT-TYPE
+     SYNTAX            TestAndIncr
+     MAX-ACCESS        read-only
+     STATUS            current
+     DESCRIPTION
+         "This object contains the value to be used for
+          teaPwTDMCfgFramedIndex when creating entries in the
+          teaPwTDMCfgFramedTable. The value 0 indicates that no
+          unassigned entries are available.  To obtain the
+          value of teaPwTDMCfgFramedIndexNext for a new entry in the
+          teaPwTDMCfgFramedTable, the manager issues a management
+          protocol retrieval operation to obtain the current
+          value of teaPwTDMCfgFramedIndexNext. After each retrieval
+          operation, the agent should modify the value to
+          reflect the next unassigned index.  After a manager
+          retrieves a value the agent will determine through
+          its local policy when this index value will be made
+          available for reuse."
+     ::= { teaPwTDMObjects 4 }
+
+
+   teaPwTDMCfgFramedTable   OBJECT-TYPE
+     SYNTAX                  SEQUENCE OF TeaPwTDMCfgFramedEntry
+     MAX-ACCESS              not-accessible
+     STATUS                  current
+     DESCRIPTION
+         "This table contains a set of parameters that may be
+          referenced by one or more CESoPSN TDM PWs in teaPwTDMTable."
+
+
+     ::= { teaPwTDMObjects 5 }
+
+   teaPwTDMCfgFramedEntry   OBJECT-TYPE
+     SYNTAX            TeaPwTDMCfgFramedEntry
+     MAX-ACCESS        not-accessible
+     STATUS            current
+     DESCRIPTION
+         "These parameters define the characteristics of a
+          TDM CESoPSN PW. They are grouped here to ease NMS burden.
+          Once an entry is created here it may be re-used
+          by many CESoPSN PWs."
+
+     INDEX  { teaPwTDMCfgFramedIndex }
+
+        ::= { teaPwTDMCfgFramedTable 1 }
+
+   TeaPwTDMCfgFramedEntry ::= SEQUENCE {
+       
+       teaPwTDMCfgFramedIndex                  TeaPwTDMCfgIndex,
+       teaPwTDMCfgFramedRowStatus              RowStatus,
+       teaPwTDMCfgFramedIdlePattern             Unsigned32,
+       teaPwTDMCfgFramedLflagPolicy             INTEGER,
+       teaPwTDMCfgFramedRflagPolicy             INTEGER,
+       teaPwTDMCfgFramedRDPolicy                INTEGER,
+       teaPwTDMCfgFramedLopsPolicy              INTEGER,
+       teaPwTDMCfgFramedSigIPTos                Unsigned32,
+       teaPwTDMCfgFramedSigPT                   Unsigned32,
+       teaPwTDMCfgFramedSigPeerPT               Unsigned32,
+       teaPwTDMCfgFramedSigIdle                 Unsigned32,
+       teaPwTDMCfgFramedSigInterval             Unsigned32,
+       teaPwTDMCfgFramedSigMaxInterval          Unsigned32
+
+       }
+
+
+   teaPwTDMCfgFramedIndex   OBJECT-TYPE
+     SYNTAX        TeaPwTDMCfgIndex
+     MAX-ACCESS    not-accessible
+     STATUS        current
+     DESCRIPTION
+
+         "Index to an entry in this table. The value is a copy of the
+          assigned teaPwTDMCfgFramedIndexNext"
+     ::= { teaPwTDMCfgFramedEntry 1 }
+
+   teaPwTDMCfgFramedRowStatus    OBJECT-TYPE
+     SYNTAX               RowStatus
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "Object used for creating, modifying, and deleting
+          a row from this table. 
+          The row should not be deleted if the entry is in used"
+     ::= { teaPwTDMCfgFramedEntry 2 }
+
+
+   teaPwTDMCfgFramedIdlePattern  OBJECT-TYPE
+     SYNTAX            Unsigned32  (0..255)
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         "Default Idle Pattern played out on the TDM interface 
+          on various defects, according to policy, including 
+          receipt of L bit, R and RD bit and when the pseudo 
+          wire is administratively disabled."
+
+     DEFVAL { 255 }
+     ::= { teaPwTDMCfgFramedEntry 3 }
+     
+   teaPwTDMCfgFramedLflagPolicy  OBJECT-TYPE
+     SYNTAX            INTEGER
+                                 {
+                                 idle (1),
+                                 trunkAis(2),
+                                 channelIdle(3) 
+                                 }
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         " This parameter determines the signaling information played
+          out on the TDM bound interface upon identification of defect 
+          state through the receipt of L-flag set
+
+
+          idle: Idle pattern is played out instead of payload 
+
+          trunkAis: AIS (all ones) on the entire trunk (T1/E1) is 
+          played out
+
+          ChannelIdle: Idle pattern is played out instead of payload
+          and Channel idle indication is set up on the trunk
+          signaling"
+
+      DEFVAL { 1 }
+     ::= { teaPwTDMCfgFramedEntry 4 }
+
+   teaPwTDMCfgFramedRflagPolicy   OBJECT-TYPE
+     SYNTAX            INTEGER
+                                  {
+                                  none             (1),
+                                  rai              (2),
+                                  channelIdle      (3) 
+                                  }
+
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         " This parameter determines the information played out
+          on the TDM-bound interface upon identification of 
+          remote-end defect state through the receipt of 
+          R-flag set. 
+
+          none: the payload is not  modified, and no error signaling
+                is sent.
+
+          rai: The RAI pattern is generated on the link
+
+          channelIdle: The idle byte is played out instead of payload
+                 and channel idle indication is set up in the trunk 
+                 signaling."
+     DEFVAL { 1 }
+     ::= { teaPwTDMCfgFramedEntry 5 }
+     
+     
+   teaPwTDMCfgFramedRDPolicy  OBJECT-TYPE
+     SYNTAX            INTEGER
+                                 {
+                                  none          (1), 
+                                  rai           (2), 
+                                  channelIdle   (3) 
+                                 }
+
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         "This parameter determines the information played out on 
+          the TDM-bound interface upon identification of remote-end
+          defect state through the receipt of 10 M bit and 0 L bit. 
+
+          none: the payload is not  modified, and no error signaling
+                is sent.
+
+          rai: the RAI pattern is generated on the link
+
+          channelIdle: The idle byte is played out instead of payload
+                       and channel idle indication is set up in the
+                       trunk signaling."
+                         
+     DEFVAL { 1 }
+     ::= { teaPwTDMCfgFramedEntry 6 }
+     
+   teaPwTDMCfgFramedLopsPolicy   OBJECT-TYPE
+     SYNTAX        INTEGER
+                         {
+                          idle     (1), 
+                          trunkAis (2),  
+                          channelIdle (3)
+                         }
+
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         " This parameter determines the information played 
+          out on the TDM bound interface upon identification 
+          of LOPS state
+
+          Idle:  Idle pattern is played out.
+
+          trunkAis: AIS (all ones) on the entire trunk (T1/E1) 
+          is played out
+
+          channelIdle: Idle pattern is played out instead of 
+          payload and  “Channel idle” indication is set up on 
+          the trunk signaling"
+
+            DEFVAL { 1 } 
+     ::= { teaPwTDMCfgFramedEntry 7 }
+
+   teaPwTDMCfgFramedSigIPTos  OBJECT-TYPE
+     SYNTAX            Unsigned32
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         "This variable indicates the TOS value to be used in 
+          the IP header of CAS signaling packets, if present."
+     ::= { teaPwTDMCfgFramedEntry 8 }
+
+
+     teaPwTDMCfgFramedSigPT  OBJECT-TYPE
+     SYNTAX               Unsigned32 (0..127)
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "This object configures the payload type to use in the
+          RTP header of signaling frames."
+
+     ::= { teaPwTDMCfgFramedEntry 9 }
+
+     teaPwTDMCfgFramedSigPeerPT  OBJECT-TYPE
+     SYNTAX               Unsigned32 (0..127)
+     MAX-ACCESS           read-create
+     STATUS               current
+     DESCRIPTION
+         "This object configures the payload type to use in 
+          the RTP header of  signaling frames. 
+          When this value is non-zero it may be used to 
+          check incoming data frames for validity. "
+     DEFVAL {0 }
+     ::= { teaPwTDMCfgFramedEntry 10 }
+
+
+   teaPwTDMCfgFramedSigIdle  OBJECT-TYPE
+     SYNTAX            Unsigned32 (0..15)
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         "Default ABCD CAS signaling Idle pattern. This is 
+         the pattern sent when a failure is detected on the 
+         TDM interface, including multi-frame failures. "
+     DEFVAL {15 } 
+     ::= { teaPwTDMCfgFramedEntry 11 }
+     
+   teaPwTDMCfgFramedSigInterval  OBJECT-TYPE
+     SYNTAX            Unsigned32
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         "This object configures the application signaling 
+          interval to use when sending the CAS signaling 
+          in a separate packet stream. 
+          The object's unit is ms and the default value is 5 ms. "
+       DEFVAL {5 } 
+     ::= { teaPwTDMCfgFramedEntry 12 }
+     
+   teaPwTDMCfgFramedSigMaxInterval OBJECT-TYPE
+     SYNTAX            Unsigned32
+     MAX-ACCESS        read-create
+     STATUS            current
+     DESCRIPTION
+         "This object configures the application signaling 
+          time in which to refresh the peer when no application
+          signaling has changed in this interval.
+          This is only valid when configured to send the CAS 
+          signaling in a separate packet stream. 
+          The object's unit is sec and the default value is 5 seconds. "
+       DEFVAL {5 }
+     ::= { teaPwTDMCfgFramedEntry 13 }
+
+   -- END of Table
+
+
+
+   -- The following counters work together to integrate
+   -- errors and the lack of errors on the TDM PW. An error is
+   -- caused by a missing packet. Missing packet can be a result
+   -- of: packet loss in the network, (uncorrectable) packet out
+   -- of sequence, packet length error, jitter buffer overflow,
+   -- and jitter buffer underflow. The result is declaring whether
+   -- or not the TDM PW is in Loss of Packet (LOPS) state.
+
+   -- TDM PW Performance Current Table.
+
+   teaPwTDMPerfCurrentTable OBJECT-TYPE
+     SYNTAX        SEQUENCE OF TeaPwTDMPerfCurrentEntry
+     MAX-ACCESS    not-accessible
+     STATUS        current
+     DESCRIPTION
+         "The current 15 minute interval counts are in
+          this table.
+
+          This table provides per TDM PW performance information."
+
+     ::= { teaPwTDMObjects 6 }
+
+   teaPwTDMPerfCurrentEntry OBJECT-TYPE
+     SYNTAX        TeaPwTDMPerfCurrentEntry
+     MAX-ACCESS    not-accessible
+     STATUS        current
+     DESCRIPTION
+         "An entry in this table is created by the agent for every
+          teaPwTDM entry. After 15 minutes, the contents of this table
+          entry are copied to a new entry in the teaPwTDMPerfInterval
+          table and the counts in this entry are reset to zero."
+
+     INDEX  { teaPwIndex }
+
+     ::= { teaPwTDMPerfCurrentTable 1 }
+
+   TeaPwTDMPerfCurrentEntry ::= SEQUENCE {
+
+        teaPwTDMPerfCurrentMissingPkts         PerfCurrentCount,
+        teaPwTDMPerfCurrentPktsReOrder         PerfCurrentCount,
+        teaPwTDMPerfCurrentJtrBfrUnderruns     PerfCurrentCount,
+        teaPwTDMPerfCurrentMisOrderDropped     PerfCurrentCount,
+        teaPwTDMPerfCurrentMalformedPkt        PerfCurrentCount,
+
+        teaPwTDMPerfCurrentESs                 PerfCurrentCount,
+        teaPwTDMPerfCurrentSESs                PerfCurrentCount,
+        teaPwTDMPerfCurrentUASs                PerfCurrentCount,
+        teaPwTDMPerfCurrentFC                  PerfCurrentCount,
+        teaPwTDMPerfCurrentJtrBfrMin           Unsigned32,
+        teaPwTDMPerfCurrentJtrBfr              Unsigned32,
+        teaPwTDMPerfCurrentJtrBfrMax           Unsigned32
+
+     }
+
+   teaPwTDMPerfCurrentMissingPkts OBJECT-TYPE
+     SYNTAX        PerfCurrentCount
+     MAX-ACCESS    read-only
+     STATUS       current
+     DESCRIPTION
+         "Number of missing packets (as detected via control word
+          sequence number gaps)."
+     ::= { teaPwTDMPerfCurrentEntry 1 }
+
+   teaPwTDMPerfCurrentPktsReOrder OBJECT-TYPE
+     SYNTAX        PerfCurrentCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of packets detected out of sequence (via control
+          word sequence number), but successfully re-ordered.
+          Note: some implementations may not support this Feature."
+     ::= { teaPwTDMPerfCurrentEntry 2 }
+
+   teaPwTDMPerfCurrentJtrBfrUnderruns OBJECT-TYPE
+     SYNTAX        PerfCurrentCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of times a packet needed to be played
+          out and the jitter buffer was empty."
+     ::= { teaPwTDMPerfCurrentEntry 3 }
+
+   teaPwTDMPerfCurrentMisOrderDropped OBJECT-TYPE
+     SYNTAX        PerfCurrentCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of packets detected out of order(via control word
+
+          sequence numbers), and could not be re-ordered, or could
+          not fit in the jitter buffer."
+      ::= { teaPwTDMPerfCurrentEntry 4 }
+
+   teaPwTDMPerfCurrentMalformedPkt OBJECT-TYPE
+     SYNTAX        PerfCurrentCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of packets detected with unexpected size, or
+          bad headers' stack"
+     ::= { teaPwTDMPerfCurrentEntry 5 }
+
+   teaPwTDMPerfCurrentESs OBJECT-TYPE
+      SYNTAX       PerfCurrentCount
+      MAX-ACCESS   read-only
+      STATUS       current
+      DESCRIPTION
+          "The counter associated with the number of Error
+           Seconds encountered."
+      ::= { teaPwTDMPerfCurrentEntry 6 }
+
+   teaPwTDMPerfCurrentSESs OBJECT-TYPE
+      SYNTAX        PerfCurrentCount
+      MAX-ACCESS    read-only
+      STATUS        current
+      DESCRIPTION
+          "The counter associated with the number of
+           Severely Error Seconds encountered."
+      ::= { teaPwTDMPerfCurrentEntry 7 }
+
+   teaPwTDMPerfCurrentUASs OBJECT-TYPE
+      SYNTAX        PerfCurrentCount
+      MAX-ACCESS    read-only
+      STATUS        current
+      DESCRIPTION
+          "The counter associated with the number of
+           Unavailable Seconds encountered."
+      ::= { teaPwTDMPerfCurrentEntry 8 }
+
+   teaPwTDMPerfCurrentFC OBJECT-TYPE
+      SYNTAX        PerfCurrentCount
+      MAX-ACCESS    read-only
+      STATUS        current
+      DESCRIPTION
+          "TDM Failure Counts (FC-TDM). The number of TDM failure
+           events. A failure event begins when the LOPS failure
+           is declared, and ends when the failure is cleared. A
+
+           failure event that begins in one period and ends in
+           another period is counted only in the period in which
+           it begins."
+      ::= { teaPwTDMPerfCurrentEntry 9 }
+
+   teaPwTDMPerfCurrentJtrBfrMin    OBJECT-TYPE
+      SYNTAX        Unsigned32
+      MAX-ACCESS    read-only
+      STATUS        current
+      DESCRIPTION
+          "The minimum value of the jitter buffer measured in the 
+          current measurement interval. The difference between the 
+          minimum value and maximum value reflects the observed 
+          jitter in the network.
+          The units are (microsec)"
+      ::= { teaPwTDMPerfCurrentEntry 10 }
+
+   teaPwTDMPerfCurrentJtrBfr    OBJECT-TYPE
+      SYNTAX        Unsigned32
+      MAX-ACCESS    read-only
+      STATUS        current
+      DESCRIPTION
+          "The current value of the jitter buffer 
+          The units are (microsec)."
+      ::= { teaPwTDMPerfCurrentEntry 11 }
+
+   teaPwTDMPerfCurrentJtrBfrMax    OBJECT-TYPE
+      SYNTAX        Unsigned32
+      MAX-ACCESS    read-only
+      STATUS        current
+      DESCRIPTION
+          "The maximum value of the jitter buffer measured in the 
+          current measurement interval. The difference between the 
+          minimum value and maximum value reflects the observed 
+          jitter in the network.
+          The units are (microsec)."
+      ::= { teaPwTDMPerfCurrentEntry 12 }
+
+
+   -- End TDM PW Performance Current Interval Table
+
+
+   -- TDM PW Performance Interval Table.
+
+   teaPwTDMPerfIntervalTable OBJECT-TYPE
+     SYNTAX        SEQUENCE OF TeaPwTDMPerfIntervalEntry
+     MAX-ACCESS    not-accessible
+     STATUS        current
+     DESCRIPTION
+         "This table provides performance information per TDM PW
+          similar to the teaPwTDMPerfCurrentTable above. However,
+          these counts represent historical 15 minute intervals.
+          Typically, this table will have a maximum of 96 entries
+          for a 24 hour period, but is not limited to this. "
+     ::= { teaPwTDMObjects 7 }
+
+   teaPwTDMPerfIntervalEntry OBJECT-TYPE
+     SYNTAX        TeaPwTDMPerfIntervalEntry
+     MAX-ACCESS    not-accessible
+     STATUS        current
+     DESCRIPTION
+         "An entry in this table is created by the agent for
+          every teaPwTDMPerfCurrentEntry that is 15 minutes old.
+          The contents of the Current entry are copied to the new
+          entry here. The Current entry, then resets its counts
+          to zero for the next current 15 minute interval. "
+
+     INDEX  { teaPwIndex, teaPwTDMPerfIntervalNumber }
+
+     ::= { teaPwTDMPerfIntervalTable 1 }
+
+   TeaPwTDMPerfIntervalEntry ::= SEQUENCE {
+        teaPwTDMPerfIntervalNumber           Unsigned32,
+        teaPwTDMPerfIntervalValidData        TruthValue,
+        teaPwTDMPerfIntervalDuration         Integer32,
+
+        teaPwTDMPerfIntervalMissingPkts      PerfIntervalCount,
+        teaPwTDMPerfIntervalPktsReOrder      PerfIntervalCount,
+        teaPwTDMPerfIntervalJtrBfrUnderruns  PerfIntervalCount,
+        teaPwTDMPerfIntervalMisOrderDropped  PerfIntervalCount,
+        teaPwTDMPerfIntervalMalformedPkt     PerfIntervalCount,
+
+
+        teaPwTDMPerfIntervalESs              PerfIntervalCount,
+        teaPwTDMPerfIntervalSESs             PerfIntervalCount,
+        teaPwTDMPerfIntervalUASs             PerfIntervalCount,
+        teaPwTDMPerfIntervalFC               PerfIntervalCount,
+        teaPwTDMPerfIntervalJtrBfrMin        Unsigned32,
+        teaPwTDMPerfIntervalJtrBfrMax        Unsigned32
+        }
+
+   teaPwTDMPerfIntervalNumber OBJECT-TYPE
+     SYNTAX        Unsigned32
+     MAX-ACCESS    not-accessible
+     STATUS        current
+     DESCRIPTION
+         "A number (normally between 1 and 96 to cover a 24 hour
+          period) which identifies the interval for which the set
+          of statistics is available. The interval identified by 1
+          is the most recently completed 15 minute interval, and
+          the interval identified by N is the interval immediately
+          preceding the one identified by N-1. The minimum range of
+          N is 1 through 4. The default range is 1 through 32. The
+          maximum value of N is 1 through 96."
+     ::= { teaPwTDMPerfIntervalEntry 1 }
+
+   teaPwTDMPerfIntervalValidData OBJECT-TYPE
+     SYNTAX        TruthValue
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "This variable indicates if the data for this interval
+          is valid."
+     ::= { teaPwTDMPerfIntervalEntry 2 }
+
+   teaPwTDMPerfIntervalDuration OBJECT-TYPE
+      SYNTAX      Integer32
+      MAX-ACCESS  read-only
+      STATUS      current
+      DESCRIPTION
+        "The duration of a particular interval in seconds,
+         Adjustments in the system's time-of-day clock, may
+         cause the interval to be greater or less than, the
+         normal value. Therefore this actual interval value
+         is provided."
+      ::= { teaPwTDMPerfIntervalEntry 3 }
+
+   teaPwTDMPerfIntervalMissingPkts OBJECT-TYPE
+     SYNTAX        PerfIntervalCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of missing packets (as detected via control
+
+          word sequence number gaps)."
+     ::= { teaPwTDMPerfIntervalEntry 4 }
+
+   teaPwTDMPerfIntervalPktsReOrder OBJECT-TYPE
+     SYNTAX        PerfIntervalCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of packets detected out of sequence (via control
+          word sequence number), but successfully re-ordered.
+          Note: some implementations may not support this
+          Feature."
+     ::= { teaPwTDMPerfIntervalEntry 5 }
+
+   teaPwTDMPerfIntervalJtrBfrUnderruns OBJECT-TYPE
+     SYNTAX        PerfIntervalCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of times a packet needed to be played
+          out and the jitter buffer was empty."
+     ::= { teaPwTDMPerfIntervalEntry 6 }
+
+   teaPwTDMPerfIntervalMisOrderDropped OBJECT-TYPE
+     SYNTAX        PerfIntervalCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of packets detected out of order(via control word
+          sequence numbers), and could not be re-ordered, or could
+          not fit in the jitter buffer."
+     ::= { teaPwTDMPerfIntervalEntry 7 }
+
+   teaPwTDMPerfIntervalMalformedPkt OBJECT-TYPE
+     SYNTAX        PerfIntervalCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of packets detected with unexpected size, or
+          bad headers' stack"
+     ::= { teaPwTDMPerfIntervalEntry 8 }
+
+
+   teaPwTDMPerfIntervalESs OBJECT-TYPE
+     SYNTAX       PerfIntervalCount
+     MAX-ACCESS   read-only
+     STATUS       current
+     DESCRIPTION
+
+         "The counter associated with the number of Error
+          Seconds encountered."
+     ::= { teaPwTDMPerfIntervalEntry 9 }
+
+   teaPwTDMPerfIntervalSESs OBJECT-TYPE
+     SYNTAX        PerfIntervalCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "The counter associated with the number of
+          Severely Error Seconds encountered."
+     ::= { teaPwTDMPerfIntervalEntry 10 }
+
+   teaPwTDMPerfIntervalUASs OBJECT-TYPE
+     SYNTAX        PerfIntervalCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "The counter associated with the number of
+          Unavailable Seconds encountered."
+     ::= { teaPwTDMPerfIntervalEntry 11 }
+
+   teaPwTDMPerfIntervalFC OBJECT-TYPE
+     SYNTAX        PerfIntervalCount
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "TDM Failure Counts (FC-TDM). The number of TDM failure
+          events. A failure event begins when the LOPS failure
+          is declared, and ends when the failure is cleared. A
+          failure event that begins in one period and ends in
+          another period is counted only in the period in which
+          it begins."
+     ::= { teaPwTDMPerfIntervalEntry 12 }
+
+ teaPwTDMPerfIntervalJtrBfrMin    OBJECT-TYPE
+      SYNTAX        Unsigned32
+      MAX-ACCESS    read-only
+      STATUS        current
+      DESCRIPTION
+          "The minimum value of the jitter buffer measured in the 
+          measurement interval. 
+          The units are (microsec)"
+      ::= { teaPwTDMPerfIntervalEntry 13 }
+
+ 
+   teaPwTDMPerfIntervalJtrBfrMax    OBJECT-TYPE
+      SYNTAX        Unsigned32
+      MAX-ACCESS    read-only
+      STATUS        current
+      DESCRIPTION
+          "The maximum value of the jitter buffer measured in the 
+          measurement interval. 
+          The units are (microsec)."
+      ::= { teaPwTDMPerfIntervalEntry 14 }
+
+   -- End TDM PW Performance Interval Table
+
+
+   -- TDM PW Performance 1 Day Interval Table.
+
+   teaPwTDMPerf1DayIntervalTable  OBJECT-TYPE  
+      SYNTAX        SEQUENCE OF TeaPwTDMPerf1DayIntervalEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "This table provides per-TDM PW Performance information for 
+            the current day measurement and the previous days."  
+      ::= { teaPwTDMObjects 8 }  
+    
+   teaPwTDMPerf1DayIntervalEntry OBJECT-TYPE  
+      SYNTAX        TeaPwTDMPerf1DayIntervalEntry  
+      MAX-ACCESS    not-accessible  
+      STATUS        current  
+      DESCRIPTION  
+           "An entry in this table is created by the agent for every   
+            PW." 
+      INDEX  { teaPwIndex, teaPwTDMPerf1DayIntervalNumber }  
+    
+      ::= { teaPwTDMPerf1DayIntervalTable 1 }  
+    
+   TeaPwTDMPerf1DayIntervalEntry ::= SEQUENCE { 
+         teaPwTDMPerf1DayIntervalNumber               Unsigned32, 
+         teaPwTDMPerf1DayIntervalValidData            TruthValue, 
+         teaPwTDMPerf1DayIntervalMoniSecs             HCPerfTimeElapsed,
+         teaPwTDMPerf1DayIntervalMissingPkts          Counter32,
+         teaPwTDMPerf1DayIntervalPktsReOrder          Counter32,
+         teaPwTDMPerf1DayIntervalJtrBfrUnderruns      Counter32,
+         teaPwTDMPerf1DayIntervalMisOrderDropped       Counter32,
+         teaPwTDMPerf1DayIntervalMalformedPkt          Counter32,
+
+         teaPwTDMPerf1DayIntervalESs                   Counter32,
+         teaPwTDMPerf1DayIntervalSESs                  Counter32,
+         teaPwTDMPerf1DayIntervalUASs                  Counter32,
+         teaPwTDMPerf1DayIntervalFC                    Counter32,
+         teaPwTDMPerf1DayIntervalDiscontinuityTime     TimeStamp,
+
+         teaPwTDMPerf1DayIntervalJtrBfrMin             Unsigned32,
+         teaPwTDMPerf1DayIntervalJtrBfrMax             Unsigned32
+         }  
+    
+   teaPwTDMPerf1DayIntervalNumber OBJECT-TYPE 
+      SYNTAX      Unsigned32(1..31) 
+      MAX-ACCESS  not-accessible 
+      STATUS      current 
+      DESCRIPTION 
+        "History Data Interval number. Interval 1 is the current day 
+         measurement period, Interval 2 is the most recent previous  
+         day; interval 30 is 31 days ago.  This table provides
+         performance information per TDM PW similar to the 
+         teaPwTDMPerfIntervalTable above. However, these counts
+         represent historical 1 day intervals of up to 1 month.
+         This table will have a maximum of 31 entries.
+         This table contains live data, as such, it is NOT persistent." 
+      ::= { teaPwTDMPerf1DayIntervalEntry 1 } 
+    
+   teaPwTDMPerf1DayIntervalValidData OBJECT-TYPE  
+      SYNTAX        TruthValue  
+      MAX-ACCESS    read-only  
+      STATUS        current  
+      DESCRIPTION  
+          "This variable indicates if the data for this interval  
+           is valid."  
+      ::= { teaPwTDMPerf1DayIntervalEntry 2 }  
+    
+   teaPwTDMPerf1DayIntervalMoniSecs OBJECT-TYPE 
+      SYNTAX       HCPerfTimeElapsed 
+      UNITS        "seconds" 
+      MAX-ACCESS   read-only 
+      STATUS       current 
+      DESCRIPTION 
+        "The amount of time in the 1-day interval over which the 
+         performance monitoring information is actually counted. 
+         This value will be the same as the interval duration except 
+         in a situation where performance monitoring data could not 
+         be collected for any reason or agent clock adjustments." 
+      ::= { teaPwTDMPerf1DayIntervalEntry 3 }
+
+    
+   teaPwTDMPerf1DayIntervalMissingPkts OBJECT-TYPE
+     SYNTAX        Counter32
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of missing packets (as detected via control word
+          sequence number gaps)."
+     ::= { teaPwTDMPerf1DayIntervalEntry 4 }
+
+   teaPwTDMPerf1DayIntervalPktsReOrder OBJECT-TYPE
+     SYNTAX        Counter32
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of packets detected out of sequence (via control
+          word sequence number), but successfully re-ordered.
+          Note: some implementations may not support this
+          feature."
+     ::= { teaPwTDMPerf1DayIntervalEntry 5 }
+
+
+   teaPwTDMPerf1DayIntervalJtrBfrUnderruns OBJECT-TYPE
+     SYNTAX        Counter32
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of times a packet needed to be played
+          out and the jitter buffer was empty."
+     ::= { teaPwTDMPerf1DayIntervalEntry 6 }
+
+   teaPwTDMPerf1DayIntervalMisOrderDropped OBJECT-TYPE
+     SYNTAX        Counter32
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of packets detected out of order(via control word
+          sequence numbers), and could not be re-ordered, or could
+          not fit in the jitter buffer."
+     ::= { teaPwTDMPerf1DayIntervalEntry 7 }
+
+   teaPwTDMPerf1DayIntervalMalformedPkt OBJECT-TYPE
+     SYNTAX        Counter32
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "Number of packets detected with unexpected size, or
+          bad headers' stack."
+     ::= { teaPwTDMPerf1DayIntervalEntry 8 }
+
+
+   teaPwTDMPerf1DayIntervalESs OBJECT-TYPE
+     SYNTAX       Counter32
+     MAX-ACCESS   read-only
+     STATUS       current
+     DESCRIPTION
+         "The counter associated with the number of Error
+          Seconds encountered. See [SATOP] for
+          definition of ES."
+     ::= { teaPwTDMPerf1DayIntervalEntry 9 }
+
+   teaPwTDMPerf1DayIntervalSESs OBJECT-TYPE
+     SYNTAX        Counter32
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "The counter associated with the number of Severely
+          Error Seconds.    Also see [SATOP] for definition."
+     ::= { teaPwTDMPerf1DayIntervalEntry 10 }
+
+   teaPwTDMPerf1DayIntervalUASs OBJECT-TYPE
+     SYNTAX        Counter32
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "The counter associated with the number of
+          Unavailable Seconds.
+
+          NOTE: When first entering the UAS state, the number
+          of SES To UAS is added to this object, then as each
+          additional UAS occurs, this object increments by one."
+
+     ::= { teaPwTDMPerf1DayIntervalEntry 11 }
+
+   teaPwTDMPerf1DayIntervalFC OBJECT-TYPE
+     SYNTAX        Counter32
+     MAX-ACCESS    read-only
+     STATUS        current
+     DESCRIPTION
+         "TDM Failure Counts (FC-TDM). The number of TDM failure
+          events. A failure event begins when the LOPS failure
+          is declared, and ends when the failure is cleared."
+     ::= { teaPwTDMPerf1DayIntervalEntry 12 }
+
+   teaPwTDMPerf1DayIntervalDiscontinuityTime OBJECT-TYPE
+     SYNTAX      TimeStamp
+     MAX-ACCESS  read-only
+     STATUS      current
+
+     DESCRIPTION
+         "The value of sysUpTime on the most recent occasion at
+          which any one or more of this segment's Counter32
+          suffered a discontinuity. If no such
+          discontinuities have occurred since the last re-
+          initialization of the local management subsystem, then
+          this object contains a zero value."
+     ::= { teaPwTDMPerf1DayIntervalEntry 13 }
+
+  teaPwTDMPerf1DayIntervalJtrBfrMin    OBJECT-TYPE
+      SYNTAX        Unsigned32
+      MAX-ACCESS    read-only
+      STATUS        current
+      DESCRIPTION
+          "The minimum value of the jitter buffer measured in the 
+          measurement interval. 
+          The units are (microsec)"
+      ::= { teaPwTDMPerf1DayIntervalEntry 14 }
+
+ 
+   teaPwTDMPerf1DayIntervalJtrBfrMax    OBJECT-TYPE
+      SYNTAX        Unsigned32
+      MAX-ACCESS    read-only
+      STATUS        current
+      DESCRIPTION
+          "The maximum value of the jitter buffer measured in the 
+          measurement interval. 
+          The units are (microsec)."
+      ::= { teaPwTDMPerf1DayIntervalEntry 15 }
+
+
+
+
+   -- Conformance Information
+
+
+   teaPwTDMGroups      OBJECT IDENTIFIER ::= { teaPwTDMConformance 1 }
+   teaPwTDMCompliances OBJECT IDENTIFIER ::= { teaPwTDMConformance 2 }
+
+
+   bsodPwTDMModuleCompliance MODULE-COMPLIANCE
+
+      STATUS  current
+      DESCRIPTION
+          "The compliance statement for an agent that supports the 
+           Docsis TDM emulation specification as part of the
+           Business Services over Docsis initiative."
+
+      MODULE  -- this module
+          MANDATORY-GROUPS { teaPwTDMGroup,
+                             teaPwTDMPerfCurrentGroup,
+                             teaPwTDMPerfIntervalGroup,
+                             teaPwTDMCfgFramedGroup
+                           }
+
+                                          
+                  OBJECT teaPwTDMRate
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+                    
+                  OBJECT teaPwTDMIfIndex
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwGenTDMCfgIndex
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+              
+              OBJECT teaPwRelTDMCfgIndex
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+              OBJECT teaPwTDMConfigError
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTDMCfgPayloadSize
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+              
+              OBJECT teaPwTDMCfgRtpHdrUsed
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to control the RTP header usage
+                         is not required."
+
+              OBJECT teaPwTDMCfgPktReorder
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to set the packet reordering
+                         is not required."
+
+              OBJECT teaPwTDMCfgJtrBfrDepth
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+              
+              OBJECT teaPwTDMCfgPayloadSuppression
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to set this object is not
+                          required."
+
+             OBJECT teaPwTDMCfgConsecPktsInSynch
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTDMCfgConsecMissPktsOutSynch
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+     
+              OBJECT teaPwTDMCfgSetUp2SynchTimeOut
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+ 
+              OBJECT teaPwTDMCfgPktReplacePolicy
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTDMCfgAvePktLossTimeWindow
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTDMCfgExcessivePktLossThreshold
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTDMCfgAlarmThreshold
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTDMCfgClearAlarmThreshold
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTDMCfgMissingPktsToSes
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTDMCfgTimestampMode  
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is not
+                          required"
+
+              OBJECT teaPwTDMCfgStorageType
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTMDCfgFillerPattern
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTDMCfgLflagPayloadPolicy
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+
+              OBJECT teaPwTDMCfgIPTos
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object is
+                          not required"
+
+              OBJECT teaPwTDMCfgRtpPT
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify object is not
+                          required"
+
+              OBJECT teaPwTDMCfgPeerRtpPT
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify object is not
+                          required"
+
+              OBJECT teaPwTDMCfgRtpTSRef
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify object is not
+                          required"
+
+              OBJECT teaPwTDMCfgPeerRtpTSRef
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify object is not
+                          required"
+
+              OBJECT teaPwTDMCfgSRTPenable
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify object is not
+                          required"
+
+
+              OBJECT teaPwTDMCfgFramedIdlePattern
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object 
+                          is not required"
+
+              OBJECT teaPwTDMCfgFramedLflagPolicy
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object
+                          is not required"
+
+              OBJECT teaPwTDMCfgFramedRflagPolicy
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object
+                          is not required"
+
+              OBJECT teaPwTDMCfgFramedRDPolicy
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object
+                          is not required"
+
+
+              OBJECT teaPwTDMCfgFramedLopsPolicy
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object
+                          is not required"
+
+
+              OBJECT teaPwTDMCfgFramedSigIPTos
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object
+                          is not required"
+
+              OBJECT teaPwTDMCfgFramedSigPT
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify object is not
+                          required"
+
+              OBJECT teaPwTDMCfgFramedSigPeerPT
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify object is not
+                          required"
+
+              OBJECT teaPwTDMCfgFramedSigIdle
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object
+                          is not required"
+
+              OBJECT teaPwTDMCfgFramedSigInterval
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object
+                          is not required"
+
+              OBJECT teaPwTDMCfgFramedSigMaxInterval
+                     MIN-ACCESS read-only
+                     DESCRIPTION
+                         "The ability to modify this object
+                          is not required"
+
+      ::= { teaPwTDMCompliances 1 }
+
+   -- Units of conformance.
+
+   teaPwTDMGroup OBJECT-GROUP
+     OBJECTS {
+              teaPwTDMRate,
+              teaPwTDMIfIndex,
+              teaPwGenTDMCfgIndex,
+              teaPwRelTDMCfgIndex,
+              teaPwTDMConfigError,
+              teaPwTDMTimeElapsed,
+              teaPwTDMValidIntervals,
+              teaPwTDMCurrentIndications,
+              teaPwTDMLatchedIndications,
+              teaPwTDMLastEsTimeStamp,
+              teaPwTDMRtpSSRC,
+
+              teaPwTDMCfgIndexNext,
+
+              teaPwTDMCfgRowStatus,
+              teaPwTDMCfgConfErr,
+              teaPwTDMCfgPayloadSize,
+              teaPwTDMCfgPktReorder,
+              teaPwTDMCfgRtpHdrUsed,
+              teaPwTDMCfgJtrBfrDepth,
+              teaPwTDMCfgPayloadSuppression,
+              teaPwTDMCfgConsecPktsInSynch,
+              teaPwTDMCfgConsecMissPktsOutSynch,
+              teaPwTDMCfgSetUp2SynchTimeOut,
+
+              teaPwTDMCfgPktReplacePolicy,
+
+              teaPwTDMCfgAvePktLossTimeWindow,
+              teaPwTDMCfgExcessivePktLossThreshold,
+
+              teaPwTDMCfgAlarmThreshold,
+              teaPwTDMCfgClearAlarmThreshold,
+              teaPwTDMCfgMissingPktsToSes,
+              teaPwTDMCfgTimestampMode, 
+              teaPwTDMCfgStorageType,
+
+              teaPwTMDCfgFillerPattern,
+              teaPwTDMCfgLflagPayloadPolicy,
+              teaPwTDMCfgIPTos,
+              teaPwTDMCfgRtpPT,
+              teaPwTDMCfgRtpTSRef
+
+              }
+     STATUS  current
+     DESCRIPTION
+         "Collection of objects for basic TDM PW config and
+          status."
+     ::= { teaPwTDMGroups 1 }
+
+   teaPwTDMPerfCurrentGroup OBJECT-GROUP
+     OBJECTS {
+              teaPwTDMPerfCurrentMissingPkts,
+              teaPwTDMPerfCurrentPktsReOrder,
+              teaPwTDMPerfCurrentJtrBfrUnderruns,
+              teaPwTDMPerfCurrentMisOrderDropped,
+              teaPwTDMPerfCurrentMalformedPkt,
+
+              teaPwTDMPerfCurrentESs,
+              teaPwTDMPerfCurrentSESs,
+              teaPwTDMPerfCurrentUASs,
+              teaPwTDMPerfCurrentFC 
+            }
+     STATUS  current
+     DESCRIPTION
+         "Collection of current statistics objects for TDM PWs."
+
+     ::= { teaPwTDMGroups 2 }
+
+  teaPwTDMPerfCurrentJtrGroup OBJECT-GROUP
+     OBJECTS {
+              teaPwTDMPerfCurrentJtrBfrMin,
+              teaPwTDMPerfCurrentJtrBfr,
+              teaPwTDMPerfCurrentJtrBfrMax
+            }
+     STATUS  current
+     DESCRIPTION
+         "Collection of current statistics of the jitter buffer for PWs
+          This group is optional."
+
+     ::= { teaPwTDMGroups 3 }
+
+   teaPwTDMPerfIntervalGroup OBJECT-GROUP
+     OBJECTS {
+              teaPwTDMPerfIntervalValidData,
+              teaPwTDMPerfIntervalDuration,
+
+              teaPwTDMPerfIntervalMissingPkts,
+              teaPwTDMPerfIntervalPktsReOrder,
+              teaPwTDMPerfIntervalJtrBfrUnderruns,
+              teaPwTDMPerfIntervalMisOrderDropped,
+              teaPwTDMPerfIntervalMalformedPkt,
+
+              teaPwTDMPerfIntervalESs,
+              teaPwTDMPerfIntervalSESs,
+              teaPwTDMPerfIntervalUASs,
+              teaPwTDMPerfIntervalFC 
+     }
+     STATUS  current
+     DESCRIPTION
+            "Collection of Interval statistics objects for TDM PWs."
+     ::= { teaPwTDMGroups 4 }
+
+   teaPwTDMPerfIntervalJtrGroup OBJECT-GROUP
+     OBJECTS {
+              teaPwTDMPerfIntervalJtrBfrMin,
+              teaPwTDMPerfIntervalJtrBfrMax
+             }
+     STATUS  current
+     DESCRIPTION
+            "Collection of Interval statistics objects for 
+             the jitter buffer on TDM PWs.
+             This group is optional"
+     ::= { teaPwTDMGroups 5 }
+
+
+   teaPwTDMCfgFramedGroup OBJECT-GROUP
+    OBJECTS {
+
+       teaPwTDMCfgFramedRowStatus,
+       teaPwTDMCfgFramedIdlePattern,
+       teaPwTDMCfgFramedLflagPolicy,
+       teaPwTDMCfgFramedRflagPolicy,
+       teaPwTDMCfgFramedRDPolicy,
+       teaPwTDMCfgFramedLopsPolicy,
+       teaPwTDMCfgFramedSigIPTos,
+       teaPwTDMCfgFramedSigPT,
+       teaPwTDMCfgFramedSigIdle,
+       teaPwTDMCfgFramedSigInterval,
+       teaPwTDMCfgFramedSigMaxInterval
+
+       }
+     STATUS current
+     DESCRIPTION
+            "TDM CESoPSN specific configuration objects."
+     ::= { teaPwTDMGroups 6 }
+
+
+   teaPwTDMCfgPeerGroup OBJECT-GROUP
+     OBJECTS {
+              teaPwTDMCfgPeerRtpTSRef,
+              teaPwTDMCfgPeerRtpPT,
+              teaPwTDMCfgFramedSigPeerPT,
+              teaPwTDMPeerRtpSSRC
+              }
+     STATUS current
+     DESCRIPTION
+            "Optional TDM RTP configuration objects of Peer."
+     ::= { teaPwTDMGroups 7 }
+
+   teaPwRtpTDMCfgSRTPGroup OBJECT-GROUP
+     OBJECTS {
+              teaPwTDMCfgSRTPenable
+              }
+     STATUS current
+     DESCRIPTION
+            "Optional SRTP configuration objects."
+     ::= { teaPwTDMGroups 8 }
+
+    teaPwTDMPerf1DayIntervalGroup OBJECT-GROUP
+     OBJECTS {
+              teaPwTDMPerf1DayIntervalValidData,
+              teaPwTDMPerf1DayIntervalMoniSecs,
+              teaPwTDMPerf1DayIntervalMissingPkts,
+              teaPwTDMPerf1DayIntervalPktsReOrder,
+              teaPwTDMPerf1DayIntervalJtrBfrUnderruns,
+              teaPwTDMPerf1DayIntervalMisOrderDropped,
+              teaPwTDMPerf1DayIntervalMalformedPkt,
+
+              teaPwTDMPerf1DayIntervalESs,
+              teaPwTDMPerf1DayIntervalSESs,
+              teaPwTDMPerf1DayIntervalUASs,
+              teaPwTDMPerf1DayIntervalFC,
+              teaPwTDMPerf1DayIntervalDiscontinuityTime
+              }
+     STATUS current
+     DESCRIPTION
+            "TDM One Day Statistics."
+     ::= { teaPwTDMGroups 9 }
+     
+    teaPwTDMPerf1DayIntervalJtrGroup OBJECT-GROUP
+     OBJECTS {
+             teaPwTDMPerf1DayIntervalJtrBfrMin,
+             teaPwTDMPerf1DayIntervalJtrBfrMax
+              }
+     STATUS current
+     DESCRIPTION
+            "Optional Jitter Buffer One Day Statistics."
+     ::= { teaPwTDMGroups 10 }
+     
+   END
+

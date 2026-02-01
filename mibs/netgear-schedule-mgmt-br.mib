@@ -1,0 +1,184 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-schedule-mgmt.mib
+--    Creation Date: May 10, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--  private MIB for runtime management of schedule thread.
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-SCHEDULE-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, MODULE-IDENTITY, enterprises, 
+	Unsigned32
+		FROM SNMPv2-SMI
+	RowStatus
+		FROM SNMPv2-TC
+	SnmpAdminString
+		FROM SNMP-FRAMEWORK-MIB;
+
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrScheduleMgmt MODULE-IDENTITY
+	LAST-UPDATED "201307080000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"Initial version of this MIB module."
+::= { cableMgmt 13 }
+
+
+-- 
+-- Netgear Group
+-- 
+
+netgear              OBJECT IDENTIFIER ::= { enterprises 4526 }
+cableMgmt            OBJECT IDENTIFIER ::= { netgear 30 }
+
+-- 
+-- Schedule
+-- 
+
+scheduleTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF ScheduleEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrScheduleMgmt 1 }
+
+scheduleEntry  OBJECT-TYPE
+	SYNTAX 	ScheduleEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { ifIndex }
+	::= { scheduleTable 1 }
+
+ScheduleEntry ::= SEQUENCE {
+	scheduleName
+		SnmpAdminString,
+	scheduleBlockDays
+		Unsigned32,
+	scheduleBlockStartHour
+		Unsigned32,
+	scheduleBlockStartMinute
+		Unsigned32,
+	scheduleBlockEndHour
+		Unsigned32,
+	scheduleBlockEndMinute
+		Unsigned32,
+	scheduleRowStatus
+		RowStatus
+}
+
+ifIndex OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Was undefined index"
+    ::= { scheduleEntry 9999 }
+
+scheduleName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"Set schedule name"
+	::= { scheduleEntry 1 }
+
+scheduleBlockDays  OBJECT-TYPE
+	SYNTAX     Unsigned32
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"Set the days of the schedule.
+    This OID use bit mask to represent the day of schedul. 
+    bit 0 : Sunday
+    bit 1 : Monday
+    bit 2 : Tuesday
+    bit 3 : Wednesday
+    bit 4 : Thursday
+    bit 5 : Friday
+    bit 6 : Saturday"
+	::= { scheduleEntry 2 }
+
+scheduleBlockStartHour  OBJECT-TYPE
+	SYNTAX     Unsigned32 (0..23)
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"Set the start hour of the schedule"
+	DEFVAL  { 0 }
+	::= { scheduleEntry 3 }
+
+scheduleBlockStartMinute  OBJECT-TYPE
+	SYNTAX     Unsigned32 (0..59)
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"Set the start minute of the schedule"
+	DEFVAL  { 0 }
+	::= { scheduleEntry 4 }
+
+scheduleBlockEndHour  OBJECT-TYPE
+	SYNTAX     Unsigned32 (0..23)
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"Set the end hour of the schedule"
+	DEFVAL  { 24 }
+	::= { scheduleEntry 5 }
+
+scheduleBlockEndMinute  OBJECT-TYPE
+	SYNTAX     Unsigned32 (0..59)
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"Set the end minute of the schedule"
+	DEFVAL  { 0 }
+	::= { scheduleEntry 6 }
+
+scheduleRowStatus  OBJECT-TYPE
+	SYNTAX     RowStatus
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"The status of this conceptual row.
+
+     To create a row in this table, a manager must set this object to 
+     either createAndGo(4) or createAndWait(5).
+
+     Until instances of all corresponding columns are appropriately 
+     configured, the value of the corresponding instance of the 
+     scheduleRowStatus column is 'notReady'.
+         
+     Only rows with a status of active(1) will be applied."
+	::= { scheduleEntry 7 }
+END

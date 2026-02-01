@@ -1,0 +1,289 @@
+-- ****************************************************************************
+-- *
+-- * Module Name:   TLGD_LTHSE_SERVER.MIB 
+-- *
+-- *  Description:   Defines MIB Tree for Tollgrade Lighthouse Server
+-- *
+-- *  Notes:
+-- *
+-- *  Revision History:
+-- *
+-- *     $Log:$
+-- * 
+-- *
+-- * Reproduction of this document is authorized on condition that this
+-- * copyright notice is included.  This SNMP MIB Specification
+-- * embodies proprietary intellectual property.  The copyright
+-- * retains all title and ownership in the specification, including any
+-- * revisions. 
+-- * 
+-- * This specification is supplied "AS IS," and no
+-- * warranty, either express or implied, as to the use, operation,
+-- * condition, or performance of the specification, is made.
+-- * 
+-- * The right to change this MIB without notification is retained.
+-- * 
+-- * 
+-- * Agents supporting this MIB: Tollgrade Lighthouse Server
+-- * 
+-- ****************************************************************************
+
+TOLLGRADE-LIGHTHOUSE-SERVER-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+     OBJECT-TYPE 					FROM RFC-1212
+     TRAP-TYPE						FROM RFC-1215
+     DisplayString  					FROM RFC1213-MIB 
+     server 						FROM TOLLGRADE-LIGHTHOUSE-TREE-MIB
+     ;
+
+statusGroup      	OBJECT IDENTIFIER ::= { server 1 }
+trapGroup        	OBJECT IDENTIFIER ::= { server 2 }
+trapObjectGroup        	OBJECT IDENTIFIER ::= { server 3 }
+
+
+tlgdLHServerSoftwareVersion OBJECT-TYPE
+     SYNTAX DisplayString (SIZE(0..255))
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION 
+          "Displays the Lighthouse server software version. 
+          Displayed in human-readable format."
+     ::= { statusGroup 1 }
+
+tlgdLHServerSystemTime OBJECT-TYPE
+     SYNTAX DisplayString (SIZE(0..255))
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION 
+          "Displays the Lighthouse server system time. 
+          Displayed in human-readable format (MM/DD/YY HH:MM:SS)."
+     ::= { statusGroup 2 }
+
+-- /*****************
+-- *  TRAP OBJECTS  *
+-- ******************/
+
+alarmTime OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..255 ) )
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "Time of alarm occurrence, formatted as hh:mm:ss.  
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 1 }
+
+userName OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..20 ) )
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "User name of user that acknowleged this alarm.  
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 2 }
+
+priority OBJECT-TYPE
+     SYNTAX INTEGER (1..32767)
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "Priority of this alarm.  
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 3 }
+
+sequence OBJECT-TYPE
+     SYNTAX INTEGER ( 1..999 )
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "HEC sequence number for this alarm.  
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 4 }
+
+alarmIndex OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 1..13 ) )
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "Absolute sequence number for this alarm from database.  
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 5 }
+
+statusByte OBJECT-TYPE
+     SYNTAX OCTET STRING ( SIZE (1..1) )
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "Status of transponder immediately after this alarm.
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 6 }
+
+region OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..30 ) )
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "Region name for the device generating the alarm.
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 7 }
+
+alarmValue OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..50 ) )
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "Alarm value.
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 8 }
+
+count OBJECT-TYPE
+     SYNTAX INTEGER
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "Alarm state change count for this device for this parameter.
+	  ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 9 }
+
+ipAddress OBJECT-TYPE
+     SYNTAX IpAddress
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "IP address for the top level device forwarding the alarm.
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 10 }
+
+nodeAddress OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..17 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "MAC address of transponder. 
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 11 }
+
+identification OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..50 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Identification of the NE. 
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 12 }
+
+location OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..50 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Location of the NE. 
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 13 }
+
+hecName OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..50 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Name of the top level device forwarding the alarm. 
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 14 }
+
+parameterName OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..50 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Name of the parameter that is in alarm. 
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 15 }
+
+alarmType OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..40 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Alarm type. 
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 16 }
+
+fault OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..40 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Name of the fault. 
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 17 }
+
+deviceType OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..50 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Device type causing the alarm. 
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 18 }
+
+deviceName OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..50 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Name of the device causing the alarm. 
+	   ***Not available through agent - for trap definitions only!***"
+   ::= { trapObjectGroup 19 }
+
+
+-- /**********
+-- *  TRAPS  *
+-- ***********/
+
+lighthouseAlarmEvent TRAP-TYPE
+     ENTERPRISE trapGroup
+     VARIABLES
+          {
+		alarmTime,
+		userName,
+		priority,
+		sequence,
+		alarmIndex,
+		statusByte,
+		region,
+		alarmValue,
+		count,
+		ipAddress,
+		nodeAddress,
+		identification,
+		location,
+		hecName,
+		parameterName,
+		alarmType,
+		fault,
+		deviceType,
+		deviceName
+          }
+     DESCRIPTION "Lighthouse alarm trap."
+     ::= 1    
+
+
+lighthouseServerUpAlarm TRAP-TYPE
+     ENTERPRISE trapGroup
+     VARIABLES
+          {
+               alarmTime
+          }
+     DESCRIPTION "Lighthouse server is started."
+     ::= 2
+
+lighthouseServerDownAlarm TRAP-TYPE
+     ENTERPRISE trapGroup
+     VARIABLES
+          {
+               alarmTime
+          }
+     DESCRIPTION "Lighthouse server has been shut down."
+     ::= 3
+
+END

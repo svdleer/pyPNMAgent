@@ -1,0 +1,1228 @@
+--*****************************************************************
+--
+-- THOMSON-CABLEGATEWAY-USERINTERFACEFEATURES.MIB:  Thomson Inc.
+--
+-- Copyright (c) 2009 by Thomson Inc.
+-- All rights reserved.
+-- 
+--*****************************************************************
+
+--**************************************************************************
+--                                                                          
+--    Copyright 2009 Thomson Inc.
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--             Thomson Inc.                                   
+--             101 W 103rd St.                                   
+--             Indianapolis, IN  46290  USA                                   
+--    All information contained in this document is Thomson Inc.    
+--    company private, proprietary, and trade secret.                       
+--                                                                          
+--**************************************************************************
+--
+--    Filename:      thomson-cablegateway-UserInterfaceFeatures.mib
+--    Author:        
+--    Creation Date: March 20, 2009
+--    Revised      : 
+--
+--**************************************************************************
+--
+--    Description:
+--
+--      Thomson Cable Modem MIB.
+--      
+--**************************************************************************
+
+THOMSON-CABLEGATEWAY-USERINTERFACEFEATURES-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Integer32,
+    Unsigned32,
+    IpAddress
+        FROM SNMPv2-SMI
+    TruthValue,
+    DisplayString,
+    MacAddress,
+    PhysAddress,
+    RowStatus
+        FROM SNMPv2-TC
+    InetAddressType,
+    InetAddress
+        FROM INET-ADDRESS-MIB
+    ifIndex
+        FROM IF-MIB
+    cableGateway
+	FROM THOMSON-BROADBAND-MIB 
+    InetAddress
+	FROM INET-ADDRESS-MIB;
+
+                      
+--*****************************************************************
+--
+-- Thomson cable modem objects.
+-- 
+--*****************************************************************
+
+cableGatewayBase OBJECT IDENTIFIER 
+        ::= { cableGateway 1 }
+
+     
+-- 2009/03/02 added for TT2533  
+
+cgUserInterfaceFeatures OBJECT IDENTIFIER ::= { cableGatewayBase 33 }
+cgUserInterfaceNetwork  OBJECT IDENTIFIER ::= { cgUserInterfaceFeatures 1 }  
+cgUserInterfaceAdvanced OBJECT IDENTIFIER ::= { cgUserInterfaceFeatures 2 }  
+cgUserInterfaceFirewall OBJECT IDENTIFIER ::= { cgUserInterfaceFeatures 3 }  
+cgUserInterfaceWireless OBJECT IDENTIFIER ::= { cgUserInterfaceFeatures 4 }
+
+--*****************************************************************
+-- Network - WAN
+--*****************************************************************
+cgUserInterfaceNetworkWan  OBJECT IDENTIFIER ::= { cgUserInterfaceNetwork 1 }
+
+		cgUiNetworkWanIpAddrType OBJECT-TYPE
+			SYNTAX      InetAddressType
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { ipv4 }
+			::= { cgUserInterfaceNetworkWan 1 }
+		
+		cgUiNetworkWanIpAddr OBJECT-TYPE
+			SYNTAX		IpAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkWan 2 }
+			
+		cgUiNetworkWanMacAddr OBJECT-TYPE
+			SYNTAX		PhysAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkWan 3 }
+
+		cgUiNetworkWanIpDuration OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkWan 4 }
+
+		cgUiNetworkWanIpExpires OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkWan 5 }
+
+		cgUiNetworkWan1stDnsServerIpAddrType OBJECT-TYPE
+			SYNTAX      InetAddressType
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { ipv4 }
+			::= { cgUserInterfaceNetworkWan 6 }
+		
+		cgUiNetworkWan1stDnsServerIpAddr OBJECT-TYPE
+			SYNTAX		IpAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkWan 7 }
+			
+		cgUiNetworkWan2ndDnsServerIpAddrType OBJECT-TYPE
+			SYNTAX      InetAddressType
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { ipv4 }
+			::= { cgUserInterfaceNetworkWan 8 }
+		
+		cgUiNetworkWan2ndDnsServerIpAddr OBJECT-TYPE
+			SYNTAX		IpAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkWan 9 }
+			
+		cgUiNetworkWan3rdDnsServerIpAddrType OBJECT-TYPE
+			SYNTAX      InetAddressType
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { ipv4 }
+			::= { cgUserInterfaceNetworkWan 10 }
+		
+		cgUiNetworkWan3rdDnsServerIpAddr OBJECT-TYPE
+			SYNTAX		IpAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkWan 11 }
+			
+--*****************************************************************
+-- Network - DDNS
+--*****************************************************************
+cgUserInterfaceNetworkDdns OBJECT IDENTIFIER ::= { cgUserInterfaceNetwork 2 }
+
+		cgUiNetworkDdnsEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkDdns 1 }
+
+		cgUiNetworkDdnsUserName OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkDdns 2 }
+
+		cgUiNetworkDdnsPassword OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkDdns 3 }
+
+		cgUiNetworkDdnsHostName OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkDdns 4 }
+
+		cgUiNetworkDdnsServerIpAddrType OBJECT-TYPE
+			SYNTAX      InetAddressType
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { ipv4 }
+			::= { cgUserInterfaceNetworkDdns 5 }
+		
+		cgUiNetworkDdnsServerIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkDdns 6 }
+
+--*****************************************************************
+-- Network - TIME
+--*****************************************************************
+cgUserInterfaceNetworkTime  OBJECT IDENTIFIER ::= { cgUserInterfaceNetwork 3 }
+
+		cgUiNetworkTimeEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkTime 1 }
+
+		cgUiNetworkTimeCurrent OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkTime 2 }
+
+		cgUiNetworkTimeSystemStar OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkTime 3 }
+
+		cgUiNetworkTimeServer1 OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkTime 4 }
+
+		cgUiNetworkTimeServer2 OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkTime 5 }
+
+		cgUiNetworkTimeServer3 OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceNetworkTime 6 }
+
+		cgUiNetworkTimeZoneOffsetHours OBJECT-TYPE
+			SYNTAX		INTEGER (-12..12)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Time zone offset: hours value from -12 to 12"
+			::= { cgUserInterfaceNetworkTime 7 }
+
+		cgUiNetworkTimeZoneOffsetMinutes OBJECT-TYPE
+			SYNTAX		INTEGER (-30..30)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Time zone offset: minutes value +30, 0 and -30"
+			::= { cgUserInterfaceNetworkTime 8 }
+
+--*****************************************************************
+-- Advanced - Options
+--*****************************************************************
+cgUserInterfaceAdvancedOptions            OBJECT IDENTIFIER ::= { cgUserInterfaceAdvanced 1 }
+
+		cgUiAdvancedOptionsWanBlockingEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceAdvancedOptions 1 }
+
+--*****************************************************************
+-- Advanced - IP Filtering
+--*****************************************************************
+cgUserInterfaceAdvancedIpFilteringTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CgUserInterfaceAdvancedIpFilteringEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		""
+	::= { cgUserInterfaceAdvanced 2 }
+
+cgUserInterfaceAdvancedIpFilteringEntry OBJECT-TYPE
+	SYNTAX		CgUserInterfaceAdvancedIpFilteringEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Entry containing information for Port Blocking Table"
+	INDEX { cgUiAdvancedIpFilteringIndex }
+	::= { cgUserInterfaceAdvancedIpFilteringTable 1 }
+
+CgUserInterfaceAdvancedIpFilteringEntry ::= SEQUENCE {
+	cgUiAdvancedIpFilteringIndex       INTEGER,
+	cgUiAdvancedIpFilteringStartIpAddrType InetAddressType,
+	cgUiAdvancedIpFilteringStartIpAddr InetAddress,
+	cgUiAdvancedIpFilteringEndIpAddrType   InetAddressType,
+	cgUiAdvancedIpFilteringEndIpAddr   InetAddress,
+	cgUiAdvancedIpFilteringEnabled     INTEGER,
+	cgUiAdvancedIpFilteringRowStatus   RowStatus
+	}
+
+		cgUiAdvancedIpFilteringIndex OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"IP Filtering Table Index"
+			::= { cgUserInterfaceAdvancedIpFilteringEntry 1 }
+		
+		cgUiAdvancedIpFilteringStartIpAddrType OBJECT-TYPE
+			SYNTAX		InetAddressType
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"IP Filtering - Starting IP Type"
+			DEFVAL { ipv4 }
+			::= { cgUserInterfaceAdvancedIpFilteringEntry 2 }
+				
+		cgUiAdvancedIpFilteringStartIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"IP Filtering - Starting IP Address"
+			::= { cgUserInterfaceAdvancedIpFilteringEntry 3 }
+		
+		cgUiAdvancedIpFilteringEndIpAddrType OBJECT-TYPE
+			SYNTAX		InetAddressType
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"IP Filtering - Ending IP Type"
+			DEFVAL { ipv4 }			
+			::= { cgUserInterfaceAdvancedIpFilteringEntry 4 }
+				
+		cgUiAdvancedIpFilteringEndIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"IP Filtering - Ending IP Address"
+			::= { cgUserInterfaceAdvancedIpFilteringEntry 5 }
+		
+		cgUiAdvancedIpFilteringEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"IP Filtering Enabled - For this raw"
+			DEFVAL { 2 }
+			::= { cgUserInterfaceAdvancedIpFilteringEntry 6 }
+		
+		cgUiAdvancedIpFilteringRowStatus OBJECT-TYPE
+			SYNTAX		RowStatus
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"IP Filtering Row Status - For creating and deleting raws"
+			::= { cgUserInterfaceAdvancedIpFilteringEntry 7 }
+
+--*****************************************************************
+-- Advanced - MAC Filtering
+--*****************************************************************
+cgUserInterfaceAdvancedMacFilteringTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CgUserInterfaceAdvancedMacFilteringEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		""
+	::= { cgUserInterfaceAdvanced 3 }
+
+cgUserInterfaceAdvancedMacFilteringEntry OBJECT-TYPE
+	SYNTAX		CgUserInterfaceAdvancedMacFilteringEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Entry containing information for Port Blocking Table"
+	INDEX { cgUiAdvancedMacFilteringIndex }
+	::= { cgUserInterfaceAdvancedMacFilteringTable 1 }
+
+CgUserInterfaceAdvancedMacFilteringEntry ::= SEQUENCE {
+	cgUiAdvancedMacFilteringIndex      INTEGER,
+	cgUiAdvancedMacFilteringMacAddress PhysAddress,
+	cgUiAdvancedMacFilteringRowStatus  RowStatus
+	}
+
+		cgUiAdvancedMacFilteringIndex OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"MAC Filtering Table Index"
+			::= { cgUserInterfaceAdvancedMacFilteringEntry 1 }
+			
+		cgUiAdvancedMacFilteringMacAddress OBJECT-TYPE
+			SYNTAX		PhysAddress
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"MAC Filtering - MAC Address"
+			::= { cgUserInterfaceAdvancedMacFilteringEntry 2 }
+
+		cgUiAdvancedMacFilteringRowStatus OBJECT-TYPE
+			SYNTAX		RowStatus
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"MAC Filtering Row Status - For creating and deleting raws"
+			::= { cgUserInterfaceAdvancedMacFilteringEntry 3 }
+
+--*****************************************************************
+-- Advanced - Port Filtering
+--*****************************************************************
+cgUserInterfaceAdvancedPortFilteringTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CgUserInterfaceAdvancedPortFilteringEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		""
+	::= { cgUserInterfaceAdvanced 4 }
+
+cgUserInterfaceAdvancedPortFilteringEntry OBJECT-TYPE
+	SYNTAX		CgUserInterfaceAdvancedPortFilteringEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Entry containing information for Port Blocking Table"
+	INDEX { cgUiAdvancedPortFilteringIndex }
+	::= { cgUserInterfaceAdvancedPortFilteringTable 1 }
+
+CgUserInterfaceAdvancedPortFilteringEntry ::= SEQUENCE {
+	cgUiAdvancedPortFilteringIndex          INTEGER,
+	cgUiAdvancedPortFilteringPortStartValue INTEGER,
+	cgUiAdvancedPortFilteringPortEndValue   INTEGER,
+	cgUiAdvancedPortFilteringProtocolType   INTEGER,
+	cgUiAdvancedPortFilteringEnabled        INTEGER,
+	cgUiAdvancedPortFilteringRowStatus      RowStatus
+	}
+
+		cgUiAdvancedPortFilteringIndex OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"Port Filtering Table Index"
+			::= { cgUserInterfaceAdvancedPortFilteringEntry 1 }
+		
+		cgUiAdvancedPortFilteringPortStartValue OBJECT-TYPE
+			SYNTAX		INTEGER  (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Filtering - Starting Port Value"
+			DEFVAL { 1 }
+			::= { cgUserInterfaceAdvancedPortFilteringEntry 2 }
+		
+		cgUiAdvancedPortFilteringPortEndValue OBJECT-TYPE
+			SYNTAX		INTEGER  (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Filtering - Ending Port Value"
+			DEFVAL { 65535 }
+			::= { cgUserInterfaceAdvancedPortFilteringEntry 3 }
+		
+		cgUiAdvancedPortFilteringProtocolType OBJECT-TYPE
+			SYNTAX		INTEGER {
+						both (1),
+						tcp (2),
+						udp (3)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Filtering - Protocol Type"
+			DEFVAL { 1 }
+			::= { cgUserInterfaceAdvancedPortFilteringEntry 4 }
+		
+		cgUiAdvancedPortFilteringEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Filtering Enabled - For this raw"
+			DEFVAL { 2 }
+			::= { cgUserInterfaceAdvancedPortFilteringEntry 5 }
+		
+		cgUiAdvancedPortFilteringRowStatus OBJECT-TYPE
+			SYNTAX		RowStatus
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"Port Filtering Row Status - For creating and deleting raws"
+			::= { cgUserInterfaceAdvancedPortFilteringEntry 6 }
+
+--*****************************************************************
+-- Advanced - Forwarding
+--*****************************************************************
+cgUserInterfaceAdvancedForwardingTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CgUserInterfaceAdvancedForwardingEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		""
+	::= { cgUserInterfaceAdvanced 5 }
+
+cgUserInterfaceAdvancedForwardingEntry OBJECT-TYPE
+	SYNTAX		CgUserInterfaceAdvancedForwardingEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Port Forwarding Table Object"
+	INDEX { cgUiAdvancedForwardingIndex }
+	::= { cgUserInterfaceAdvancedForwardingTable 1 }
+
+CgUserInterfaceAdvancedForwardingEntry ::= SEQUENCE {
+	cgUiAdvancedForwardingIndex          INTEGER,
+	cgUiAdvancedForwardingPortStartValue INTEGER,
+	cgUiAdvancedForwardingPortEndValue   INTEGER,
+	cgUiAdvancedForwardingProtocolType   INTEGER,
+	cgUiAdvancedForwardingIpAddrType     InetAddressType,
+	cgUiAdvancedForwardingIpAddr         InetAddress,
+	cgUiAdvancedForwardingEnabled        INTEGER,
+	cgUiAdvancedForwardingRowStatus      RowStatus
+	}
+
+		cgUiAdvancedForwardingIndex OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding Table index"
+			::= { cgUserInterfaceAdvancedForwardingEntry 1 }
+		
+		cgUiAdvancedForwardingPortStartValue OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding - Starting Port Value"
+			::= { cgUserInterfaceAdvancedForwardingEntry 2 }
+		
+		cgUiAdvancedForwardingPortEndValue OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding - Ending Port Value"
+			::= { cgUserInterfaceAdvancedForwardingEntry 3 }
+		
+		cgUiAdvancedForwardingProtocolType OBJECT-TYPE
+			SYNTAX		INTEGER {
+						both (1),
+						tcp (2),
+						udp (3)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding - Protocol Type"
+			DEFVAL { 1 }
+			::= { cgUserInterfaceAdvancedForwardingEntry 4 }
+		
+		cgUiAdvancedForwardingIpAddrType OBJECT-TYPE
+			SYNTAX      InetAddressType
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding - IP Address type"
+			DEFVAL { ipv4 }
+			::= { cgUserInterfaceAdvancedForwardingEntry 5 }
+		
+		cgUiAdvancedForwardingIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"FPort Forwarding - IP Address"
+			::= { cgUserInterfaceAdvancedForwardingEntry 6 }
+		
+		cgUiAdvancedForwardingEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding Enabled - For this raw"
+			DEFVAL { 2 }
+			::= { cgUserInterfaceAdvancedForwardingEntry 7 }
+		
+		cgUiAdvancedForwardingRowStatus OBJECT-TYPE
+			SYNTAX		RowStatus
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding Row Status - For creating and deleting raws"
+			::= { cgUserInterfaceAdvancedForwardingEntry 8 }
+
+--*****************************************************************
+-- Advanced - Port Triggers
+--*****************************************************************
+cgUserInterfaceAdvancedPortTriggersTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CgUserInterfaceAdvancedPortTriggersEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		""
+	::= { cgUserInterfaceAdvanced 6 }
+
+cgUserInterfaceAdvancedPortTriggersEntry OBJECT-TYPE
+	SYNTAX		CgUserInterfaceAdvancedPortTriggersEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Port Triggers Table Object"
+	INDEX { cgUiAdvancedPortTriggersIndex }
+	::= { cgUserInterfaceAdvancedPortTriggersTable 1 }
+
+CgUserInterfaceAdvancedPortTriggersEntry ::= SEQUENCE {
+	cgUiAdvancedPortTriggersIndex              INTEGER,
+	cgUiAdvancedPortTriggersSrcPortStartValue  INTEGER,
+	cgUiAdvancedPortTriggersSrcPortEndValue    INTEGER,
+	cgUiAdvancedPortTriggersDestPortStartValue INTEGER,
+	cgUiAdvancedPortTriggersDestPortEndValue   INTEGER,
+	cgUiAdvancedPortTriggersProtocolType       INTEGER,
+	cgUiAdvancedPortTriggersEnabled            INTEGER,
+	cgUiAdvancedPortTriggersRowStatus          RowStatus
+	}
+
+		cgUiAdvancedPortTriggersIndex OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"Port Triggers Table index"
+			::= { cgUserInterfaceAdvancedPortTriggersEntry 1 }
+		
+		cgUiAdvancedPortTriggersSrcPortStartValue OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Triggers - Source Starting Port Value"
+			::= { cgUserInterfaceAdvancedPortTriggersEntry 2 }
+		
+		cgUiAdvancedPortTriggersSrcPortEndValue OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Triggers - Source Ending Port Value"
+			::= { cgUserInterfaceAdvancedPortTriggersEntry 3 }
+		
+		cgUiAdvancedPortTriggersDestPortStartValue OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Triggers - Destination Starting Port Value"
+			::= { cgUserInterfaceAdvancedPortTriggersEntry 4 }
+		
+		cgUiAdvancedPortTriggersDestPortEndValue OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Triggers - Destination Ending Port Value"
+			::= { cgUserInterfaceAdvancedPortTriggersEntry 5 }
+		
+		cgUiAdvancedPortTriggersProtocolType OBJECT-TYPE
+			SYNTAX		INTEGER {
+						both (1),
+						tcp (2),
+						udp (3)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Triggers - Protocol Type"
+			DEFVAL { 1 }
+			::= { cgUserInterfaceAdvancedPortTriggersEntry 6 }
+		
+		cgUiAdvancedPortTriggersEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Triggers Enabled - For this raw"
+			DEFVAL { 2 }
+			::= { cgUserInterfaceAdvancedPortTriggersEntry 7 }
+		
+		cgUiAdvancedPortTriggersRowStatus OBJECT-TYPE
+			SYNTAX		RowStatus
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"Port Triggers Row Status - For creating and deleting raws"
+			::= { cgUserInterfaceAdvancedPortTriggersEntry 8 }
+
+--*****************************************************************
+-- Advanced - DMZ Host
+--*****************************************************************
+cgUserInterfaceAdvancedDmzHost            OBJECT IDENTIFIER ::= { cgUserInterfaceAdvanced 7 }
+
+		cgUiAdvancedDmzHostIpAddrType OBJECT-TYPE
+			SYNTAX      InetAddressType
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding - IP Address type"
+			DEFVAL { ipv4 }
+			::= { cgUserInterfaceAdvancedDmzHost 1 }
+		
+		cgUiAdvancedDmzHostIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding - IP Address"
+			::= { cgUserInterfaceAdvancedDmzHost 2 }
+
+--*****************************************************************
+-- Firewall - Web Filter
+--*****************************************************************
+cgUserInterfaceFirewallWebFilter  OBJECT IDENTIFIER ::= { cgUserInterfaceFirewall 1 }
+
+		cgUiFirewallProxyEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallWebFilter 1 }
+
+		cgUiFirewallCookiesEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallWebFilter 2 }
+
+		cgUiFirewallJavaAppletsEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallWebFilter 3 }
+
+		cgUiFirewallActiveXEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallWebFilter 4 }
+
+		cgUiFirewallPopupWindowsEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallWebFilter 5 }
+
+		cgUiFirewallFragmentedIpPacketsEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallWebFilter 6 }
+
+		cgUiFirewallPortScanDetectionEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallWebFilter 7 }
+
+		cgUiFirewallIpFloodDetectionEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallWebFilter 8 }
+
+		cgUiFirewallProtectionEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallWebFilter 9 }
+
+--*****************************************************************
+-- Firewall - TOD Filter
+--*****************************************************************
+cgUserInterfaceFirewallTODFilterTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CgUserInterfaceFirewallTODFilterEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		""
+	::= { cgUserInterfaceFirewall 2 }
+
+cgUserInterfaceFirewallTODFilterEntry OBJECT-TYPE
+	SYNTAX		CgUserInterfaceFirewallTODFilterEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		""
+	INDEX { cgUiFirewallTODIndex }
+	::= { cgUserInterfaceFirewallTODFilterTable 1 }
+
+CgUserInterfaceFirewallTODFilterEntry ::= SEQUENCE {
+	cgUiFirewallTODIndex       INTEGER,
+	cgUiFirewallTODMacAddress  PhysAddress,
+	cgUiFirewallTODDaysToBlock BITS,
+	cgUiFirewallTODAllDay      INTEGER,
+	cgUiFirewallTODStarHour    INTEGER,
+	cgUiFirewallTODStarMinute  INTEGER,
+	cgUiFirewallTODEndHour     INTEGER,
+	cgUiFirewallTODEndMinute   INTEGER,
+	cgUiFirewallTODEnabled     INTEGER,
+	cgUiFirewallTODRemove      INTEGER,
+	}
+
+		cgUiFirewallTODIndex OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallTODFilterEntry 1 }
+			
+		cgUiFirewallTODMacAddress OBJECT-TYPE
+			SYNTAX		PhysAddress
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallTODFilterEntry 2 }
+
+		cgUiFirewallTODDaysToBlock    OBJECT-TYPE
+			SYNTAX BITS {
+       Sunday(0),              --MSB (Bit-7)
+       Monday(1),
+       Tuesday(2),
+       Wednesday(3),
+       Thursday(4),
+       Friday(5),
+       Saturday(6),
+       Everyday(7)
+			}
+			MAX-ACCESS     read-write
+			STATUS         current
+			DESCRIPTION
+				""
+			DEFVAL { '00'h }
+			::= { cgUserInterfaceFirewallTODFilterEntry 3 }
+
+		cgUiFirewallTODAllDay OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 2 }
+			::= { cgUserInterfaceFirewallTODFilterEntry 4 }
+
+		cgUiFirewallTODStarHour OBJECT-TYPE
+			SYNTAX		INTEGER (0..23)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 0 }
+			::= { cgUserInterfaceFirewallTODFilterEntry 5 }
+		
+		cgUiFirewallTODStarMinute OBJECT-TYPE
+			SYNTAX		INTEGER (0..59)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 0 }
+			::= { cgUserInterfaceFirewallTODFilterEntry 6 }
+		
+		cgUiFirewallTODEndHour OBJECT-TYPE
+			SYNTAX		INTEGER  (0..23)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 0 }
+			::= { cgUserInterfaceFirewallTODFilterEntry 7 }
+		
+		cgUiFirewallTODEndMinute OBJECT-TYPE
+			SYNTAX		INTEGER (0..59)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 0 }
+			::= { cgUserInterfaceFirewallTODFilterEntry 8 }
+		
+		cgUiFirewallTODEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 2 }
+			::= { cgUserInterfaceFirewallTODFilterEntry 9 }
+		
+		cgUiFirewallTODRemove OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enable	(1)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			::= { cgUserInterfaceFirewallTODFilterEntry 10 }
+
+--*****************************************************************
+-- Firewall - Local Log
+--*****************************************************************
+cgUserInterfaceFirewallLocalLog   OBJECT IDENTIFIER ::= { cgUserInterfaceFirewall 3 }
+
+		cgUiFirewallLocalLogEmailAddr OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Local Log - Contact Email Address"
+			::= { cgUserInterfaceFirewallLocalLog 1 }
+
+		cgUiFirewallLocalLogSMTPServerName OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Local Log - SMTP Server Name"
+			::= { cgUserInterfaceFirewallLocalLog 2 }
+
+		cgUiFirewallLocalLogEnable OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Local Log - E-mail Alerts"
+			::= { cgUserInterfaceFirewallLocalLog 3 }
+
+--*****************************************************************
+-- Firewall - RemoteLog
+--*****************************************************************
+cgUserInterfaceFirewallRemoteLog  OBJECT IDENTIFIER ::= { cgUserInterfaceFirewall 4 }
+
+		cgUiFirewallRemoteLogPermittedEnable OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Remote Log - Permitted Connections"
+			::= { cgUserInterfaceFirewallRemoteLog 1 }
+
+		cgUiFirewallRemoteLogBlockedEnable OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Remote Log - Blocked Connections"
+			::= { cgUserInterfaceFirewallRemoteLog 2 }
+
+		cgUiFirewallRemoteLogKnownInternetAttacksEnable OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Remote Log - Known Internet Attacks"
+			::= { cgUserInterfaceFirewallRemoteLog 3 }
+
+		cgUiFirewallRemoteLogConfigurationEventsEnable OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Remote Log - Product Configuration Events"
+			::= { cgUserInterfaceFirewallRemoteLog 4 }
+
+		cgUiFirewallRemoteLogSysLogServerIpAddrType OBJECT-TYPE
+			SYNTAX      InetAddressType
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Remote Log - SysLog Server IP Address type"
+			DEFVAL { ipv4 }
+			::= { cgUserInterfaceFirewallRemoteLog 5 }
+		
+		cgUiFirewallRemoteLogSysLogServerIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Remote Log - SysLog Server IP Address"
+			::= { cgUserInterfaceFirewallRemoteLog 6 }
+
+--*****************************************************************
+-- Wireless - Sleep WiFi
+--*****************************************************************
+cgUserInterfaceWirelessSleep  OBJECT IDENTIFIER ::= { cgUserInterfaceWireless 1 }
+
+		cgUiWirelessSleepEnable OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Sleep WiFi - Enable/Disable Sleep WiFi function"
+			DEFVAL { 2 }
+			::= { cgUserInterfaceWirelessSleep 1 }
+
+		cgUiWirelessSleepBreakingTime OBJECT-TYPE
+			SYNTAX		INTEGER (0..4)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Sleep WiFi - Wake up from Sleep mode for n*30 minutes.
+				              0 minute means can't be broken."
+			DEFVAL { 0 }
+			::= { cgUserInterfaceWirelessSleep 2 }
+
+		cgUiWirelessSleepDaysToBlock    OBJECT-TYPE
+			SYNTAX BITS {
+                Sunday(0),              --MSB (Bit-7)
+                Monday(1),
+                Tuesday(2),
+                Wednesday(3),
+                Thursday(4),
+                Friday(5),
+                Saturday(6),
+                Everyday(7)
+			}
+			MAX-ACCESS     read-write
+			STATUS         current
+			DESCRIPTION
+				""
+			DEFVAL { '00'h }
+			::= { cgUserInterfaceWirelessSleep 3 }
+
+		cgUiWirelessSleepAllDay OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 2 }
+			::= { cgUserInterfaceWirelessSleep 4 }
+
+		cgUiWirelessSleepStarHour OBJECT-TYPE
+			SYNTAX		INTEGER (0..23)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 0 }
+			::= { cgUserInterfaceWirelessSleep 5 }
+		
+		cgUiWirelessSleepStarMinute OBJECT-TYPE
+			SYNTAX		INTEGER (0..59)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 0 }
+			::= { cgUserInterfaceWirelessSleep 6 }
+		
+		cgUiWirelessSleepEndHour OBJECT-TYPE
+			SYNTAX		INTEGER  (0..23)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 0 }
+			::= { cgUserInterfaceWirelessSleep 7 }
+		
+		cgUiWirelessSleepEndMinute OBJECT-TYPE
+			SYNTAX		INTEGER (0..59)
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				""
+			DEFVAL { 0 }
+			::= { cgUserInterfaceWirelessSleep 8 }
+			
+		cgUiWirelessSleepPageVisible OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-write
+			STATUS		current
+			DESCRIPTION
+				"Sleep WiFi - Web page can be hidden/displayed."
+			DEFVAL { 2 }
+			::= { cgUserInterfaceWirelessSleep 9 }
+			
+END

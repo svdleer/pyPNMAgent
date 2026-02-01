@@ -1,0 +1,620 @@
+    SMC-D3CM-CONTROL-MIB  DEFINITIONS ::= BEGIN
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- This MIB version apply to the DORY MTA Comcast Products only!|
+    --   SMCD3GNV-NCS and SMCD3GNV-IMS                              |
+    --  Other SMC Gateway applys to other version of SMC-CM.mib     |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Counter32,
+        Integer32,
+        IpAddress,
+        experimental,
+        private,
+        enterprises,
+        transmission                    FROM SNMPv2-SMI
+        
+        InetAddressType, 
+        InetAddress     				FROM INET-ADDRESS-MIB
+        
+    	MODULE-COMPLIANCE,
+    	OBJECT-GROUP                    FROM SNMPv2-CONF
+    	
+    	TEXTUAL-CONVENTION,
+    	MacAddress,
+	    PhysAddress,
+    	RowStatus,
+    	TruthValue,
+        DateAndTime,
+	    TimeStamp,
+    	DisplayString                   FROM SNMPv2-TC
+    	
+        ifIndex                         FROM IF-MIB;
+            
+-- Textual Conventions
+	TenthdBmV ::= TEXTUAL-CONVENTION
+        DISPLAY-HINT "d-1"
+        STATUS       current
+        DESCRIPTION
+            "This data type represents power levels that are normally
+             expressed in dBmV. Units are in tenths of a dBmV;
+             for example, 5.1 dBmV will be represented as 51."
+        SYNTAX       Integer32
+        
+	smcNetworks			OBJECT IDENTIFIER ::= { enterprises 202 }
+	smcCableModem		OBJECT IDENTIFIER ::= { smcNetworks 80 }
+    
+    smcD3CmControl	MODULE-IDENTITY
+    LAST-UPDATED "201108150000Z" -- August 15th, 2011
+    ORGANIZATION "SMC Networks, Inc."
+    CONTACT-INFO
+     " aRyeh Elkon
+        	SMC Networks Inc
+            1873 S Bellaire St	
+            Suite 1025	
+            Denver, CO 80222
+            USA
+            Phone: +1 949 679 8267
+            E-mail: elkon@smc.com"
+    
+    DESCRIPTION
+        "The MIB module to describe the DORY-ONLY SMC product CM control functions.
+         It is a deviation from standard smc-cm.mib due to historical constrains "
+
+    REVISION "200804081338Z"
+    DESCRIPTION
+        "Initial Compilable Version."
+
+    REVISION "200902020000Z"
+    DESCRIPTION
+        "Added smcD3CmClearUSChannelParameters and smcD3CmDsClearTable."
+
+    REVISION "200910190000Z"
+    DESCRIPTION
+        "Add smcD3CmConsoleEnable."
+
+    REVISION "201001050000Z"
+    DESCRIPTION
+        "Add smcD3CmOperMode."
+    REVISION "201001220000Z"
+    DESCRIPTION
+        "Add smcD3CmNetworkAccess, smcD3CmMsoAccessEnable, smcD3CmCusAdminAccessEnable, 
+        smcD3CmComAdminAccessEnable, smcD3CmCusAdminUsername, smcD3CmCusAdminPassword,
+        smcD3CmSNAsCusAdminPassword, smcD3CmSystemMonitor."
+
+    REVISION "201002040000Z"
+    DESCRIPTION
+        "Add smcD3CmPodSeed."
+
+    REVISION "201003050000Z"
+    DESCRIPTION
+        "Add smcD3CmPodSeedEncrypted."
+
+    REVISION "201004300000Z"
+    DESCRIPTION
+        "Add smcD3CmSwFilename."
+
+    REVISION "201005190000Z"
+    DESCRIPTION
+        "Rename frequency cache tables and entries."
+
+    REVISION "201008110000Z"
+    DESCRIPTION
+        "Add smcD3CmUsPowerBoost."  
+        
+	REVISION "201009080000Z"
+	DESCRIPTION
+		"Add smcFactoryResetByExternalButtonEnabled."
+
+    REVISION "201011080000Z"
+    DESCRIPTION
+        "update length of smcD3CmPodSeed.
+         Add clarifications to smcD3CmMddIpModeOverride"
+
+      REVISION "201012220000Z"
+	DESCRIPTION
+		"update CusAdminuser/pw min length to 2 
+             Add smcD3CmDeviceIdentifierLedPattern   "
+
+	    
+REVISION "201102010000Z"
+    DESCRIPTION
+        " adding
+    	smcD3CmMacReinitial		smcD3CmControl  12
+	smcD3CmCfgMtaFeatureSwitch	smcD3CmControl  26
+	smcD3CmMtaLine1Status 	smcD3CmControl  27
+ 	smcD3CmMtaLine2Status 	smcD3CmControl  28 "
+
+ 
+
+REVISION  "201106230000Z"
+    DESCRIPTION
+      " Change Index to be compatible with the DORY-NCS-2.1.3.4 code
+       indexs that had restored index
+         smcD3CmPodSeed	            1.3.6.1.4.1.202.80.3.15
+         smcD3CmPodSeedEncrypt	1.3.6.1.4.1.202.80.3.16
+         smcD3CmCfgMtaFeatureSwitch	1.3.6.1.4.1.202.80.3.13
+         smcD3CmMtaLine1Status	1.3.6.1.4.1.202.80.3.17
+         smcD3CmMtaLine2Status	1.3.6.1.4.1.202.80.3.18
+
+      OIDs that got new indexes:
+         smcD3CmNetworkAccess	       1.3.6.1.4.1.202.80.3.31
+         smcD3CmCusAdminAccessEnable 1.3.6.1.4.1.202.80.3.32
+         smcD3CmComAdminAccessEnable 1.3.6.1.4.1.202.80.3.33
+         smcD3CmCusAdminUsername	 1.3.6.1.4.1.202.80.3.34
+         smcD3CmCusAdminPassword	 1.3.6.1.4.1.202.80.3.35
+     "
+
+REVISION  "201108150000Z"
+    DESCRIPTION
+      "update description for smcD3CmMtaLine1Status and smcD3CmMtaLine2Status.
+        
+       Adding smcTodRenewalInterval    smcD3CmControl  29 
+       Add smcD3CmForceAtdma           smcD3CmControl  30     
+       smcD3CmDeviceIdentifierLedPattern smcD3CmControl  25 "
+
+
+        ::= { smcCableModem 3 }
+        
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Administrative Configuration
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	smcD3CmSetToFactory OBJECT-TYPE
+    	SYNTAX      TruthValue
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "Reading this object always returns false(2). When the
+            set to true(1), device reset all configurations to 
+            factory default"
+	    ::= { smcD3CmControl 1 }
+
+	smcD3CmDsFreqChannelWidth OBJECT-TYPE
+    	SYNTAX      INTEGER
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "DS channel width in MHz, e.g 6MHz or 8MHz"
+        DEFVAL { 6 }
+	    ::= { smcD3CmControl 2 }
+
+	smcD3CmDsFreqScanStart OBJECT-TYPE
+    	SYNTAX      INTEGER
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "Limit DS channel scan starting frequency in MHz."
+        DEFVAL { 111 }
+	    ::= { smcD3CmControl 3 }
+
+	smcD3CmDsFreqScanEnd OBJECT-TYPE
+    	SYNTAX      INTEGER
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "Limit DS channel scan ending frequency in MHz."
+        DEFVAL { 867 }
+	    ::= { smcD3CmControl 4 }
+
+	smcD3CmDsFreqScanOptions OBJECT-TYPE
+        SYNTAX      INTEGER {
+                             onlyCashedChannels(1),
+                             onlyWithinTheLimit(2),
+                             annexA(3),
+                             annexB(4),
+                             other(5)
+                            }
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "DS channel scan option."
+	    ::= { smcD3CmControl 5 }
+
+        smcD3CmDsClearTable OBJECT-TYPE
+       	SYNTAX      TruthValue
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "Reading this object always returns false(2). When the
+            set to true(1), device will clear the previously defined smcD3CmDsCashTable"
+	    ::= { smcD3CmControl 7 }
+
+        smcD3CmClearUSChannelParameters OBJECT-TYPE
+    	SYNTAX      TruthValue
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "Reading this object always returns false(2). When the
+            set to true(1), device will clear US Channel parameters from Cache 
+            so modem can choose the best US Channel options the next time it reset."
+	    ::= { smcD3CmControl 8 }
+	    
+      	smcD3CmConsoleEnable OBJECT-TYPE
+          	SYNTAX      TruthValue
+          	MAX-ACCESS  read-write
+          	STATUS      current
+      	    DESCRIPTION
+      		    "Enable/disable device console."
+      	    ::= { smcD3CmControl 9 }
+		
+        smcD3CmMddIpModeOverride OBJECT-TYPE
+        SYNTAX INTEGER {
+            inactive(-1),
+            honorMDD(0),
+            ipv4Only(1),
+            ipv6Only(2),
+            apm(3),
+            dpm(4)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "smcD3CmMddIpModeOverride is used to change the DHCP process mode."
+        DEFVAL { honorMDD }
+        ::= { smcD3CmControl 10 }       
+
+        smcD3CmOperMode OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        bridge(1),
+                        gateway(2)
+                    }
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "This object indicates the gateway operation mode in which the
+            CM is operating. Set to (1) for bridge mode. Set to (2) for 
+            RG or EG mode."
+        ::= { smcD3CmControl 11 }
+
+        smcD3CmMacReinitial OBJECT-TYPE
+    	  SYNTAX      TruthValue
+    	  MAX-ACCESS  read-write
+    	  STATUS      current
+	      DESCRIPTION
+		      "Re-initial CM MAC. Reading this object always returns false."
+	      ::= { smcD3CmControl 12 }  
+
+	smcD3CmCfgMtaFeatureSwitch OBJECT-TYPE
+    	SYNTAX      TruthValue
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "MTA MAC address will not be entered in the CPE table or counted 
+            against the MaxCpeAllowed variable when this flag is set to true."
+        DEFVAL { false }
+        ::= { smcD3CmControl 13 }
+
+	smcD3CmMtaLine1Status OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "For NCS based MTA:
+                The output containing the following state:
+                Out of service status:
+                endpoint2 is out of service - HW/SW failure
+                endpoint2 is out of service - Shutdown
+                endpoint2 is out of service - Testing
+                The above status means the endpoint interface is down, and also the reason. 
+                The Shutdown/Testing status is correspond to ifAdminStatus down/testing
+                In service status:
+                endpoint2 is in service - Disconnected
+                endpoint2 is in service - Off-hook(RingBack)
+                endpoint2 is in service - Off-hook(Dial)
+                endpoint2 is in service - Off-hook(Talking)
+                endpoint2 is in service - Off-hook
+                endpoint2 is in service - On-hook(Ring)
+                endpoint2 is in service - On-hook
+                The disconnected means the endpoint still not connect to the CMS,
+                and the others state means the line on/off state
+
+              For PC2.0 (IMS) based MTA:
+                shorter list may exist. 
+                A textual string containing information about the interface. 
+                This string should include the name of the manufacturer, the product name and 
+                the version of the interface hardware/software.
+                Final list - TBD"
+        ::= { smcD3CmControl 17 }
+
+    smcD3CmMtaLine2Status OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "For NCS based MTA:
+                The output containing the following state:
+                Out of service status:
+                endpoint2 is out of service - HW/SW failure
+                endpoint2 is out of service - Shutdown
+                endpoint2 is out of service - Testing
+                The above status means the endpoint interface is down, and also the reason. 
+                The Shutdown/Testing status is correspond to ifAdminStatus down/testing
+                In service status:
+                endpoint2 is in service - Disconnected
+                endpoint2 is in service - Off-hook(RingBack)
+                endpoint2 is in service - Off-hook(Dial)
+                endpoint2 is in service - Off-hook(Talking)
+                endpoint2 is in service - Off-hook
+                endpoint2 is in service - On-hook(Ring)
+                endpoint2 is in service - On-hook
+                The disconnected means the endpoint still not connect to the CMS,
+                and the others state means the line on/off state
+
+              For PC2.0 (IMS) based MTA:
+                shorter list may exist.
+                A textual string containing information about the interface. 
+                This string should include the name of the manufacturer, the product name and 
+                the version of the interface hardware/software.
+                Final list - TBD"
+        ::= { smcD3CmControl 18 }
+
+
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             The DS Cached Table                            |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    smcD3CmDsCacheTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF SmcD3CmDsCacheEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+                "Configuration for DS Frequency Cached Table."
+        ::= { smcD3CmControl 6 }
+
+    smcD3CmDsCacheEntry OBJECT-TYPE
+        SYNTAX      SmcD3CmDsCacheEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+                "An entry in smcD3CmDsCacheTable"
+        INDEX { smcD3CmDsCacheIndex }
+        ::= { smcD3CmDsCacheTable 1 }
+
+    SmcD3CmDsCacheEntry ::= 
+        SEQUENCE { 
+                  smcD3CmDsCacheIndex      INTEGER,
+                  smcD3CmDsCacheFreq       INTEGER,
+                  smcD3CmDsCacheRowStatus  RowStatus
+                 }
+
+    smcD3CmDsCacheIndex OBJECT-TYPE
+        SYNTAX      INTEGER (1..4)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+                "The smcD3CmDsCacheTable index."
+        ::= { smcD3CmDsCacheEntry 1 }
+
+    smcD3CmDsCacheFreq OBJECT-TYPE
+    	SYNTAX      INTEGER
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "DS channel frequency in MHz."
+        ::= { smcD3CmDsCacheEntry 2 }
+
+    smcD3CmDsCacheRowStatus OBJECT-TYPE
+    	SYNTAX      RowStatus 
+    	MAX-ACCESS  read-create 
+    	STATUS      current 
+    	DESCRIPTION 
+            "The RowStatus interlock for creation and deletion of row
+            entries." 
+        ::= { smcD3CmDsCacheEntry 3 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             Access                                           |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    smcD3CmNetworkAccess OBJECT-TYPE
+        SYNTAX INTEGER
+        		{
+                    disabled (0),
+                    enabled (1)
+                 }
+        MAX-ACCESS read-only
+        STATUS current 
+        DESCRIPTION
+            "The Network Access value as defined in the cable modem config file."
+        ::= { smcD3CmControl 31 }   
+
+    smcD3CmMsoAccessEnable OBJECT-TYPE
+        SYNTAX INTEGER
+        		{
+                    disabled (0),
+                    enabled (1)
+                 }
+        MAX-ACCESS read-only
+        STATUS current 
+        DESCRIPTION
+            "Enable/disable MSO access for all user interfaces."
+        ::= { smcD3CmControl 14 }   
+
+    smcD3CmCusAdminAccessEnable OBJECT-TYPE
+        SYNTAX INTEGER
+        		{
+                    disabled (0),
+                    enabled (1)
+                 }
+        MAX-ACCESS read-only
+        STATUS current 
+        DESCRIPTION
+            "Enable/disable CusAdmin access."
+        ::= { smcD3CmControl 32 }   
+
+    smcD3CmComAdminAccessEnable OBJECT-TYPE
+        SYNTAX INTEGER
+        		{
+                    disabled (0),
+                    enabled (1)
+                 }
+        MAX-ACCESS read-only
+        STATUS current 
+        DESCRIPTION
+            "Enable/disable ComAdmin access."
+        ::= { smcD3CmControl 33 }   
+
+    smcD3CmCusAdminUsername OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Username for CusAdmin login."
+		::= { smcD3CmControl 34 }   
+
+    smcD3CmCusAdminPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Password for CusAdmin login."
+		::= { smcD3CmControl 35 }   
+
+     smcD3CmSNAsCusAdminPassword OBJECT-TYPE
+    	SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+			"This flag set the default cusadmin password to be the unit serial number. 
+		This is a set-once flag and user can change the password manually."
+		::= { smcD3CmControl 19 }   
+
+   smcD3CmPodSeed  OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (8..24))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The seed string for Password Of The Day."
+		::= { smcD3CmControl 15 }   
+
+    smcD3CmPodSeedEncrypted OBJECT-TYPE
+    	SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		      "True if smcD3CmPodSeed is encrypted.
+			Default may change due to product specific requirement"
+		DEFVAL { true } 
+		::= { smcD3CmControl 16 }   
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             Special SMC Feature                                           |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    smcD3CmSwFilename OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (1..128))
+	    MAX-ACCESS	read-only
+	    STATUS		current
+	    DESCRIPTION
+		        "The CM firmware filename in the current running sector."
+		::= { smcD3CmControl 22 }   
+
+    smcD3CmUsPowerBoost OBJECT-TYPE
+        SYNTAX TenthdBmV
+        UNITS "dBmV"
+        MAX-ACCESS read-only
+        STATUS current 
+        DESCRIPTION
+            "In tenth of a dB. This value will be added on top of the SPEC to the Max US Power per channel.
+            This addition should be apply to all values in the US Max Power table in the DOCSIS 3.0 PHY SPEC."
+        DEFVAL { 0 }
+        ::= { smcD3CmControl 23 }   
+
+	smcFactoryResetByExternalButtonEnabled OBJECT-TYPE
+    	SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "False if disable the factory reset via reset button."
+		DEFVAL { true }
+		::= { smcD3CmControl 24 }
+      smcD3CmDeviceIdentifierLedPattern    OBJECT-TYPE
+        SYNTAX INTEGER (2..3600)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Turn on LED Pattern of walking '1's and walking '0's for the specified number of seconds. "
+    --    DEFVAL {0 }
+        ::= { smcD3CmControl 25 }
+        
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- System Monitor
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    smcD3CmSystemMonitor OBJECT IDENTIFIER ::= { smcD3CmControl 100 }
+
+
+    cpuUtilizationPollingPeriod OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The polling period for cpu utilization, in seconds"
+				DEFVAL { 60 }  
+        ::= { smcD3CmSystemMonitor 6 }
+ 
+    cpuUtilization OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-only
+        STATUS current 
+        DESCRIPTION
+            "The current cpu utilization"
+        ::= { smcD3CmSystemMonitor 15 }
+
+    activeSessions OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-only
+        STATUS current 
+        DESCRIPTION
+            "The number of current active sessions, with pulling period of cpuUtilizationPollingPeriod"
+        ::= { smcD3CmSystemMonitor 17 }
+
+    activePpSessions OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-only
+        STATUS current 
+        DESCRIPTION
+            "The number of current active sessions in packet processor, with pulling period of cpuUtilizationPollingPeriod"
+        ::= { smcD3CmSystemMonitor 19 }
+
+    memoryUtilization OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-only
+        STATUS current 
+        DESCRIPTION
+            "The current allocated memory"
+        ::= { smcD3CmSystemMonitor 21 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- ToD Renewal Interval  
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    
+ smcTodRenewalInterval OBJECT-TYPE
+    	SYNTAX      INTEGER
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "Tod Renewal Interval in Seconds.
+			Default '0' (no periodic Renewal) 
+                 This applys to D3GNV-IMS MTA "
+        ::= { smcD3CmControl  29 }
+
+
+smcD3CmForceAtdma OBJECT-TYPE
+    	SYNTAX      TruthValue
+    	MAX-ACCESS  read-write
+    	STATUS      current
+	    DESCRIPTION
+		    "Force ATDMA instead of STDMA 
+                 (Ignore MDD TLV-10 even if set to '1') 
+                 Default True (1)
+                 If this OID include in CM-DOCSIS-Config file and is set to a different value then in NV memory, 
+                 modem requires to reinit. 
+                 If set via SNMP manager, modem will require to be reset manually.
+                 If this is not set in config file - modem should use the value in NV Memory"
+
+        ::= { smcD3CmControl  30 }
+
+       
+END

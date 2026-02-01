@@ -1,0 +1,169 @@
+CADANT-CMTS-TOPO-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE, 
+    MODULE-IDENTITY, 
+    Integer32, 
+    Counter32, 
+    Unsigned32, 
+    Counter64
+	FROM SNMPv2-SMI
+    DisplayString, 
+    TEXTUAL-CONVENTION,
+    RowStatus, 
+    TimeInterval, 
+    TruthValue
+        FROM SNMPv2-TC
+    OBJECT-GROUP, 
+    MODULE-COMPLIANCE
+        FROM SNMPv2-CONF
+    cadTopology
+        FROM CADANT-PRODUCTS-MIB
+    PrimaryState
+        FROM CADANT-TC
+    InterfaceIndex, InterfaceIndexOrZero
+        FROM IF-MIB
+    ChSetId,
+    IfDirection, 
+    docsIf3MdNodeStatusEntry,
+    docsIf3DsChSetEntry,
+    docsIf3UsChSetEntry
+        FROM DOCS-IF3-MIB
+    clabTopoFiberNodeCfgNodeName,
+    clabTopoFiberNodeCfgEntry
+        FROM CLAB-TOPO-MIB
+    cadIfMacDomainIfIndex
+        FROM CADANT-CMTS-LAYER2CMTS-MIB;    
+cadTopologyMib MODULE-IDENTITY
+    LAST-UPDATED "200808140000Z" -- Aug 14, 2008
+    ORGANIZATION 
+        "Arris International, Inc."
+    CONTACT-INFO 
+        "Arris Technical Support
+         Postal: ARRIS
+         E-Mail: support@arrisi.com"
+    DESCRIPTION 
+        " This MIB module contains Cadant proprietary topology MIB information. "
+    REVISION  "200808140000Z" -- Aug 14, 2008
+    DESCRIPTION 
+        "Rename cadMdNodeStatusTable to cadFiberNodeStatusTable."
+    REVISION  "200804090000Z" -- Apr 9, 2008
+    DESCRIPTION 
+        "Remove cadDsChSetRelationshipTable and cadUsChSetRelationshipTable."
+    REVISION  "200706040000Z" -- June 04, 2007
+    DESCRIPTION 
+        " Initial version. "
+    ::= { cadTopology 1 }
+
+
+
+cadTopologyMibObjects OBJECT IDENTIFIER ::= { cadTopologyMib 1 }
+
+
+--=======================================================
+--=   Cadant MacDomain Node Status Table
+--=======================================================
+cadFiberNodeStatusTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CadFiberNodeStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A Table containing information about the 
+         Cadant Fiber Node status. "
+    ::= { cadTopologyMibObjects 1 }
+
+cadFiberNodeStatusEntry OBJECT-TYPE
+    SYNTAX      CadFiberNodeStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A conceptual row containing information about the 
+         Cadant FiberNode status. "
+    AUGMENTS    { clabTopoFiberNodeCfgEntry }
+    ::= { cadFiberNodeStatusTable 1 }
+
+CadFiberNodeStatusEntry ::= SEQUENCE {
+    cadFiberNodeOperStatus           PrimaryState
+}
+
+cadFiberNodeOperStatus OBJECT-TYPE
+    SYNTAX  PrimaryState
+    MAX-ACCESS read-only
+    STATUS  current
+    DESCRIPTION
+	"Cadant Fiber Node operation status."
+    ::= { cadFiberNodeStatusEntry 1 }
+
+
+--=======================================================
+--=   Cadant Fiber Node Channel Table
+--=======================================================
+cadChlFnTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CadChlFnEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A Table containing information about the 
+         Cadant Topology fiber node channel. "
+    ::= { cadTopologyMibObjects 2 }
+
+cadChlFnEntry OBJECT-TYPE
+    SYNTAX      CadChlFnEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A conceptual row containing information about the 
+         Cadant fiber node channel. "
+    INDEX       { cadIfMacDomainIfIndex, clabTopoFiberNodeCfgNodeName, cadChlIfIndex }
+    ::= { cadChlFnTable 1 }
+
+CadChlFnEntry ::= SEQUENCE {
+    cadChlIfIndex           InterfaceIndex,
+    cadChlFnIfDirection     IfDirection,
+    cadChlFnMdUsOrDsSgId    Unsigned32,
+    cadChlFnUsOrDsPhysChlIfIndex    InterfaceIndexOrZero,
+    cadChlFnChlId           Unsigned32
+}
+
+cadChlIfIndex OBJECT-TYPE
+    SYNTAX  InterfaceIndex
+    MAX-ACCESS not-accessible
+    STATUS  current
+    DESCRIPTION
+	"Fiber node channel interface index."
+    ::= { cadChlFnEntry 1 }
+
+cadChlFnIfDirection OBJECT-TYPE
+    SYNTAX  IfDirection
+
+    MAX-ACCESS read-only
+    STATUS  current
+    DESCRIPTION
+	"Fiber node channel direction."
+    ::= { cadChlFnEntry 2 }
+
+cadChlFnMdUsOrDsSgId OBJECT-TYPE
+    SYNTAX  Unsigned32 (0..255)
+    MAX-ACCESS read-only
+    STATUS  current
+    DESCRIPTION
+	"MD-US-SG ID or MD-DS-SG ID in this fiber node."
+    ::= { cadChlFnEntry 3 }
+
+cadChlFnUsOrDsPhysChlIfIndex OBJECT-TYPE
+    SYNTAX  InterfaceIndexOrZero
+    MAX-ACCESS read-only
+    STATUS  current
+    DESCRIPTION
+	"Interface index of an physical upstream or downstream channel."
+    ::= { cadChlFnEntry 4 }
+
+cadChlFnChlId OBJECT-TYPE
+    SYNTAX  Unsigned32 (1..255)
+    MAX-ACCESS read-only
+    STATUS  current
+    DESCRIPTION
+	"Fiber node channel id. This value comes from cadMacChlChannelId of cadMacChlTable."
+    ::= { cadChlFnEntry 5 }
+
+END
