@@ -1988,51 +1988,96 @@ class PyPNMAgent:
             return {'success': False, 'error': str(e)}
     
     def _handle_pnm_ofdm_rxmer(self, params: dict) -> dict:
-        """Get OFDM RxMER data via pysnmp SNMP walk."""
+        """Trigger OFDM RxMER capture via SNMP SET.
+        
+        This triggers the capture - PyPNM handles file retrieval and parsing.
+        The modem uploads the PNM file to TFTP.
+        """
         modem_ip = params.get('modem_ip')
+        mac_address = params.get('mac_address', '')
         community = params.get('community', 'your-cm-community')
+        tftp_server = params.get('tftp_server', os.environ.get('TFTP_IPV4', '172.22.147.18'))
         
         if not modem_ip:
             return {'success': False, 'error': 'modem_ip required'}
         
+        if not self.config.cm_proxy_host and not self.config.cm_enabled:
+            return {'success': False, 'error': 'cm access not configured'}
+        
+        self.logger.info(f"Triggering OFDM RxMER capture for {modem_ip}")
+        
         try:
-            # docsPnmCmDsOfdmRxMerMean OID (MER values per channel)
-            OID_RXMER_MEAN = '1.3.6.1.4.1.4491.2.1.27.1.2.5.1.3'
+            # Step 1: Discover OFDM channels
+            self.logger.info(f"Auto-discovering OFDM channels for {modem_ip}")
+            channels_result = self._handle_pnm_ofdm_channels({'modem_ip': modem_ip, 'community': community})
             
-            result = self._snmp_walk(modem_ip, OID_RXMER_MEAN, community)
+            if not channels_result.get('success') or not channels_result.get('channels'):
+                return {'success': False, 'error': 'No OFDM channels found - modem may be DOCSIS 3.0'}
             
-            if not result.get('success') or not result.get('results'):
-                return {'success': False, 'error': 'No RxMER data available'}
+            ofdm_channels = channels_result['channels']
+            self.logger.info(f"Found {len(ofdm_channels)} OFDM channels")
             
-            subcarriers = []
-            mer_values = []
+            # Step 2: Set TFTP destination on modem (docsPnmBulk)
+            OID_BULK_IP_TYPE = '1.3.6.1.4.1.4491.2.1.27.1.1.1.1.0'
+            OID_BULK_IP_ADDR = '1.3.6.1.4.1.4491.2.1.27.1.1.1.2.0'
             
-            for r in result['results']:
-                try:
-                    # Extract channel index from OID (last element)
-                    oid_parts = r['oid'].split('.')
-                    channel_idx = int(oid_parts[-1])
-                    mer_raw = int(r['value'])
-                    mer_db = mer_raw / 100.0  # Convert to dB (value is in 1/100 dB)
-                    
-                    subcarriers.append(channel_idx)
-                    mer_values.append(mer_db)
-                except (ValueError, IndexError):
-                    pass
+            # Set IP type to IPv4 (1)
+            self._set_modem(modem_ip, OID_BULK_IP_TYPE, '1', 'i', community)
             
-            if not subcarriers:
-                return {'success': False, 'error': 'No RxMER data available'}
+            # Set TFTP server IP (as hex)
+            ip_parts = tftp_server.split('.')
+            ip_hex = ''.join([f'{int(p):02x}' for p in ip_parts])
+            self._set_modem(modem_ip, OID_BULK_IP_ADDR, ip_hex, 'x', community)
             
+            # Step 3: Trigger RxMER capture for each OFDM channel
+            triggered_channels = []
+            
+            for channel in ofdm_channels:
+                ofdm_idx = channel.get('index')
+                if not ofdm_idx:
+                    continue
+                
+                # Generate unique filename
+                mac_clean = mac_address.replace(':', '').lower()
+                timestamp = int(time.time())
+                filename = f"{mac_clean}_{timestamp}_{ofdm_idx}_rxmer"
+                
+                # Set filename (docsPnmCmDsOfdmRxMerFileName)
+                OID_RXMER_FILENAME = f'1.3.6.1.4.1.4491.2.1.27.1.2.5.1.8.{ofdm_idx}'
+                set_result = self._set_modem(modem_ip, OID_RXMER_FILENAME, filename, 's', community)
+                
+                if not set_result.get('success'):
+                    self.logger.warning(f"Failed to set RxMER filename for channel {ofdm_idx}")
+                    continue
+                
+                # Trigger capture (docsPnmCmDsOfdmRxMerFileEnable = 1)
+                OID_RXMER_ENABLE = f'1.3.6.1.4.1.4491.2.1.27.1.2.5.1.1.{ofdm_idx}'
+                set_result = self._set_modem(modem_ip, OID_RXMER_ENABLE, '1', 'i', community)
+                
+                if set_result.get('success'):
+                    self.logger.info(f"Triggered RxMER capture for channel {ofdm_idx}: {filename}")
+                    triggered_channels.append({
+                        'channel_index': ofdm_idx,
+                        'filename': filename
+                    })
+                else:
+                    self.logger.warning(f"Failed to trigger RxMER for channel {ofdm_idx}")
+            
+            if not triggered_channels:
+                return {'success': False, 'error': 'Failed to trigger capture on any channel'}
+            
+            # Return success - PyPNM will handle file retrieval and parsing
             return {
                 'success': True,
-                'data': {
-                    'mac_address': params.get('mac_address'),
-                    'subcarriers': subcarriers,
-                    'mer_values': mer_values
-                }
+                'message': 'RxMER capture triggered',
+                'mac_address': mac_address,
+                'modem_ip': modem_ip,
+                'tftp_server': tftp_server,
+                'channels': triggered_channels
             }
+            
         except Exception as e:
-            self.logger.error(f"OFDM RxMER error: {e}")
+            self.logger.error(f"OFDM RxMER trigger error: {e}")
             return {'success': False, 'error': str(e)}
 
     def _handle_pnm_set_tftp(self, params: dict) -> dict:
