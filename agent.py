@@ -775,7 +775,7 @@ class PyPNMAgent:
         
         # Use cm_proxy if configured
         if self.config.cm_proxy_host:
-            return self._set_modem_via_cm_proxy(target_ip, oid, value, value_type, community)
+            return self._set_modem(target_ip, oid, value, value_type, community)
         
         # Fallback to direct SNMP (not typical for modems)
         oid_with_value = f"{oid} {value_type} {value}"
@@ -1356,6 +1356,20 @@ class PyPNMAgent:
             # Connection might have died, clear it so next call reconnects
             self._cm_proxy_ssh = None
             return {'success': False, 'error': str(e)}
+    
+    def _set_modem_direct(self, modem_ip: str, oid: str, value: str, value_type: str, community: str) -> dict:
+        """Set an SNMP value on a modem directly via pysnmp (when cm_direct is enabled)."""
+        self.logger.info(f"CM SNMP SET: {modem_ip} {oid} = {value} ({value_type})")
+        return self._snmp_set(modem_ip, oid, value, value_type, community)
+    
+    def _set_modem(self, modem_ip: str, oid: str, value: str, value_type: str, community: str) -> dict:
+        """Set an SNMP value on a modem via cm_proxy or cm_direct depending on config."""
+        if self.config.cm_enabled:
+            return self._set_modem_direct(modem_ip, oid, value, value_type, community)
+        elif self.config.cm_proxy_host:
+            return self._set_modem(modem_ip, oid, value, value_type, community)
+        else:
+            return {'success': False, 'error': 'Neither cm_proxy nor cm_direct configured'}
     
     def _batch_query_modem(self, modem_ip: str, oids: dict, community: str) -> dict:
         """Query multiple OIDs using EXACT same paramiko method as _enrich_modems_parallel."""
@@ -1946,14 +1960,14 @@ class PyPNMAgent:
             
             # Set filename
             self.logger.info(f"Setting OFDM capture filename for {modem_ip} channel {ofdm_channel}")
-            result = self._set_modem_via_cm_proxy(modem_ip, OID_RXMER_FILENAME, filename, 's', community)
+            result = self._set_modem(modem_ip, OID_RXMER_FILENAME, filename, 's', community)
             self.logger.info(f"Filename set result: success={result.get('success')}")
             if not result.get('success'):
                 return {'success': False, 'error': f"Failed to set filename: {result.get('error')}"}
             
             # Trigger capture (enable = 1)
             self.logger.info(f"Triggering OFDM capture for {modem_ip} channel {ofdm_channel}")
-            result = self._set_modem_via_cm_proxy(modem_ip, OID_RXMER_ENABLE, '1', 'i', community)
+            result = self._set_modem(modem_ip, OID_RXMER_ENABLE, '1', 'i', community)
             self.logger.info(f"Trigger result: success={result.get('success')}")
             if not result.get('success'):
                 return {'success': False, 'error': f"Failed to trigger capture: {result.get('error')}"}
@@ -2030,25 +2044,25 @@ class PyPNMAgent:
             OID_UPLOAD = '1.3.6.1.4.1.4491.2.1.27.1.1.1.4.0'    # docsPnmBulkUploadControl
             
             # Set IP address type (1 = IPv4)
-            result = self._set_modem_via_cm_proxy(modem_ip, OID_IP_TYPE, '1', 'i', community)
+            result = self._set_modem(modem_ip, OID_IP_TYPE, '1', 'i', community)
             if not result.get('success'):
                 return {'success': False, 'error': f"Failed to set IP type: {result.get('error')}"}
             
             # Set IP address (as hex string: 149.210.167.40 = 95d2a728)
             ip_parts = tftp_server.split('.')
             ip_hex = ''.join([f'{int(p):02x}' for p in ip_parts])
-            result = self._set_modem_via_cm_proxy(modem_ip, OID_IP_ADDR, ip_hex, 'x', community)
+            result = self._set_modem(modem_ip, OID_IP_ADDR, ip_hex, 'x', community)
             if not result.get('success'):
                 return {'success': False, 'error': f"Failed to set IP address: {result.get('error')}"}
             
             # Set TFTP path
             if tftp_path:
-                result = self._set_modem_via_cm_proxy(modem_ip, OID_PATH, tftp_path, 's', community)
+                result = self._set_modem(modem_ip, OID_PATH, tftp_path, 's', community)
                 if not result.get('success'):
                     return {'success': False, 'error': f"Failed to set path: {result.get('error')}"}
             
             # Enable auto upload (2 = autoUpload)
-            result = self._set_modem_via_cm_proxy(modem_ip, OID_UPLOAD, '2', 'i', community)
+            result = self._set_modem(modem_ip, OID_UPLOAD, '2', 'i', community)
             if not result.get('success'):
                 return {'success': False, 'error': f"Failed to enable auto upload: {result.get('error')}"}
             
