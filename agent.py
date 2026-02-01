@@ -1963,7 +1963,7 @@ class PyPNMAgent:
             result = self._set_modem(modem_ip, OID_RXMER_FILENAME, filename, 's', community)
             self.logger.info(f"Filename set result: success={result.get('success')}")
             if not result.get('success'):
-                return {'success': False, 'error': f"Failed to set filename: {result.get('error')}"}
+                self.logger.warning(f"Failed to set filename (continuing): {result.get('error')}")
             
             # Trigger capture (enable = 1)
             self.logger.info(f"Triggering OFDM capture for {modem_ip} channel {ofdm_channel}")
@@ -2263,7 +2263,7 @@ class PyPNMAgent:
             filename = params.get('filename', 'utsc_capture')
             result = self._set_cmts_direct(cmts_ip, f"{base}.13{idx}", filename, 's', community)
             if not result.get('success'):
-                return {'success': False, 'error': f"Failed to set filename: {result.get('error')}"}
+                self.logger.warning(f"Failed to set filename (continuing): {result.get('error')}")
             
             # For CM MAC trigger mode
             if trigger_mode == 6 and params.get('cm_mac_address'):
@@ -2672,7 +2672,7 @@ class PyPNMAgent:
             filename = params.get('filename', 'us_rxmer')
             result = self._set_cmts_direct(cmts_ip, f"{base}.6{idx}", filename, 's', community)
             if not result.get('success'):
-                return {'success': False, 'error': f"Failed to set filename: {result.get('error')}"}
+                self.logger.warning(f"Failed to set filename (continuing): {result.get('error')}")
             
             # Set pre-equalization option (.3)
             pre_eq = 1 if params.get('pre_eq', True) else 2  # 1=true, 2=false
