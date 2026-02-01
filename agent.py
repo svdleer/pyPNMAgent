@@ -1899,7 +1899,11 @@ class PyPNMAgent:
         }
 
     def _handle_pnm_ofdm_channels(self, params: dict) -> dict:
-        """Get list of OFDM channels via pysnmp SNMP walk."""
+        """Get list of OFDM downstream channels via ifType walk.
+        
+        Uses ifType OID (1.3.6.1.2.1.2.2.1.3) to find interfaces of type 277 
+        (docsOfdmDownstream) like PyPNM does.
+        """
         modem_ip = params.get('modem_ip')
         community = params.get('community', 'your-cm-community')
         
@@ -1907,58 +1911,45 @@ class PyPNMAgent:
             return {'success': False, 'error': 'modem_ip required'}
         
         try:
-            # DOCSIS 3.1 OFDM channel OIDs
-            OID_OFDM_CHAN_ID = '1.3.6.1.4.1.4491.2.1.28.1.9.1.1'  # docsIf31CmDsOfdmChanChannelId
+            # ifType OID - same as PyPNM uses
+            OID_IF_TYPE = '1.3.6.1.2.1.2.2.1.3'
+            OFDM_IF_TYPE = 277  # docsOfdmDownstream from IANA ifType
             
-            self.logger.info(f"Querying OFDM channels for {modem_ip}")
+            self.logger.info(f"Discovering OFDM channels for {modem_ip} via ifType walk")
             
             # Use pysnmp direct walk
-            result = self._snmp_walk(modem_ip, OID_OFDM_CHAN_ID, community)
-            self.logger.info(f"OFDM query result: success={result.get('success')}, results={len(result.get('results', []))}")
+            result = self._snmp_walk(modem_ip, OID_IF_TYPE, community)
             
-            if not result.get('success') or not result.get('results'):
-                # Try alternative OID - docsPnmCmDsOfdmRxMerFileEnable
-                OID_OFDM_ALT = '1.3.6.1.4.1.4491.2.1.27.1.2.5.1.1'
-                self.logger.info(f"Trying alternative OID for OFDM channels")
-                result = self._snmp_walk(modem_ip, OID_OFDM_ALT, community)
-                
-                if result.get('success') and result.get('results'):
-                    channels = []
-                    for r in result['results']:
-                        try:
-                            oid_parts = r['oid'].split('.')
-                            idx = int(oid_parts[-1])
-                            channels.append({
-                                "index": idx,
-                                "channel_id": idx
-                            })
-                        except:
-                            pass
-                    if channels:
-                        self.logger.info(f"Found {len(channels)} OFDM channels via alternative OID")
-                        return {"success": True, "channels": channels}
-                
-                # Not an error - modem might be DOCSIS 3.0 only
-                self.logger.info(f"No OFDM channels found - modem may be DOCSIS 3.0")
+            if not result.get('success'):
+                self.logger.warning(f"ifType walk failed: {result.get('error')}")
                 return {'success': True, 'channels': []}
             
             channels = []
             for r in result.get('results', []):
                 try:
-                    oid_parts = r['oid'].split('.')
-                    idx = int(oid_parts[-1])
-                    chan_id = int(r['value'])
-                    channels.append({
-                        "index": idx,
-                        "channel_id": chan_id
-                    })
-                except (ValueError, IndexError):
-                    pass
+                    if_type = int(r['value'])
+                    if if_type == OFDM_IF_TYPE:
+                        # Extract ifIndex from OID (last element)
+                        oid_parts = r['oid'].split('.')
+                        if_index = int(oid_parts[-1])
+                        channels.append({
+                            "index": if_index,
+                            "channel_id": if_index,
+                            "if_type": if_type
+                        })
+                        self.logger.info(f"Found OFDM channel ifIndex: {if_index}")
+                except (ValueError, IndexError) as e:
+                    self.logger.debug(f"Skipping result: {e}")
             
-            self.logger.info(f"Found {len(channels)} OFDM channels")
+            if not channels:
+                self.logger.info(f"No OFDM interfaces (type 277) found on modem - may be DOCSIS 3.0")
+            else:
+                self.logger.info(f"Found {len(channels)} OFDM downstream channels")
+            
             return {"success": True, "channels": channels}
+            
         except Exception as e:
-            self.logger.error(f"OFDM channels error: {e}")
+            self.logger.error(f"OFDM channels discovery error: {e}")
             return {'success': False, 'error': str(e)}
 
     def _handle_pnm_ofdm_capture(self, params: dict) -> dict:
