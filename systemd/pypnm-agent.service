@@ -1,0 +1,22 @@
+# PyPNM Agent - systemd user service
+# Install to: ~/.config/systemd/user/pypnm-agent.service
+#
+# Enable: systemctl --user enable pypnm-agent
+# Start:  systemctl --user start pypnm-agent
+# Logs:   journalctl --user -u pypnm-agent -f
+
+[Unit]
+Description=PyPNM Agent - Jump Server Agent for PyPNM Web GUI
+Documentation=https://github.com/PyPNMApps/PyPNMGui
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.pypnm-agent
+ExecStart=%h/.pypnm-agent/start.sh
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

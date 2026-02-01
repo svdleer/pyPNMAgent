@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: pypnm-agent
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - AGENT_ID=pypnm-agent-01
+      - SERVER_URL=ws://localhost:5050/ws/agent
+      - PYPNM_CMTS_ENABLED=true
+      - PYPNM_CM_ENABLED=false
+    volumes:
+      - ./config:/app/config:ro
+      - ~/.ssh:/home/pypnm/.ssh:ro
+      - /var/lib/tftpboot:/tftpboot:ro

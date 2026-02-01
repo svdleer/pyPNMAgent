@@ -1,0 +1,27 @@
+{
+    "agent_id": "jump-server-01",
+    "pypnm_server": {
+        "url": "ws://localhost:5050/ws/agent",
+        "auth_token": "your-secure-token-here"
+    },
+    "cmts_access": {
+        "enabled": true,
+        "community": "public",
+        "write_community": "private",
+        "ssh_enabled": false,
+        "ssh_user": "admin",
+        "ssh_key_file": "~/.ssh/id_ed25519"
+    },
+    "cm_access": {
+        "enabled": true,
+        "community": "your-cm-community",
+        "proxy": {
+            "host": "cm-proxy.internal",
+            "user": "pnm-agent",
+            "key_file": "~/.ssh/id_ed25519"
+        }
+    },
+    "tftp_server": {
+        "tftp_path": "/tftpboot"
+    }
+}
