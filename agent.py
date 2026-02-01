@@ -1474,7 +1474,93 @@ class PyPNMAgent:
         }
     
     def _handle_pnm_spectrum(self, params: dict) -> dict:
-        """Get spectrum analysis data from modem."""
+        """Trigger DS OFDM Spectrum Analyzer (Full Band Capture) via SNMP.
+        
+        This triggers the modem to perform a spectrum capture and upload to TFTP.
+        PyPNM then reads the file from TFTP and generates matplotlib plots.
+        """
+        modem_ip = params.get('modem_ip')
+        mac_address = params.get('mac_address', '')
+        community = params.get('community', 'm0d3m1nf0')
+        tftp_server = params.get('tftp_server', os.environ.get('TFTP_IPV4', '172.22.147.18'))
+        
+        if not modem_ip:
+            return {'success': False, 'error': 'modem_ip required'}
+        
+        self.logger.info(f"Triggering Spectrum Analyzer capture for {modem_ip}")
+        
+        try:
+            # Step 1: Get OFDM channel indexes (need at least one OFDM channel)
+            OID_OFDM_CHAN_ID = '1.3.6.1.4.1.4491.2.1.28.1.1.1.1'
+            chan_result = self._snmp_walk(modem_ip, OID_OFDM_CHAN_ID, community)
+            
+            if not chan_result.get('success') or not chan_result.get('results'):
+                return {'success': False, 'error': 'No OFDM channels found - modem may be DOCSIS 3.0'}
+            
+            ofdm_indexes = []
+            for r in chan_result['results']:
+                try:
+                    oid_parts = r['oid'].split('.')
+                    idx = int(oid_parts[-1])
+                    ofdm_indexes.append(idx)
+                except (ValueError, IndexError):
+                    pass
+            
+            if not ofdm_indexes:
+                return {'success': False, 'error': 'No OFDM channel indexes found'}
+            
+            self.logger.info(f"Found OFDM channel indexes: {ofdm_indexes}")
+            
+            # Step 2: Set TFTP destination
+            OID_BULK_IP_TYPE = '1.3.6.1.4.1.4491.2.1.27.1.1.1.1.0'
+            OID_BULK_IP_ADDR = '1.3.6.1.4.1.4491.2.1.27.1.1.1.2.0'
+            
+            self._snmp_set(modem_ip, OID_BULK_IP_TYPE, 1, 'i', community)
+            ip_parts = tftp_server.split('.')
+            ip_hex = ''.join([f'{int(p):02x}' for p in ip_parts])
+            self._snmp_set(modem_ip, OID_BULK_IP_ADDR, ip_hex, 'x', community)
+            
+            # Step 3: Trigger spectrum capture for first OFDM channel
+            ofdm_idx = ofdm_indexes[0]
+            mac_clean = mac_address.replace(':', '').lower()
+            timestamp = int(datetime.now().timestamp())
+            
+            # Spectrum Analyzer OIDs (docsPnmCmDsOfdmSymbolCaptureFileName, docsPnmCmDsOfdmSymbolCaptureEnable)
+            # Actually use Full Band Capture OIDs
+            OID_FBC_FILENAME = f'1.3.6.1.4.1.4491.2.1.27.1.2.6.1.7.{ofdm_idx}'
+            OID_FBC_ENABLE = f'1.3.6.1.4.1.4491.2.1.27.1.2.6.1.1.{ofdm_idx}'
+            
+            filename = f"spectrum_analyzer_{mac_clean}_{ofdm_idx}_{timestamp}"
+            
+            # Set filename
+            self.logger.info(f"Setting spectrum filename: {filename}")
+            result = self._snmp_set(modem_ip, OID_FBC_FILENAME, filename, 's', community)
+            if not result.get('success'):
+                self.logger.warning(f"Failed to set spectrum filename: {result.get('error')}")
+            
+            # Trigger capture
+            self.logger.info(f"Triggering spectrum capture for channel {ofdm_idx}")
+            result = self._snmp_set(modem_ip, OID_FBC_ENABLE, 1, 'i', community)
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to trigger spectrum capture: {result.get('error')}"}
+            
+            return {
+                'success': True,
+                'mac_address': mac_address,
+                'modem_ip': modem_ip,
+                'message': 'Spectrum capture triggered',
+                'channels': [{
+                    'channel_index': ofdm_idx,
+                    'filename': filename
+                }]
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Spectrum capture error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _handle_pnm_channel_power(self, params: dict) -> dict:
+        """Get basic channel power data from modem (not full spectrum)."""
         modem_ip = params.get('modem_ip')
         community = params.get('community', 'm0d3m1nf0')
         mac_address = params.get('mac_address')
