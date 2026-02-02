@@ -1561,7 +1561,9 @@ class PyPNMAgent:
                     
                     # 3 = complete (file ready)
                     if status_value == 3:
-                        self.logger.info(f"Spectrum capture complete")
+                        self.logger.info(f"Spectrum capture complete, waiting for file upload...")
+                        # Wait extra 5s for modem to upload file to TFTP
+                        time.sleep(5)
                         break
                     # 1 = notReady, 2 = sampleReady (still processing)
                 else:
