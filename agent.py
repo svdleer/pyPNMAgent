@@ -1479,9 +1479,13 @@ class PyPNMAgent:
         This triggers the modem to perform a spectrum capture and upload to TFTP.
         PyPNM then reads the file from TFTP and generates matplotlib plots.
         """
+        import os
+        import time
+        from datetime import datetime
+        
         modem_ip = params.get('modem_ip')
         mac_address = params.get('mac_address', '')
-        community = params.get('community', os.environ.get('CM_SNMP_COMMUNITY', 'm0d3m1nf0'))
+        community = params.get('community', os.environ.get('CM_SNMP_COMMUNITY', ''))
         tftp_server = params.get('tftp_server', os.environ.get('TFTP_IPV4', '172.22.147.18'))
         
         if not modem_ip:
@@ -1563,7 +1567,6 @@ class PyPNMAgent:
                     if status_value == 3:
                         self.logger.info(f"Spectrum capture complete, polling for file on TFTP...")
                         # Poll for file on TFTP (max 60s)
-                        import os
                         tftp_file = f"/var/lib/tftpboot/{filename}"
                         file_wait = 0
                         max_file_wait = 60
