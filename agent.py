@@ -1561,9 +1561,21 @@ class PyPNMAgent:
                     
                     # 3 = complete (file ready)
                     if status_value == 3:
-                        self.logger.info(f"Spectrum capture complete, waiting for file upload...")
-                        # Wait extra 5s for modem to upload file to TFTP
-                        time.sleep(5)
+                        self.logger.info(f"Spectrum capture complete, polling for file on TFTP...")
+                        # Poll for file on TFTP (max 60s)
+                        import os
+                        tftp_file = f"/var/lib/tftpboot/{filename}"
+                        file_wait = 0
+                        max_file_wait = 60
+                        while file_wait < max_file_wait:
+                            if os.path.exists(tftp_file):
+                                self.logger.info(f"File found on TFTP after {file_wait}s")
+                                break
+                            time.sleep(2)
+                            file_wait += 2
+                        
+                        if not os.path.exists(tftp_file):
+                            self.logger.warning(f"File never appeared on TFTP after {max_file_wait}s")
                         break
                     # 1 = notReady, 2 = sampleReady (still processing)
                 else:
