@@ -1554,8 +1554,9 @@ class PyPNMAgent:
                 elapsed += poll_interval
                 
                 status_result = self._snmp_get(modem_ip, OID_SPEC_STATUS, community)
-                if status_result.get('success'):
-                    status_value = status_result.get('value')
+                if status_result.get('success') and status_result.get('results'):
+                    # Extract value from results array
+                    status_value = status_result['results'][0].get('value') if status_result['results'] else None
                     self.logger.info(f"Spectrum status: {status_value} (after {elapsed}s)")
                     
                     # 3 = complete (file ready)
@@ -1564,8 +1565,9 @@ class PyPNMAgent:
                         break
                     # 1 = notReady, 2 = sampleReady (still processing)
                 else:
-                    self.logger.warning(f"Failed to poll status: {status_result.get('error')}")
-                    break
+                    error_msg = status_result.get('error', 'No results')
+                    self.logger.warning(f"Failed to poll status: {error_msg}")
+                    # Continue polling even if one poll fails
             
             if elapsed >= max_wait:
                 self.logger.warning(f"Spectrum capture timed out after {max_wait}s")
