@@ -1495,11 +1495,15 @@ class PyPNMAgent:
             OID_BULK_IP_TYPE = '1.3.6.1.4.1.4491.2.1.27.1.1.1.1.0'
             # docsPnmBulkDestIpAddr.0 = IP as bytes  
             OID_BULK_IP_ADDR = '1.3.6.1.4.1.4491.2.1.27.1.1.1.2.0'
+            # docsPnmBulkUploadControl.0 = 3 (AUTO_UPLOAD)
+            OID_BULK_UPLOAD_CTRL = '1.3.6.1.4.1.4491.2.1.27.1.1.1.4.0'
             
+            self.logger.info(f"Setting TFTP server: {tftp_server}")
             self._snmp_set(modem_ip, OID_BULK_IP_TYPE, 1, 'i', community)
             ip_parts = tftp_server.split('.')
             ip_hex = ''.join([f'{int(p):02x}' for p in ip_parts])
             self._snmp_set(modem_ip, OID_BULK_IP_ADDR, ip_hex, 'x', community)
+            self._snmp_set(modem_ip, OID_BULK_UPLOAD_CTRL, 3, 'i', community)  # 3 = AUTO_UPLOAD
             
             # Step 2: Configure Spectrum Analyzer (from PyPNM setDocsIf3CmSpectrumAnalysisCtrlCmd)
             # These OIDs are from docsIf3CmSpectrumAnalysisCtrlCmd (1.3.6.1.4.1.4491.2.1.20.1.34)
@@ -1535,12 +1539,44 @@ class PyPNMAgent:
             if not result.get('success'):
                 return {'success': False, 'error': f"Failed to trigger spectrum capture: {result.get('error')}"}
             
+            # Poll status to check if measurement completed
+            # docsIf3CmSpectrumAnalysisCtrlCmdMeasStatus.0 = 1.3.6.1.4.1.4491.2.1.20.1.34.11.0
+            # Values: 1=notReady, 2=sampleReady, 3=complete
+            OID_SPEC_STATUS = '1.3.6.1.4.1.4491.2.1.20.1.34.11.0'
+            import time
+            max_wait = 30
+            poll_interval = 2
+            elapsed = 0
+            
+            self.logger.info(f"Polling spectrum status (max {max_wait}s)...")
+            while elapsed < max_wait:
+                time.sleep(poll_interval)
+                elapsed += poll_interval
+                
+                status_result = self._snmp_get(modem_ip, OID_SPEC_STATUS, community)
+                if status_result.get('success'):
+                    status_value = status_result.get('value')
+                    self.logger.info(f"Spectrum status: {status_value} (after {elapsed}s)")
+                    
+                    # 3 = complete (file ready)
+                    if status_value == 3:
+                        self.logger.info(f"Spectrum capture complete")
+                        break
+                    # 1 = notReady, 2 = sampleReady (still processing)
+                else:
+                    self.logger.warning(f"Failed to poll status: {status_result.get('error')}")
+                    break
+            
+            if elapsed >= max_wait:
+                self.logger.warning(f"Spectrum capture timed out after {max_wait}s")
+            
             return {
                 'success': True,
                 'mac_address': mac_address,
                 'modem_ip': modem_ip,
                 'message': 'Spectrum capture triggered',
-                'filename': filename
+                'filename': filename,
+                'status_polled': elapsed < max_wait
             }
             
         except Exception as e:
