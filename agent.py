@@ -1495,38 +1495,41 @@ class PyPNMAgent:
         self.logger.info(f"Triggering Spectrum Analyzer capture for {modem_ip} (community: {community[:4]}...)")
         
         try:
-            # Step 1: Get OFDM channel indexes (need at least one OFDM channel)
-            OID_OFDM_CHAN_ID = '1.3.6.1.4.1.4491.2.1.28.1.1.1.1'
-            chan_result = self._snmp_walk(modem_ip, OID_OFDM_CHAN_ID, community)
-            
-            if not chan_result.get('success') or (not chan_result.get('results') and not chan_result.get('output')):
-                return {'success': False, 'error': 'No OFDM channels found - modem may be DOCSIS 3.0'}
-            
-            # Parse results - could be from pysnmp (list) or cm_proxy (output string)
+            # Step 1: Get OFDM channel indexes - try multiple OIDs for compatibility
+            # Some modems don't have docsIf31CmDsOfdmChanChannelId, use other OFDM tables
             ofdm_indexes = []
             
-            if chan_result.get('results'):
-                # pysnmp format
+            # Try docsIf31CmDsOfdmProfileStatsConfigChangeCt first (.28.1.12.1.2 - most reliable)
+            OID_OFDM_PROFILE_STATS = '1.3.6.1.4.1.4491.2.1.28.1.12.1.2'
+            chan_result = self._snmp_walk(modem_ip, OID_OFDM_PROFILE_STATS, community)
+            
+            if chan_result.get('success') and chan_result.get('results'):
                 for r in chan_result['results']:
                     try:
                         oid_parts = r['oid'].split('.')
                         idx = int(oid_parts[-1])
-                        ofdm_indexes.append(idx)
+                        if idx not in ofdm_indexes:
+                            ofdm_indexes.append(idx)
                     except (ValueError, IndexError):
                         pass
-            elif chan_result.get('output'):
-                # cm_proxy snmpwalk output format
-                for line in chan_result['output'].strip().split('\n'):
-                    if '=' in line and line.strip():
+            
+            # Fallback to docsIf31CmDsOfdmChanChannelId
+            if not ofdm_indexes:
+                OID_OFDM_CHAN_ID = '1.3.6.1.4.1.4491.2.1.28.1.1.1.1'
+                chan_result = self._snmp_walk(modem_ip, OID_OFDM_CHAN_ID, community)
+                
+                if chan_result.get('success') and chan_result.get('results'):
+                    for r in chan_result['results']:
                         try:
-                            oid_part = line.split('=')[0].strip()
-                            idx = int(oid_part.split('.')[-1])
-                            ofdm_indexes.append(idx)
+                            oid_parts = r['oid'].split('.')
+                            idx = int(oid_parts[-1])
+                            if idx not in ofdm_indexes:
+                                ofdm_indexes.append(idx)
                         except (ValueError, IndexError):
                             pass
             
             if not ofdm_indexes:
-                return {'success': False, 'error': 'No OFDM channel indexes found'}
+                return {'success': False, 'error': 'No OFDM channel indexes found - modem may be DOCSIS 3.0'}
             
             self.logger.info(f"Found OFDM channel indexes: {ofdm_indexes}")
             
