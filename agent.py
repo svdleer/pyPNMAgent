@@ -1566,8 +1566,8 @@ class PyPNMAgent:
                     # 3 = complete (file ready)
                     if status_value == 3:
                         self.logger.info(f"Spectrum capture complete, polling for file on TFTP...")
-                        # Poll for file on TFTP (max 60s)
-                        tftp_file = f"/var/lib/tftpboot/{filename}"
+                        # Poll for file on TFTP (max 60s) - agent mounts at /tftpboot
+                        tftp_file = f"/tftpboot/{filename}"
                         file_wait = 0
                         max_file_wait = 60
                         while file_wait < max_file_wait:
