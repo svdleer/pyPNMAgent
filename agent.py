@@ -1481,7 +1481,7 @@ class PyPNMAgent:
         """
         modem_ip = params.get('modem_ip')
         mac_address = params.get('mac_address', '')
-        community = self._get_cm_community()
+        community = params.get('community', os.environ.get('CM_SNMP_COMMUNITY', 'm0d3m1nf0'))
         tftp_server = params.get('tftp_server', os.environ.get('TFTP_IPV4', '172.22.147.18'))
         
         if not modem_ip:
