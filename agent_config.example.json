@@ -1,7 +1,7 @@
 {
     "agent_id": "jump-server-01",
     "pypnm_server": {
-        "url": "ws://pypnm-api:8000/api/ws/agent",
+        "url": "ws://127.0.0.1:8000/api/agents/ws",
         "auth_token": "your-secure-token-here"
     },
     "cmts_access": {
