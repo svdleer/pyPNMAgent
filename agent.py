@@ -1837,7 +1837,6 @@ class PyPNMAgent:
             'us_power': '1.3.6.1.4.1.4491.2.1.20.1.2.1.1', # docsIf3CmStatusUsTxPower
             'ds_ofdm_power': '1.3.6.1.4.1.4491.2.1.28.1.2.1.6',  # docsIf31CmDsOfdmChannelPowerRxPower
             'us_ofdma_power': '1.3.6.1.4.1.4491.2.1.28.1.3.1.4', # docsIf31CmUsOfdmaChannelStatusTxPower
-            'if_type': '1.3.6.1.2.1.2.2.1.3',  # ifType - to detect OFDM (277) and OFDMA (278)
         }
         
         # Use parallel walk for all OIDs at once
@@ -1894,17 +1893,6 @@ class PyPNMAgent:
                 'power_dbmv': ds_ofdm_power_map[idx]
             })
         
-        # Also detect OFDM channels via ifType 277 if not already found via power OID
-        if_type_map = parse_oid_values(walk_results.get(oids['if_type'], []))
-        existing_ofdm_ids = {ch['channel_id'] for ch in downstream if ch['type'] == 'OFDM'}
-        for idx, if_type in if_type_map.items():
-            if int(if_type) == 277 and int(idx) not in existing_ofdm_ids:
-                downstream.append({
-                    'channel_id': int(idx),
-                    'type': 'OFDM',
-                    'power_dbmv': None  # Not available from power OID
-                })
-        
         upstream = []
         for idx in us_power_map:
             upstream.append({
@@ -1919,16 +1907,6 @@ class PyPNMAgent:
                 'type': 'OFDMA',
                 'power_dbmv': us_ofdma_power_map[idx]
             })
-        
-        # Also detect OFDMA channels via ifType 278 if not already found via power OID
-        existing_ofdma_ids = {ch['channel_id'] for ch in upstream if ch['type'] == 'OFDMA'}
-        for idx, if_type in if_type_map.items():
-            if int(if_type) == 278 and int(idx) not in existing_ofdma_ids:
-                upstream.append({
-                    'channel_id': int(idx),
-                    'type': 'OFDMA',
-                    'power_dbmv': None  # Not available from power OID
-                })
         
         return {
             'success': True,
