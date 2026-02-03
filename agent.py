@@ -1819,13 +1819,16 @@ class PyPNMAgent:
         Works with cm_direct (direct SNMP to modems) or cm_proxy SSH tunnel.
         """
         modem_ip = params.get('modem_ip')
-        community = params.get('community', 'm0d3m1nf0')
+        # Use cm_direct community from config as fallback
+        default_community = self.config.cm_direct_community or 'Z1gg0Sp3c1@l'
+        community = params.get('community', default_community)
         mac_address = params.get('mac_address')
         
         if not modem_ip:
             return {'success': False, 'error': 'modem_ip required'}
         
-        self.logger.info(f"Getting channel info for modem {modem_ip} via pysnmp")
+        self.logger.info(f"Getting channel info for modem {modem_ip} via pysnmp (community={community[:4]}...)")
+
         
         # Define OIDs for channel stats
         oids = {
