@@ -1425,7 +1425,7 @@ class PyPNMAgent:
     def _handle_pnm_rxmer(self, params: dict) -> dict:
         """Get RxMER (Receive Modulation Error Ratio) data from modem."""
         modem_ip = params.get('modem_ip')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         mac_address = params.get('mac_address')
         
         if not modem_ip:
@@ -1640,7 +1640,7 @@ class PyPNMAgent:
     def _handle_pnm_channel_power(self, params: dict) -> dict:
         """Get basic channel power data from modem (not full spectrum)."""
         modem_ip = params.get('modem_ip')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         mac_address = params.get('mac_address')
         
         if not modem_ip:
@@ -1713,7 +1713,7 @@ class PyPNMAgent:
     def _handle_pnm_fec(self, params: dict) -> dict:
         """Get FEC (Forward Error Correction) statistics from modem."""
         modem_ip = params.get('modem_ip')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         mac_address = params.get('mac_address')
         
         if not modem_ip:
@@ -1775,7 +1775,7 @@ class PyPNMAgent:
     def _handle_pnm_pre_eq(self, params: dict) -> dict:
         """Get pre-equalization coefficients from modem."""
         modem_ip = params.get('modem_ip')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         mac_address = params.get('mac_address')
         
         if not modem_ip:
@@ -1918,7 +1918,7 @@ class PyPNMAgent:
     def _handle_pnm_channel_info_ssh(self, params: dict) -> dict:
         """Fallback: Get channel info via cm_proxy SSH (old method)."""
         modem_ip = params.get('modem_ip')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         mac_address = params.get('mac_address')
         
         oids = {
@@ -1981,7 +1981,7 @@ class PyPNMAgent:
     def _handle_pnm_event_log(self, params: dict) -> dict:
         """Get event log from modem via pysnmp."""
         modem_ip = params.get('modem_ip')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         mac_address = params.get('mac_address')
         
         if not modem_ip:
@@ -2054,7 +2054,7 @@ class PyPNMAgent:
     def _handle_pnm_ofdm_channels(self, params: dict) -> dict:
         """Get list of OFDM channels via cm_proxy SNMP."""
         modem_ip = params.get('modem_ip')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         
         if not modem_ip:
             return {'success': False, 'error': 'modem_ip required'}
@@ -2098,7 +2098,7 @@ class PyPNMAgent:
         modem_ip = params.get('modem_ip')
         ofdm_channel = params.get('ofdm_channel', 0)
         filename = params.get('filename', 'rxmer_capture')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         
         if not modem_ip:
             return {'success': False, 'error': 'modem_ip required'}
@@ -2138,7 +2138,7 @@ class PyPNMAgent:
         """
         modem_ip = params.get('modem_ip')
         mac_address = params.get('mac_address', '')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         tftp_server = params.get('tftp_server', os.environ.get('TFTP_IPV4', '172.22.147.18'))
         
         if not modem_ip:
@@ -2235,7 +2235,7 @@ class PyPNMAgent:
         mac_address = params.get('mac_address')
         tftp_server = params.get('tftp_server', '149.210.167.40')
         tftp_path = params.get('tftp_path', '')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         
         if not modem_ip:
             return {'success': False, 'error': 'modem_ip required'}
@@ -3984,7 +3984,7 @@ def _handle_pnm_ofdm_channels(self, params: dict) -> dict:
         
         mac = params.get('mac_address')
         ip = params.get('modem_ip')
-        community = params.get('community', 'm0d3m1nf0')
+        community = params.get('community') or self.config.cm_community
         
         async def get_channels():
             cm = AgentCableModem(
