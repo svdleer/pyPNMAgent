@@ -1842,6 +1842,8 @@ class PyPNMAgent:
         # Use parallel walk for all OIDs at once
         result = self._snmp_parallel_walk(modem_ip, list(oids.values()), community, timeout=15)
         
+        self.logger.info(f"parallel_walk result success={result.get('success')}, keys={list(result.get('results', {}).keys())}")
+        
         if not result.get('success'):
             # Try fallback via cm_proxy SSH if available
             if self.config.cm_proxy_host:
@@ -1850,6 +1852,7 @@ class PyPNMAgent:
             return {'success': False, 'error': result.get('error', 'SNMP query failed')}
         
         walk_results = result.get('results', {})
+        self.logger.info(f"walk_results counts: ds_freq={len(walk_results.get(oids['ds_freq'], []))}, ds_power={len(walk_results.get(oids['ds_power'], []))}")
         
         def parse_oid_values(results_list, divisor=1):
             """Parse OID results to dict of index -> value."""
