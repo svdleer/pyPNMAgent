@@ -2404,14 +2404,15 @@ class PyPNMAgent:
                         self._snmp_set(cmts_ip, test_oid, 0, 'i', community)
                         break
             
-            # Return modem-specific RF port if found, else all
+            # Return modem-specific RF port - for UTSC only the RF port matters
+            # us_channels are SC-QAM, rf_ports are us-conn ports for UTSC
             return {
                 'success': True,
                 'cmts_ip': cmts_ip,
                 'rf_ports': [modem_rf_port] if modem_rf_port else rf_ports,
                 'all_rf_ports': rf_ports,
-                'ofdma_channels': [{'ifindex': ch, 'description': ''} for ch in us_channels],
-                'scqam_channels': [modem_rf_port] if modem_rf_port else rf_ports,
+                'ofdma_channels': [],  # UTSC doesn't use OFDMA channel selection
+                'scqam_channels': [modem_rf_port] if modem_rf_port else rf_ports,  # RF port for UTSC
                 'cm_index': cm_index,
                 'modem_rf_port': modem_rf_port,
                 'us_channels': us_channels
