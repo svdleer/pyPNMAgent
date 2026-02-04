@@ -866,15 +866,21 @@ class PyPNMAgent:
                 self.logger.debug(f"Bulk walk {oid} failed: {e}")
             return results
         
+        # OIDs for interface mapping (cable-mac, fiber-node)
+        OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.5'  # docsIf3CmtsCmRegStatusMdIfIndex (US interface)
+        OID_US_CH_ID = '1.3.6.1.4.1.4491.2.1.20.1.4.1.3'     # docsIf3CmtsCmUsStatusChIfIndex (US channel)
+        
         # Run all walks in parallel
         mac_task = asyncio.create_task(bulk_walk_oid(oid_d3_mac))
         old_mac_task = asyncio.create_task(bulk_walk_oid(oid_old_mac))
         old_ip_task = asyncio.create_task(bulk_walk_oid(oid_old_ip))
         old_status_task = asyncio.create_task(bulk_walk_oid(oid_old_status))
         d31_freq_task = asyncio.create_task(bulk_walk_oid(oid_d31_freq))
+        md_if_task = asyncio.create_task(bulk_walk_oid(OID_MD_IF_INDEX))
+        us_ch_task = asyncio.create_task(bulk_walk_oid(OID_US_CH_ID))
         
-        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results = await asyncio.gather(
-            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task
+        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, md_if_results, us_ch_results = await asyncio.gather(
+            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, md_if_task, us_ch_task
         )
         
         # Parse MAC addresses from docsIf3 table
@@ -923,6 +929,25 @@ class PyPNMAgent:
                 d31_map[index] = freq > 0
             except:
                 pass
+        
+        # Build interface mapping (MD-IF-INDEX -> US interface)
+        md_if_map = {}  # index -> md_if_index
+        for index, value in md_if_results:
+            try:
+                md_if_map[index] = int(value)
+            except:
+                pass
+        
+        # Build US channel mapping
+        us_ch_map = {}  # index -> us_channel_id
+        for index, value in us_ch_results:
+            try:
+                us_ch_map[index] = int(value)
+            except:
+                pass
+        
+        self.logger.info(f"Correlated {len(md_if_map)} MD-IF-INDEX mappings")
+        self.logger.info(f"Correlated {len(us_ch_map)} US channel mappings")
         
         # Create MAC -> IP and MAC -> status lookups
         mac_to_ip = {}
@@ -974,6 +999,19 @@ class PyPNMAgent:
                 d31_count += 1
             else:
                 d30_count += 1
+            
+            # Add interface/cable-mac info if available
+            if index in md_if_map:
+                md_if_index = md_if_map[index]
+                modem['md_if_index'] = md_if_index
+                # Convert interface index to cable-mac format (vendor-specific)
+                # For Arris E6000: Cable6/0/0 format from ifIndex
+                # For Casa C100G: slot/subslot/port format
+                # Generic: Store ifIndex, GUI/backend can format it
+                modem['upstream_interface'] = f"ifIndex.{md_if_index}"
+            
+            if index in us_ch_map:
+                modem['upstream_channel_id'] = us_ch_map[index]
             
             modems.append(modem)
         
