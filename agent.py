@@ -1014,9 +1014,13 @@ class PyPNMAgent:
                 # For Casa C100G: slot/subslot/port format
                 # Generic: Store ifIndex, GUI/backend can format it
                 modem['upstream_interface'] = f"ifIndex.{md_if_index}"
+            else:
+                self.logger.debug(f"No MD-IF-INDEX for modem index {index}")
             
             if index in us_ch_map:
                 modem['upstream_channel_id'] = us_ch_map[index]
+            else:
+                self.logger.debug(f"No US channel for modem index {index}")
             
             modems.append(modem)
         
