@@ -452,6 +452,7 @@ class PyPNMAgent:
             'snmp_walk': self._handle_snmp_walk,
             'snmp_set': self._handle_snmp_set,
             'snmp_bulk_get': self._handle_snmp_bulk_get,
+            'snmp_bulk_walk': self._handle_snmp_bulk_walk,
             'tftp_get': self._handle_tftp_get,
             'cmts_command': self._handle_cmts_command,
             'execute_pnm': self._handle_pnm_command,
@@ -813,6 +814,131 @@ class PyPNMAgent:
             'success': True,
             'results': results
         }
+    
+    def _handle_snmp_bulk_walk(self, params: dict) -> dict:
+        """Handle SNMP BULK WALK for efficient table retrieval (e.g., CMTS modem table)."""
+        target_ip = params['target_ip']
+        oid = params['oid']
+        community = params.get('community', 'public')
+        max_repetitions = params.get('max_repetitions', 25)
+        limit = params.get('limit', 10000)
+        timeout = params.get('timeout', 10)
+        
+        self.logger.info(f"SNMP bulk walk: {target_ip} OID {oid} (max_rep={max_repetitions}, limit={limit})")
+        
+        if not PYSNMP_AVAILABLE:
+            # Fallback to command-line snmpbulkwalk
+            return self._snmp_bulk_walk_fallback(target_ip, oid, community, limit)
+        
+        # Use pysnmp async bulk_walk_cmd
+        try:
+            modems = asyncio.run(self._async_snmp_bulk_walk(
+                target_ip, oid, community, max_repetitions, limit, timeout
+            ))
+            
+            self.logger.info(f"Retrieved {len(modems)} entries from {target_ip}")
+            
+            return {
+                'success': True,
+                'modems': modems,
+                'count': len(modems)
+            }
+        except Exception as e:
+            self.logger.error(f"SNMP bulk walk failed: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'modems': []
+            }
+    
+    async def _async_snmp_bulk_walk(self, target_ip: str, oid: str, community: str, 
+                                     max_repetitions: int, limit: int, timeout: int):
+        """Async SNMP bulk walk using pysnmp."""
+        modems = []
+        
+        async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
+            SnmpEngine(),
+            CommunityData(community),
+            await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+            ContextData(),
+            0, max_repetitions,  # non-repeaters, max-repetitions
+            ObjectType(ObjectIdentity(oid)),
+            lexicographicMode=False
+        ):
+            if errorIndication:
+                self.logger.error(f"SNMP error: {errorIndication}")
+                break
+            elif errorStatus:
+                self.logger.error(f"SNMP error: {errorStatus.prettyPrint()}")
+                break
+            
+            for varBind in varBinds:
+                oid_val, value = varBind
+                # Extract MAC address from hex string
+                mac_hex = value.prettyPrint()
+                if mac_hex.startswith('0x'):
+                    mac_hex = mac_hex[2:]
+                
+                # Convert to standard MAC format
+                if len(mac_hex) == 12:
+                    mac_address = ':'.join(mac_hex[i:i+2] for i in range(0, 12, 2))
+                    modems.append({
+                        'mac_address': mac_address.upper()
+                    })
+            
+            if len(modems) >= limit:
+                break
+        
+        return modems
+    
+    def _snmp_bulk_walk_fallback(self, target_ip: str, oid: str, community: str, limit: int) -> dict:
+        """Fallback to command-line snmpbulkwalk when pysnmp not available."""
+        try:
+            cmd = f"snmpbulkwalk -v2c -c {community} -Cr{limit} {target_ip} {oid}"
+            self.logger.info(f"Executing: {cmd}")
+            
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode != 0:
+                return {
+                    'success': False,
+                    'error': result.stderr or 'snmpbulkwalk command failed',
+                    'modems': []
+                }
+            
+            # Parse output
+            modems = []
+            for line in result.stdout.splitlines():
+                if 'Hex-STRING:' in line:
+                    # Extract hex MAC address
+                    hex_part = line.split('Hex-STRING:')[1].strip()
+                    mac_hex = hex_part.replace(' ', '')
+                    if len(mac_hex) == 12:
+                        mac_address = ':'.join(mac_hex[i:i+2] for i in range(0, 12, 2))
+                        modems.append({
+                            'mac_address': mac_address.upper()
+                        })
+                    if len(modems) >= limit:
+                        break
+            
+            return {
+                'success': True,
+                'modems': modems,
+                'count': len(modems)
+            }
+        except Exception as e:
+            self.logger.error(f"Fallback bulk walk failed: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'modems': []
+            }
     
     def _handle_tftp_get(self, params: dict) -> dict:
         """Handle TFTP/PNM file retrieval via SSH to TFTP server."""
