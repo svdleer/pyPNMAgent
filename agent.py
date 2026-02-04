@@ -874,6 +874,7 @@ class PyPNMAgent:
         OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.5'  # docsIf3CmtsCmRegStatusMdIfIndex (US interface)
         OID_US_CH_ID = '1.3.6.1.4.1.4491.2.1.20.1.4.1.3'     # docsIf3CmtsCmUsStatusChIfIndex (US channel)
         OID_MD_NODE_NAME = '1.3.6.1.4.1.4491.2.1.20.1.12.1.3'  # docsIf3MdNodeStatusMdNodeName (fiber node name)
+        OID_SW_REV = '1.3.6.1.2.1.10.127.1.2.2.1.3'  # docsIfCmtsCmStatusValue (firmware/software revision)
         
         # Run all walks in parallel
         mac_task = asyncio.create_task(bulk_walk_oid(oid_d3_mac))
@@ -884,9 +885,10 @@ class PyPNMAgent:
         md_if_task = asyncio.create_task(bulk_walk_oid(OID_MD_IF_INDEX))
         us_ch_task = asyncio.create_task(bulk_walk_oid(OID_US_CH_ID))
         md_node_task = asyncio.create_task(bulk_walk_oid(OID_MD_NODE_NAME))
+        sw_rev_task = asyncio.create_task(bulk_walk_oid(OID_SW_REV))
         
-        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, md_if_results, us_ch_results, md_node_results = await asyncio.gather(
-            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, md_if_task, us_ch_task, md_node_task
+        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, md_if_results, us_ch_results, md_node_results, sw_rev_results = await asyncio.gather(
+            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, md_if_task, us_ch_task, md_node_task, sw_rev_task
         )
         
         # Parse MAC addresses from docsIf3 table
@@ -1023,6 +1025,16 @@ class PyPNMAgent:
             except:
                 pass
         
+        # Build firmware/software revision map
+        sw_rev_map = {}  # index -> firmware_version
+        for index, value in sw_rev_results:
+            try:
+                firmware = str(value)
+                if firmware and firmware != 'No Such Instance currently exists at this OID':
+                    sw_rev_map[index] = firmware
+            except:
+                pass
+        
         # Build DOCSIS 3.1 detection
         d31_map = {}  # index -> is_docsis31
         for index, value in d31_freq_results:
@@ -1065,14 +1077,18 @@ class PyPNMAgent:
         # Create MAC -> IP and MAC -> status lookups
         mac_to_ip = {}
         mac_to_status = {}
+        mac_to_firmware = {}
         for old_index, mac in old_mac_map.items():
             if old_index in old_ip_map:
                 mac_to_ip[mac] = old_ip_map[old_index]
             if old_index in old_status_map:
                 mac_to_status[mac] = old_status_map[old_index]
+            if old_index in sw_rev_map:
+                mac_to_firmware[mac] = sw_rev_map[old_index]
         
         self.logger.info(f"Correlated {len(mac_to_ip)} IP addresses from old table (pysnmp)")
         self.logger.info(f"Correlated {len(mac_to_status)} status values from old table (pysnmp)")
+        self.logger.info(f"Correlated {len(mac_to_firmware)} firmware versions from old table (pysnmp)")
         
         # Status code mapping
         STATUS_MAP = {
@@ -1105,6 +1121,10 @@ class PyPNMAgent:
             # Add vendor from MAC OUI
             modem['vendor'] = self._get_vendor_from_mac(mac)
             
+            # Add firmware if available
+            if mac in mac_to_firmware:
+                modem['firmware'] = mac_to_firmware[mac]
+            
             # Add DOCSIS version
             is_d31 = d31_map.get(index, False)
             modem['docsis_version'] = 'DOCSIS 3.1' if is_d31 else 'DOCSIS 3.0'
@@ -1120,9 +1140,9 @@ class PyPNMAgent:
                 # Get vendor-specific interface name from IF-MIB::ifName
                 # E6000: "cable-mac 100", Casa/vCCAP: "docsis-mac X", cBR8: "CableX/Y/Z"
                 if md_if_index in if_name_map:
-                    modem['upstream_interface'] = if_name_map[md_if_index]
+                    modem['cable_mac'] = if_name_map[md_if_index]
                 else:
-                    modem['upstream_interface'] = f"ifIndex.{md_if_index}"
+                    modem['cable_mac'] = f"ifIndex.{md_if_index}"
                 
                 # Add fiber node name if available
                 if md_if_index in fiber_node_map:
