@@ -734,23 +734,11 @@ class PyPNMAgent:
         if self.config.cm_proxy_host:
             return self._query_modem(target_ip, oid, community, walk=False)
         
-        # Use pysnmp if available
-        if PYSNMP_AVAILABLE:
-            try:
-                return asyncio.run(self._async_snmp_get(target_ip, oid, community, params.get('timeout', 5)))
-            except Exception as e:
-                self.logger.error(f"pysnmp get failed: {e}")
+        # Use pysnmp
+        if not PYSNMP_AVAILABLE:
+            return {'success': False, 'error': 'pysnmp not available'}
         
-        # Fallback to command-line
-        return self.snmp_executor.execute_snmp(
-            command='snmpget',
-            target_ip=target_ip,
-            oid=oid,
-            community=community,
-            version=params.get('version', '2c'),
-            timeout=params.get('timeout', 5),
-            retries=params.get('retries', 1)
-        )
+        return asyncio.run(self._async_snmp_get(target_ip, oid, community, params.get('timeout', 5)))
     
     def _handle_snmp_walk(self, params: dict) -> dict:
         """Handle SNMP WALK request via pysnmp or cm_proxy."""
@@ -762,23 +750,11 @@ class PyPNMAgent:
         if self.config.cm_proxy_host:
             return self._query_modem(target_ip, oid, community, walk=True)
         
-        # Use pysnmp if available
-        if PYSNMP_AVAILABLE:
-            try:
-                return asyncio.run(self._async_snmp_walk(target_ip, oid, community, params.get('timeout', 10)))
-            except Exception as e:
-                self.logger.error(f"pysnmp walk failed: {e}")
+        # Use pysnmp
+        if not PYSNMP_AVAILABLE:
+            return {'success': False, 'error': 'pysnmp not available'}
         
-        # Fallback to command-line
-        return self.snmp_executor.execute_snmp(
-            command='snmpwalk',
-            target_ip=target_ip,
-            oid=oid,
-            community=community,
-            version=params.get('version', '2c'),
-            timeout=params.get('timeout', 5),
-            retries=params.get('retries', 1)
-        )
+        return asyncio.run(self._async_snmp_walk(target_ip, oid, community, params.get('timeout', 10)))
     
     def _handle_snmp_set(self, params: dict) -> dict:
         """Handle SNMP SET request via pysnmp or cm_proxy."""
@@ -792,24 +768,11 @@ class PyPNMAgent:
         if self.config.cm_proxy_host:
             return self._set_modem_via_cm_proxy(target_ip, oid, value, value_type, community)
         
-        # Use pysnmp if available
-        if PYSNMP_AVAILABLE:
-            try:
-                return asyncio.run(self._async_snmp_set(target_ip, oid, value, value_type, community, params.get('timeout', 5)))
-            except Exception as e:
-                self.logger.error(f"pysnmp set failed: {e}")
+        # Use pysnmp
+        if not PYSNMP_AVAILABLE:
+            return {'success': False, 'error': 'pysnmp not available'}
         
-        # Fallback to command-line
-        oid_with_value = f"{oid} {value_type} {value}"
-        return self.snmp_executor.execute_snmp(
-            command='snmpset',
-            target_ip=target_ip,
-            oid=oid_with_value,
-            community=community,
-            version=params.get('version', '2c'),
-            timeout=params.get('timeout', 5),
-            retries=params.get('retries', 1)
-        )
+        return asyncio.run(self._async_snmp_set(target_ip, oid, value, value_type, community, params.get('timeout', 5)))
     
     def _handle_snmp_bulk_get(self, params: dict) -> dict:
         """Handle multiple SNMP GET requests."""
@@ -818,35 +781,18 @@ class PyPNMAgent:
         community = params.get('community', 'private')
         timeout = params.get('timeout', 5)
         
-        # Use pysnmp if available
-        if PYSNMP_AVAILABLE:
-            results = {}
-            for oid in oids:
-                try:
-                    result = asyncio.run(self._async_snmp_get(target_ip, oid, community, timeout))
-                    results[oid] = result
-                except Exception as e:
-                    results[oid] = {'success': False, 'error': str(e)}
-            return {'success': True, 'results': results}
+        # Use pysnmp
+        if not PYSNMP_AVAILABLE:
+            return {'success': False, 'error': 'pysnmp not available'}
         
-        # Fallback to command-line
         results = {}
         for oid in oids:
-            result = self.snmp_executor.execute_snmp(
-                command='snmpget',
-                target_ip=target_ip,
-                oid=oid,
-                community=community,
-                version=params.get('version', '2c'),
-                timeout=timeout,
-                retries=params.get('retries', 1)
-            )
-            results[oid] = result
-        
-        return {
-            'success': True,
-            'results': results
-        }
+            try:
+                result = asyncio.run(self._async_snmp_get(target_ip, oid, community, timeout))
+                results[oid] = result
+            except Exception as e:
+                results[oid] = {'success': False, 'error': str(e)}
+        return {'success': True, 'results': results}
     
     def _handle_snmp_bulk_walk(self, params: dict) -> dict:
         """Handle SNMP BULK WALK for efficient table retrieval (e.g., CMTS modem table)."""
@@ -860,8 +806,7 @@ class PyPNMAgent:
         self.logger.info(f"SNMP bulk walk: {target_ip} OID {oid} (max_rep={max_repetitions}, limit={limit})")
         
         if not PYSNMP_AVAILABLE:
-            # Fallback to command-line snmpbulkwalk
-            return self._snmp_bulk_walk_fallback(target_ip, oid, community, limit)
+            return {'success': False, 'error': 'pysnmp not available', 'modems': []}
         
         # Use pysnmp async bulk_walk_cmd
         try:
@@ -1166,55 +1111,6 @@ class PyPNMAgent:
             'cmts_ip': cmts_ip
         }
 
-    def _snmp_bulk_walk_fallback(self, target_ip: str, oid: str, community: str, limit: int) -> dict:
-        """Fallback to command-line snmpbulkwalk when pysnmp not available."""
-        try:
-            cmd = f"snmpbulkwalk -v2c -c {community} -Cr{limit} {target_ip} {oid}"
-            self.logger.info(f"Executing: {cmd}")
-            
-            result = subprocess.run(
-                cmd,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
-            
-            if result.returncode != 0:
-                return {
-                    'success': False,
-                    'error': result.stderr or 'snmpbulkwalk command failed',
-                    'modems': []
-                }
-            
-            # Parse output
-            modems = []
-            for line in result.stdout.splitlines():
-                if 'Hex-STRING:' in line:
-                    # Extract hex MAC address
-                    hex_part = line.split('Hex-STRING:')[1].strip()
-                    mac_hex = hex_part.replace(' ', '')
-                    if len(mac_hex) == 12:
-                        mac_address = ':'.join(mac_hex[i:i+2] for i in range(0, 12, 2))
-                        modems.append({
-                            'mac_address': mac_address.upper()
-                        })
-                    if len(modems) >= limit:
-                        break
-            
-            return {
-                'success': True,
-                'modems': modems,
-                'count': len(modems)
-            }
-        except Exception as e:
-            self.logger.error(f"Fallback bulk walk failed: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'modems': []
-            }
-    
     def _handle_tftp_get(self, params: dict) -> dict:
         """Handle TFTP/PNM file retrieval via SSH to TFTP server."""
         if not self.tftp_ssh:
@@ -3393,240 +3289,15 @@ class PyPNMAgent:
         # DOCSIS 3.1 MIB - MaxUsableDsFreq: if > 0, modem is DOCSIS 3.1
         OID_D31_MAX_DS_FREQ = '1.3.6.1.4.1.4491.2.1.28.1.3.1.7'  # docsIf31CmtsCmRegStatusMaxUsableDsFreq
         
-        # Use pysnmp if available
-        if PYSNMP_AVAILABLE:
-            self.logger.info(f"Using pysnmp for CMTS modem discovery")
-            try:
-                return asyncio.run(self._async_cmts_get_modems(
-                    cmts_ip, community, limit,
-                    OID_D3_MAC, OID_OLD_MAC, OID_OLD_IP, OID_OLD_STATUS, OID_D31_MAX_DS_FREQ
-                ))
-            except Exception as e:
-                self.logger.error(f"pysnmp CMTS query failed: {e}, falling back to command line")
+        # Use pysnmp (required)
+        if not PYSNMP_AVAILABLE:
+            return {'success': False, 'error': 'pysnmp not available', 'cmts_ip': cmts_ip}
         
-        # Fallback to command-line snmpbulkwalk
-        snmp_command = 'snmpbulkwalk' if use_bulk else 'snmpwalk'
-        self.logger.info(f"Using {snmp_command} with community '{community}' (parallel queries)")
-        
-        # Function to execute SNMP query (used for parallel execution)
-        # For CMTS queries, use direct SNMP (not via cm_proxy which is for modems)
-        def query_oid(oid_name, oid):
-            if use_equalizer and self.config.equalizer_host:
-                return self._snmp_via_ssh(
-                    ssh_host=self.config.equalizer_host,
-                    ssh_user=self.config.equalizer_user or 'svdleer',
-                    target_ip=cmts_ip,
-                    oid=oid,
-                    community=community,
-                    command=snmp_command
-                )
-            else:
-                # Use direct SNMP executor for CMTS (not via cm_proxy)
-                return self.snmp_executor_direct.execute_snmp(
-                    command=snmp_command,
-                    target_ip=cmts_ip,
-                    oid=oid,
-                    community=community,
-                    timeout=120,
-                    retries=2
-                )
-        
-        try:
-            # Parallel SNMP queries
-            results = {}
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                futures = {
-                    executor.submit(query_oid, 'mac', OID_D3_MAC): 'mac',
-                    executor.submit(query_oid, 'd31_freq', OID_D31_MAX_DS_FREQ): 'd31_freq',
-                    executor.submit(query_oid, 'old_mac', OID_OLD_MAC): 'old_mac',
-                    executor.submit(query_oid, 'old_ip', OID_OLD_IP): 'old_ip',
-                    executor.submit(query_oid, 'old_status', OID_OLD_STATUS): 'old_status',
-                }
-                for future in as_completed(futures):
-                    name = futures[future]
-                    try:
-                        results[name] = future.result()
-                    except Exception as e:
-                        self.logger.error(f"Query {name} failed: {e}")
-                        results[name] = {'success': False, 'error': str(e)}
-            
-            mac_result = results.get('mac', {})
-            if not mac_result.get('success'):
-                return {
-                    'success': False,
-                    'error': f"SNMP MAC walk failed: {mac_result.get('error')}",
-                    'cmts_ip': cmts_ip
-                }
-            
-            # Parse MAC addresses from docsIf3 table
-            mac_lines = mac_result.get('output', '').strip().split('\n')
-            mac_map = {}  # index -> mac
-            
-            for line in mac_lines[:limit]:
-                if '=' in line and ('Hex-STRING' in line or 'STRING' in line):
-                    try:
-                        parts = line.split('=', 1)
-                        oid_part = parts[0].strip()
-                        value_part = parts[1].strip()
-                        
-                        # Extract index from OID
-                        index = oid_part.split('.')[-1]
-                        
-                        # Extract MAC from Hex-STRING
-                        if 'Hex-STRING' in value_part:
-                            hex_mac = value_part.split('Hex-STRING:')[-1].strip()
-                            mac_bytes = hex_mac.replace(' ', '').replace(':', '')
-                            if len(mac_bytes) >= 12:
-                                mac = ':'.join([mac_bytes[i:i+2] for i in range(0, 12, 2)]).lower()
-                                mac_map[index] = mac
-                    except Exception as e:
-                        self.logger.debug(f"Failed to parse MAC line: {line} - {e}")
-            
-            self.logger.info(f"Parsed {len(mac_map)} MAC addresses from docsIf3 table")
-            
-            # Parse old table MAC -> IP mapping (for correlation)
-            old_mac_result = results.get('old_mac', {})
-            old_ip_result = results.get('old_ip', {})
-            old_mac_map = {}  # old_index -> mac
-            old_ip_map = {}   # old_index -> ip
-            
-            # Parse old MAC addresses
-            if old_mac_result.get('success'):
-                for line in old_mac_result.get('output', '').split('\n'):
-                    if '=' in line and ('Hex-STRING' in line or 'STRING' in line):
-                        try:
-                            parts = line.split('=', 1)
-                            old_index = parts[0].strip().split('.')[-1]
-                            value = parts[1].strip()
-                            if 'Hex-STRING' in value:
-                                hex_mac = value.split('Hex-STRING:')[-1].strip()
-                                mac_bytes = hex_mac.replace(' ', '').replace(':', '')
-                                if len(mac_bytes) >= 12:
-                                    mac = ':'.join([mac_bytes[i:i+2] for i in range(0, 12, 2)]).lower()
-                                    old_mac_map[old_index] = mac
-                        except:
-                            pass
-            
-            # Parse old IP addresses
-            if old_ip_result.get('success'):
-                for line in old_ip_result.get('output', '').split('\n'):
-                    if '=' in line and ('IpAddress' in line or 'Network Address' in line):
-                        try:
-                            parts = line.split('=', 1)
-                            old_index = parts[0].strip().split('.')[-1]
-                            ip = parts[1].strip().split(':')[-1].strip()
-                            old_ip_map[old_index] = ip
-                        except:
-                            pass
-            
-            # Create MAC -> IP lookup from old table
-            mac_to_ip = {}  # mac -> ip
-            for old_index, mac in old_mac_map.items():
-                if old_index in old_ip_map:
-                    mac_to_ip[mac] = old_ip_map[old_index]
-            
-            self.logger.info(f"Correlated {len(mac_to_ip)} IP addresses from old table")
-            
-            # Parse old status values and create MAC -> status lookup
-            old_status_result = results.get('old_status', {})
-            old_status_map = {}  # old_index -> status
-            if old_status_result.get('success'):
-                for line in old_status_result.get('output', '').split('\n'):
-                    if '=' in line and 'INTEGER' in line:
-                        try:
-                            parts = line.split('=', 1)
-                            old_index = parts[0].strip().split('.')[-1]
-                            status_val = parts[1].strip().split(':')[-1].strip()
-                            old_status_map[old_index] = int(status_val) if status_val.isdigit() else 0
-                        except:
-                            pass
-            
-            # Create MAC -> status lookup
-            mac_to_status = {}  # mac -> status_code
-            for old_index, mac in old_mac_map.items():
-                if old_index in old_status_map:
-                    mac_to_status[mac] = old_status_map[old_index]
-            
-            self.logger.info(f"Correlated {len(mac_to_status)} status values from old table")
-            
-            # Parse DOCSIS 3.1 detection from MaxUsableDsFreq
-            # If freq > 0, modem is DOCSIS 3.1, else DOCSIS 3.0
-            d31_freq_result = results.get('d31_freq', {})
-            d31_map = {}  # index -> is_docsis31 (bool)
-            if d31_freq_result.get('success'):
-                for line in d31_freq_result.get('output', '').split('\n'):
-                    if '=' in line:
-                        try:
-                            parts = line.split('=', 1)
-                            index = parts[0].strip().split('.')[-1]
-                            value = parts[1].strip()
-                            # Parse integer value (Unsigned32, Gauge32, INTEGER, or plain number)
-                            freq = 0
-                            tokens = value.replace(':', ' ').split()
-                            for tok in reversed(tokens):
-                                try:
-                                    freq = int(tok)
-                                    break
-                                except ValueError:
-                                    continue
-                            # freq > 0 means DOCSIS 3.1
-                            d31_map[index] = freq > 0
-                        except:
-                            pass
-            
-            d31_count = sum(1 for v in d31_map.values() if v)
-            d30_count = sum(1 for v in d31_map.values() if not v)
-            self.logger.info(f"DOCSIS version detection: {d31_count} x 3.1, {d30_count} x 3.0")
-            
-            # Build modem list
-            modems = []
-            for index, mac in mac_map.items():
-                is_d31 = d31_map.get(index, False)
-                docsis_version = 'DOCSIS 3.1' if is_d31 else 'DOCSIS 3.0'
-                status_code = mac_to_status.get(mac, 0)
-                
-                modem = {
-                    'mac_address': mac,
-                    'ip_address': mac_to_ip.get(mac, 'N/A'),
-                    'status_code': status_code,
-                    'status': self._decode_cm_status(status_code),  # Use old decoder
-                    'cmts_index': index,
-                    'vendor': self._get_vendor_from_mac(mac),
-                    'docsis_version': docsis_version,
-                }
-                modems.append(modem)
-            
-            # Optionally query modems via hop-access for sysDescr (model info)
-            enrich_modems = params.get('enrich_modems', False)
-            if enrich_modems and self.cm_proxy:
-                self.logger.info(f"Enriching {len(modems)} modems via cm_proxy...")
-                modems = self._enrich_modems_parallel(modems, params.get('modem_community', 'm0d3m1nf0'))
-            
-            result = {
-                'success': True,
-                'cmts_ip': cmts_ip,
-                'count': len(modems),
-                'modems': modems
-            }
-            
-            # Cache result in Redis
-            if use_cache and redis and self.config.redis_host:
-                try:
-                    r = redis.Redis(host=self.config.redis_host, port=self.config.redis_port, decode_responses=True)
-                    r.setex(cache_key, self.config.redis_ttl, json.dumps(result))
-                    self.logger.info(f"Cached {len(modems)} modems for {cmts_ip} (TTL: {self.config.redis_ttl}s)")
-                except Exception as e:
-                    self.logger.warning(f"Redis cache set error: {e}")
-            
-            return result
-            
-        except Exception as e:
-            self.logger.exception(f"Failed to get modems from CMTS: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'cmts_ip': cmts_ip
-            }
+        self.logger.info(f"Using pysnmp for CMTS modem discovery")
+        return asyncio.run(self._async_cmts_get_modems(
+            cmts_ip, community, limit,
+            OID_D3_MAC, OID_OLD_MAC, OID_OLD_IP, OID_OLD_STATUS, OID_D31_MAX_DS_FREQ
+        ))
     
     def _handle_enrich_modems(self, params: dict) -> dict:
         """
