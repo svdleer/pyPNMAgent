@@ -725,16 +725,23 @@ class PyPNMAgent:
         }
     
     def _handle_snmp_get(self, params: dict) -> dict:
-        """Handle SNMP GET request via cm_proxy."""
+        """Handle SNMP GET request via pysnmp or cm_proxy."""
         target_ip = params['target_ip']
         oid = params['oid']
         community = params.get('community', 'private')
         
-        # Use cm_proxy if configured
+        # Use cm_proxy if configured (for modems behind NAT)
         if self.config.cm_proxy_host:
             return self._query_modem(target_ip, oid, community, walk=False)
         
-        # Fallback to direct SNMP
+        # Use pysnmp if available
+        if PYSNMP_AVAILABLE:
+            try:
+                return asyncio.run(self._async_snmp_get(target_ip, oid, community, params.get('timeout', 5)))
+            except Exception as e:
+                self.logger.error(f"pysnmp get failed: {e}")
+        
+        # Fallback to command-line
         return self.snmp_executor.execute_snmp(
             command='snmpget',
             target_ip=target_ip,
@@ -746,16 +753,23 @@ class PyPNMAgent:
         )
     
     def _handle_snmp_walk(self, params: dict) -> dict:
-        """Handle SNMP WALK request via cm_proxy."""
+        """Handle SNMP WALK request via pysnmp or cm_proxy."""
         target_ip = params['target_ip']
         oid = params['oid']
         community = params.get('community', 'private')
         
-        # Use cm_proxy if configured
+        # Use cm_proxy if configured (for modems behind NAT)
         if self.config.cm_proxy_host:
             return self._query_modem(target_ip, oid, community, walk=True)
         
-        # Fallback to direct SNMP
+        # Use pysnmp if available
+        if PYSNMP_AVAILABLE:
+            try:
+                return asyncio.run(self._async_snmp_walk(target_ip, oid, community, params.get('timeout', 10)))
+            except Exception as e:
+                self.logger.error(f"pysnmp walk failed: {e}")
+        
+        # Fallback to command-line
         return self.snmp_executor.execute_snmp(
             command='snmpwalk',
             target_ip=target_ip,
@@ -767,18 +781,25 @@ class PyPNMAgent:
         )
     
     def _handle_snmp_set(self, params: dict) -> dict:
-        """Handle SNMP SET request via cm_proxy."""
+        """Handle SNMP SET request via pysnmp or cm_proxy."""
         target_ip = params['target_ip']
         oid = params['oid']
         value = params['value']
         value_type = params.get('type', 'i')
         community = params.get('community', 'private')
         
-        # Use cm_proxy if configured
+        # Use cm_proxy if configured (for modems behind NAT)
         if self.config.cm_proxy_host:
             return self._set_modem_via_cm_proxy(target_ip, oid, value, value_type, community)
         
-        # Fallback to direct SNMP (not typical for modems)
+        # Use pysnmp if available
+        if PYSNMP_AVAILABLE:
+            try:
+                return asyncio.run(self._async_snmp_set(target_ip, oid, value, value_type, community, params.get('timeout', 5)))
+            except Exception as e:
+                self.logger.error(f"pysnmp set failed: {e}")
+        
+        # Fallback to command-line
         oid_with_value = f"{oid} {value_type} {value}"
         return self.snmp_executor.execute_snmp(
             command='snmpset',
@@ -795,8 +816,20 @@ class PyPNMAgent:
         oids = params.get('oids', [])
         target_ip = params['target_ip']
         community = params.get('community', 'private')
-        version = params.get('version', '2c')
+        timeout = params.get('timeout', 5)
         
+        # Use pysnmp if available
+        if PYSNMP_AVAILABLE:
+            results = {}
+            for oid in oids:
+                try:
+                    result = asyncio.run(self._async_snmp_get(target_ip, oid, community, timeout))
+                    results[oid] = result
+                except Exception as e:
+                    results[oid] = {'success': False, 'error': str(e)}
+            return {'success': True, 'results': results}
+        
+        # Fallback to command-line
         results = {}
         for oid in oids:
             result = self.snmp_executor.execute_snmp(
@@ -804,8 +837,8 @@ class PyPNMAgent:
                 target_ip=target_ip,
                 oid=oid,
                 community=community,
-                version=version,
-                timeout=params.get('timeout', 5),
+                version=params.get('version', '2c'),
+                timeout=timeout,
                 retries=params.get('retries', 1)
             )
             results[oid] = result
@@ -851,6 +884,96 @@ class PyPNMAgent:
                 'modems': []
             }
     
+    async def _async_snmp_get(self, target_ip: str, oid: str, community: str, timeout: int = 5) -> dict:
+        """Async SNMP GET using pysnmp."""
+        try:
+            errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+                SnmpEngine(),
+                CommunityData(community),
+                await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+                ContextData(),
+                ObjectType(ObjectIdentity(oid))
+            )
+            
+            if errorIndication:
+                return {'success': False, 'error': str(errorIndication)}
+            elif errorStatus:
+                return {'success': False, 'error': f'{errorStatus.prettyPrint()} at {errorIndex}'}
+            
+            # Format output like snmpget
+            output_lines = []
+            for varBind in varBinds:
+                output_lines.append(f"{varBind[0].prettyPrint()} = {varBind[1].prettyPrint()}")
+            
+            return {'success': True, 'output': '\n'.join(output_lines)}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    async def _async_snmp_walk(self, target_ip: str, oid: str, community: str, timeout: int = 10) -> dict:
+        """Async SNMP WALK using pysnmp."""
+        try:
+            output_lines = []
+            async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
+                SnmpEngine(),
+                CommunityData(community),
+                await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+                ContextData(),
+                0, 25,  # non-repeaters, max-repetitions
+                ObjectType(ObjectIdentity(oid)),
+                lexicographicMode=False
+            ):
+                if errorIndication:
+                    return {'success': False, 'error': str(errorIndication)}
+                elif errorStatus:
+                    return {'success': False, 'error': f'{errorStatus.prettyPrint()} at {errorIndex}'}
+                
+                for varBind in varBinds:
+                    output_lines.append(f"{varBind[0].prettyPrint()} = {varBind[1].prettyPrint()}")
+            
+            return {'success': True, 'output': '\n'.join(output_lines)}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    async def _async_snmp_set(self, target_ip: str, oid: str, value: any, value_type: str, 
+                               community: str, timeout: int = 5) -> dict:
+        """Async SNMP SET using pysnmp."""
+        try:
+            # Map value type to pysnmp type
+            type_map = {
+                'i': Integer32,
+                's': OctetString,
+                'u': Unsigned32,
+                'c': Counter32,
+                'C': Counter64,
+                'g': Gauge32,
+                't': TimeTicks,
+                'a': IpAddress,
+            }
+            
+            pysnmp_type = type_map.get(value_type, OctetString)
+            
+            errorIndication, errorStatus, errorIndex, varBinds = await set_cmd(
+                SnmpEngine(),
+                CommunityData(community),
+                await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+                ContextData(),
+                ObjectType(ObjectIdentity(oid), pysnmp_type(value))
+            )
+            
+            if errorIndication:
+                return {'success': False, 'error': str(errorIndication)}
+            elif errorStatus:
+                return {'success': False, 'error': f'{errorStatus.prettyPrint()} at {errorIndex}'}
+            
+            # Format output
+            output_lines = []
+            for varBind in varBinds:
+                output_lines.append(f"{varBind[0].prettyPrint()} = {varBind[1].prettyPrint()}")
+            
+            return {'success': True, 'output': '\n'.join(output_lines)}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
     async def _async_snmp_bulk_walk(self, target_ip: str, oid: str, community: str, 
                                      max_repetitions: int, limit: int, timeout: int):
         """Async SNMP bulk walk using pysnmp."""
