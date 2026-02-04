@@ -891,6 +891,158 @@ class PyPNMAgent:
         
         return modems
     
+    async def _async_cmts_get_modems(self, cmts_ip: str, community: str, limit: int,
+                                      oid_d3_mac: str, oid_old_mac: str, oid_old_ip: str,
+                                      oid_old_status: str, oid_d31_freq: str) -> dict:
+        """Async CMTS modem discovery using pysnmp with parallel walks."""
+        import asyncio
+        
+        async def bulk_walk_oid(oid: str, timeout: int = 30) -> list:
+            """Walk a single OID and return list of (index, value) tuples."""
+            results = []
+            try:
+                async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
+                    SnmpEngine(),
+                    CommunityData(community),
+                    await UdpTransportTarget.create((cmts_ip, 161), timeout=timeout, retries=2),
+                    ContextData(),
+                    0, 50,  # non-repeaters, max-repetitions
+                    ObjectType(ObjectIdentity(oid)),
+                    lexicographicMode=False
+                ):
+                    if errorIndication or errorStatus:
+                        break
+                    for varBind in varBinds:
+                        oid_str = str(varBind[0])
+                        index = oid_str.split('.')[-1]
+                        value = varBind[1]
+                        results.append((index, value))
+                        if len(results) >= limit:
+                            return results
+            except Exception as e:
+                self.logger.debug(f"Bulk walk {oid} failed: {e}")
+            return results
+        
+        # Run all walks in parallel
+        mac_task = asyncio.create_task(bulk_walk_oid(oid_d3_mac))
+        old_mac_task = asyncio.create_task(bulk_walk_oid(oid_old_mac))
+        old_ip_task = asyncio.create_task(bulk_walk_oid(oid_old_ip))
+        old_status_task = asyncio.create_task(bulk_walk_oid(oid_old_status))
+        d31_freq_task = asyncio.create_task(bulk_walk_oid(oid_d31_freq))
+        
+        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results = await asyncio.gather(
+            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task
+        )
+        
+        # Parse MAC addresses from docsIf3 table
+        mac_map = {}  # index -> mac
+        for index, value in mac_results:
+            mac_hex = value.prettyPrint()
+            if mac_hex.startswith('0x'):
+                mac_hex = mac_hex[2:]
+            mac_hex = mac_hex.replace(' ', '').replace(':', '')
+            if len(mac_hex) >= 12:
+                mac = ':'.join([mac_hex[i:i+2] for i in range(0, 12, 2)]).lower()
+                mac_map[index] = mac
+        
+        self.logger.info(f"Parsed {len(mac_map)} MAC addresses from docsIf3 table (pysnmp)")
+        
+        # Build old table MAC lookup
+        old_mac_map = {}  # old_index -> mac
+        for index, value in old_mac_results:
+            mac_hex = value.prettyPrint()
+            if mac_hex.startswith('0x'):
+                mac_hex = mac_hex[2:]
+            mac_hex = mac_hex.replace(' ', '').replace(':', '')
+            if len(mac_hex) >= 12:
+                mac = ':'.join([mac_hex[i:i+2] for i in range(0, 12, 2)]).lower()
+                old_mac_map[index] = mac
+        
+        # Build old table IP lookup
+        old_ip_map = {}  # old_index -> ip
+        for index, value in old_ip_results:
+            ip = value.prettyPrint()
+            old_ip_map[index] = ip
+        
+        # Build old table status lookup
+        old_status_map = {}  # old_index -> status
+        for index, value in old_status_results:
+            try:
+                old_status_map[index] = int(value)
+            except:
+                pass
+        
+        # Build DOCSIS 3.1 detection
+        d31_map = {}  # index -> is_docsis31
+        for index, value in d31_freq_results:
+            try:
+                freq = int(value)
+                d31_map[index] = freq > 0
+            except:
+                pass
+        
+        # Create MAC -> IP and MAC -> status lookups
+        mac_to_ip = {}
+        mac_to_status = {}
+        for old_index, mac in old_mac_map.items():
+            if old_index in old_ip_map:
+                mac_to_ip[mac] = old_ip_map[old_index]
+            if old_index in old_status_map:
+                mac_to_status[mac] = old_status_map[old_index]
+        
+        self.logger.info(f"Correlated {len(mac_to_ip)} IP addresses from old table (pysnmp)")
+        self.logger.info(f"Correlated {len(mac_to_status)} status values from old table (pysnmp)")
+        
+        # Status code mapping
+        STATUS_MAP = {
+            1: 'other', 2: 'ranging', 3: 'rangingAborted', 4: 'rangingComplete',
+            5: 'ipComplete', 6: 'registrationComplete', 7: 'accessDenied',
+            8: 'operational', 9: 'registeredBPIInitializing'
+        }
+        
+        # Build modem list
+        modems = []
+        d31_count = 0
+        d30_count = 0
+        
+        for index, mac in mac_map.items():
+            modem = {
+                'mac_address': mac,
+                'cmts_index': index
+            }
+            
+            # Add IP if available
+            if mac in mac_to_ip:
+                modem['ip_address'] = mac_to_ip[mac]
+            
+            # Add status if available
+            if mac in mac_to_status:
+                status_code = mac_to_status[mac]
+                modem['status_code'] = status_code
+                modem['status'] = STATUS_MAP.get(status_code, 'unknown')
+            
+            # Add vendor from MAC OUI
+            modem['vendor'] = self._get_vendor_from_mac(mac)
+            
+            # Add DOCSIS version
+            is_d31 = d31_map.get(index, False)
+            modem['docsis_version'] = 'DOCSIS 3.1' if is_d31 else 'DOCSIS 3.0'
+            if is_d31:
+                d31_count += 1
+            else:
+                d30_count += 1
+            
+            modems.append(modem)
+        
+        self.logger.info(f"DOCSIS version detection: {d31_count} x 3.1, {d30_count} x 3.0 (pysnmp)")
+        
+        return {
+            'success': True,
+            'modems': modems,
+            'count': len(modems),
+            'cmts_ip': cmts_ip
+        }
+
     def _snmp_bulk_walk_fallback(self, target_ip: str, oid: str, community: str, limit: int) -> dict:
         """Fallback to command-line snmpbulkwalk when pysnmp not available."""
         try:
@@ -3118,6 +3270,18 @@ class PyPNMAgent:
         # DOCSIS 3.1 MIB - MaxUsableDsFreq: if > 0, modem is DOCSIS 3.1
         OID_D31_MAX_DS_FREQ = '1.3.6.1.4.1.4491.2.1.28.1.3.1.7'  # docsIf31CmtsCmRegStatusMaxUsableDsFreq
         
+        # Use pysnmp if available
+        if PYSNMP_AVAILABLE:
+            self.logger.info(f"Using pysnmp for CMTS modem discovery")
+            try:
+                return asyncio.run(self._async_cmts_get_modems(
+                    cmts_ip, community, limit,
+                    OID_D3_MAC, OID_OLD_MAC, OID_OLD_IP, OID_OLD_STATUS, OID_D31_MAX_DS_FREQ
+                ))
+            except Exception as e:
+                self.logger.error(f"pysnmp CMTS query failed: {e}, falling back to command line")
+        
+        # Fallback to command-line snmpbulkwalk
         snmp_command = 'snmpbulkwalk' if use_bulk else 'snmpwalk'
         self.logger.info(f"Using {snmp_command} with community '{community}' (parallel queries)")
         
