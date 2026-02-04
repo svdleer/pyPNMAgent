@@ -720,7 +720,7 @@ class PyPNMAgent:
             elif errorStatus:
                 return {'success': False, 'error': f'{errorStatus.prettyPrint()} at {errorIndex}'}
             
-            # Format output like snmpget
+            # Format output
             output_lines = []
             for varBind in varBinds:
                 output_lines.append(f"{varBind[0].prettyPrint()} = {varBind[1].prettyPrint()}")
