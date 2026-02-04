@@ -938,7 +938,9 @@ class PyPNMAgent:
         md_if_map = {}  # index -> md_if_index
         for index, value in md_if_results:
             try:
-                md_if_map[index] = int(value)
+                # MD-IF-INDEX may have compound index, extract first part
+                modem_index = index.split('.')[0] if '.' in index else index
+                md_if_map[modem_index] = int(value)
             except:
                 pass
         
@@ -946,8 +948,12 @@ class PyPNMAgent:
         us_ch_map = {}  # index -> us_channel_id
         for index, value in us_ch_results:
             try:
-                us_ch_map[index] = int(value)
+                # US channel OID has compound index: {modem_index}.{channel_ifindex}
+                # Extract modem_index (first part) as the key
+                modem_index = index.split('.')[0] if '.' in index else index
+                us_ch_map[modem_index] = int(value)
             except:
+                pass
                 pass
         
         self.logger.info(f"Correlated {len(md_if_map)} MD-IF-INDEX mappings")
