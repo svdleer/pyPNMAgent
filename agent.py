@@ -949,10 +949,10 @@ class PyPNMAgent:
         self.logger.info(f"Correlated {len(md_if_map)} MD-IF-INDEX mappings")
         self.logger.info(f"Correlated {len(us_ch_map)} US channel mappings")
         if md_if_map:
-            self.logger.debug(f"MD-IF-INDEX sample keys: {list(md_if_map.keys())[:5]}")
+            self.logger.info(f"MD-IF-INDEX sample keys: {list(md_if_map.keys())[:5]}")
         if us_ch_map:
-            self.logger.debug(f"US channel sample keys: {list(us_ch_map.keys())[:5]}")
-        self.logger.debug(f"MAC map sample keys: {list(mac_map.keys())[:5]}")
+            self.logger.info(f"US channel sample keys: {list(us_ch_map.keys())[:5]}")
+        self.logger.info(f"MAC map sample keys: {list(mac_map.keys())[:5]}")
         
         # Create MAC -> IP and MAC -> status lookups
         mac_to_ip = {}
@@ -1015,12 +1015,12 @@ class PyPNMAgent:
                 # Generic: Store ifIndex, GUI/backend can format it
                 modem['upstream_interface'] = f"ifIndex.{md_if_index}"
             else:
-                self.logger.debug(f"No MD-IF-INDEX for modem index {index}")
+                self.logger.info(f"No MD-IF-INDEX for modem index {index}")
             
             if index in us_ch_map:
                 modem['upstream_channel_id'] = us_ch_map[index]
             else:
-                self.logger.debug(f"No US channel for modem index {index}")
+                self.logger.info(f"No US channel for modem index {index}")
             
             modems.append(modem)
         
