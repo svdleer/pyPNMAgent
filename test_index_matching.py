@@ -54,6 +54,15 @@ md_if_individual_gets = {
     '25': 536871017,  # cable-mac 104
 }
 
+# Simulate IF-MIB::ifName queries for md_if_index values
+if_name_map = {
+    536871013: 'cable-mac 100',  # E6000 format
+    536871015: 'cable-mac 102',
+    536871017: 'cable-mac 104',
+    # For Casa: 'docsis-mac 5'
+    # For cBR8: 'Cable6/0/1'
+}
+
 us_ch_walk_results = [
     (f'{OID_US_CH_ID}.22.843071491', '843071491'),
     (f'{OID_US_CH_ID}.24.843071493', '843071493'),
@@ -139,8 +148,12 @@ for index, mac in mac_map.items():
     if index in md_if_map:
         md_if_index = md_if_map[index]
         modem['md_if_index'] = md_if_index
-        modem['upstream_interface'] = f"ifIndex.{md_if_index}"
-        print(f"\n✓ Modem {index}: MD-IF-INDEX matched! Value: {md_if_index}")
+        # Get vendor-specific interface name
+        if md_if_index in if_name_map:
+            modem['upstream_interface'] = if_name_map[md_if_index]
+        else:
+            modem['upstream_interface'] = f"ifIndex.{md_if_index}"
+        print(f"\n✓ Modem {index}: MD-IF-INDEX matched! Value: {md_if_index} -> {modem['upstream_interface']}")
     else:
         print(f"\n✗ Modem {index}: No MD-IF-INDEX match")
     

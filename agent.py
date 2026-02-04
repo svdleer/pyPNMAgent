@@ -937,6 +937,43 @@ class PyPNMAgent:
             
             self.logger.info(f"Got {len([r for r in md_if_individual_results if r[1] is not None])} MD-IF-INDEX via individual gets")
         
+        # Query IF-MIB::ifName for each md_if_index to get vendor-specific interface names
+        # E6000: "cable-mac 100", Casa/vCCAP: "docsis-mac X", cBR8: "CableX/Y/Z"
+        if_name_map = {}  # md_if_index -> interface_name
+        if md_if_results:
+            OID_IF_NAME = '1.3.6.1.2.1.31.1.1.1.1'  # IF-MIB::ifName
+            
+            async def get_if_name(md_if_idx):
+                """Query ifName for md_if_index"""
+                try:
+                    errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+                        SnmpEngine(),
+                        CommunityData(community),
+                        await UdpTransportTarget.create((cmts_ip, 161), timeout=5, retries=1),
+                        ContextData(),
+                        ObjectType(ObjectIdentity(f'{OID_IF_NAME}.{md_if_idx}'))
+                    )
+                    if errorIndication or errorStatus:
+                        return (md_if_idx, None)
+                    for varBind in varBinds:
+                        value = str(varBind[1])
+                        if value and value != 'No Such Instance currently exists at this OID':
+                            return (md_if_idx, value)
+                except:
+                    pass
+                return (md_if_idx, None)
+            
+            # Get unique md_if_index values to query
+            unique_md_if_indexes = set(v for idx, v in md_if_results)
+            if_name_tasks = [get_if_name(md_if_idx) for md_if_idx in unique_md_if_indexes]
+            if_name_results = await asyncio.gather(*if_name_tasks)
+            
+            for md_if_idx, if_name in if_name_results:
+                if if_name:
+                    if_name_map[md_if_idx] = if_name
+            
+            self.logger.info(f"Resolved {len(if_name_map)} interface names via IF-MIB::ifName")
+        
         # Build old table MAC lookup
         old_mac_map = {}  # old_index -> mac
         for index, value in old_mac_results:
@@ -1056,11 +1093,12 @@ class PyPNMAgent:
             if index in md_if_map:
                 md_if_index = md_if_map[index]
                 modem['md_if_index'] = md_if_index
-                # Convert interface index to cable-mac format (vendor-specific)
-                # For Arris E6000: Cable6/0/0 format from ifIndex
-                # For Casa C100G: slot/subslot/port format
-                # Generic: Store ifIndex, GUI/backend can format it
-                modem['upstream_interface'] = f"ifIndex.{md_if_index}"
+                # Get vendor-specific interface name from IF-MIB::ifName
+                # E6000: "cable-mac 100", Casa/vCCAP: "docsis-mac X", cBR8: "CableX/Y/Z"
+                if md_if_index in if_name_map:
+                    modem['upstream_interface'] = if_name_map[md_if_index]
+                else:
+                    modem['upstream_interface'] = f"ifIndex.{md_if_index}"
             else:
                 self.logger.info(f"No MD-IF-INDEX for modem index {index}")
             
