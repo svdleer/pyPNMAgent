@@ -857,7 +857,11 @@ class PyPNMAgent:
                         break
                     for varBind in varBinds:
                         oid_str = str(varBind[0])
-                        index = oid_str.split('.')[-1]
+                        # Extract full suffix after base OID (not just last component)
+                        base_oid_parts = oid.split('.')
+                        full_oid_parts = oid_str.split('.')
+                        suffix_parts = full_oid_parts[len(base_oid_parts):]
+                        index = '.'.join(suffix_parts) if suffix_parts else oid_str.split('.')[-1]
                         value = varBind[1]
                         results.append((index, value))
                         if len(results) >= limit:
