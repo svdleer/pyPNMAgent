@@ -280,74 +280,6 @@ class SSHProxyExecutor:
             self._client = None
 
 
-class SNMPExecutor:
-    """Executes SNMP commands, optionally through SSH proxy."""
-    
-    # Allowed SNMP commands (whitelist for security)
-    ALLOWED_COMMANDS = {
-        'snmpget', 'snmpwalk', 'snmpbulkget', 'snmpbulkwalk', 'snmpset'
-    }
-    
-    def __init__(self, ssh_proxy: Optional[SSHProxyExecutor] = None):
-        self.ssh_proxy = ssh_proxy
-        self.logger = logging.getLogger(f'{__name__}.SNMP')
-    
-    def execute_snmp(self, 
-                     command: str,
-                     target_ip: str,
-                     oid: str,
-                     community: str = 'private',
-                     version: str = '2c',
-                     timeout: int = 5,
-                     retries: int = 1) -> dict:
-        """Execute SNMP command."""
-        
-        # Validate command
-        if command not in self.ALLOWED_COMMANDS:
-            return {
-                'success': False,
-                'error': f'Command not allowed: {command}'
-            }
-        
-        # Build SNMP command
-        snmp_cmd = f"{command} -v{version} -c {community} -t {timeout} -r {retries} {target_ip} {oid}"
-        
-        self.logger.info(f"Executing: {snmp_cmd}")
-        
-        if self.ssh_proxy:
-            # Execute through SSH proxy
-            exit_code, stdout, stderr = self.ssh_proxy.execute(snmp_cmd)
-        else:
-            # Execute locally
-            try:
-                result = subprocess.run(
-                    snmp_cmd.split(),
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout + 5
-                )
-                exit_code = result.returncode
-                stdout = result.stdout
-                stderr = result.stderr
-            except subprocess.TimeoutExpired:
-                return {'success': False, 'error': 'Command timeout'}
-            except FileNotFoundError:
-                return {'success': False, 'error': f'{command} not found'}
-        
-        if exit_code == 0:
-            return {
-                'success': True,
-                'output': stdout.strip(),
-                'command': command
-            }
-        else:
-            return {
-                'success': False,
-                'error': stderr.strip() or f'Exit code: {exit_code}',
-                'output': stdout.strip()
-            }
-
-
 class TFTPExecutor:
     """Handles TFTP file transfers."""
     
@@ -427,12 +359,6 @@ class PyPNMAgent:
                 key_file=config.equalizer_key
             )
             self.logger.info(f"Equalizer configured: {config.equalizer_host}")
-        
-        # SNMP Executor - direct SNMP for CMTS queries
-        self.snmp_executor_direct = SNMPExecutor(ssh_proxy=None)
-        
-        # SNMP Executor via CM Proxy - for modem access through hop-access
-        self.snmp_executor = SNMPExecutor(ssh_proxy=self.cm_proxy)
         
         # SSH executor for TFTP server
         self.tftp_ssh: Optional[SSHProxyExecutor] = None
