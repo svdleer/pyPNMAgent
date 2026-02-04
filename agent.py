@@ -900,6 +900,43 @@ class PyPNMAgent:
         
         self.logger.info(f"Parsed {len(mac_map)} MAC addresses from docsIf3 table (pysnmp)")
         
+        # Query MD-IF-INDEX individually for each modem (bulk walk returns 0 on some CMTS)
+        # This OID often requires specific index queries instead of bulk walk
+        if len(mac_map) > 0 and len(md_if_results) == 0:
+            self.logger.info(f"MD-IF-INDEX bulk walk returned 0, trying individual gets for {len(mac_map)} modems")
+            OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.5'
+            
+            async def get_md_if_for_modem(modem_idx):
+                """Query MD-IF-INDEX for specific modem"""
+                try:
+                    errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+                        SnmpEngine(),
+                        CommunityData(community),
+                        await UdpTransportTarget.create((cmts_ip, 161), timeout=5, retries=1),
+                        ContextData(),
+                        ObjectType(ObjectIdentity(f'{OID_MD_IF_INDEX}.{modem_idx}'))
+                    )
+                    if errorIndication or errorStatus:
+                        return (modem_idx, None)
+                    for varBind in varBinds:
+                        value = varBind[1]
+                        if str(value) != 'No Such Instance currently exists at this OID':
+                            return (modem_idx, int(value))
+                except:
+                    pass
+                return (modem_idx, None)
+            
+            # Query all modems in parallel
+            md_if_tasks = [get_md_if_for_modem(idx) for idx in list(mac_map.keys())[:50]]  # Limit to 50 parallel
+            md_if_individual_results = await asyncio.gather(*md_if_tasks)
+            
+            # Add to md_if_results
+            for modem_idx, value in md_if_individual_results:
+                if value is not None:
+                    md_if_results.append((modem_idx, value))
+            
+            self.logger.info(f"Got {len([r for r in md_if_individual_results if r[1] is not None])} MD-IF-INDEX via individual gets")
+        
         # Build old table MAC lookup
         old_mac_map = {}  # old_index -> mac
         for index, value in old_mac_results:
