@@ -873,6 +873,7 @@ class PyPNMAgent:
         # OIDs for interface mapping (cable-mac, fiber-node)
         OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.5'  # docsIf3CmtsCmRegStatusMdIfIndex (US interface)
         OID_US_CH_ID = '1.3.6.1.4.1.4491.2.1.20.1.4.1.3'     # docsIf3CmtsCmUsStatusChIfIndex (US channel)
+        OID_MD_NODE_NAME = '1.3.6.1.4.1.4491.2.1.20.1.12.1.3'  # docsIf3MdNodeStatusMdNodeName (fiber node name)
         
         # Run all walks in parallel
         mac_task = asyncio.create_task(bulk_walk_oid(oid_d3_mac))
@@ -882,9 +883,10 @@ class PyPNMAgent:
         d31_freq_task = asyncio.create_task(bulk_walk_oid(oid_d31_freq))
         md_if_task = asyncio.create_task(bulk_walk_oid(OID_MD_IF_INDEX))
         us_ch_task = asyncio.create_task(bulk_walk_oid(OID_US_CH_ID))
+        md_node_task = asyncio.create_task(bulk_walk_oid(OID_MD_NODE_NAME))
         
-        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, md_if_results, us_ch_results = await asyncio.gather(
-            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, md_if_task, us_ch_task
+        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, md_if_results, us_ch_results, md_node_results = await asyncio.gather(
+            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, md_if_task, us_ch_task, md_node_task
         )
         
         # Parse MAC addresses from docsIf3 table
@@ -973,6 +975,28 @@ class PyPNMAgent:
                     if_name_map[md_if_idx] = if_name
             
             self.logger.info(f"Resolved {len(if_name_map)} interface names via IF-MIB::ifName")
+        
+        # Build fiber node map from docsIf3MdNodeStatusTable
+        # This table has 2 indexes: {md_if_index}.{node_id}
+        # We want to map md_if_index -> fiber_node_name
+        fiber_node_map = {}  # md_if_index -> node_name
+        for index, value in md_node_results:
+            try:
+                # Index format: {md_if_index}.{node_id}
+                # Extract md_if_index (first part) as the key
+                parts = index.split('.')
+                if len(parts) >= 1:
+                    md_if_idx = int(parts[0])
+                    node_name = str(value)
+                    if node_name and node_name != 'No Such Instance currently exists at this OID':
+                        # Store first node found for this interface (usually only one)
+                        if md_if_idx not in fiber_node_map:
+                            fiber_node_map[md_if_idx] = node_name
+            except:
+                pass
+        
+        if fiber_node_map:
+            self.logger.info(f"Resolved {len(fiber_node_map)} fiber nodes from docsIf3MdNodeStatusTable")
         
         # Build old table MAC lookup
         old_mac_map = {}  # old_index -> mac
@@ -1099,6 +1123,10 @@ class PyPNMAgent:
                     modem['upstream_interface'] = if_name_map[md_if_index]
                 else:
                     modem['upstream_interface'] = f"ifIndex.{md_if_index}"
+                
+                # Add fiber node name if available
+                if md_if_index in fiber_node_map:
+                    modem['fiber_node'] = fiber_node_map[md_if_index]
             else:
                 self.logger.info(f"No MD-IF-INDEX for modem index {index}")
             

@@ -69,6 +69,15 @@ us_ch_walk_results = [
     (f'{OID_US_CH_ID}.25.843071495', '843071495'),
 ]
 
+# Fiber node table (docsIf3MdNodeStatusMdNodeName)
+# Index format: {md_if_index}.{node_id}
+OID_MD_NODE_NAME = '1.3.6.1.4.1.4491.2.1.20.1.12.1.3'
+md_node_walk_results = [
+    (f'{OID_MD_NODE_NAME}.536871013.1', 'Node-A-100'),
+    (f'{OID_MD_NODE_NAME}.536871015.1', 'Node-A-102'),
+    (f'{OID_MD_NODE_NAME}.536871017.1', 'Node-B-104'),
+]
+
 print("\n1. MAC Address OID Walk Results:")
 for oid, value in mac_walk_results:
     index = extract_index_from_oid(oid, OID_D3_MAC)
@@ -100,6 +109,17 @@ for oid, value in us_ch_walk_results:
     print(f"   Value: {value}")
     print()
 
+print("\n4. Fiber Node OID Walk Results:")
+for oid, value in md_node_walk_results:
+    index = extract_index_from_oid(oid, OID_MD_NODE_NAME)
+    parts = index.split('.')
+    md_if_idx = parts[0] if parts else index
+    print(f"   OID: {oid}")
+    print(f"   Raw Index: {index}")
+    print(f"   MD-IF-Index: {md_if_idx}")
+    print(f"   Node Name: {value}")
+    print()
+
 # Build maps like the agent does
 print("="*80)
 print("BUILDING INDEX MAPS")
@@ -128,9 +148,20 @@ for oid, value in us_ch_walk_results:
     modem_idx = extract_modem_index(index)
     us_ch_map[modem_idx] = int(value)
 
+# Build fiber node map
+fiber_node_map = {}  # md_if_index -> node_name
+for oid, value in md_node_walk_results:
+    index = extract_index_from_oid(oid, OID_MD_NODE_NAME)
+    parts = index.split('.')
+    if parts:
+        md_if_idx = int(parts[0])
+        if md_if_idx not in fiber_node_map:
+            fiber_node_map[md_if_idx] = value
+
 print(f"\nMAC map keys:        {list(mac_map.keys())}")
 print(f"MD-IF-INDEX map keys: {list(md_if_map.keys())}")
 print(f"US Channel map keys:  {list(us_ch_map.keys())}")
+print(f"Fiber Node map keys:  {list(fiber_node_map.keys())}")
 
 # Test matching
 print("\n" + "="*80)
@@ -153,7 +184,13 @@ for index, mac in mac_map.items():
             modem['upstream_interface'] = if_name_map[md_if_index]
         else:
             modem['upstream_interface'] = f"ifIndex.{md_if_index}"
-        print(f"\n✓ Modem {index}: MD-IF-INDEX matched! Value: {md_if_index} -> {modem['upstream_interface']}")
+        
+        # Get fiber node if available
+        if md_if_index in fiber_node_map:
+            modem['fiber_node'] = fiber_node_map[md_if_index]
+            print(f"\n✓ Modem {index}: MD-IF-INDEX matched! Value: {md_if_index} -> {modem['upstream_interface']} (Node: {modem['fiber_node']})")
+        else:
+            print(f"\n✓ Modem {index}: MD-IF-INDEX matched! Value: {md_if_index} -> {modem['upstream_interface']}")
     else:
         print(f"\n✗ Modem {index}: No MD-IF-INDEX match")
     
@@ -183,6 +220,7 @@ print("="*80)
 print(f"Total modems: {len(modems)}")
 print(f"Modems with MD-IF-INDEX: {sum(1 for m in modems if 'md_if_index' in m)}")
 print(f"Modems with US Channel: {sum(1 for m in modems if 'upstream_channel_id' in m)}")
+print(f"Modems with Fiber Node: {sum(1 for m in modems if 'fiber_node' in m)}")
 
 if all('upstream_channel_id' in m for m in modems):
     print("\n✓✓✓ SUCCESS! All modems have upstream_channel_id field!")
