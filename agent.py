@@ -409,42 +409,6 @@ class PyPNMAgent:
             'pnm_us_get_interfaces': self._handle_pnm_us_get_interfaces,
         }
     
-    def _snmp_via_ssh(self, ssh_host: str, ssh_user: str, target_ip: str, oid: str, 
-                       community: str, command: str = 'snmpbulkwalk') -> dict:
-        """Execute SNMP command via SSH to remote server (e.g., modemserver)."""
-        if not paramiko:
-            return {'success': False, 'error': 'paramiko not installed'}
-        
-        try:
-            # Build SNMP command
-            snmp_cmd = f"{command} -v2c -c {community} {target_ip} {oid}"
-            
-            # Connect via SSH
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(ssh_host, username=ssh_user, timeout=30)
-            
-            self.logger.info(f"Executing via SSH to {ssh_host}: {command} {target_ip} {oid}")
-            
-            # Execute command
-            stdin, stdout, stderr = ssh.exec_command(snmp_cmd, timeout=120)
-            output = stdout.read().decode('utf-8', errors='replace')
-            error = stderr.read().decode('utf-8', errors='replace')
-            
-            ssh.close()
-            
-            if error and 'Timeout' in error:
-                return {'success': False, 'error': f'SNMP timeout: {error}'}
-            
-            return {
-                'success': True,
-                'output': output,
-                'error': error if error else None
-            }
-        except Exception as e:
-            self.logger.error(f"SSH SNMP failed: {e}")
-            return {'success': False, 'error': str(e)}
-    
     def _setup_pypnm_tunnel(self) -> bool:
         """Set up SSH tunnel to PyPNM Server if configured."""
         if not self.config.pypnm_ssh_tunnel_enabled:
@@ -651,50 +615,35 @@ class PyPNMAgent:
         }
     
     def _handle_snmp_get(self, params: dict) -> dict:
-        """Handle SNMP GET request via pysnmp or cm_proxy."""
+        """Handle SNMP GET request via pysnmp."""
         target_ip = params['target_ip']
         oid = params['oid']
         community = params.get('community', 'private')
         
-        # Use cm_proxy if configured (for modems behind NAT)
-        if self.config.cm_proxy_host:
-            return self._query_modem(target_ip, oid, community, walk=False)
-        
-        # Use pysnmp
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
         
         return asyncio.run(self._async_snmp_get(target_ip, oid, community, params.get('timeout', 5)))
     
     def _handle_snmp_walk(self, params: dict) -> dict:
-        """Handle SNMP WALK request via pysnmp or cm_proxy."""
+        """Handle SNMP WALK request via pysnmp."""
         target_ip = params['target_ip']
         oid = params['oid']
         community = params.get('community', 'private')
         
-        # Use cm_proxy if configured (for modems behind NAT)
-        if self.config.cm_proxy_host:
-            return self._query_modem(target_ip, oid, community, walk=True)
-        
-        # Use pysnmp
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
         
         return asyncio.run(self._async_snmp_walk(target_ip, oid, community, params.get('timeout', 10)))
     
     def _handle_snmp_set(self, params: dict) -> dict:
-        """Handle SNMP SET request via pysnmp or cm_proxy."""
+        """Handle SNMP SET request via pysnmp."""
         target_ip = params['target_ip']
         oid = params['oid']
         value = params['value']
         value_type = params.get('type', 'i')
         community = params.get('community', 'private')
         
-        # Use cm_proxy if configured (for modems behind NAT)
-        if self.config.cm_proxy_host:
-            return self._set_modem_via_cm_proxy(target_ip, oid, value, value_type, community)
-        
-        # Use pysnmp
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
         
@@ -1153,47 +1102,6 @@ class PyPNMAgent:
             'message': f'PNM {pnm_type} triggered for {target_ip}'
         }
     
-    def _get_cm_proxy_ssh(self):
-        """Get or create a persistent SSH connection to cm_proxy."""
-        if not hasattr(self, '_cm_proxy_ssh') or self._cm_proxy_ssh is None:
-            if not self.config.cm_proxy_host and not self.config.cm_enabled:
-                return None
-            try:
-                ssh = paramiko.SSHClient()
-                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                
-                # Get key file path, expanding ~ to home directory
-                key_file = None
-                if self.config.cm_proxy_key:
-                    key_file = os.path.expanduser(self.config.cm_proxy_key)
-                    self.logger.debug(f"Using SSH key: {key_file}")
-                
-                ssh.connect(
-                    self.config.cm_proxy_host,
-                    username=self.config.cm_proxy_user or 'svdleer',
-                    key_filename=key_file,
-                    timeout=30
-                )
-                self._cm_proxy_ssh = ssh
-                self.logger.info(f"Persistent SSH connection to {self.config.cm_proxy_host} established")
-            except Exception as e:
-                self.logger.error(f"Failed to connect to cm_proxy: {e}")
-                self._cm_proxy_ssh = None
-        
-        # Check if connection is still alive
-        if self._cm_proxy_ssh:
-            try:
-                transport = self._cm_proxy_ssh.get_transport()
-                if transport is None or not transport.is_active():
-                    self.logger.warning("SSH connection lost, reconnecting...")
-                    self._cm_proxy_ssh = None
-                    return self._get_cm_proxy_ssh()  # Reconnect
-            except:
-                self._cm_proxy_ssh = None
-                return self._get_cm_proxy_ssh()  # Reconnect
-        
-        return self._cm_proxy_ssh
-    
     # ========== PYSNMP-BASED SNMP METHODS (pysnmp v7) ==========
     
     def _snmp_get(self, host: str, oid: str, community: str, timeout: int = 10) -> dict:
@@ -1470,180 +1378,17 @@ class PyPNMAgent:
         snmp_type = type_map.get(value_type, OctetString)
         return snmp_type(value)
     
-    # Fallback methods using subprocess (for systems without pysnmp)
-    def _snmp_get_fallback(self, host: str, oid: str, community: str) -> dict:
-        """Fallback SNMP GET using net-snmp."""
-        try:
-            result = subprocess.run(
-                ['snmpget', '-v2c', '-c', community, '-t', '10', '-r', '1', host, oid],
-                capture_output=True, text=True, timeout=30
-            )
-            if result.returncode == 0:
-                return {'success': True, 'output': result.stdout}
-            return {'success': False, 'error': result.stderr}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
-    
-    def _snmp_walk_fallback(self, host: str, oid: str, community: str) -> dict:
-        """Fallback SNMP WALK using net-snmp."""
-        try:
-            result = subprocess.run(
-                ['snmpwalk', '-v2c', '-c', community, '-t', '10', '-r', '1', host, oid],
-                capture_output=True, text=True, timeout=60
-            )
-            return {'success': result.returncode == 0, 'output': result.stdout, 'error': result.stderr}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
-    
-    def _snmp_set_fallback(self, host: str, oid: str, value: Any, value_type: str, community: str) -> dict:
-        """Fallback SNMP SET using net-snmp."""
-        try:
-            result = subprocess.run(
-                ['snmpset', '-v2c', '-c', community, '-t', '10', '-r', '1', host, oid, value_type, str(value)],
-                capture_output=True, text=True, timeout=30
-            )
-            return {'success': result.returncode == 0, 'error': result.stderr if result.returncode != 0 else None}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
-    
     # ========== CONVENIENCE METHODS ==========
     
-    def _query_modem_direct(self, modem_ip: str, oid: str, community: str, walk: bool = False) -> dict:
-        """Query a modem directly via pysnmp (when cm_direct is enabled)."""
-        if walk:
-            result = self._snmp_walk(modem_ip, oid, community)
-        else:
-            result = self._snmp_get(modem_ip, oid, community)
-        
-        # Convert to old format for backward compatibility
-        if result.get('success') and 'results' in result:
-            # Build output string like old snmpwalk format
-            lines = []
-            for r in result['results']:
-                lines.append(f"{r['oid']} = {r['type']}: {r['value']}")
-            result['output'] = '\n'.join(lines)
-        return result
-    
     def _query_modem(self, modem_ip: str, oid: str, community: str, walk: bool = False) -> dict:
-        """Query a modem via cm_proxy or cm_direct depending on config."""
-        if self.config.cm_enabled:
-            return self._query_modem_direct(modem_ip, oid, community, walk)
-        elif self.config.cm_proxy_host:
-            return self._query_modem_via_cm_proxy(modem_ip, oid, community, walk)
+        """Query a modem via pysnmp."""
+        if not PYSNMP_AVAILABLE:
+            return {'success': False, 'error': 'pysnmp not available'}
+        
+        if walk:
+            return asyncio.run(self._async_snmp_walk(modem_ip, oid, community, timeout=10))
         else:
-            return {'success': False, 'error': 'Neither cm_proxy nor cm_direct configured'}
-    
-    def _query_modem_via_cm_proxy(self, modem_ip: str, oid: str, community: str, walk: bool = False) -> dict:
-        """Query a modem via cm_proxy using persistent SSH connection."""
-        ssh = self._get_cm_proxy_ssh()
-        if not ssh:
-            return {'success': False, 'error': 'cm_proxy not configured or connection failed'}
-        
-        try:
-            cmd = 'snmpwalk' if walk else 'snmpget'
-            snmp_cmd = f"{cmd} -v2c -c {community} -t 5 -r 1 {modem_ip} {oid}"
-            
-            stdin, stdout, stderr = ssh.exec_command(snmp_cmd, timeout=30)
-            output = stdout.read().decode('utf-8', errors='replace')
-            error = stderr.read().decode('utf-8', errors='replace')
-            
-            return {
-                'success': 'Timeout' not in error and 'No Response' not in error,
-                'output': output,
-                'error': error if error else None
-            }
-        except Exception as e:
-            # Connection might have died, clear it so next call reconnects
-            self._cm_proxy_ssh = None
-            return {'success': False, 'error': str(e)}
-    
-    def _set_modem_via_cm_proxy(self, modem_ip: str, oid: str, value: str, value_type: str, community: str) -> dict:
-        """Set an SNMP value on a modem via cm_proxy using persistent SSH connection."""
-        ssh = self._get_cm_proxy_ssh()
-        if not ssh:
-            return {'success': False, 'error': 'cm_proxy not configured or connection failed'}
-        
-        try:
-            snmp_cmd = f"snmpset -v2c -c {community} -t 5 -r 1 {modem_ip} {oid} {value_type} {value}"
-            
-            stdin, stdout, stderr = ssh.exec_command(snmp_cmd, timeout=30)
-            output = stdout.read().decode('utf-8', errors='replace')
-            error = stderr.read().decode('utf-8', errors='replace')
-            
-            return {
-                'success': 'Timeout' not in error and 'No Response' not in error and error == '',
-                'output': output,
-                'error': error if error else None
-            }
-        except Exception as e:
-            # Connection might have died, clear it so next call reconnects
-            self._cm_proxy_ssh = None
-            return {'success': False, 'error': str(e)}
-    
-    def _batch_query_modem(self, modem_ip: str, oids: dict, community: str) -> dict:
-        """Query multiple OIDs using EXACT same paramiko method as _enrich_modems_parallel."""
-        if not self.config.cm_proxy_host and not self.config.cm_enabled:
-            return {'success': False, 'error': 'cm_proxy not configured'}
-        
-        try:
-            # Use EXACT same SSH connection as enrichment
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(
-                self.config.cm_proxy_host, 
-                username=self.config.cm_proxy_user or 'svdleer',
-                timeout=30
-            )
-            
-            self.logger.info(f"SSH connected to {self.config.cm_proxy_host} for modem query")
-            
-            # Build batch command with section markers
-            cmds = []
-            for name, oid in oids.items():
-                cmds.append(f"echo '=={name}==' ; snmpwalk -v2c -c {community} -t 10 -r 0 {modem_ip} {oid} 2>&1")
-            
-            batch_cmd = ' ; '.join(cmds)
-            
-            self.logger.info(f"Executing batch SNMP query with community={community}")
-            
-            # Execute command - EXACT same as enrichment
-            stdin, stdout, stderr = ssh.exec_command(batch_cmd, timeout=120)
-            output = stdout.read().decode('utf-8', errors='replace')
-            error = stderr.read().decode('utf-8', errors='replace')
-            
-            ssh.close()
-            
-            self.logger.info(f"SSH command completed, got {len(output)} bytes stdout")
-            
-            # Parse results by section markers
-            results = {}
-            current_section = None
-            current_lines = []
-            
-            for line in output.split('\n'):
-                if line.startswith('==') and line.endswith('=='):
-                    if current_section:
-                        results[current_section] = '\n'.join(current_lines)
-                    current_section = line.strip('=')
-                    current_lines = []
-                elif current_section:
-                    current_lines.append(line)
-            
-            if current_section:
-                results[current_section] = '\n'.join(current_lines)
-            
-            return {
-                'success': True,
-                'results': results,
-                'raw_output': output
-            }
-            
-        except Exception as e:
-            self.logger.exception(f"Batch query failed: {e}")
-            return {
-                'success': False,
-                'error': f'SNMP query failed: {str(e)}'
-            }
+            return asyncio.run(self._async_snmp_get(modem_ip, oid, community, timeout=5))
     
     def _handle_pnm_rxmer(self, params: dict) -> dict:
         """Get RxMER (Receive Modulation Error Ratio) data from modem."""
@@ -3274,10 +3019,9 @@ class PyPNMAgent:
     
     def _enrich_modems_direct(self, modems: list, modem_community: str = 'm0d3m1nf0', max_workers: int = 20) -> list:
         """
-        Query each modem directly via SNMP to get sysDescr for model info.
-        Uses subprocess with parallel execution.
+        Query each modem directly via pysnmp to get sysDescr for model info.
+        Uses asyncio with concurrent execution.
         """
-        import subprocess
         from concurrent.futures import ThreadPoolExecutor, as_completed
         
         OID_SYS_DESCR = '1.3.6.1.2.1.1.1.0'  # sysDescr
@@ -3294,16 +3038,21 @@ class PyPNMAgent:
             self.logger.warning("No online modems to enrich")
             return modems
         
+        if not PYSNMP_AVAILABLE:
+            self.logger.error("pysnmp not available for enrichment")
+            return modems
+        
         results = {}
         
         def query_modem(modem):
             ip = modem.get('ip_address')
             try:
-                cmd = ['snmpget', '-v2c', '-c', modem_community, '-t', '2', '-r', '0', ip, OID_SYS_DESCR]
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
-                if result.returncode == 0 and 'STRING:' in result.stdout:
-                    sys_descr = result.stdout.split('STRING:')[-1].strip().strip('"')
-                    return ip, sys_descr
+                result = asyncio.run(self._async_snmp_get(ip, OID_SYS_DESCR, modem_community, timeout=2))
+                if result.get('success') and result.get('output'):
+                    output = result.get('output', '')
+                    if '=' in output:
+                        sys_descr = output.split('=', 1)[-1].strip()
+                        return ip, sys_descr
             except Exception as e:
                 pass
             return ip, None
@@ -3343,89 +3092,10 @@ class PyPNMAgent:
     
     def _enrich_modems_parallel(self, modems: list, modem_community: str = 'm0d3m1nf0', max_workers: int = 20) -> list:
         """
-        Query each modem via cm_proxy (hop-access) to get sysDescr for model info.
-        Uses batch SSH with parallel xargs for efficiency.
+        Query each modem via pysnmp to get sysDescr for model info.
+        This is an alias for _enrich_modems_direct (cm_proxy SSH no longer used).
         """
-        OID_SYS_DESCR = '1.3.6.1.2.1.1.1.0'  # sysDescr
-        
-        # Query modems with valid IPs (any status that indicates online)
-        online_statuses = {'operational', 'registrationComplete', 'ipComplete', 'online'}
-        online_modems = [m for m in modems 
-                         if m.get('ip_address') and m.get('ip_address') != 'N/A' 
-                         and m.get('status') in online_statuses][:200]
-        
-        self.logger.info(f"Enrichment: {len(online_modems)} modems with valid IP (from {len(modems)} total)")
-        
-        if not online_modems:
-            self.logger.warning("No online modems to enrich")
-            return modems
-        
-        if not paramiko:
-            self.logger.error("paramiko not installed")
-            return modems
-        
-        try:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(
-                self.config.cm_proxy_host, 
-                username=self.config.cm_proxy_user or 'svdleer',
-                timeout=30
-            )
-            self.logger.info(f"SSH connected to {self.config.cm_proxy_host} for batch modem enrichment")
-            
-            # Build list of IPs
-            ip_list = [m.get('ip_address') for m in online_modems]
-            ip_string = '\\n'.join(ip_list)
-            
-            # Batch query using xargs with parallel execution
-            # Output format: IP|sysDescr
-            batch_cmd = f'''echo -e "{ip_string}" | xargs -I{{}} -P{max_workers} sh -c 'result=$(snmpget -v2c -c {modem_community} -t 2 -r 0 {{}} {OID_SYS_DESCR} 2>/dev/null | grep STRING); [ -n "$result" ] && echo "{{}}|$result"' '''
-            
-            self.logger.info(f"Running batch SNMP query for {len(ip_list)} modems with {max_workers} parallel workers")
-            
-            stdin, stdout, stderr = ssh.exec_command(batch_cmd, timeout=120)
-            output = stdout.read().decode('utf-8', errors='replace')
-            error = stderr.read().decode('utf-8', errors='replace')
-            
-            ssh.close()
-            
-            # Parse results
-            results = {}
-            for line in output.strip().split('\n'):
-                if '|' in line and 'STRING:' in line:
-                    parts = line.split('|', 1)
-                    if len(parts) == 2:
-                        ip = parts[0].strip()
-                        sys_descr = parts[1].split('STRING:')[-1].strip().strip('"')
-                        results[ip] = sys_descr
-            
-            self.logger.info(f"Batch query returned {len(results)} results")
-            
-            # Apply results to modems
-            enriched_count = 0
-            for modem in online_modems:
-                ip = modem.get('ip_address')
-                if ip in results:
-                    model_info = self._parse_sys_descr(results[ip])
-                    modem['model'] = model_info.get('model', 'Unknown')
-                    modem['software_version'] = model_info.get('software', '')
-                    if model_info.get('vendor'):
-                        modem['vendor'] = model_info.get('vendor')
-                    enriched_count += 1
-            
-            self.logger.info(f"Enrichment done: {enriched_count}/{len(online_modems)} modems enriched")
-            
-        except Exception as e:
-            self.logger.exception(f"Batch enrichment failed: {e}")
-        
-        # Merge enriched modems back
-        enriched_map = {m['mac_address']: m for m in online_modems}
-        for modem in modems:
-            if modem['mac_address'] in enriched_map:
-                modem.update(enriched_map[modem['mac_address']])
-        
-        return modems
+        return self._enrich_modems_direct(modems, modem_community, max_workers)
     
     def _parse_sys_descr(self, sys_descr: str) -> dict:
         """Parse sysDescr to extract vendor, model, and software version."""
