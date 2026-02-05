@@ -979,6 +979,10 @@ class PyPNMAgent:
                         if_name_map[md_if_idx] = if_name
         
         self.logger.info(f"Resolved {len(md_if_map)} MD-IF-INDEX values and {len(if_name_map)} interface names")
+        if md_if_map:
+            self.logger.info(f"Sample MD-IF-INDEX: {list(md_if_map.items())[:3]}")
+        if if_name_map:
+            self.logger.info(f"Sample interface names: {list(if_name_map.items())[:3]}")
         
         # Discover OFDMA upstream interfaces using PyPNM method
         # Query docsIf31CmtsCmUsOfdmaChannelTimingOffset which has index: {cm_index}.{ofdma_ifindex}
