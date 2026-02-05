@@ -922,24 +922,26 @@ class PyPNMAgent:
                 md_if_index = None
                 for varBind in varBinds:
                     value = varBind[1]
-                    # E6000 returns Integer32 as OctetString
+                    # E6000 returns Integer32 as OctetString - need raw bytes
                     if isinstance(value, int):
                         md_if_index = value
-                    elif hasattr(value, 'prettyPrint'):
-                        pp = value.prettyPrint()
-                        if pp and 'No Such' not in pp:
-                            try:
-                                # Handle hex format (0x...) and decimal
-                                if pp.startswith('0x'):
-                                    md_if_index = int(pp, 16)
-                                else:
-                                    md_if_index = int(pp)
-                            except:
-                                # Try bytes conversion for OctetString
-                                try:
-                                    md_if_index = int.from_bytes(bytes(value), byteorder='big')
-                                except:
-                                    pass
+                    else:
+                        # Try to get raw bytes and convert as big-endian integer
+                        try:
+                            # pysnmp OctetString - get underlying bytes
+                            if hasattr(value, '_value'):
+                                raw_bytes = bytes(value._value)
+                            elif hasattr(value, 'asNumbers'):
+                                raw_bytes = bytes(value.asNumbers())
+                            else:
+                                raw_bytes = bytes(value)
+                            
+                            if len(raw_bytes) == 4:
+                                # 4-byte integer
+                                md_if_index = int.from_bytes(raw_bytes, byteorder='big')
+                                self.logger.debug(f"Modem {modem_idx}: MD-IF-INDEX bytes {raw_bytes.hex()} -> {md_if_index}")
+                        except Exception as e:
+                            self.logger.debug(f"Modem {modem_idx}: Failed bytes conversion: {e}")
                 
                 if not md_if_index:
                     return (modem_idx, None, None)
