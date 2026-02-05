@@ -983,8 +983,24 @@ class PyPNMAgent:
         
         # Query IF-MIB::ifName for each md_if_index to get vendor-specific interface names
         # E6000: "cable-mac 100", Casa/vCCAP: "docsis-mac X", cBR8: "CableX/Y/Z"
+        # Also query fiber node table's MD-IF-INDEX values since E6000 uses different index spaces
         if_name_map = {}  # md_if_index -> interface_name
+        md_if_indexes_to_query = set()
+        
+        # Add modem table MD-IF-INDEX values
         if md_if_results:
+            md_if_indexes_to_query.update(v for idx, v in md_if_results)
+        
+        # Add fiber node table MD-IF-INDEX values (from OID indexes)
+        for index, value in md_node_results:
+            try:
+                parts = index.split('.')
+                if parts:
+                    md_if_indexes_to_query.add(int(parts[0]))
+            except:
+                pass
+        
+        if md_if_indexes_to_query:
             OID_IF_NAME = '1.3.6.1.2.1.31.1.1.1.1'  # IF-MIB::ifName
             
             async def get_if_name(md_if_idx):
@@ -1008,8 +1024,9 @@ class PyPNMAgent:
                 return (md_if_idx, None)
             
             # Get unique md_if_index values to query
-            unique_md_if_indexes = set(v for idx, v in md_if_results)
-            self.logger.info(f"Querying IF-MIB::ifName for {len(unique_md_if_indexes)} unique MD-IF-INDEX values: {list(unique_md_if_indexes)[:5]}")
+            unique_md_if_indexes = list(md_if_indexes_to_query)
+            self.logger.info(f"Querying IF-MIB::ifName for {len(unique_md_if_indexes)} MD-IF-INDEX values (modem + fiber node tables)")
+            self.logger.info(f"  MD-IF-INDEX sample: {sorted(unique_md_if_indexes)[:5]}")
             if_name_tasks = [get_if_name(md_if_idx) for md_if_idx in unique_md_if_indexes]
             if_name_results = await asyncio.gather(*if_name_tasks)
             
