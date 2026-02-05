@@ -1074,8 +1074,15 @@ class PyPNMAgent:
         # Build interface mapping (MD-IF-INDEX -> US interface)
         # E6000 bulk walk returns wrong OctetString data - skip and use individual gets
         md_if_map = {}  # index -> md_if_index
+        for index, value in md_if_results:
+            try:
+                # Index should be modem index
+                modem_index = index.split('.')[0] if '.' in index else index
+                md_if_map[modem_index] = int(value)
+            except Exception as e:
+                self.logger.debug(f"Failed to add MD-IF-INDEX {index}={value}: {e}")
         
-        self.logger.info(f"MD-IF-INDEX bulk walk returned {len(md_if_results)} results - ignoring (E6000 bug), using individual gets")
+        self.logger.info(f"Built MD-IF-INDEX map with {len(md_if_map)} entries from {len(md_if_results)} results")
         
         # Build US channel mapping
         us_ch_map = {}  # index -> us_channel_id
