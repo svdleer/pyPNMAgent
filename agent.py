@@ -925,18 +925,19 @@ class PyPNMAgent:
                         ObjectType(ObjectIdentity(f'{OID_MD_IF_INDEX}.{modem_idx}'))
                     )
                     if errorIndication:
-                        self.logger.debug(f"MD-IF get error for {modem_idx}: {errorIndication}")
+                        self.logger.info(f"MD-IF get error for {modem_idx}: {errorIndication}")
                         return (modem_idx, None)
                     if errorStatus:
-                        self.logger.debug(f"MD-IF get failed for {modem_idx}: {errorStatus.prettyPrint()}")
+                        self.logger.info(f"MD-IF get failed for {modem_idx}: {errorStatus.prettyPrint()}")
                         return (modem_idx, None)
                     for varBind in varBinds:
                         value = varBind[1]
                         value_str = str(value)
+                        self.logger.info(f"MD-IF get for {modem_idx}: {value_str} (type: {type(value).__name__})")
                         if 'No Such' not in value_str and value_str != '0':
                             return (modem_idx, int(value))
                 except Exception as e:
-                    self.logger.debug(f"MD-IF get exception for {modem_idx}: {e}")
+                    self.logger.info(f"MD-IF get exception for {modem_idx}: {e}")
                 return (modem_idx, None)
             
             # Query all modems in parallel (limit batch size)
