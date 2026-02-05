@@ -901,7 +901,7 @@ class PyPNMAgent:
         self.logger.info(f"Parsed {len(mac_map)} MAC addresses from docsIf3 table (pysnmp)")
         
         # Query MD-IF-INDEX individually for each modem (bulk walk unreliable on E6000)
-        OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.5'  # docsIf3CmtsCmRegStatusMdIfIndex
+        OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.7'  # docsIf3CmtsCmRegStatusMdIfIndex (column 7, NOT 5!)
         md_if_map = {}  # modem_index -> md_if_index
         if_name_map = {}  # md_if_index -> interface_name (cable-mac 108, etc)
         
