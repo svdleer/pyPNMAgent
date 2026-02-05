@@ -1063,6 +1063,65 @@ class PyPNMAgent:
             self.logger.info(f"Fiber node map keys: {list(fiber_node_map.keys())}")
             self.logger.info(f"Fiber node raw indexes: {raw_node_indexes[:3]}")
         
+        # Discover OFDMA upstream interfaces using PyPNM method
+        # Query docsIf31CmtsCmUsOfdmaChannelTimingOffset which has index: {cm_index}.{ofdma_ifindex}
+        OID_CM_OFDMA_TIMING = '1.3.6.1.4.1.4491.2.1.28.1.4.1.2'  # docsIf31CmtsCmUsOfdmaChannelTimingOffset
+        ofdma_if_results = await bulk_walk_oid(OID_CM_OFDMA_TIMING)
+        
+        # Build map of cm_index -> ofdma_ifindex
+        ofdma_if_map = {}  # cm_index -> ofdma_ifindex
+        ofdma_ifindexes = set()
+        for index, value in ofdma_if_results:
+            try:
+                # Index format: {cm_index}.{ofdma_ifindex}
+                parts = index.split('.')
+                if len(parts) >= 2:
+                    cm_idx = parts[0]
+                    ofdma_ifidx = int(parts[1])
+                    # OFDMA ifindexes are typically in the 843087xxx range (large numbers)
+                    if ofdma_ifidx >= 840000000:
+                        ofdma_if_map[cm_idx] = ofdma_ifidx
+                        ofdma_ifindexes.add(ofdma_ifidx)
+            except:
+                pass
+        
+        self.logger.info(f"Discovered {len(ofdma_if_map)} OFDMA upstream interfaces")
+        
+        # Query IF-MIB::ifDescr for OFDMA interfaces to get upstream interface names
+        # This gives us the actual upstream port like "Cable8/0/1 upstream 0"
+        ofdma_descr_map = {}  # ofdma_ifindex -> description
+        if ofdma_ifindexes:
+            OID_IF_DESCR = '1.3.6.1.2.1.2.2.1.2'  # IF-MIB::ifDescr
+            
+            async def get_if_descr(ofdma_ifidx):
+                """Query ifDescr for OFDMA ifIndex"""
+                try:
+                    errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+                        SnmpEngine(),
+                        CommunityData(community),
+                        await UdpTransportTarget.create((cmts_ip, 161), timeout=5, retries=1),
+                        ContextData(),
+                        ObjectType(ObjectIdentity(f'{OID_IF_DESCR}.{ofdma_ifidx}'))
+                    )
+                    if not errorIndication and not errorStatus:
+                        for varBind in varBinds:
+                            value = str(varBind[1])
+                            if value and 'No Such' not in value:
+                                return (ofdma_ifidx, value)
+                except:
+                    pass
+                return (ofdma_ifidx, None)
+            
+            ofdma_descr_tasks = [get_if_descr(idx) for idx in ofdma_ifindexes]
+            ofdma_descr_results = await asyncio.gather(*ofdma_descr_tasks)
+            
+            for ofdma_ifidx, descr in ofdma_descr_results:
+                if descr:
+                    ofdma_descr_map[ofdma_ifidx] = descr
+                    self.logger.info(f"OFDMA IF-MIB: {ofdma_ifidx} -> {descr}")
+            
+            self.logger.info(f"Resolved {len(ofdma_descr_map)} OFDMA interface descriptions")
+        
         # Build old table MAC lookup
         old_mac_map = {}  # old_index -> mac
         for index, value in old_mac_results:
@@ -1216,9 +1275,6 @@ class PyPNMAgent:
                 
                 if interface_name:
                     modem['cable_mac'] = interface_name
-                    modem['upstream_interface'] = interface_name
-                else:
-                    modem['cable_mac'] = f"ifIndex.{md_if_index}"
                 
                 # Add fiber node name if available
                 # E6000 uses different MD-IF-INDEX values in modem table vs fiber node table,
@@ -1233,6 +1289,18 @@ class PyPNMAgent:
                     self.logger.debug(f"Modem {index}: Using fallback fiber node {first_node} (MD-IF-INDEX mismatch)")
             else:
                 self.logger.info(f"No MD-IF-INDEX for modem index {index}")
+            
+            # Add OFDMA upstream interface if available (DOCSIS 3.1)
+            if index in ofdma_if_map:
+                ofdma_ifindex = ofdma_if_map[index]
+                modem['ofdma_ifindex'] = ofdma_ifindex
+                if ofdma_ifindex in ofdma_descr_map:
+                    modem['upstream_interface'] = ofdma_descr_map[ofdma_ifindex]
+                else:
+                    modem['upstream_interface'] = f"ofdmaIfIndex.{ofdma_ifindex}"
+            elif 'cable_mac' in modem:
+                # Fallback: use cable_mac as upstream_interface for non-OFDMA modems
+                modem['upstream_interface'] = modem['cable_mac']
             
             if index in us_ch_map:
                 modem['upstream_channel_id'] = us_ch_map[index]
