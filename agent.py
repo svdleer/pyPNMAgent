@@ -920,26 +920,36 @@ class PyPNMAgent:
                         ContextData(),
                         ObjectType(ObjectIdentity(f'{OID_MD_IF_INDEX}.{modem_idx}'))
                     )
-                    if errorIndication or errorStatus:
+                    if errorIndication:
+                        self.logger.debug(f"MD-IF get error for {modem_idx}: {errorIndication}")
+                        return (modem_idx, None)
+                    if errorStatus:
+                        self.logger.debug(f"MD-IF get failed for {modem_idx}: {errorStatus.prettyPrint()}")
                         return (modem_idx, None)
                     for varBind in varBinds:
                         value = varBind[1]
-                        if str(value) != 'No Such Instance currently exists at this OID':
+                        value_str = str(value)
+                        if 'No Such' not in value_str and value_str != '0':
                             return (modem_idx, int(value))
-                except:
-                    pass
+                except Exception as e:
+                    self.logger.debug(f"MD-IF get exception for {modem_idx}: {e}")
                 return (modem_idx, None)
             
-            # Query all modems in parallel
-            md_if_tasks = [get_md_if_for_modem(idx) for idx in list(mac_map.keys())[:50]]  # Limit to 50 parallel
-            md_if_individual_results = await asyncio.gather(*md_if_tasks)
+            # Query all modems in parallel (limit batch size)
+            modem_indexes = list(mac_map.keys())
+            batch_size = 50
+            for i in range(0, len(modem_indexes), batch_size):
+                batch = modem_indexes[i:i+batch_size]
+                self.logger.info(f"Querying MD-IF-INDEX for batch {i//batch_size + 1}/{(len(modem_indexes)+batch_size-1)//batch_size} ({len(batch)} modems)")
+                md_if_tasks = [get_md_if_for_modem(idx) for idx in batch]
+                batch_results = await asyncio.gather(*md_if_tasks)
+                
+                # Add successful results
+                for modem_idx, value in batch_results:
+                    if value is not None:
+                        md_if_results.append((modem_idx, value))
             
-            # Add to md_if_results
-            for modem_idx, value in md_if_individual_results:
-                if value is not None:
-                    md_if_results.append((modem_idx, value))
-            
-            self.logger.info(f"Got {len([r for r in md_if_individual_results if r[1] is not None])} MD-IF-INDEX via individual gets")
+            self.logger.info(f"Got {len(md_if_results)} MD-IF-INDEX values via individual gets")
         
         # Query IF-MIB::ifName for each md_if_index to get vendor-specific interface names
         # E6000: "cable-mac 100", Casa/vCCAP: "docsis-mac X", cBR8: "CableX/Y/Z"
@@ -1025,12 +1035,12 @@ class PyPNMAgent:
             except:
                 pass
         
-        # Build firmware/software revision map
-        sw_rev_map = {}  # index -> firmware_version
+        # Build firmware/software revision map (old table index)
+        sw_rev_map = {}  # old_index -> firmware_version
         for index, value in sw_rev_results:
             try:
                 firmware = str(value)
-                if firmware and firmware != 'No Such Instance currently exists at this OID':
+                if firmware and firmware != 'No Such Instance currently exists at this OID' and firmware != '0':
                     sw_rev_map[index] = firmware
             except:
                 pass
