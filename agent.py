@@ -870,25 +870,21 @@ class PyPNMAgent:
                 self.logger.debug(f"Bulk walk {oid} failed: {e}")
             return results
         
-        # OIDs for interface mapping (cable-mac, fiber-node)
-        OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.5'  # docsIf3CmtsCmRegStatusMdIfIndex (US interface)
+        # OIDs for upstream channel mapping
         OID_US_CH_ID = '1.3.6.1.4.1.4491.2.1.20.1.4.1.3'     # docsIf3CmtsCmUsStatusChIfIndex (US channel)
-        OID_MD_NODE_NAME = '1.3.6.1.4.1.4491.2.1.20.1.12.1.3'  # docsIf3MdNodeStatusMdNodeName (fiber node name)
         OID_SW_REV = '1.3.6.1.2.1.10.127.1.2.2.1.3'  # docsIfCmtsCmStatusValue (firmware/software revision)
         
-        # Run all walks in parallel
+        # Run essential walks in parallel (skip slow MD-IF-INDEX and fiber node queries)
         mac_task = asyncio.create_task(bulk_walk_oid(oid_d3_mac))
         old_mac_task = asyncio.create_task(bulk_walk_oid(oid_old_mac))
         old_ip_task = asyncio.create_task(bulk_walk_oid(oid_old_ip))
         old_status_task = asyncio.create_task(bulk_walk_oid(oid_old_status))
         d31_freq_task = asyncio.create_task(bulk_walk_oid(oid_d31_freq))
-        md_if_task = asyncio.create_task(bulk_walk_oid(OID_MD_IF_INDEX))
         us_ch_task = asyncio.create_task(bulk_walk_oid(OID_US_CH_ID))
-        md_node_task = asyncio.create_task(bulk_walk_oid(OID_MD_NODE_NAME))
         sw_rev_task = asyncio.create_task(bulk_walk_oid(OID_SW_REV))
         
-        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, md_if_results, us_ch_results, md_node_results, sw_rev_results = await asyncio.gather(
-            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, md_if_task, us_ch_task, md_node_task, sw_rev_task
+        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, us_ch_results, sw_rev_results = await asyncio.gather(
+            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, us_ch_task, sw_rev_task
         )
         
         # Parse MAC addresses from docsIf3 table
@@ -903,180 +899,6 @@ class PyPNMAgent:
                 mac_map[index] = mac
         
         self.logger.info(f"Parsed {len(mac_map)} MAC addresses from docsIf3 table (pysnmp)")
-        self.logger.info(f"MD-IF-INDEX bulk walk returned {len(md_if_results)} raw results")
-        
-        # E6000 bulk walk returns invalid data (OctetStrings instead of Integer32)
-        # Always use individual gets instead
-        md_if_results = []  # Clear bulk walk results
-        
-        # Query MD-IF-INDEX individually for each modem
-        if len(mac_map) > 0:
-            self.logger.info(f"Querying MD-IF-INDEX individually for {len(mac_map)} modems (bulk walk unreliable)")
-            OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.5'
-            
-            async def get_md_if_for_modem(modem_idx):
-                """Query MD-IF-INDEX for specific modem"""
-                try:
-                    errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
-                        SnmpEngine(),
-                        CommunityData(community),
-                        await UdpTransportTarget.create((cmts_ip, 161), timeout=5, retries=1),
-                        ContextData(),
-                        ObjectType(ObjectIdentity(f'{OID_MD_IF_INDEX}.{modem_idx}'))
-                    )
-                    if errorIndication:
-                        self.logger.info(f"MD-IF get error for {modem_idx}: {errorIndication}")
-                        return (modem_idx, None)
-                    if errorStatus:
-                        self.logger.info(f"MD-IF get failed for {modem_idx}: {errorStatus.prettyPrint()}")
-                        return (modem_idx, None)
-                    for varBind in varBinds:
-                        value = varBind[1]
-                        value_str = str(value)
-                        self.logger.info(f"MD-IF get for {modem_idx}: {repr(value)} (type: {type(value).__name__})")
-                        if hasattr(value, 'prettyPrint'):
-                            self.logger.info(f"  prettyPrint: {value.prettyPrint()}")
-                        if 'No Such' not in value_str and value_str != '0':
-                            # E6000 returns Integer32 as OctetString - try multiple conversions
-                            md_if_value = None
-                            if isinstance(value, int):
-                                md_if_value = value
-                            elif hasattr(value, 'prettyPrint'):
-                                # Try prettyPrint first - it might give the right format
-                                try:
-                                    pp = value.prettyPrint()
-                                    if pp.startswith('0x'):
-                                        md_if_value = int(pp, 16)
-                                    else:
-                                        md_if_value = int(pp)
-                                except:
-                                    # Fall back to bytes conversion
-                                    try:
-                                        md_if_value = int.from_bytes(bytes(value), byteorder='big')
-                                    except:
-                                        pass
-                            elif isinstance(value, bytes):
-                                md_if_value = int.from_bytes(value, byteorder='big')
-                            
-                            if md_if_value:
-                                self.logger.info(f"  Converted to: {md_if_value}")
-                                return (modem_idx, md_if_value)
-                except Exception as e:
-                    self.logger.info(f"MD-IF get exception for {modem_idx}: {e}")
-                return (modem_idx, None)
-            
-            # Query all modems in parallel (limit batch size)
-            modem_indexes = list(mac_map.keys())
-            batch_size = 50
-            for i in range(0, len(modem_indexes), batch_size):
-                batch = modem_indexes[i:i+batch_size]
-                self.logger.info(f"Querying MD-IF-INDEX for batch {i//batch_size + 1}/{(len(modem_indexes)+batch_size-1)//batch_size} ({len(batch)} modems)")
-                md_if_tasks = [get_md_if_for_modem(idx) for idx in batch]
-                batch_results = await asyncio.gather(*md_if_tasks)
-                
-                # Add successful results
-                for modem_idx, value in batch_results:
-                    if value is not None:
-                        md_if_results.append((modem_idx, value))
-            
-            self.logger.info(f"Got {len(md_if_results)} MD-IF-INDEX values via individual gets")
-        
-        # Query IF-MIB::ifName for each md_if_index to get vendor-specific interface names
-        # E6000: "cable-mac 100", Casa/vCCAP: "docsis-mac X", cBR8: "CableX/Y/Z"
-        # Also query fiber node table's MD-IF-INDEX values since E6000 uses different index spaces
-        if_name_map = {}  # md_if_index -> interface_name
-        md_if_indexes_to_query = set()
-        
-        # Add modem table MD-IF-INDEX values
-        if md_if_results:
-            md_if_indexes_to_query.update(v for idx, v in md_if_results)
-        
-        # Add fiber node table MD-IF-INDEX values (from OID indexes)
-        for index, value in md_node_results:
-            try:
-                parts = index.split('.')
-                if parts:
-                    md_if_indexes_to_query.add(int(parts[0]))
-            except:
-                pass
-        
-        if md_if_indexes_to_query:
-            OID_IF_NAME = '1.3.6.1.2.1.31.1.1.1.1'  # IF-MIB::ifName
-            
-            async def get_if_name(md_if_idx):
-                """Query ifName for md_if_index"""
-                try:
-                    errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
-                        SnmpEngine(),
-                        CommunityData(community),
-                        await UdpTransportTarget.create((cmts_ip, 161), timeout=5, retries=1),
-                        ContextData(),
-                        ObjectType(ObjectIdentity(f'{OID_IF_NAME}.{md_if_idx}'))
-                    )
-                    if errorIndication or errorStatus:
-                        return (md_if_idx, None)
-                    for varBind in varBinds:
-                        value = str(varBind[1])
-                        if value and value != 'No Such Instance currently exists at this OID':
-                            return (md_if_idx, value)
-                except:
-                    pass
-                return (md_if_idx, None)
-            
-            # Get unique md_if_index values to query
-            unique_md_if_indexes = list(md_if_indexes_to_query)
-            self.logger.info(f"Querying IF-MIB::ifName for {len(unique_md_if_indexes)} MD-IF-INDEX values (modem + fiber node tables)")
-            self.logger.info(f"  MD-IF-INDEX sample: {sorted(unique_md_if_indexes)[:5]}")
-            if_name_tasks = [get_if_name(md_if_idx) for md_if_idx in unique_md_if_indexes]
-            if_name_results = await asyncio.gather(*if_name_tasks)
-            
-            for md_if_idx, if_name in if_name_results:
-                if if_name:
-                    if_name_map[md_if_idx] = if_name
-                    self.logger.info(f"IF-MIB: {md_if_idx} -> {if_name}")
-            
-            self.logger.info(f"Resolved {len(if_name_map)} interface names via IF-MIB::ifName")
-        
-        # Build fiber node map from docsIf3MdNodeStatusTable
-        # This table has 2 indexes: {md_if_index}.{length}.{ascii_octets}
-        # Node name is encoded as ASCII in the OID suffix
-        # Example: 536871013.3.70.78.49.1 -> md_if_idx=536871013, length=3, name="FN1" (70=F, 78=N, 49=1)
-        fiber_node_map = {}  # md_if_index -> node_name
-        raw_node_indexes = []
-        for index, value in md_node_results:
-            try:
-                # Index format: {md_if_index}.{string_length}.{ascii_byte_1}.{ascii_byte_2}...
-                parts = index.split('.')
-                raw_node_indexes.append(index)
-                if len(parts) >= 3:
-                    md_if_idx = int(parts[0])
-                    # Parts[1] is the string length, parts[2:] are ASCII values
-                    str_len = int(parts[1])
-                    if len(parts) >= 2 + str_len:
-                        # Decode ASCII octets to get node name like "FN1", "FN2"
-                        node_name = ''.join(chr(int(parts[i])) for i in range(2, 2 + str_len))
-                        if node_name:
-                            # Store first node found for this interface (usually only one)
-                            if md_if_idx not in fiber_node_map:
-                                fiber_node_map[md_if_idx] = node_name
-            except Exception as e:
-                self.logger.debug(f"Failed to parse fiber node index {index}: {e}")
-        
-        if fiber_node_map:
-            self.logger.info(f"Resolved {len(fiber_node_map)} fiber nodes from docsIf3MdNodeStatusTable")
-            self.logger.info(f"Fiber node sample: {list(fiber_node_map.items())[:5]}")
-            self.logger.info(f"Fiber node raw indexes: {raw_node_indexes[:3]}")
-        
-        # Build reverse map: interface_name -> fiber_node for proper matching
-        # This allows us to match modems to fiber nodes via their cable-mac interface names
-        interface_to_fiber_node = {}  # interface_name -> fiber_node
-        for md_if_idx, if_name in if_name_map.items():
-            if md_if_idx in fiber_node_map:
-                interface_to_fiber_node[if_name] = fiber_node_map[md_if_idx]
-        
-        if interface_to_fiber_node:
-            self.logger.info(f"Built interface->fiber_node map with {len(interface_to_fiber_node)} entries")
-            self.logger.info(f"Sample mappings: {list(interface_to_fiber_node.items())[:3]}")
         
         # Discover OFDMA upstream interfaces using PyPNM method
         # Query docsIf31CmtsCmUsOfdmaChannelTimingOffset which has index: {cm_index}.{ofdma_ifindex}
@@ -1273,42 +1095,18 @@ class PyPNMAgent:
             else:
                 d30_count += 1
             
-            # Add interface/cable-mac info if available
-            if index in md_if_map:
-                md_if_index = md_if_map[index]
-                modem['md_if_index'] = md_if_index
-                
-                # Get vendor-specific interface name from IF-MIB::ifName
-                # E6000: "cable-mac 100", Casa/vCCAP: "docsis-mac X", cBR8: "CableX/Y/Z"
-                if md_if_index in if_name_map:
-                    interface_name = if_name_map[md_if_index]
-                    modem['cable_mac'] = interface_name
-                    
-                    # Match fiber node via interface name
-                    if interface_name in interface_to_fiber_node:
-                        modem['fiber_node'] = interface_to_fiber_node[interface_name]
-                elif md_if_index in fiber_node_map:
-                    # Direct match (works on non-E6000 CMTS)
-                    modem['fiber_node'] = fiber_node_map[md_if_index]
-            else:
-                self.logger.info(f"No MD-IF-INDEX for modem index {index}")
-            
             # Add OFDMA upstream interface if available (DOCSIS 3.1)
             if index in ofdma_if_map:
                 ofdma_ifindex = ofdma_if_map[index]
                 modem['ofdma_ifindex'] = ofdma_ifindex
                 if ofdma_ifindex in ofdma_descr_map:
                     modem['upstream_interface'] = ofdma_descr_map[ofdma_ifindex]
+                    modem['cable_mac'] = ofdma_descr_map[ofdma_ifindex]  # Show OFDMA as cable_mac for display
                 else:
                     modem['upstream_interface'] = f"ofdmaIfIndex.{ofdma_ifindex}"
-            elif 'cable_mac' in modem:
-                # Fallback: use cable_mac as upstream_interface for non-OFDMA modems
-                modem['upstream_interface'] = modem['cable_mac']
             
             if index in us_ch_map:
                 modem['upstream_channel_id'] = us_ch_map[index]
-            else:
-                self.logger.info(f"No US channel for modem index {index}")
             
             modems.append(modem)
         
