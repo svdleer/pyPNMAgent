@@ -922,13 +922,24 @@ class PyPNMAgent:
                 md_if_index = None
                 for varBind in varBinds:
                     value = varBind[1]
-                    if hasattr(value, 'prettyPrint'):
+                    # E6000 returns Integer32 as OctetString
+                    if isinstance(value, int):
+                        md_if_index = value
+                    elif hasattr(value, 'prettyPrint'):
                         pp = value.prettyPrint()
                         if pp and 'No Such' not in pp:
                             try:
-                                md_if_index = int(pp)
+                                # Handle hex format (0x...) and decimal
+                                if pp.startswith('0x'):
+                                    md_if_index = int(pp, 16)
+                                else:
+                                    md_if_index = int(pp)
                             except:
-                                pass
+                                # Try bytes conversion for OctetString
+                                try:
+                                    md_if_index = int.from_bytes(bytes(value), byteorder='big')
+                                except:
+                                    pass
                 
                 if not md_if_index:
                     return (modem_idx, None, None)
@@ -950,6 +961,7 @@ class PyPNMAgent:
                 
                 return (modem_idx, md_if_index, None)
             except Exception as e:
+                self.logger.debug(f"MD-IF query failed for modem {modem_idx}: {e}")
                 return (modem_idx, None, None)
         
         # Query in batches for speed
