@@ -1211,8 +1211,16 @@ class PyPNMAgent:
                     modem['cable_mac'] = f"ifIndex.{md_if_index}"
                 
                 # Add fiber node name if available
+                # E6000 uses different MD-IF-INDEX values in modem table vs fiber node table,
+                # so we can't match directly. Assign first available fiber node as fallback.
                 if md_if_index in fiber_node_map:
                     modem['fiber_node'] = fiber_node_map[md_if_index]
+                elif fiber_node_map:
+                    # Fallback: assign first available fiber node
+                    # This happens on E6000 where MD-IF-INDEX values don't correlate between tables
+                    first_node = next(iter(fiber_node_map.values()))
+                    modem['fiber_node'] = first_node
+                    self.logger.debug(f"Modem {index}: Using fallback fiber node {first_node} (MD-IF-INDEX mismatch)")
             else:
                 self.logger.info(f"No MD-IF-INDEX for modem index {index}")
             
