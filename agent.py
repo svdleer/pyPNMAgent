@@ -1062,8 +1062,19 @@ class PyPNMAgent:
                 # MD-IF-INDEX may have compound index, extract first part
                 modem_index = index.split('.')[0] if '.' in index else index
                 
-                # pysnmp returns Integer32 objects - convert to int
-                md_if_value = int(value)
+                # Handle both Integer32 and OctetString from different CMTS vendors
+                if hasattr(value, 'prettyPrint'):
+                    # pysnmp object - check if it's OctetString
+                    val_str = value.prettyPrint()
+                    if val_str.startswith('0x'):
+                        # Hex OctetString - convert to integer
+                        md_if_value = int(val_str, 16)
+                    else:
+                        # Regular integer string
+                        md_if_value = int(val_str)
+                else:
+                    md_if_value = int(value)
+                
                 md_if_map[modem_index] = md_if_value
             except Exception as e:
                 # Log with type info for debugging
