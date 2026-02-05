@@ -3173,16 +3173,33 @@ class PyPNMAgent:
             OID_D3_MAC, OID_OLD_MAC, OID_OLD_IP, OID_OLD_STATUS, OID_D31_MAX_DS_FREQ
         ))
         
-        # Enrich modems with firmware/model if requested
+        # Enrich modems with firmware/model if requested - run in background thread
         if enrich and result.get('success') and result.get('modems'):
-            self.logger.info(f"Enriching {len(result['modems'])} modems with modem_community={modem_community}")
-            enrich_result = self._handle_enrich_modems({
-                'modems': result['modems'],
-                'modem_community': modem_community
-            })
-            if enrich_result.get('success'):
-                result['modems'] = enrich_result['modems']
-                result['enriched_count'] = enrich_result.get('enriched_count', 0)
+            import threading
+            modems_to_enrich = result['modems'][:100]  # Limit for speed
+            self.logger.info(f"Starting background enrichment for {len(modems_to_enrich)} modems")
+            
+            def background_enrich():
+                try:
+                    self.logger.info(f"Background enriching {len(modems_to_enrich)} modems with community={modem_community}")
+                    enrich_result = self._handle_enrich_modems({
+                        'modems': modems_to_enrich,
+                        'modem_community': modem_community
+                    })
+                    if enrich_result.get('success'):
+                        # Merge enriched data back into original modems
+                        enriched_by_mac = {m['mac_address']: m for m in enrich_result['modems']}
+                        for m in result['modems']:
+                            if m['mac_address'] in enriched_by_mac:
+                                m.update(enriched_by_mac[m['mac_address']])
+                        self.logger.info(f"Background enrichment complete: {enrich_result.get('enriched_count', 0)} modems enriched")
+                except Exception as e:
+                    self.logger.error(f"Background enrichment failed: {e}")
+            
+            # Start background thread
+            thread = threading.Thread(target=background_enrich, daemon=True)
+            thread.start()
+            result['enriching'] = True  # Tell GUI enrichment is in progress
         
         return result
     
@@ -3263,7 +3280,7 @@ class PyPNMAgent:
         def query_modem(modem):
             ip = modem.get('ip_address')
             try:
-                result = asyncio.run(self._async_snmp_get(ip, OID_SYS_DESCR, modem_community, timeout=2))
+                result = asyncio.run(self._async_snmp_get(ip, OID_SYS_DESCR, modem_community, timeout=1))
                 if result.get('success') and result.get('output'):
                     output = result.get('output', '')
                     if '=' in output:
