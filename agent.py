@@ -3042,6 +3042,20 @@ class PyPNMAgent:
             return {'success': False, 'error': 'pysnmp not available', 'cmts_ip': cmts_ip}
         
         self.logger.info(f"Using pysnmp for CMTS modem discovery")
+        
+        # Check if we have cached enriched data for this CMTS (from background enrichment)
+        if hasattr(self, '_enriched_modems_cache') and self._enriched_modems_cache:
+            cache = self._enriched_modems_cache
+            if cache.get('cmts_ip') == cmts_ip and time.time() - cache.get('timestamp', 0) < 120:
+                self.logger.info(f"Returning {len(cache.get('modems', []))} enriched modems from background cache")
+                return {
+                    'success': True,
+                    'modems': cache['modems'],
+                    'cmts_ip': cmts_ip,
+                    'enriched': True,
+                    'cached': True
+                }
+        
         result = asyncio.run(self._async_cmts_get_modems(
             cmts_ip, community, limit,
             OID_D3_MAC, OID_OLD_MAC, OID_OLD_IP, OID_OLD_STATUS, OID_D31_MAX_DS_FREQ
@@ -3067,6 +3081,12 @@ class PyPNMAgent:
                             if m['mac_address'] in enriched_by_mac:
                                 m.update(enriched_by_mac[m['mac_address']])
                         self.logger.info(f"Background enrichment complete: {enrich_result.get('enriched_count', 0)} modems enriched")
+                        # Store enriched modems in cache for next request
+                        self._enriched_modems_cache = {
+                            'cmts_ip': cmts_ip,
+                            'modems': result['modems'],
+                            'timestamp': time.time()
+                        }
                 except Exception as e:
                     self.logger.error(f"Background enrichment failed: {e}")
             
