@@ -1010,6 +1010,7 @@ class PyPNMAgent:
         
         if fiber_node_map:
             self.logger.info(f"Resolved {len(fiber_node_map)} fiber nodes from docsIf3MdNodeStatusTable")
+            self.logger.info(f"Fiber node map keys: {list(fiber_node_map.keys())}")
         
         # Build old table MAC lookup
         old_mac_map = {}  # old_index -> mac
