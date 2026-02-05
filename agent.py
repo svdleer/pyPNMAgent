@@ -3127,6 +3127,8 @@ class PyPNMAgent:
         limit = params.get('limit', 10000)  # Increased limit
         use_bulk = params.get('use_bulk', True)
         use_cache = params.get('use_cache', True)
+        enrich = params.get('enrich', False)  # Whether to enrich modems with firmware/model
+        modem_community = params.get('modem_community') or self.config.cm_community  # Modem SNMP community
         # CMTS queries go DIRECT - don't auto-enable equalizer just because it's configured
         # Equalizer/cm_proxy is for modem enrichment, not CMTS queries
         use_equalizer = params.get('use_equalizer', False)
@@ -3164,10 +3166,23 @@ class PyPNMAgent:
             return {'success': False, 'error': 'pysnmp not available', 'cmts_ip': cmts_ip}
         
         self.logger.info(f"Using pysnmp for CMTS modem discovery")
-        return asyncio.run(self._async_cmts_get_modems(
+        result = asyncio.run(self._async_cmts_get_modems(
             cmts_ip, community, limit,
             OID_D3_MAC, OID_OLD_MAC, OID_OLD_IP, OID_OLD_STATUS, OID_D31_MAX_DS_FREQ
         ))
+        
+        # Enrich modems with firmware/model if requested
+        if enrich and result.get('success') and result.get('modems'):
+            self.logger.info(f"Enriching {len(result['modems'])} modems with modem_community={modem_community}")
+            enrich_result = self._handle_enrich_modems({
+                'modems': result['modems'],
+                'modem_community': modem_community
+            })
+            if enrich_result.get('success'):
+                result['modems'] = enrich_result['modems']
+                result['enriched_count'] = enrich_result.get('enriched_count', 0)
+        
+        return result
     
     def _handle_enrich_modems(self, params: dict) -> dict:
         """
