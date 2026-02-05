@@ -870,21 +870,19 @@ class PyPNMAgent:
                 self.logger.debug(f"Bulk walk {oid} failed: {e}")
             return results
         
-        # OIDs for upstream channel mapping
+        # OID for upstream channel mapping
         OID_US_CH_ID = '1.3.6.1.4.1.4491.2.1.20.1.4.1.3'     # docsIf3CmtsCmUsStatusChIfIndex (US channel)
-        OID_SW_REV = '1.3.6.1.2.1.10.127.1.2.2.1.3'  # docsIfCmtsCmStatusValue (firmware/software revision)
         
-        # Run essential walks in parallel (skip slow MD-IF-INDEX and fiber node queries)
+        # Run essential walks in parallel
         mac_task = asyncio.create_task(bulk_walk_oid(oid_d3_mac))
         old_mac_task = asyncio.create_task(bulk_walk_oid(oid_old_mac))
         old_ip_task = asyncio.create_task(bulk_walk_oid(oid_old_ip))
         old_status_task = asyncio.create_task(bulk_walk_oid(oid_old_status))
         d31_freq_task = asyncio.create_task(bulk_walk_oid(oid_d31_freq))
         us_ch_task = asyncio.create_task(bulk_walk_oid(OID_US_CH_ID))
-        sw_rev_task = asyncio.create_task(bulk_walk_oid(OID_SW_REV))
         
-        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, us_ch_results, sw_rev_results = await asyncio.gather(
-            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, us_ch_task, sw_rev_task
+        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, us_ch_results = await asyncio.gather(
+            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, us_ch_task
         )
         
         # Parse MAC addresses from docsIf3 table
@@ -1058,16 +1056,6 @@ class PyPNMAgent:
             except:
                 pass
         
-        # Build firmware/software revision map (old table index)
-        sw_rev_map = {}  # old_index -> firmware_version
-        for index, value in sw_rev_results:
-            try:
-                firmware = str(value)
-                if firmware and firmware != 'No Such Instance currently exists at this OID' and firmware != '0':
-                    sw_rev_map[index] = firmware
-            except:
-                pass
-        
         # Build DOCSIS 3.1 detection
         d31_map = {}  # index -> is_docsis31
         for index, value in d31_freq_results:
@@ -1097,18 +1085,14 @@ class PyPNMAgent:
         # Create MAC -> IP and MAC -> status lookups
         mac_to_ip = {}
         mac_to_status = {}
-        mac_to_firmware = {}
         for old_index, mac in old_mac_map.items():
             if old_index in old_ip_map:
                 mac_to_ip[mac] = old_ip_map[old_index]
             if old_index in old_status_map:
                 mac_to_status[mac] = old_status_map[old_index]
-            if old_index in sw_rev_map:
-                mac_to_firmware[mac] = sw_rev_map[old_index]
         
         self.logger.info(f"Correlated {len(mac_to_ip)} IP addresses from old table (pysnmp)")
         self.logger.info(f"Correlated {len(mac_to_status)} status values from old table (pysnmp)")
-        self.logger.info(f"Correlated {len(mac_to_firmware)} firmware versions from old table (pysnmp)")
         
         # Status code mapping
         STATUS_MAP = {
@@ -1141,9 +1125,7 @@ class PyPNMAgent:
             # Add vendor from MAC OUI
             modem['vendor'] = self._get_vendor_from_mac(mac)
             
-            # Add firmware if available
-            if mac in mac_to_firmware:
-                modem['firmware'] = mac_to_firmware[mac]
+            # Note: Firmware comes from enrichment (modem query), not from CMTS
             
             # Add DOCSIS version
             is_d31 = d31_map.get(index, False)
