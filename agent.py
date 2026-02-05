@@ -934,16 +934,33 @@ class PyPNMAgent:
                         value = varBind[1]
                         value_str = str(value)
                         self.logger.info(f"MD-IF get for {modem_idx}: {repr(value)} (type: {type(value).__name__})")
+                        if hasattr(value, 'prettyPrint'):
+                            self.logger.info(f"  prettyPrint: {value.prettyPrint()}")
                         if 'No Such' not in value_str and value_str != '0':
-                            # Handle both Integer32 and OctetString types
-                            if isinstance(value, bytes):
+                            # E6000 returns Integer32 as OctetString - try multiple conversions
+                            md_if_value = None
+                            if isinstance(value, int):
+                                md_if_value = value
+                            elif hasattr(value, 'prettyPrint'):
+                                # Try prettyPrint first - it might give the right format
+                                try:
+                                    pp = value.prettyPrint()
+                                    if pp.startswith('0x'):
+                                        md_if_value = int(pp, 16)
+                                    else:
+                                        md_if_value = int(pp)
+                                except:
+                                    # Fall back to bytes conversion
+                                    try:
+                                        md_if_value = int.from_bytes(bytes(value), byteorder='big')
+                                    except:
+                                        pass
+                            elif isinstance(value, bytes):
                                 md_if_value = int.from_bytes(value, byteorder='big')
-                            elif hasattr(value, '__bytes__'):
-                                # pysnmp OctetString
-                                md_if_value = int.from_bytes(bytes(value), byteorder='big')
-                            else:
-                                md_if_value = int(value)
-                            return (modem_idx, md_if_value)
+                            
+                            if md_if_value:
+                                self.logger.info(f"  Converted to: {md_if_value}")
+                                return (modem_idx, md_if_value)
                 except Exception as e:
                     self.logger.info(f"MD-IF get exception for {modem_idx}: {e}")
                 return (modem_idx, None)
