@@ -992,12 +992,14 @@ class PyPNMAgent:
             
             # Get unique md_if_index values to query
             unique_md_if_indexes = set(v for idx, v in md_if_results)
+            self.logger.info(f"Querying IF-MIB::ifName for {len(unique_md_if_indexes)} unique MD-IF-INDEX values: {list(unique_md_if_indexes)[:5]}")
             if_name_tasks = [get_if_name(md_if_idx) for md_if_idx in unique_md_if_indexes]
             if_name_results = await asyncio.gather(*if_name_tasks)
             
             for md_if_idx, if_name in if_name_results:
                 if if_name:
                     if_name_map[md_if_idx] = if_name
+                    self.logger.info(f"IF-MIB: {md_if_idx} -> {if_name}")
             
             self.logger.info(f"Resolved {len(if_name_map)} interface names via IF-MIB::ifName")
         
