@@ -993,11 +993,13 @@ class PyPNMAgent:
         # This table has 2 indexes: {md_if_index}.{node_id}
         # We want to map md_if_index -> fiber_node_name
         fiber_node_map = {}  # md_if_index -> node_name
+        raw_node_indexes = []
         for index, value in md_node_results:
             try:
                 # Index format: {md_if_index}.{node_id}
                 # Extract md_if_index (first part) as the key
                 parts = index.split('.')
+                raw_node_indexes.append(index)
                 if len(parts) >= 1:
                     md_if_idx = int(parts[0])
                     node_name = str(value)
@@ -1011,6 +1013,7 @@ class PyPNMAgent:
         if fiber_node_map:
             self.logger.info(f"Resolved {len(fiber_node_map)} fiber nodes from docsIf3MdNodeStatusTable")
             self.logger.info(f"Fiber node map keys: {list(fiber_node_map.keys())}")
+            self.logger.info(f"Fiber node raw indexes: {raw_node_indexes[:3]}")
         
         # Build old table MAC lookup
         old_mac_map = {}  # old_index -> mac
