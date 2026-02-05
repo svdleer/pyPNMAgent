@@ -3133,6 +3133,8 @@ class PyPNMAgent:
         # Equalizer/cm_proxy is for modem enrichment, not CMTS queries
         use_equalizer = params.get('use_equalizer', False)
         
+        self.logger.info(f"CMTS query params: enrich={enrich}, modem_community={modem_community}")
+        
         if not cmts_ip:
             return {'success': False, 'error': 'cmts_ip required'}
         
