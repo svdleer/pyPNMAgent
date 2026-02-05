@@ -1038,30 +1038,45 @@ class PyPNMAgent:
             self.logger.info(f"Resolved {len(if_name_map)} interface names via IF-MIB::ifName")
         
         # Build fiber node map from docsIf3MdNodeStatusTable
-        # This table has 2 indexes: {md_if_index}.{node_id}
-        # We want to map md_if_index -> fiber_node_name
+        # This table has 2 indexes: {md_if_index}.{length}.{ascii_octets}
+        # Node name is encoded as ASCII in the OID suffix
+        # Example: 536871013.3.70.78.49.1 -> md_if_idx=536871013, length=3, name="FN1" (70=F, 78=N, 49=1)
         fiber_node_map = {}  # md_if_index -> node_name
         raw_node_indexes = []
         for index, value in md_node_results:
             try:
-                # Index format: {md_if_index}.{node_id}
-                # Extract md_if_index (first part) as the key
+                # Index format: {md_if_index}.{string_length}.{ascii_byte_1}.{ascii_byte_2}...
                 parts = index.split('.')
                 raw_node_indexes.append(index)
-                if len(parts) >= 1:
+                if len(parts) >= 3:
                     md_if_idx = int(parts[0])
-                    node_name = str(value)
-                    if node_name and node_name != 'No Such Instance currently exists at this OID':
-                        # Store first node found for this interface (usually only one)
-                        if md_if_idx not in fiber_node_map:
-                            fiber_node_map[md_if_idx] = node_name
-            except:
-                pass
+                    # Parts[1] is the string length, parts[2:] are ASCII values
+                    str_len = int(parts[1])
+                    if len(parts) >= 2 + str_len:
+                        # Decode ASCII octets to get node name like "FN1", "FN2"
+                        node_name = ''.join(chr(int(parts[i])) for i in range(2, 2 + str_len))
+                        if node_name:
+                            # Store first node found for this interface (usually only one)
+                            if md_if_idx not in fiber_node_map:
+                                fiber_node_map[md_if_idx] = node_name
+            except Exception as e:
+                self.logger.debug(f"Failed to parse fiber node index {index}: {e}")
         
         if fiber_node_map:
             self.logger.info(f"Resolved {len(fiber_node_map)} fiber nodes from docsIf3MdNodeStatusTable")
-            self.logger.info(f"Fiber node map keys: {list(fiber_node_map.keys())}")
+            self.logger.info(f"Fiber node sample: {list(fiber_node_map.items())[:5]}")
             self.logger.info(f"Fiber node raw indexes: {raw_node_indexes[:3]}")
+        
+        # Build reverse map: interface_name -> fiber_node for proper matching
+        # This allows us to match modems to fiber nodes via their cable-mac interface names
+        interface_to_fiber_node = {}  # interface_name -> fiber_node
+        for md_if_idx, if_name in if_name_map.items():
+            if md_if_idx in fiber_node_map:
+                interface_to_fiber_node[if_name] = fiber_node_map[md_if_idx]
+        
+        if interface_to_fiber_node:
+            self.logger.info(f"Built interface->fiber_node map with {len(interface_to_fiber_node)} entries")
+            self.logger.info(f"Sample mappings: {list(interface_to_fiber_node.items())[:3]}")
         
         # Discover OFDMA upstream interfaces using PyPNM method
         # Query docsIf31CmtsCmUsOfdmaChannelTimingOffset which has index: {cm_index}.{ofdma_ifindex}
@@ -1276,17 +1291,17 @@ class PyPNMAgent:
                 if interface_name:
                     modem['cable_mac'] = interface_name
                 
-                # Add fiber node name if available
-                # E6000 uses different MD-IF-INDEX values in modem table vs fiber node table,
-                # so we can't match directly. Assign first available fiber node as fallback.
-                if md_if_index in fiber_node_map:
+                # Add fiber node name - match via interface name
+                if interface_name and interface_name in interface_to_fiber_node:
+                    modem['fiber_node'] = interface_to_fiber_node[interface_name]
+                elif md_if_index in fiber_node_map:
+                    # Direct match (rare on E6000 but works on other CMTS)
                     modem['fiber_node'] = fiber_node_map[md_if_index]
                 elif fiber_node_map:
-                    # Fallback: assign first available fiber node
-                    # This happens on E6000 where MD-IF-INDEX values don't correlate between tables
+                    # Fallback: assign first available fiber node (E6000 with no interface name match)
                     first_node = next(iter(fiber_node_map.values()))
                     modem['fiber_node'] = first_node
-                    self.logger.debug(f"Modem {index}: Using fallback fiber node {first_node} (MD-IF-INDEX mismatch)")
+                    self.logger.debug(f"Modem {index}: Using fallback fiber node {first_node}")
             else:
                 self.logger.info(f"No MD-IF-INDEX for modem index {index}")
             
