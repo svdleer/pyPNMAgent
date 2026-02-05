@@ -1203,10 +1203,20 @@ class PyPNMAgent:
             if index in md_if_map:
                 md_if_index = md_if_map[index]
                 modem['md_if_index'] = md_if_index
+                
                 # Get vendor-specific interface name from IF-MIB::ifName
                 # E6000: "cable-mac 100", Casa/vCCAP: "docsis-mac X", cBR8: "CableX/Y/Z"
+                interface_name = None
                 if md_if_index in if_name_map:
-                    modem['cable_mac'] = if_name_map[md_if_index]
+                    interface_name = if_name_map[md_if_index]
+                elif if_name_map:
+                    # E6000 fallback: use first available interface name from fiber node table
+                    interface_name = next(iter(if_name_map.values()))
+                    self.logger.debug(f"Modem {index}: Using fallback interface name {interface_name}")
+                
+                if interface_name:
+                    modem['cable_mac'] = interface_name
+                    modem['upstream_interface'] = interface_name
                 else:
                     modem['cable_mac'] = f"ifIndex.{md_if_index}"
                 
