@@ -1062,24 +1062,12 @@ class PyPNMAgent:
                 # MD-IF-INDEX may have compound index, extract first part
                 modem_index = index.split('.')[0] if '.' in index else index
                 
-                # Handle both integer and octet string responses
-                if isinstance(value, int):
-                    md_if_map[modem_index] = value
-                elif isinstance(value, bytes):
-                    # Convert bytes to integer (big-endian)
-                    md_if_map[modem_index] = int.from_bytes(value, byteorder='big')
-                elif hasattr(value, 'prettyPrint'):
-                    # pysnmp object - try to get integer value
-                    try:
-                        md_if_map[modem_index] = int(value)
-                    except:
-                        # If it's an OctetString, convert bytes
-                        val_bytes = bytes(value)
-                        md_if_map[modem_index] = int.from_bytes(val_bytes, byteorder='big')
-                else:
-                    md_if_map[modem_index] = int(value)
+                # pysnmp returns Integer32 objects - convert to int
+                md_if_value = int(value)
+                md_if_map[modem_index] = md_if_value
             except Exception as e:
-                self.logger.debug(f"Failed to parse MD-IF-INDEX {index}={repr(value)}: {e}")
+                # Log with type info for debugging
+                self.logger.debug(f"Failed to parse MD-IF-INDEX {index}={repr(value)} (type: {type(value).__name__}): {e}")
         
         self.logger.info(f"Correlated {len(md_if_map)} MD-IF-INDEX mappings")
         if len(md_if_map) > 0:
