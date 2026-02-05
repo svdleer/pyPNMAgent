@@ -1067,7 +1067,7 @@ class PyPNMAgent:
                 md_if_map[modem_index] = md_if_value
             except Exception as e:
                 # Log with type info for debugging
-                self.logger.debug(f"Failed to parse MD-IF-INDEX {index}={repr(value)} (type: {type(value).__name__}): {e}")
+                self.logger.info(f"⚠️ Failed to parse MD-IF-INDEX {index}={repr(value)} (type: {type(value).__name__}): {e}")
         
         self.logger.info(f"Correlated {len(md_if_map)} MD-IF-INDEX mappings")
         if len(md_if_map) > 0:
