@@ -1062,8 +1062,14 @@ class PyPNMAgent:
                 # MD-IF-INDEX may have compound index, extract first part
                 modem_index = index.split('.')[0] if '.' in index else index
                 md_if_map[modem_index] = int(value)
-            except:
-                pass
+            except Exception as e:
+                self.logger.debug(f"Failed to parse MD-IF-INDEX {index}={value}: {e}")
+        
+        self.logger.info(f"Correlated {len(md_if_map)} MD-IF-INDEX mappings")
+        if len(md_if_map) > 0:
+            self.logger.info(f"MD-IF-INDEX map sample keys: {list(md_if_map.keys())[:5]}")
+        if len(md_if_map) == 0 and len(md_if_results) > 0:
+            self.logger.info(f"MD-IF-INDEX raw sample: {[(i,str(v)[:50]) for i,v in md_if_results[:3]]}")
         
         # Build US channel mapping
         us_ch_map = {}  # index -> us_channel_id
