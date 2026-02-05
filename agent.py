@@ -905,10 +905,13 @@ class PyPNMAgent:
         self.logger.info(f"Parsed {len(mac_map)} MAC addresses from docsIf3 table (pysnmp)")
         self.logger.info(f"MD-IF-INDEX bulk walk returned {len(md_if_results)} raw results")
         
-        # Query MD-IF-INDEX individually for each modem (bulk walk returns 0 on some CMTS)
-        # This OID often requires specific index queries instead of bulk walk
-        if len(mac_map) > 0 and len(md_if_results) == 0:
-            self.logger.info(f"MD-IF-INDEX bulk walk returned 0, trying individual gets for {len(mac_map)} modems")
+        # E6000 bulk walk returns invalid data (OctetStrings instead of Integer32)
+        # Always use individual gets instead
+        md_if_results = []  # Clear bulk walk results
+        
+        # Query MD-IF-INDEX individually for each modem
+        if len(mac_map) > 0:
+            self.logger.info(f"Querying MD-IF-INDEX individually for {len(mac_map)} modems (bulk walk unreliable)")
             OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.5'
             
             async def get_md_if_for_modem(modem_idx):
@@ -1060,33 +1063,10 @@ class PyPNMAgent:
                 pass
         
         # Build interface mapping (MD-IF-INDEX -> US interface)
+        # E6000 bulk walk returns wrong OctetString data - skip and use individual gets
         md_if_map = {}  # index -> md_if_index
-        for index, value in md_if_results:
-            try:
-                # MD-IF-INDEX may have compound index, extract first part
-                modem_index = index.split('.')[0] if '.' in index else index
-                
-                # Handle both Integer32 and OctetString from different CMTS vendors
-                if hasattr(value, 'prettyPrint'):
-                    # pysnmp object - check if it's OctetString
-                    val_str = value.prettyPrint()
-                    if val_str.startswith('0x'):
-                        # Hex OctetString - convert to integer
-                        md_if_value = int(val_str, 16)
-                    else:
-                        # Regular integer string
-                        md_if_value = int(val_str)
-                else:
-                    md_if_value = int(value)
-                
-                md_if_map[modem_index] = md_if_value
-            except Exception as e:
-                # Log with type info for debugging
-                self.logger.info(f"⚠️ Failed to parse MD-IF-INDEX {index}={repr(value)} (type: {type(value).__name__}): {e}")
         
-        self.logger.info(f"Correlated {len(md_if_map)} MD-IF-INDEX mappings")
-        if len(md_if_map) > 0:
-            self.logger.info(f"MD-IF-INDEX map sample: {list(md_if_map.items())[:3]}")
+        self.logger.info(f"MD-IF-INDEX bulk walk returned {len(md_if_results)} results - ignoring (E6000 bug), using individual gets")
         
         # Build US channel mapping
         us_ch_map = {}  # index -> us_channel_id
