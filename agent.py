@@ -1015,10 +1015,7 @@ class PyPNMAgent:
                 pass
                 pass
         
-        self.logger.info(f"Correlated {len(md_if_map)} MD-IF-INDEX mappings")
         self.logger.info(f"Correlated {len(us_ch_map)} US channel mappings")
-        if md_if_map:
-            self.logger.info(f"MD-IF-INDEX sample keys: {list(md_if_map.keys())[:5]}")
         if us_ch_map:
             self.logger.info(f"US channel sample keys: {list(us_ch_map.keys())[:5]}")
         self.logger.info(f"MAC map sample keys: {list(mac_map.keys())[:5]}")
