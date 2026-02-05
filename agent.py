@@ -933,9 +933,17 @@ class PyPNMAgent:
                     for varBind in varBinds:
                         value = varBind[1]
                         value_str = str(value)
-                        self.logger.info(f"MD-IF get for {modem_idx}: {value_str} (type: {type(value).__name__})")
+                        self.logger.info(f"MD-IF get for {modem_idx}: {repr(value)} (type: {type(value).__name__})")
                         if 'No Such' not in value_str and value_str != '0':
-                            return (modem_idx, int(value))
+                            # Handle both Integer32 and OctetString types
+                            if isinstance(value, bytes):
+                                md_if_value = int.from_bytes(value, byteorder='big')
+                            elif hasattr(value, '__bytes__'):
+                                # pysnmp OctetString
+                                md_if_value = int.from_bytes(bytes(value), byteorder='big')
+                            else:
+                                md_if_value = int(value)
+                            return (modem_idx, md_if_value)
                 except Exception as e:
                     self.logger.info(f"MD-IF get exception for {modem_idx}: {e}")
                 return (modem_idx, None)
