@@ -900,6 +900,74 @@ class PyPNMAgent:
         
         self.logger.info(f"Parsed {len(mac_map)} MAC addresses from docsIf3 table (pysnmp)")
         
+        # Query MD-IF-INDEX individually for each modem (bulk walk unreliable on E6000)
+        OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.5'  # docsIf3CmtsCmRegStatusMdIfIndex
+        md_if_map = {}  # modem_index -> md_if_index
+        if_name_map = {}  # md_if_index -> interface_name (cable-mac 108, etc)
+        
+        async def get_md_if_and_name(modem_idx):
+            """Query MD-IF-INDEX and IF-MIB::ifName for modem"""
+            try:
+                # Get MD-IF-INDEX
+                errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+                    SnmpEngine(),
+                    CommunityData(community),
+                    await UdpTransportTarget.create((cmts_ip, 161), timeout=3, retries=1),
+                    ContextData(),
+                    ObjectType(ObjectIdentity(f'{OID_MD_IF_INDEX}.{modem_idx}'))
+                )
+                if errorIndication or errorStatus:
+                    return (modem_idx, None, None)
+                
+                md_if_index = None
+                for varBind in varBinds:
+                    value = varBind[1]
+                    if hasattr(value, 'prettyPrint'):
+                        pp = value.prettyPrint()
+                        if pp and 'No Such' not in pp:
+                            try:
+                                md_if_index = int(pp)
+                            except:
+                                pass
+                
+                if not md_if_index:
+                    return (modem_idx, None, None)
+                
+                # Get IF-MIB::ifName for this MD-IF-INDEX
+                OID_IF_NAME = '1.3.6.1.2.1.31.1.1.1.1'
+                errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+                    SnmpEngine(),
+                    CommunityData(community),
+                    await UdpTransportTarget.create((cmts_ip, 161), timeout=3, retries=1),
+                    ContextData(),
+                    ObjectType(ObjectIdentity(f'{OID_IF_NAME}.{md_if_index}'))
+                )
+                if not errorIndication and not errorStatus:
+                    for varBind in varBinds:
+                        if_name = str(varBind[1])
+                        if if_name and 'No Such' not in if_name:
+                            return (modem_idx, md_if_index, if_name)
+                
+                return (modem_idx, md_if_index, None)
+            except Exception as e:
+                return (modem_idx, None, None)
+        
+        # Query in batches for speed
+        modem_indexes = list(mac_map.keys())
+        batch_size = 20  # Parallel queries
+        for i in range(0, len(modem_indexes), batch_size):
+            batch = modem_indexes[i:i+batch_size]
+            tasks = [get_md_if_and_name(idx) for idx in batch]
+            results = await asyncio.gather(*tasks)
+            
+            for modem_idx, md_if_idx, if_name in results:
+                if md_if_idx:
+                    md_if_map[modem_idx] = md_if_idx
+                    if if_name:
+                        if_name_map[md_if_idx] = if_name
+        
+        self.logger.info(f"Resolved {len(md_if_map)} MD-IF-INDEX values and {len(if_name_map)} interface names")
+        
         # Discover OFDMA upstream interfaces using PyPNM method
         # Query docsIf31CmtsCmUsOfdmaChannelTimingOffset which has index: {cm_index}.{ofdma_ifindex}
         OID_CM_OFDMA_TIMING = '1.3.6.1.4.1.4491.2.1.28.1.4.1.2'  # docsIf31CmtsCmUsOfdmaChannelTimingOffset
@@ -1079,15 +1147,23 @@ class PyPNMAgent:
             else:
                 d30_count += 1
             
+            # Add cable-mac interface (from MD-IF-INDEX -> IF-MIB::ifName)
+            if index in md_if_map:
+                md_if_index = md_if_map[index]
+                if md_if_index in if_name_map:
+                    modem['cable_mac'] = if_name_map[md_if_index]
+            
             # Add OFDMA upstream interface if available (DOCSIS 3.1)
             if index in ofdma_if_map:
                 ofdma_ifindex = ofdma_if_map[index]
                 modem['ofdma_ifindex'] = ofdma_ifindex
                 if ofdma_ifindex in ofdma_descr_map:
                     modem['upstream_interface'] = ofdma_descr_map[ofdma_ifindex]
-                    modem['cable_mac'] = ofdma_descr_map[ofdma_ifindex]  # Show OFDMA as cable_mac for display
                 else:
                     modem['upstream_interface'] = f"ofdmaIfIndex.{ofdma_ifindex}"
+            elif 'cable_mac' in modem:
+                # Non-OFDMA modems: use cable_mac as upstream_interface
+                modem['upstream_interface'] = modem['cable_mac']
             
             if index in us_ch_map:
                 modem['upstream_channel_id'] = us_ch_map[index]
