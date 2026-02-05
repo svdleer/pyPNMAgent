@@ -916,33 +916,20 @@ class PyPNMAgent:
                     ContextData(),
                     ObjectType(ObjectIdentity(f'{OID_MD_IF_INDEX}.{modem_idx}'))
                 )
-                if errorIndication:
-                    self.logger.info(f"Modem {modem_idx}: MD-IF error: {errorIndication}")
-                    return (modem_idx, None, None)
-                if errorStatus:
-                    self.logger.info(f"Modem {modem_idx}: MD-IF status: {errorStatus.prettyPrint()}")
+                if errorIndication or errorStatus:
                     return (modem_idx, None, None)
                 
                 md_if_index = None
                 for varBind in varBinds:
                     value = varBind[1]
                     value_str = str(value)
-                    self.logger.info(f"Modem {modem_idx}: MD-IF raw value: {repr(value)} type={type(value).__name__}")
-                    
                     if 'No Such' in value_str:
                         return (modem_idx, None, None)
-                    
-                    # Try to get integer value
-                    if isinstance(value, int):
-                        md_if_index = value
-                    elif hasattr(value, 'prettyPrint'):
-                        pp = value.prettyPrint()
-                        self.logger.info(f"Modem {modem_idx}: prettyPrint = {pp}")
-                        # Handle Integer32 which should just convert directly
-                        try:
-                            md_if_index = int(value)
-                        except:
-                            pass
+                    # Convert Integer32 to int
+                    try:
+                        md_if_index = int(value)
+                    except:
+                        pass
                 
                 if not md_if_index:
                     return (modem_idx, None, None)
