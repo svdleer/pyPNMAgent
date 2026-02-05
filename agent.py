@@ -1059,6 +1059,187 @@ class PyPNMAgent:
             'cmts_ip': cmts_ip
         }
 
+    async def _async_enrich_cmts_interfaces(self, cmts_ip: str, community: str, modems: list):
+        """Background enrichment: Add cable-mac and upstream interface to modems."""
+        from pysnmp.hlapi.v3arch.asyncio import get_cmd, bulk_cmd, SnmpEngine, CommunityData, UdpTransportTarget, ContextData, ObjectType, ObjectIdentity
+        
+        self.logger.info(f"Enriching cable-mac/upstream for {len(modems)} modems from CMTS {cmts_ip}")
+        
+        # Build index -> modem map
+        index_to_modem = {m.get('cmts_index'): m for m in modems if m.get('cmts_index')}
+        modem_indexes = list(index_to_modem.keys())
+        
+        if not modem_indexes:
+            self.logger.warning("No modem indexes to enrich")
+            return
+        
+        # Query MD-IF-INDEX for cable-mac
+        OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.7'  # docsIf3CmtsCmRegStatusMdIfIndex
+        OID_IF_NAME = '1.3.6.1.2.1.31.1.1.1.1'  # IF-MIB::ifName
+        
+        md_if_map = {}  # modem_index -> md_if_index
+        if_name_map = {}  # md_if_index -> interface_name
+        
+        async def get_md_if_and_name(modem_idx):
+            try:
+                errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+                    SnmpEngine(),
+                    CommunityData(community),
+                    await UdpTransportTarget.create((cmts_ip, 161), timeout=2, retries=1),
+                    ContextData(),
+                    ObjectType(ObjectIdentity(f'{OID_MD_IF_INDEX}.{modem_idx}'))
+                )
+                if errorIndication or errorStatus:
+                    return (modem_idx, None, None)
+                
+                md_if_index = None
+                for varBind in varBinds:
+                    value = str(varBind[1])
+                    if 'No Such' not in value:
+                        try:
+                            md_if_index = int(varBind[1])
+                        except:
+                            pass
+                
+                if not md_if_index:
+                    return (modem_idx, None, None)
+                
+                # Get IF-MIB::ifName for this MD-IF-INDEX
+                errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+                    SnmpEngine(),
+                    CommunityData(community),
+                    await UdpTransportTarget.create((cmts_ip, 161), timeout=2, retries=1),
+                    ContextData(),
+                    ObjectType(ObjectIdentity(f'{OID_IF_NAME}.{md_if_index}'))
+                )
+                if not errorIndication and not errorStatus:
+                    for varBind in varBinds:
+                        if_name = str(varBind[1])
+                        if if_name and 'No Such' not in if_name:
+                            return (modem_idx, md_if_index, if_name)
+                
+                return (modem_idx, md_if_index, None)
+            except Exception as e:
+                return (modem_idx, None, None)
+        
+        # Query in batches for speed
+        batch_size = 30
+        for i in range(0, len(modem_indexes), batch_size):
+            batch = modem_indexes[i:i+batch_size]
+            tasks = [get_md_if_and_name(idx) for idx in batch]
+            results = await asyncio.gather(*tasks)
+            
+            for modem_idx, md_if_idx, if_name in results:
+                if md_if_idx:
+                    md_if_map[modem_idx] = md_if_idx
+                    if if_name:
+                        if_name_map[md_if_idx] = if_name
+        
+        self.logger.info(f"Resolved {len(md_if_map)} MD-IF-INDEX values and {len(if_name_map)} interface names")
+        
+        # Query OFDMA upstream interfaces
+        OID_CM_OFDMA_TIMING = '1.3.6.1.4.1.4491.2.1.28.1.4.1.2'
+        OID_IF_DESCR = '1.3.6.1.2.1.2.2.1.2'
+        
+        ofdma_if_map = {}
+        ofdma_ifindexes = set()
+        
+        # Bulk walk OFDMA timing offset
+        async def bulk_walk_oid(oid):
+            results = []
+            try:
+                engine = SnmpEngine()
+                target = await UdpTransportTarget.create((cmts_ip, 161), timeout=5, retries=2)
+                
+                next_oid = oid
+                while True:
+                    errorIndication, errorStatus, errorIndex, varBinds = await bulk_cmd(
+                        engine, CommunityData(community), target, ContextData(),
+                        0, 50, ObjectType(ObjectIdentity(next_oid))
+                    )
+                    if errorIndication or errorStatus:
+                        break
+                    
+                    for varBind in varBinds:
+                        oid_str = str(varBind[0])
+                        if not oid_str.startswith(oid):
+                            return results
+                        index = oid_str[len(oid)+1:]
+                        results.append((index, varBind[1]))
+                        next_oid = oid_str
+            except:
+                pass
+            return results
+        
+        ofdma_results = await bulk_walk_oid(OID_CM_OFDMA_TIMING)
+        for index, value in ofdma_results:
+            try:
+                parts = index.split('.')
+                if len(parts) >= 2:
+                    cm_idx = parts[0]
+                    ofdma_ifidx = int(parts[1])
+                    if ofdma_ifidx >= 840000000:
+                        ofdma_if_map[cm_idx] = ofdma_ifidx
+                        ofdma_ifindexes.add(ofdma_ifidx)
+            except:
+                pass
+        
+        self.logger.info(f"Discovered {len(ofdma_if_map)} OFDMA upstream interfaces")
+        
+        # Query OFDMA interface descriptions
+        ofdma_descr_map = {}
+        if ofdma_ifindexes:
+            async def get_if_descr(ofdma_ifidx):
+                try:
+                    errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+                        SnmpEngine(),
+                        CommunityData(community),
+                        await UdpTransportTarget.create((cmts_ip, 161), timeout=3, retries=1),
+                        ContextData(),
+                        ObjectType(ObjectIdentity(f'{OID_IF_DESCR}.{ofdma_ifidx}'))
+                    )
+                    if not errorIndication and not errorStatus:
+                        for varBind in varBinds:
+                            value = str(varBind[1])
+                            if value and 'No Such' not in value:
+                                return (ofdma_ifidx, value)
+                except:
+                    pass
+                return (ofdma_ifidx, None)
+            
+            tasks = [get_if_descr(idx) for idx in ofdma_ifindexes]
+            results = await asyncio.gather(*tasks)
+            for ofdma_ifidx, descr in results:
+                if descr:
+                    ofdma_descr_map[ofdma_ifidx] = descr
+        
+        self.logger.info(f"Resolved {len(ofdma_descr_map)} OFDMA interface descriptions")
+        
+        # Apply to modems
+        enriched_count = 0
+        for modem in modems:
+            idx = modem.get('cmts_index')
+            if not idx:
+                continue
+            
+            # Add cable_mac from MD-IF-INDEX
+            if idx in md_if_map:
+                md_if_idx = md_if_map[idx]
+                if md_if_idx in if_name_map:
+                    modem['cable_mac'] = if_name_map[md_if_idx]
+                    enriched_count += 1
+            
+            # Add upstream_interface from OFDMA or cable_mac
+            if idx in ofdma_if_map:
+                ofdma_ifidx = ofdma_if_map[idx]
+                modem['ofdma_ifindex'] = ofdma_ifidx
+                if ofdma_ifidx in ofdma_descr_map:
+                    modem['upstream_interface'] = ofdma_descr_map[ofdma_ifidx]
+            elif modem.get('cable_mac'):
+                modem['upstream_interface'] = modem['cable_mac']
+        
+        self.logger.info(f"Enriched {enriched_count} modems with cable-mac/upstream info")
+
     def _handle_tftp_get(self, params: dict) -> dict:
         """Handle TFTP/PNM file retrieval via SSH to TFTP server."""
         if not self.tftp_ssh:
@@ -3064,29 +3245,36 @@ class PyPNMAgent:
         # Enrich modems with firmware/model if requested - run in background thread
         if enrich and result.get('success') and result.get('modems'):
             import threading
-            modems_to_enrich = result['modems'][:100]  # Limit for speed
+            all_modems = result['modems']
+            modems_to_enrich = all_modems[:100]  # Limit for speed
             self.logger.info(f"Starting background enrichment for {len(modems_to_enrich)} modems")
             
             def background_enrich():
                 try:
+                    # 1. Enrich with model/firmware from modem SNMP
                     self.logger.info(f"Background enriching {len(modems_to_enrich)} modems with community={modem_community}")
                     enrich_result = self._handle_enrich_modems({
                         'modems': modems_to_enrich,
                         'modem_community': modem_community
                     })
                     if enrich_result.get('success'):
-                        # Merge enriched data back into original modems
                         enriched_by_mac = {m['mac_address']: m for m in enrich_result['modems']}
-                        for m in result['modems']:
+                        for m in all_modems:
                             if m['mac_address'] in enriched_by_mac:
                                 m.update(enriched_by_mac[m['mac_address']])
                         self.logger.info(f"Background enrichment complete: {enrich_result.get('enriched_count', 0)} modems enriched")
-                        # Store enriched modems in cache for next request
-                        self._enriched_modems_cache = {
-                            'cmts_ip': cmts_ip,
-                            'modems': result['modems'],
-                            'timestamp': time.time()
-                        }
+                    
+                    # 2. Enrich with cable-mac and upstream interface from CMTS
+                    self.logger.info(f"Background enriching cable-mac/upstream for {len(all_modems)} modems")
+                    asyncio.run(self._async_enrich_cmts_interfaces(cmts_ip, community, all_modems))
+                    
+                    # Store enriched modems in cache for next request
+                    self._enriched_modems_cache = {
+                        'cmts_ip': cmts_ip,
+                        'modems': all_modems,
+                        'timestamp': time.time()
+                    }
+                    self.logger.info(f"Background enrichment cached {len(all_modems)} modems")
                 except Exception as e:
                     self.logger.error(f"Background enrichment failed: {e}")
             
