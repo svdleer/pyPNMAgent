@@ -903,6 +903,7 @@ class PyPNMAgent:
                 mac_map[index] = mac
         
         self.logger.info(f"Parsed {len(mac_map)} MAC addresses from docsIf3 table (pysnmp)")
+        self.logger.debug(f"MD-IF-INDEX bulk walk returned {len(md_if_results)} results")
         
         # Query MD-IF-INDEX individually for each modem (bulk walk returns 0 on some CMTS)
         # This OID often requires specific index queries instead of bulk walk
