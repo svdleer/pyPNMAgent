@@ -984,17 +984,20 @@ class PyPNMAgent:
         
         # Build D3.0 upstream channel ifIndex mapping (from old table)
         old_us_ch_if_map = {}  # old_index -> upstream_ifindex
+        self.logger.info(f"Processing {len(old_us_ch_if_results)} old_us_ch_if_results")
         for index, value in old_us_ch_if_results:
             try:
                 ifindex = int(value)
                 if ifindex > 0:
                     old_us_ch_if_map[index] = ifindex
-            except:
-                pass
+            except Exception as e:
+                self.logger.debug(f"Failed to parse US ch ifIndex {index}={value}: {e}")
         
         self.logger.info(f"Correlated {len(old_us_ch_if_map)} D3.0 upstream channel ifIndexes")
         if old_us_ch_if_map:
             self.logger.info(f"US ch ifIndex sample: {list(old_us_ch_if_map.items())[:5]}")
+        else:
+            self.logger.warning(f"No D3.0 upstream channel ifIndexes found - sample raw: {old_us_ch_if_results[:3] if old_us_ch_if_results else 'empty'}")
         if old_mac_map:
             self.logger.info(f"Old MAC map sample: {list(old_mac_map.items())[:5]}")
         self.logger.info(f"Correlated {len(us_ch_map)} US channel mappings")
