@@ -984,10 +984,12 @@ class PyPNMAgent:
         self.logger.info(f"Correlated {len(mac_to_status)} status values from old table (pysnmp)")
         self.logger.info(f"Correlated {len(mac_to_firmware)} firmware versions from old table (pysnmp)")
         
-        # Status code mapping
+        # Status code mapping (docsIfCmtsCmStatusValue - old MIB)
+        # Note: registrationComplete(6) is the final state for modems without BPI encryption
+        # We map it to 'operational' for display since it means the modem is fully online
         STATUS_MAP = {
             1: 'other', 2: 'ranging', 3: 'rangingAborted', 4: 'rangingComplete',
-            5: 'ipComplete', 6: 'registrationComplete', 7: 'accessDenied',
+            5: 'ipComplete', 6: 'operational', 7: 'accessDenied',  # 6=registrationComplete -> operational
             8: 'operational', 9: 'registeredBPIInitializing'
         }
         
@@ -1183,14 +1185,14 @@ class PyPNMAgent:
                     modem['cable_mac'] = if_name_map[md_if_idx]
                     enriched_count += 1
             
-            # Add upstream_interface from OFDMA or cable_mac
+            # Add upstream_interface: OFDMA for D3.1, leave empty for D3.0 (SC-QAM)
+            # D3.0 modems don't have a separate upstream interface - they use cable-mac's SC-QAM channels
             if idx in ofdma_if_map:
                 ofdma_ifidx = ofdma_if_map[idx]
                 modem['ofdma_ifindex'] = ofdma_ifidx
                 if ofdma_ifidx in ofdma_descr_map:
                     modem['upstream_interface'] = ofdma_descr_map[ofdma_ifidx]
-            elif modem.get('cable_mac'):
-                modem['upstream_interface'] = modem['cable_mac']
+            # For D3.0 modems: upstream_interface stays empty (they use SC-QAM on cable-mac)
         
         self.logger.info(f"Enriched {enriched_count} modems with cable-mac/upstream info")
 
