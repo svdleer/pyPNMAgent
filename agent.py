@@ -1212,6 +1212,7 @@ class PyPNMAgent:
         
         # Apply to modems
         enriched_count = 0
+        us_ch_resolved = 0
         for modem in modems:
             idx = str(modem.get('cmts_index'))
             if not idx:
@@ -1225,15 +1226,19 @@ class PyPNMAgent:
                     enriched_count += 1
             
             # Add OFDMA upstream interface if discovered
-            # Don't overwrite if already set (e.g., US-CH from initial discovery)
             if idx in ofdma_if_map:
                 ofdma_ifidx = ofdma_if_map[idx]
                 modem['ofdma_ifindex'] = ofdma_ifidx
                 if ofdma_ifidx in ofdma_descr_map:
                     modem['upstream_interface'] = ofdma_descr_map[ofdma_ifidx]
-            # Modems without OFDMA keep their US-CH or SC-QAM upstream_interface from initial discovery
+            else:
+                # Resolve SC-QAM US-CH ifIndex to ifName
+                us_ifidx = modem.get('upstream_ifindex')
+                if us_ifidx and us_ifidx in if_name_map:
+                    modem['upstream_interface'] = if_name_map[us_ifidx]
+                    us_ch_resolved += 1
         
-        self.logger.info(f"Enriched {enriched_count} modems with cable-mac/upstream info")
+        self.logger.info(f"Enriched {enriched_count} modems with cable-mac, {us_ch_resolved} SC-QAM upstreams resolved")
 
     def _handle_tftp_get(self, params: dict) -> dict:
         """Handle TFTP/PNM file retrieval via SSH to TFTP server."""
