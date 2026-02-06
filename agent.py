@@ -989,6 +989,8 @@ class PyPNMAgent:
                 pass
         
         self.logger.info(f"Correlated {len(old_us_ch_if_map)} D3.0 upstream channel ifIndexes")
+        if old_us_ch_if_map:
+            self.logger.info(f"US ch ifIndex sample: {list(old_us_ch_if_map.items())[:3]}")
         self.logger.info(f"Correlated {len(us_ch_map)} US channel mappings")
         if us_ch_map:
             self.logger.info(f"US channel sample keys: {list(us_ch_map.keys())[:5]}")
