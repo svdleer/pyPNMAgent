@@ -892,6 +892,10 @@ class PyPNMAgent:
             mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, us_ch_task, sw_rev_task, old_us_ch_if_task, if_name_task
         )
         
+        self.logger.info(f"Raw SNMP results: mac={len(mac_results)}, old_mac={len(old_mac_results)}, old_us_ch_if={len(old_us_ch_if_results)}")
+        if old_us_ch_if_results:
+            self.logger.info(f"old_us_ch_if sample: {old_us_ch_if_results[:3]}")
+        
         # Parse MAC addresses from docsIf3 table
         mac_map = {}  # index -> mac
         for index, value in mac_results:
@@ -990,7 +994,9 @@ class PyPNMAgent:
         
         self.logger.info(f"Correlated {len(old_us_ch_if_map)} D3.0 upstream channel ifIndexes")
         if old_us_ch_if_map:
-            self.logger.info(f"US ch ifIndex sample: {list(old_us_ch_if_map.items())[:3]}")
+            self.logger.info(f"US ch ifIndex sample: {list(old_us_ch_if_map.items())[:5]}")
+        if old_mac_map:
+            self.logger.info(f"Old MAC map sample: {list(old_mac_map.items())[:5]}")
         self.logger.info(f"Correlated {len(us_ch_map)} US channel mappings")
         if us_ch_map:
             self.logger.info(f"US channel sample keys: {list(us_ch_map.keys())[:5]}")
