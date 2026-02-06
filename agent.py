@@ -875,6 +875,7 @@ class PyPNMAgent:
         # OIDs for upstream channel mapping
         OID_US_CH_ID = '1.3.6.1.4.1.4491.2.1.20.1.4.1.3'     # docsIf3CmtsCmUsStatusChIfIndex (US channel)
         OID_SW_REV = '1.3.6.1.2.1.10.127.1.2.2.1.3'  # docsIfCmtsCmStatusValue (firmware/software revision)
+        OID_IF_NAME = '1.3.6.1.2.1.31.1.1.1.1'  # IF-MIB::ifName
         
         # Run essential walks in parallel (skip slow MD-IF-INDEX and fiber node queries)
         mac_task = asyncio.create_task(bulk_walk_oid(oid_d3_mac))
@@ -885,9 +886,10 @@ class PyPNMAgent:
         us_ch_task = asyncio.create_task(bulk_walk_oid(OID_US_CH_ID))
         sw_rev_task = asyncio.create_task(bulk_walk_oid(OID_SW_REV))
         old_us_ch_if_task = asyncio.create_task(bulk_walk_oid(oid_old_us_ch_if))  # D3.0 upstream channel ifIndex
+        if_name_task = asyncio.create_task(bulk_walk_oid(OID_IF_NAME, timeout=15))  # Interface names
         
-        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, us_ch_results, sw_rev_results, old_us_ch_if_results = await asyncio.gather(
-            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, us_ch_task, sw_rev_task, old_us_ch_if_task
+        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, us_ch_results, sw_rev_results, old_us_ch_if_results, if_name_results = await asyncio.gather(
+            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, us_ch_task, sw_rev_task, old_us_ch_if_task, if_name_task
         )
         
         # Parse MAC addresses from docsIf3 table
@@ -906,9 +908,19 @@ class PyPNMAgent:
         # Skip slow MD-IF-INDEX and OFDMA queries for fast response
         # These can be fetched later via enrichment if needed
         md_if_map = {}
-        if_name_map = {}
         ofdma_if_map = {}
         ofdma_descr_map = {}
+        
+        # Build ifName map from IF-MIB::ifName walk
+        if_name_map = {}  # ifindex -> interface name
+        for index, value in if_name_results:
+            name = str(value)
+            if name and 'No Such' not in name:
+                try:
+                    if_name_map[int(index)] = name
+                except:
+                    pass
+        self.logger.info(f"Resolved {len(if_name_map)} interface names")
         
         # Build old table MAC lookup
         old_mac_map = {}  # old_index -> mac
@@ -1064,8 +1076,13 @@ class PyPNMAgent:
             else:
                 # No OFDMA: show SC-QAM upstream channel (D3.0 or D3.1 on SC-QAM)
                 if mac in mac_to_us_ch_if:
-                    modem['upstream_ifindex'] = mac_to_us_ch_if[mac]
-                    modem['upstream_interface'] = f"US-CH {mac_to_us_ch_if[mac]}"
+                    us_ifindex = mac_to_us_ch_if[mac]
+                    modem['upstream_ifindex'] = us_ifindex
+                    # Resolve ifIndex to interface name
+                    if us_ifindex in if_name_map:
+                        modem['upstream_interface'] = if_name_map[us_ifindex]
+                    else:
+                        modem['upstream_interface'] = f"US-CH {us_ifindex}"
                 else:
                     modem['upstream_interface'] = "SC-QAM"
             
