@@ -973,17 +973,26 @@ class PyPNMAgent:
             except:
                 pass
         
-        # Build US channel mapping
-        us_ch_map = {}  # index -> us_channel_id
+        # Build US channel mapping from docsIf3CmtsCmUsStatusChIfIndex
+        # OID structure: .3.{cmRegStatusId}.{usChIfIndex} -> value is the ifIndex
+        # But the INDEX already contains the usChIfIndex, so extract from index, not value!
+        us_ch_map = {}  # modem_index -> us_channel_ifindex
         for index, value in us_ch_results:
             try:
                 # US channel OID has compound index: {modem_index}.{channel_ifindex}
-                # Extract modem_index (first part) as the key
-                modem_index = index.split('.')[0] if '.' in index else index
-                us_ch_map[modem_index] = int(value)
+                # The channel_ifindex in the INDEX is what we want!
+                parts = index.split('.')
+                if len(parts) >= 2:
+                    modem_index = parts[0]
+                    channel_ifindex = int(parts[1])  # This is the upstream ifIndex
+                    # Store the first (or lowest) channel ifindex per modem
+                    if modem_index not in us_ch_map or channel_ifindex < us_ch_map[modem_index]:
+                        us_ch_map[modem_index] = channel_ifindex
             except:
                 pass
-                pass
+        
+        if us_ch_results:
+            self.logger.info(f"us_ch_results sample raw: {us_ch_results[:3]}")
         
         # Build D3.0 upstream channel ifIndex mapping (from old table)
         old_us_ch_if_map = {}  # old_index -> upstream_ifindex
