@@ -892,9 +892,12 @@ class PyPNMAgent:
             mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, us_ch_task, sw_rev_task, old_us_ch_if_task, if_name_task
         )
         
-        self.logger.info(f"Raw SNMP results: mac={len(mac_results)}, old_mac={len(old_mac_results)}, old_us_ch_if={len(old_us_ch_if_results)}")
+        self.logger.info(f"Raw SNMP results: mac={len(mac_results)}, old_mac={len(old_mac_results)}, old_us_ch_if={len(old_us_ch_if_results)}, if_name={len(if_name_results)}")
+        self.logger.info(f"Queried OID_OLD_US_CH_IF: {oid_old_us_ch_if}")
         if old_us_ch_if_results:
             self.logger.info(f"old_us_ch_if sample: {old_us_ch_if_results[:3]}")
+        else:
+            self.logger.warning(f"old_us_ch_if_results is EMPTY - CMTS may not support this OID")
         
         # Parse MAC addresses from docsIf3 table
         mac_map = {}  # index -> mac
