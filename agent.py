@@ -840,7 +840,7 @@ class PyPNMAgent:
         """Async CMTS modem discovery using pysnmp with parallel walks."""
         import asyncio
         
-        async def bulk_walk_oid(oid: str, timeout: int = 30) -> list:
+        async def bulk_walk_oid(oid: str, timeout: int = 30, max_results: int = 10000) -> list:
             """Walk a single OID and return list of (index, value) tuples."""
             results = []
             if not oid:
@@ -866,7 +866,7 @@ class PyPNMAgent:
                         index = '.'.join(suffix_parts) if suffix_parts else oid_str.split('.')[-1]
                         value = varBind[1]
                         results.append((index, value))
-                        if len(results) >= limit:
+                        if len(results) >= max_results:
                             return results
             except Exception as e:
                 self.logger.debug(f"Bulk walk {oid} failed: {e}")
