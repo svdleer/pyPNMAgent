@@ -836,13 +836,15 @@ class PyPNMAgent:
     
     async def _async_cmts_get_modems(self, cmts_ip: str, community: str, limit: int,
                                       oid_d3_mac: str, oid_old_mac: str, oid_old_ip: str,
-                                      oid_old_status: str, oid_d31_freq: str) -> dict:
+                                      oid_old_status: str, oid_d31_freq: str, oid_old_us_ch_if: str = None) -> dict:
         """Async CMTS modem discovery using pysnmp with parallel walks."""
         import asyncio
         
         async def bulk_walk_oid(oid: str, timeout: int = 30) -> list:
             """Walk a single OID and return list of (index, value) tuples."""
             results = []
+            if not oid:
+                return results
             try:
                 async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
                     SnmpEngine(),
@@ -882,9 +884,10 @@ class PyPNMAgent:
         d31_freq_task = asyncio.create_task(bulk_walk_oid(oid_d31_freq))
         us_ch_task = asyncio.create_task(bulk_walk_oid(OID_US_CH_ID))
         sw_rev_task = asyncio.create_task(bulk_walk_oid(OID_SW_REV))
+        old_us_ch_if_task = asyncio.create_task(bulk_walk_oid(oid_old_us_ch_if))  # D3.0 upstream channel ifIndex
         
-        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, us_ch_results, sw_rev_results = await asyncio.gather(
-            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, us_ch_task, sw_rev_task
+        mac_results, old_mac_results, old_ip_results, old_status_results, d31_freq_results, us_ch_results, sw_rev_results, old_us_ch_if_results = await asyncio.gather(
+            mac_task, old_mac_task, old_ip_task, old_status_task, d31_freq_task, us_ch_task, sw_rev_task, old_us_ch_if_task
         )
         
         # Parse MAC addresses from docsIf3 table
@@ -963,6 +966,17 @@ class PyPNMAgent:
                 pass
                 pass
         
+        # Build D3.0 upstream channel ifIndex mapping (from old table)
+        old_us_ch_if_map = {}  # old_index -> upstream_ifindex
+        for index, value in old_us_ch_if_results:
+            try:
+                ifindex = int(value)
+                if ifindex > 0:
+                    old_us_ch_if_map[index] = ifindex
+            except:
+                pass
+        
+        self.logger.info(f"Correlated {len(old_us_ch_if_map)} D3.0 upstream channel ifIndexes")
         self.logger.info(f"Correlated {len(us_ch_map)} US channel mappings")
         if us_ch_map:
             self.logger.info(f"US channel sample keys: {list(us_ch_map.keys())[:5]}")
@@ -972,6 +986,7 @@ class PyPNMAgent:
         mac_to_ip = {}
         mac_to_status = {}
         mac_to_firmware = {}
+        mac_to_us_ch_if = {}  # D3.0 upstream channel ifIndex
         for old_index, mac in old_mac_map.items():
             if old_index in old_ip_map:
                 mac_to_ip[mac] = old_ip_map[old_index]
@@ -979,10 +994,13 @@ class PyPNMAgent:
                 mac_to_status[mac] = old_status_map[old_index]
             if old_index in sw_rev_map:
                 mac_to_firmware[mac] = sw_rev_map[old_index]
+            if old_index in old_us_ch_if_map:
+                mac_to_us_ch_if[mac] = old_us_ch_if_map[old_index]
         
         self.logger.info(f"Correlated {len(mac_to_ip)} IP addresses from old table (pysnmp)")
         self.logger.info(f"Correlated {len(mac_to_status)} status values from old table (pysnmp)")
         self.logger.info(f"Correlated {len(mac_to_firmware)} firmware versions from old table (pysnmp)")
+        self.logger.info(f"Correlated {len(mac_to_us_ch_if)} D3.0 upstream ifIndexes from old table")
         
         # Status code mapping (docsIfCmtsCmStatusValue - old MIB)
         # Note: registrationComplete(6) is the final state for modems without BPI encryption
@@ -1044,8 +1062,12 @@ class PyPNMAgent:
                 else:
                     modem['upstream_interface'] = f"ofdmaIfIndex.{ofdma_ifindex}"
             else:
-                # Non-OFDMA modems (D3.0): show "SC-QAM" to indicate traditional upstream
-                modem['upstream_interface'] = "SC-QAM"
+                # Non-OFDMA modems (D3.0): show upstream channel ifIndex
+                if mac in mac_to_us_ch_if:
+                    modem['upstream_ifindex'] = mac_to_us_ch_if[mac]
+                    modem['upstream_interface'] = f"US-CH {mac_to_us_ch_if[mac]}"
+                else:
+                    modem['upstream_interface'] = "SC-QAM"
             
             if index in us_ch_map:
                 modem['upstream_channel_id'] = us_ch_map[index]
@@ -3170,6 +3192,7 @@ class PyPNMAgent:
         OID_OLD_MAC = '1.3.6.1.2.1.10.127.1.3.3.1.2'   # docsIfCmtsCmStatusMacAddress
         OID_OLD_IP = '1.3.6.1.2.1.10.127.1.3.3.1.3'    # docsIfCmtsCmStatusIpAddress
         OID_OLD_STATUS = '1.3.6.1.2.1.10.127.1.3.3.1.9'  # docsIfCmtsCmStatusValue
+        OID_OLD_US_CH_IF = '1.3.6.1.2.1.10.127.1.3.3.1.5'  # docsIfCmtsCmStatusUpChannelIfIndex
         
         # DOCSIS 3.1 MIB - MaxUsableDsFreq: if > 0, modem is DOCSIS 3.1
         OID_D31_MAX_DS_FREQ = '1.3.6.1.4.1.4491.2.1.28.1.3.1.7'  # docsIf31CmtsCmRegStatusMaxUsableDsFreq
@@ -3195,7 +3218,7 @@ class PyPNMAgent:
         
         result = asyncio.run(self._async_cmts_get_modems(
             cmts_ip, community, limit,
-            OID_D3_MAC, OID_OLD_MAC, OID_OLD_IP, OID_OLD_STATUS, OID_D31_MAX_DS_FREQ
+            OID_D3_MAC, OID_OLD_MAC, OID_OLD_IP, OID_OLD_STATUS, OID_D31_MAX_DS_FREQ, OID_OLD_US_CH_IF
         ))
         
         # Enrich modems with firmware/model if requested - run in background thread
