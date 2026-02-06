@@ -1171,6 +1171,26 @@ class PyPNMAgent:
                 self.logger.debug(f"Bulk walk {oid} error: {e}")
             return results
         
+        # Helper: Single SNMP GET
+        async def snmp_get(oid):
+            from pysnmp.hlapi.v3arch.asyncio import get_cmd
+            try:
+                engine = SnmpEngine()
+                target = await UdpTransportTarget.create((cmts_ip, 161), timeout=3, retries=1)
+                errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+                    engine, CommunityData(community), target, ContextData(),
+                    ObjectType(ObjectIdentity(oid))
+                )
+                if errorIndication or errorStatus:
+                    return None
+                if varBinds:
+                    value = str(varBinds[0][1])
+                    if value and 'No Such' not in value:
+                        return value
+            except Exception as e:
+                self.logger.debug(f"SNMP GET {oid} error: {e}")
+            return None
+        
         # OIDs
         OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.7'  # docsIf3CmtsCmRegStatusMdIfIndex
         OID_IF_NAME = '1.3.6.1.2.1.31.1.1.1.1'  # IF-MIB::ifName
@@ -1262,11 +1282,38 @@ class PyPNMAgent:
                 if ofdma_ifidx in ofdma_descr_map:
                     modem['upstream_interface'] = ofdma_descr_map[ofdma_ifidx]
             else:
-                # Resolve SC-QAM US-CH ifIndex to ifName
+                # Collect SC-QAM US-CH ifIndexes for later resolution
                 us_ifidx = modem.get('upstream_ifindex')
                 if us_ifidx and us_ifidx in if_name_map:
                     modem['upstream_interface'] = if_name_map[us_ifidx]
                     us_ch_resolved += 1
+        
+        # Resolve remaining US-CH ifIndexes with targeted SNMP GETs
+        # Collect unique ifIndexes that weren't resolved
+        unresolved_ifindexes = set()
+        for modem in modems:
+            us_ifidx = modem.get('upstream_ifindex')
+            if us_ifidx and modem.get('upstream_interface', '').startswith('US-CH'):
+                unresolved_ifindexes.add(us_ifidx)
+        
+        if unresolved_ifindexes:
+            self.logger.info(f"Resolving {len(unresolved_ifindexes)} unresolved upstream ifIndexes with SNMP GET")
+            OID_IF_NAME_BASE = '1.3.6.1.2.1.31.1.1.1.1'
+            for ifidx in unresolved_ifindexes:
+                try:
+                    result = await snmp_get(f"{OID_IF_NAME_BASE}.{ifidx}")
+                    if result:
+                        if_name_map[ifidx] = result
+                except Exception as e:
+                    self.logger.debug(f"Failed to resolve ifName for {ifidx}: {e}")
+            
+            # Apply resolved names
+            for modem in modems:
+                us_ifidx = modem.get('upstream_ifindex')
+                if us_ifidx and us_ifidx in if_name_map:
+                    if modem.get('upstream_interface', '').startswith('US-CH'):
+                        modem['upstream_interface'] = if_name_map[us_ifidx]
+                        us_ch_resolved += 1
         
         self.logger.info(f"Enriched {enriched_count} modems with cable-mac, {us_ch_resolved} SC-QAM upstreams resolved")
 
