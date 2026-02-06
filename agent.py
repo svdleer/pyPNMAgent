@@ -1060,106 +1060,35 @@ class PyPNMAgent:
         }
 
     async def _async_enrich_cmts_interfaces(self, cmts_ip: str, community: str, modems: list):
-        """Background enrichment: Add cable-mac and upstream interface to modems."""
-        from pysnmp.hlapi.v3arch.asyncio import get_cmd, bulk_cmd, SnmpEngine, CommunityData, UdpTransportTarget, ContextData, ObjectType, ObjectIdentity
+        """Background enrichment: Add cable-mac and upstream interface to modems. FAST version using bulk walks."""
+        from pysnmp.hlapi.v3arch.asyncio import bulk_cmd, SnmpEngine, CommunityData, UdpTransportTarget, ContextData, ObjectType, ObjectIdentity
         
         self.logger.info(f"Enriching cable-mac/upstream for {len(modems)} modems from CMTS {cmts_ip}")
         
         # Build index -> modem map
-        index_to_modem = {m.get('cmts_index'): m for m in modems if m.get('cmts_index')}
-        modem_indexes = list(index_to_modem.keys())
+        index_to_modem = {str(m.get('cmts_index')): m for m in modems if m.get('cmts_index')}
+        modem_indexes = set(index_to_modem.keys())
         
         if not modem_indexes:
             self.logger.warning("No modem indexes to enrich")
             return
         
-        # Query MD-IF-INDEX for cable-mac
-        OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.7'  # docsIf3CmtsCmRegStatusMdIfIndex
-        OID_IF_NAME = '1.3.6.1.2.1.31.1.1.1.1'  # IF-MIB::ifName
-        
-        md_if_map = {}  # modem_index -> md_if_index
-        if_name_map = {}  # md_if_index -> interface_name
-        
-        async def get_md_if_and_name(modem_idx):
-            try:
-                errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
-                    SnmpEngine(),
-                    CommunityData(community),
-                    await UdpTransportTarget.create((cmts_ip, 161), timeout=2, retries=1),
-                    ContextData(),
-                    ObjectType(ObjectIdentity(f'{OID_MD_IF_INDEX}.{modem_idx}'))
-                )
-                if errorIndication or errorStatus:
-                    return (modem_idx, None, None)
-                
-                md_if_index = None
-                for varBind in varBinds:
-                    value = str(varBind[1])
-                    if 'No Such' not in value:
-                        try:
-                            md_if_index = int(varBind[1])
-                        except:
-                            pass
-                
-                if not md_if_index:
-                    return (modem_idx, None, None)
-                
-                # Get IF-MIB::ifName for this MD-IF-INDEX
-                errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
-                    SnmpEngine(),
-                    CommunityData(community),
-                    await UdpTransportTarget.create((cmts_ip, 161), timeout=2, retries=1),
-                    ContextData(),
-                    ObjectType(ObjectIdentity(f'{OID_IF_NAME}.{md_if_index}'))
-                )
-                if not errorIndication and not errorStatus:
-                    for varBind in varBinds:
-                        if_name = str(varBind[1])
-                        if if_name and 'No Such' not in if_name:
-                            return (modem_idx, md_if_index, if_name)
-                
-                return (modem_idx, md_if_index, None)
-            except Exception as e:
-                return (modem_idx, None, None)
-        
-        # Query in batches for speed
-        batch_size = 30
-        for i in range(0, len(modem_indexes), batch_size):
-            batch = modem_indexes[i:i+batch_size]
-            tasks = [get_md_if_and_name(idx) for idx in batch]
-            results = await asyncio.gather(*tasks)
-            
-            for modem_idx, md_if_idx, if_name in results:
-                if md_if_idx:
-                    md_if_map[modem_idx] = md_if_idx
-                    if if_name:
-                        if_name_map[md_if_idx] = if_name
-        
-        self.logger.info(f"Resolved {len(md_if_map)} MD-IF-INDEX values and {len(if_name_map)} interface names")
-        
-        # Query OFDMA upstream interfaces
-        OID_CM_OFDMA_TIMING = '1.3.6.1.4.1.4491.2.1.28.1.4.1.2'
-        OID_IF_DESCR = '1.3.6.1.2.1.2.2.1.2'
-        
-        ofdma_if_map = {}
-        ofdma_ifindexes = set()
-        
-        # Bulk walk OFDMA timing offset
-        async def bulk_walk_oid(oid):
+        # Helper: Bulk walk an OID tree
+        async def bulk_walk_oid(oid, max_results=5000):
             results = []
             try:
                 engine = SnmpEngine()
-                target = await UdpTransportTarget.create((cmts_ip, 161), timeout=5, retries=2)
-                
+                target = await UdpTransportTarget.create((cmts_ip, 161), timeout=5, retries=1)
                 next_oid = oid
-                while True:
+                while len(results) < max_results:
                     errorIndication, errorStatus, errorIndex, varBinds = await bulk_cmd(
                         engine, CommunityData(community), target, ContextData(),
-                        0, 50, ObjectType(ObjectIdentity(next_oid))
+                        0, 100, ObjectType(ObjectIdentity(next_oid))  # 100 vars per request
                     )
                     if errorIndication or errorStatus:
                         break
-                    
+                    if not varBinds:
+                        break
                     for varBind in varBinds:
                         oid_str = str(varBind[0])
                         if not oid_str.startswith(oid):
@@ -1167,18 +1096,56 @@ class PyPNMAgent:
                         index = oid_str[len(oid)+1:]
                         results.append((index, varBind[1]))
                         next_oid = oid_str
-            except:
-                pass
+            except Exception as e:
+                self.logger.debug(f"Bulk walk {oid} error: {e}")
             return results
         
-        ofdma_results = await bulk_walk_oid(OID_CM_OFDMA_TIMING)
+        # OIDs
+        OID_MD_IF_INDEX = '1.3.6.1.4.1.4491.2.1.20.1.3.1.7'  # docsIf3CmtsCmRegStatusMdIfIndex
+        OID_IF_NAME = '1.3.6.1.2.1.31.1.1.1.1'  # IF-MIB::ifName
+        OID_CM_OFDMA_TIMING = '1.3.6.1.4.1.4491.2.1.28.1.4.1.2'  # OFDMA timing offset
+        OID_IF_DESCR = '1.3.6.1.2.1.2.2.1.2'  # IF-MIB::ifDescr
+        
+        # Run all bulk walks in parallel
+        md_if_task = bulk_walk_oid(OID_MD_IF_INDEX)
+        if_name_task = bulk_walk_oid(OID_IF_NAME, max_results=500)  # Only ~200 interfaces
+        ofdma_task = bulk_walk_oid(OID_CM_OFDMA_TIMING)
+        
+        md_if_results, if_name_results, ofdma_results = await asyncio.gather(
+            md_if_task, if_name_task, ofdma_task
+        )
+        
+        # Parse MD-IF-INDEX: modem_index -> md_if_index
+        md_if_map = {}
+        for index, value in md_if_results:
+            if index in modem_indexes:
+                try:
+                    md_if_map[index] = int(value)
+                except:
+                    pass
+        
+        # Parse IF-MIB::ifName: ifindex -> name
+        if_name_map = {}
+        for index, value in if_name_results:
+            name = str(value)
+            if name and 'No Such' not in name:
+                try:
+                    if_name_map[int(index)] = name
+                except:
+                    pass
+        
+        self.logger.info(f"Resolved {len(md_if_map)} MD-IF-INDEX, {len(if_name_map)} interface names")
+        
+        # Parse OFDMA: modem_index -> ofdma_ifindex
+        ofdma_if_map = {}
+        ofdma_ifindexes = set()
         for index, value in ofdma_results:
             try:
                 parts = index.split('.')
                 if len(parts) >= 2:
                     cm_idx = parts[0]
                     ofdma_ifidx = int(parts[1])
-                    if ofdma_ifidx >= 840000000:
+                    if cm_idx in modem_indexes and ofdma_ifidx >= 840000000:
                         ofdma_if_map[cm_idx] = ofdma_ifidx
                         ofdma_ifindexes.add(ofdma_ifidx)
             except:
@@ -1186,43 +1153,30 @@ class PyPNMAgent:
         
         self.logger.info(f"Discovered {len(ofdma_if_map)} OFDMA upstream interfaces")
         
-        # Query OFDMA interface descriptions
+        # Get OFDMA interface descriptions (these are high ifIndexes not in bulk walk)
         ofdma_descr_map = {}
         if ofdma_ifindexes:
-            async def get_if_descr(ofdma_ifidx):
+            # Bulk walk ifDescr for OFDMA interfaces (high ifIndexes)
+            if_descr_results = await bulk_walk_oid(OID_IF_DESCR, max_results=2000)
+            for index, value in if_descr_results:
                 try:
-                    errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
-                        SnmpEngine(),
-                        CommunityData(community),
-                        await UdpTransportTarget.create((cmts_ip, 161), timeout=3, retries=1),
-                        ContextData(),
-                        ObjectType(ObjectIdentity(f'{OID_IF_DESCR}.{ofdma_ifidx}'))
-                    )
-                    if not errorIndication and not errorStatus:
-                        for varBind in varBinds:
-                            value = str(varBind[1])
-                            if value and 'No Such' not in value:
-                                return (ofdma_ifidx, value)
+                    ifidx = int(index)
+                    if ifidx in ofdma_ifindexes:
+                        descr = str(value)
+                        if descr and 'No Such' not in descr:
+                            ofdma_descr_map[ifidx] = descr
                 except:
                     pass
-                return (ofdma_ifidx, None)
-            
-            tasks = [get_if_descr(idx) for idx in ofdma_ifindexes]
-            results = await asyncio.gather(*tasks)
-            for ofdma_ifidx, descr in results:
-                if descr:
-                    ofdma_descr_map[ofdma_ifidx] = descr
-        
-        self.logger.info(f"Resolved {len(ofdma_descr_map)} OFDMA interface descriptions")
+            self.logger.info(f"Resolved {len(ofdma_descr_map)} OFDMA interface descriptions")
         
         # Apply to modems
         enriched_count = 0
         for modem in modems:
-            idx = modem.get('cmts_index')
+            idx = str(modem.get('cmts_index'))
             if not idx:
                 continue
             
-            # Add cable_mac from MD-IF-INDEX
+            # Add cable_mac from MD-IF-INDEX -> ifName
             if idx in md_if_map:
                 md_if_idx = md_if_map[idx]
                 if md_if_idx in if_name_map:
