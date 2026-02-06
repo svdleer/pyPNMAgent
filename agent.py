@@ -101,7 +101,7 @@ class AgentConfig:
     # Redis caching for modem data
     redis_host: Optional[str] = None
     redis_port: int = 6379
-    redis_ttl: int = 300  # Cache TTL in seconds
+    redis_ttl: int = 86400  # Cache TTL in seconds (24 hours)
     
     # TFTP/FTP Server - accessed via SSH for PNM file retrieval
     tftp_ssh_host: Optional[str] = None
@@ -1043,9 +1043,9 @@ class PyPNMAgent:
                     modem['upstream_interface'] = ofdma_descr_map[ofdma_ifindex]
                 else:
                     modem['upstream_interface'] = f"ofdmaIfIndex.{ofdma_ifindex}"
-            elif 'cable_mac' in modem:
-                # Non-OFDMA modems: use cable_mac as upstream_interface
-                modem['upstream_interface'] = modem['cable_mac']
+            else:
+                # Non-OFDMA modems (D3.0): show "SC-QAM" to indicate traditional upstream
+                modem['upstream_interface'] = "SC-QAM"
             
             if index in us_ch_map:
                 modem['upstream_channel_id'] = us_ch_map[index]
