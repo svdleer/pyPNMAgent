@@ -1089,8 +1089,15 @@ class PyPNMAgent:
                     modem['upstream_interface'] = f"ofdmaIfIndex.{ofdma_ifindex}"
             else:
                 # No OFDMA: show SC-QAM upstream channel (D3.0 or D3.1 on SC-QAM)
+                us_ifindex = None
+                # Try old table first (docsIfCmtsCmStatusUpChannelIfIndex)
                 if mac in mac_to_us_ch_if:
                     us_ifindex = mac_to_us_ch_if[mac]
+                # Fallback to docsIf3 table (docsIf3CmtsCmUsStatusChIfIndex) - works for Cisco
+                elif index in us_ch_map:
+                    us_ifindex = us_ch_map[index]
+                
+                if us_ifindex:
                     modem['upstream_ifindex'] = us_ifindex
                     # Resolve ifIndex to interface name
                     if us_ifindex in if_name_map:
