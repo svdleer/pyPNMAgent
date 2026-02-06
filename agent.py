@@ -616,7 +616,9 @@ class PyPNMAgent:
     
     def _handle_snmp_get(self, params: dict) -> dict:
         """Handle SNMP GET request via pysnmp."""
-        target_ip = params['target_ip']
+        target_ip = params.get('target_ip') or params.get('modem_ip')
+        if not target_ip:
+            return {'success': False, 'error': 'target_ip or modem_ip required'}
         oid = params['oid']
         community = params.get('community', 'private')
         
@@ -627,7 +629,9 @@ class PyPNMAgent:
     
     def _handle_snmp_walk(self, params: dict) -> dict:
         """Handle SNMP WALK request via pysnmp."""
-        target_ip = params['target_ip']
+        target_ip = params.get('target_ip') or params.get('modem_ip')
+        if not target_ip:
+            return {'success': False, 'error': 'target_ip or modem_ip required'}
         oid = params['oid']
         community = params.get('community', 'private')
         
@@ -638,7 +642,9 @@ class PyPNMAgent:
     
     def _handle_snmp_set(self, params: dict) -> dict:
         """Handle SNMP SET request via pysnmp."""
-        target_ip = params['target_ip']
+        target_ip = params.get('target_ip') or params.get('modem_ip')
+        if not target_ip:
+            return {'success': False, 'error': 'target_ip or modem_ip required'}
         oid = params['oid']
         value = params['value']
         value_type = params.get('type', 'i')
@@ -652,7 +658,9 @@ class PyPNMAgent:
     def _handle_snmp_bulk_get(self, params: dict) -> dict:
         """Handle multiple SNMP GET requests."""
         oids = params.get('oids', [])
-        target_ip = params['target_ip']
+        target_ip = params.get('target_ip') or params.get('modem_ip')
+        if not target_ip:
+            return {'success': False, 'error': 'target_ip or modem_ip required'}
         community = params.get('community', 'private')
         timeout = params.get('timeout', 5)
         
