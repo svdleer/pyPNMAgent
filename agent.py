@@ -1053,7 +1053,7 @@ class PyPNMAgent:
                 if md_if_index in if_name_map:
                     modem['cable_mac'] = if_name_map[md_if_index]
             
-            # Add OFDMA upstream interface if available (DOCSIS 3.1)
+            # Add OFDMA upstream interface if available
             if index in ofdma_if_map:
                 ofdma_ifindex = ofdma_if_map[index]
                 modem['ofdma_ifindex'] = ofdma_ifindex
@@ -1062,7 +1062,7 @@ class PyPNMAgent:
                 else:
                     modem['upstream_interface'] = f"ofdmaIfIndex.{ofdma_ifindex}"
             else:
-                # Non-OFDMA modems (D3.0): show upstream channel ifIndex
+                # No OFDMA: show SC-QAM upstream channel (D3.0 or D3.1 on SC-QAM)
                 if mac in mac_to_us_ch_if:
                     modem['upstream_ifindex'] = mac_to_us_ch_if[mac]
                     modem['upstream_interface'] = f"US-CH {mac_to_us_ch_if[mac]}"
@@ -1207,14 +1207,14 @@ class PyPNMAgent:
                     modem['cable_mac'] = if_name_map[md_if_idx]
                     enriched_count += 1
             
-            # Add upstream_interface: OFDMA for D3.1, leave empty for D3.0 (SC-QAM)
-            # D3.0 modems don't have a separate upstream interface - they use cable-mac's SC-QAM channels
+            # Add OFDMA upstream interface if discovered
+            # Don't overwrite if already set (e.g., US-CH from initial discovery)
             if idx in ofdma_if_map:
                 ofdma_ifidx = ofdma_if_map[idx]
                 modem['ofdma_ifindex'] = ofdma_ifidx
                 if ofdma_ifidx in ofdma_descr_map:
                     modem['upstream_interface'] = ofdma_descr_map[ofdma_ifidx]
-            # For D3.0 modems: upstream_interface stays empty (they use SC-QAM on cable-mac)
+            # Modems without OFDMA keep their US-CH or SC-QAM upstream_interface from initial discovery
         
         self.logger.info(f"Enriched {enriched_count} modems with cable-mac/upstream info")
 
