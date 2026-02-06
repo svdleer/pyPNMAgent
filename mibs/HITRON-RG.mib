@@ -1,0 +1,164 @@
+-- vim: set ts=4, set expandtab, match Todo /\%>79v/
+-- ***********************************************************************
+-- ***********************************************************************
+--                             ROUTER
+--                      SNMP/MIB : MIB Files
+--
+--            Copyright (C) 2012 Hitron Technologies Inc.
+--                       All Rights Reserved.
+-- ***********************************************************************
+--  Filename    : HITRON-RG.mib
+--  Description : Hitron CommonRG Structure of Management Information
+-- ***********************************************************************
+--
+
+HITRON-RG-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+    ,enterprises
+        FROM    SNMPv2-SMI -- RFC2578
+    
+    TEXTUAL-CONVENTION
+        FROM SNMPv2-TC  -- RFC2579
+
+    ; -- End of IMPORTS
+
+    hitronMib   OBJECT IDENTIFIER ::= { enterprises 8595 }
+
+hitronRg  MODULE-IDENTITY
+    LAST-UPDATED    "201210241515Z" -- Oct. 24, 2012
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "Liangfeng Wu
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8120
+        E-mail: wuliangfeng@sz.hitrontech.com
+
+        Haibo Xi
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8148
+        E-mail: xihaibo@sz.hitrontech.com"
+
+    DESCRIPTION
+        "The structure of management information for hitron CommonRG."
+
+    REVISION    "201210241515Z" -- Oct. 24, 2012
+    DESCRIPTION
+        "add ipv6LLocal into LanAddrTitle"
+
+    REVISION    "201209051426Z" -- Sep. 05, 2012
+    DESCRIPTION
+        "Initial Version"
+
+    ::= { hitronMib 20 }
+
+-- Textual Convension
+--===================
+    
+    -- LAN Interface Type
+    LanIfType ::= TEXTUAL-CONVENTION
+        STATUS      current
+        DESCRIPTION
+            "Depending on the connection media, the LAN-side interface(or 
+            customer-facing interfaces) can be devided into several types."
+        SYNTAX      INTEGER {
+                        ether(1),
+                        ssid(2),
+                        usb(3)
+                        --TODO: MoCA ?
+                    }
+
+    -- LAN Interface Address Titles
+    LanAddrTitle ::= TEXTUAL-CONVENTION
+        STATUS      current
+        DESCRIPTION
+            "There can be multiple different addresses for one network 
+             interface, and all the addresses can be devided into several 
+             categories. This TC defines the titles used to distinguish the 
+             different category of address for LAN interface. It's possible to
+             have more than one address for each title. So one address can be 
+             identified by the title and the index of this title of addresses.
+             
+             The LAN address title has 4 defined values:
+                - 'ipv4Private', IPv4 private address(RFC 1918 compliant IP 
+                   addresses).
+                - 'ipv4Public', IPv4 public address.
+                - 'ipv6Dynamic', IPv6 dynamic address, it's auto-configured 
+                    with the prefix obtained via IA_PD on the WAN interface,
+                    so these addresses are read-only.
+                - 'ipv6Static', IPv6 Static Address, manually configured."
+        SYNTAX      INTEGER {
+                        ipv4Private(1),
+                        ipv4Public(2),
+                        ipv6Dynamic(3),
+                        ipv6Static(4),
+                        ipv6LLocal(5)
+                        -- TODO: IPv6 ULA
+                    }
+    
+    -- WAN Interface Address Titles
+    WanAddrTitle ::= TEXTUAL-CONVENTION
+        STATUS      current      
+        DESCRIPTION
+            "There can be multiple different addresses for one network 
+             interface, and all the addresses can be devided into several 
+             categories. This TC defines the titles used to distinguish the 
+             different category of address for LAN interface. It's possible to
+             have more than one address for each title. So it's necessary to 
+             combine with the index of this title of addresses to uniquely 
+             identify a particular address.
+             
+             The WAN address title has 4 defined values:
+                - 'ipv4Dynamic', obtained via IPv4 provision(usually DHCP).
+                - 'ipv6Dynamic', obtained via IPv6 provision(DHCPv6 or SLLAC).
+                - 'ipv4Static', manually configured IPv4 address.
+                - 'ipv6Static', manually configured IPv6 address."
+        SYNTAX      INTEGER {
+                        ipv4Dynamic(1),
+                        ipv6Dynamic(2),
+                        ipv4Static(3),
+                        ipv6Static(4)
+                    }
+    
+    -- Transport Protocol Type
+    TransportProtocolType ::= TEXTUAL-CONVENTION
+        STATUS      current
+        DESCRIPTION
+            "A value that reprensents the transport protocol number."
+        SYNTAX      INTEGER {
+                        tcp(1),
+                        udp(2),
+                        tcpudp(3),
+                        gre(4),
+                        esp(5)
+                    }
+    
+    -- Firewall Module Control Tetrad
+    FirewallControlTetrad ::= TEXTUAL-CONVENTION
+        STATUS      current
+        DESCRIPTION
+            "This TC is used to control the firewall module that support both 
+            IPv4 and IPv6 protocol. The values are defined as below:
+                - 'disable(4)', the related firewall module is disabled for 
+                    both ipv4 and ipv6 protocol.
+                - 'ipv4-only', the related firewall module is only enabled for
+                    ipv4, and disabled for ipv6 protocol.
+                - 'ipv6-only', the related firewall module is only enabled for
+                    ipv6, and disabled for ipv4 protocol.
+                - 'both', the related firewall module is enabled for both ipv4
+                    and ipv6 protocol."
+        SYNTAX      INTEGER {
+                        disable(1),
+                        ipv4-only(2),
+                        ipv6-only(3),
+                        both(4)
+                    }
+
+END

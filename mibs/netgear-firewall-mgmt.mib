@@ -1,0 +1,437 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-firewall-mgmt.mib
+--    Creation Date: May 10, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--      private MIB for firewall management
+--
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-FIREWALL-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, MODULE-IDENTITY, enterprises, 
+	Integer32
+		FROM SNMPv2-SMI
+	TruthValue,
+	MacAddress
+		FROM SNMPv2-TC
+	InetAddress
+		FROM INET-ADDRESS-MIB
+	SnmpAdminString
+		FROM SNMP-FRAMEWORK-MIB
+	cableMgmt
+		FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrFirewallMgmt MODULE-IDENTITY
+	LAST-UPDATED "201205140000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"This is the MIB Module for Netgear Cable Gateway device."
+::= { cableMgmt 7 }
+
+
+-- -
+-- - Netgear Group
+-- -
+
+
+-- May 14, 2012
+-- 
+-- Object Definitions
+-- 
+-- 
+-- MIB objects
+-- 
+
+firewallEnabled  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Enables or disables Firewall protected."
+	::= { ntgrFirewallMgmt 1 }
+
+featuresEnabled  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Accessors to set/get the enabled features.
+     the bitmask which determines which firewall features are enabled:
+     URL Keyword blocking        0x00000001
+     URL Domain blocking         0x00000002
+     Disallow HTTP proxy         0x00000004
+     Disable cookies             0x00000008
+     Disable Java applets        0x00000010
+     Disable ActiveX controls    0x00000020
+     Disable Popup Windows       0x00000040
+     MAC TOD Filtering           0x00000080
+     E-mail alerts               0x00000100
+     Block Ip Fragments          0x00000800
+     Port Scan Alerts            0x00004000
+     SYN Flood detection         0x00008000
+     Block Ping on WAN Port      0x10000000"
+	::= { ntgrFirewallMgmt 2 }
+
+firewallLogTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF FirewallLogEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrFirewallMgmt 3 }
+
+firewallLogEntry  OBJECT-TYPE
+	SYNTAX 	FirewallLogEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { firewallLogSignature }
+	::= { firewallLogTable 1 }
+
+FirewallLogEntry ::= SEQUENCE {
+	firewallLogSignature
+		Integer32,
+	firewallLogCount
+		Integer32,
+	firewallLogTimeStamp
+		Integer32,
+	firewallLogSourceIp
+		InetAddress,
+	firewallLogSourcePort
+		Integer32,
+	firewallLogDestIp
+		InetAddress,
+	firewallLogDestPort
+		Integer32
+}
+
+firewallLogSignature  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the signature of firewall log."
+	::= { firewallLogEntry 1 }
+
+firewallLogCount  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the count of firewall log."
+	::= { firewallLogEntry 2 }
+
+firewallLogTimeStamp  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the time stamp of firewall log.
+     Elapsed seconds from 1970/1/1."
+	::= { firewallLogEntry 3 }
+
+firewallLogSourceIp  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the source ip of firewall log."
+	::= { firewallLogEntry 4 }
+
+firewallLogSourcePort  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the source port of firewall log."
+	::= { firewallLogEntry 5 }
+
+firewallLogDestIp  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the destination ip of firewall log."
+	::= { firewallLogEntry 6 }
+
+firewallLogDestPort  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the destination port of firewall log."
+	::= { firewallLogEntry 7 }
+
+todFilteringTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF TodFilteringEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrFirewallMgmt 4 }
+
+todFilteringEntry  OBJECT-TYPE
+	SYNTAX 	TodFilteringEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { todFilteringEnabled }
+	::= { todFilteringTable 1 }
+
+TodFilteringEntry ::= SEQUENCE {
+	todFilteringEnabled
+		TruthValue,
+	todFilteringBlockEveryDay
+		TruthValue,
+	todFilteringBlockingDays
+		INTEGER,
+	todFilteringBlockAllDay
+		TruthValue,
+	todFilteringHourStart
+		INTEGER,
+	todFilteringHourStop
+		INTEGER,
+	todFilteringMinuteStart
+		INTEGER,
+	todFilteringMinuteStop
+		INTEGER,
+	todFilteringHostName
+		SnmpAdminString
+}
+
+todFilteringEnabled  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Enable or disable the TOD filtering."
+	::= { todFilteringEntry 1 }
+
+todFilteringBlockEveryDay  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set TOD filtering block every day."
+	::= { todFilteringEntry 2 }
+
+todFilteringBlockingDays  OBJECT-TYPE
+	SYNTAX     INTEGER
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set TOD filtering block days."
+	::= { todFilteringEntry 3 }
+
+todFilteringBlockAllDay  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set TOD filtering block all day."
+	::= { todFilteringEntry 4 }
+
+todFilteringHourStart  OBJECT-TYPE
+	SYNTAX     INTEGER
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set TOD filtering block start hour."
+	::= { todFilteringEntry 5 }
+
+todFilteringHourStop  OBJECT-TYPE
+	SYNTAX     INTEGER
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set TOD filtering block stop hour."
+	::= { todFilteringEntry 6 }
+
+todFilteringMinuteStart  OBJECT-TYPE
+	SYNTAX     INTEGER
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set TOD filtering block start minute."
+	::= { todFilteringEntry 7 }
+
+todFilteringMinuteStop  OBJECT-TYPE
+	SYNTAX     INTEGER
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set TOD filtering block stop minute."
+	::= { todFilteringEntry 8 }
+
+todFilteringHostName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set TOD filtering block host name."
+	::= { todFilteringEntry 9 }
+
+trusteMacAddress1  OBJECT-TYPE
+	SYNTAX     MacAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the first trusted mac address of firewall."
+	::= { ntgrFirewallMgmt 5 }
+
+trusteHostName1  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the first trusted host name of firewall."
+	::= { ntgrFirewallMgmt 6 }
+
+trusteMacAddress2  OBJECT-TYPE
+	SYNTAX     MacAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the second trusted mac address of firewall."
+	::= { ntgrFirewallMgmt 7 }
+
+trusteHostName2  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the second trusted host name of firewall."
+	::= { ntgrFirewallMgmt 8 }
+
+trusteMacAddress3  OBJECT-TYPE
+	SYNTAX     MacAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the third trusted mac address of firewall."
+	::= { ntgrFirewallMgmt 9 }
+
+trusteHostName3  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the third trusted host name of firewall."
+	::= { ntgrFirewallMgmt 10 }
+
+parentalControllLogTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF ParentalControllLogEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrFirewallMgmt 11 }
+
+parentalControllLogEntry  OBJECT-TYPE
+	SYNTAX 	ParentalControllLogEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { pcTimeStamp }
+	::= { parentalControllLogTable 1 }
+
+ParentalControllLogEntry ::= SEQUENCE {
+	pcTimeStamp
+		Integer32,
+	pcFilterType
+		Integer32,
+	pcTarget
+		SnmpAdminString,
+	pcHostName
+		SnmpAdminString,
+	pcHostMacAddress
+		MacAddress
+}
+
+pcTimeStamp  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the time stamp of parental control."
+	::= { parentalControllLogEntry 1 }
+
+pcFilterType  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the filter type of parental control."
+	::= { parentalControllLogEntry 2 }
+
+pcTarget  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the target of parental control."
+	::= { parentalControllLogEntry 3 }
+
+pcHostName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the host name of parental control."
+	::= { parentalControllLogEntry 4 }
+
+pcHostMacAddress  OBJECT-TYPE
+	SYNTAX     MacAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the host mac address of parental control."
+	::= { parentalControllLogEntry 5 }
+
+sysLogIp  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Get/Set the local ip of firewall system log."
+	::= { ntgrFirewallMgmt 12 }
+
+icsaLogEvents  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrFirewallMgmt 13 }
+END

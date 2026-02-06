@@ -1,0 +1,394 @@
+
+--****************************************************************************
+--    Filename: THOMSON-ADVANCED-SERVICES-MIB.txt 
+--    Author:  Clément Moreau 
+--    Creation Date: 2008/01
+--
+--**************************************************************************
+--    Description:
+--
+--		private MIB for management of Advanced Services.
+--		
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+THOMSON-ADVANCED-SERVICES-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE,
+    Integer32
+       FROM SNMPv2-SMI
+    broadband
+    	FROM THOMSON-MIB
+    TEXTUAL-CONVENTION,
+    DateAndTime,
+    DisplayString
+        FROM SNMPv2-TC
+    ifPhysAddress
+        FROM IF-MIB
+    docsDevEvLevel,
+    docsDevEvId,
+    docsDevEvText
+        FROM DOCS-CABLE-DEVICE-MIB
+    docsIfCmCmtsAddress,
+    docsIfDocsisBaseCapability,
+    docsIfCmStatusDocsisOperMode,
+    docsIfCmStatusModulationType
+        FROM DOCS-IF-MIB;
+
+advancedServices MODULE-IDENTITY
+    LAST-UPDATED "200808150000Z"
+    ORGANIZATION "Thomson"
+    CONTACT-INFO
+        "	E-mail: "
+    DESCRIPTION
+        "Thomson private MIB for management of Advanced Services."
+    REVISION      "200808150000Z"
+    DESCRIPTION
+        "Add details to descriptions."
+    REVISION      "200808130000Z"
+    DESCRIPTION
+        "Add retry time and retry count management."            
+    REVISION      "200808120000Z"
+    DESCRIPTION
+        "advancedServicesEventTrapEnable description change."
+    REVISION      "200802190000Z"
+    DESCRIPTION
+        "Validate syntax."                 
+    REVISION      "200802010000Z"
+    DESCRIPTION
+        "Initial version of this MIB module."
+    ::= { broadband 200 1 } 
+
+--              
+-- Textual Conventions
+--
+
+PackageState ::= TEXTUAL-CONVENTION
+    STATUS      current
+    DESCRIPTION
+	"A package state"
+    SYNTAX INTEGER  { 
+     		installedOk (0),
+     		notFound (1),
+		securityProblem (2),
+		adminDisabled (3),
+		otherError (100)
+		}
+
+UpgradeStatus ::= TEXTUAL-CONVENTION
+    STATUS      current
+    DESCRIPTION
+	"Update Status of a package 
+		automatic : the default state, upgrades are enabled, according to 
+			    available package list downloaded
+		force : upgrade is enabled and forced to the version specified in
+		        packageUpgradeVersion
+		disabled : no upgrade "
+    SYNTAX INTEGER  { 
+     		automatic(0),
+     		force(1),
+		disabled(2)
+		}
+--
+-- Advanced Service Packages status
+--
+
+enableService OBJECT-TYPE
+    SYNTAX Integer32 {
+          disabled(0),
+          enabled(1)
+          }
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+    "Enable / Disable the Advanced Services feature of the cable modem.
+     This includes the use of software packages and package upgrades.
+          0:  Disable Advanced Services
+          1:  Enable Advanced Services
+     Default: 1    
+    "
+    DEFVAL { 1 }    
+    ::= { advancedServices 1 }
+
+packageStatusTable  OBJECT-TYPE
+    SYNTAX	SEQUENCE OF PackageStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS	current
+    DESCRIPTION
+    	"List of all installed packages with their current status."
+    ::= { advancedServices 2 }
+
+packageStatusEntry OBJECT-TYPE
+    SYNTAX	PackageStatusEntry
+    MAX-ACCESS	not-accessible
+    STATUS	current
+    DESCRIPTION
+    	"An entry containing a package."
+    INDEX       { packageIndex }
+    ::= { packageStatusTable  1 }  
+
+PackageStatusEntry ::= SEQUENCE {
+    packageIndex		Integer32,
+    packageName			DisplayString,
+    packageEnable		Integer32,
+    packageVersion		DisplayString,
+    packageState		PackageState,
+    packageUpgradeStatus 	UpgradeStatus,	
+    packageUpgradeVersion	DisplayString
+}
+
+packageIndex	OBJECT-TYPE
+    SYNTAX	Integer32 (1..1000)
+    MAX-ACCESS	not-accessible
+    STATUS 	current
+    DESCRIPTION 
+    	"Reference Index for each package. Range indicates that no more than 1000
+	 packages will exist."
+    ::= { packageStatusEntry 1 }
+ 
+packageName     OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS  read-only
+    STATUS	current
+    DESCRIPTION
+    	"Name of the package"
+    ::= { packageStatusEntry 2 }
+
+packageEnable	OBJECT-TYPE
+    SYNTAX Integer32 {
+          disabled(0),
+          enabled(1)
+          }
+    MAX-ACCESS	read-write
+    STATUS 	current
+    DESCRIPTION 
+    "Administrative status of the package.
+          0:  Disable package
+          1:  Enable package
+     Default: 1   "
+    DEFVAL { 1 }    
+    ::= { packageStatusEntry 3 }
+ 
+
+packageVersion  OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS  read-only
+    STATUS	current
+    DESCRIPTION
+    	"Version of the package"
+    ::= { packageStatusEntry 4 }
+
+packageState     OBJECT-TYPE
+    SYNTAX	PackageState
+    MAX-ACCESS  read-only
+    STATUS	current
+    DESCRIPTION
+        "State of the package: 
+            installedOk(0)
+            notFound(1)
+            securityProblem(2)
+            adminDisabled(3)
+            otherError(100)"
+    ::= { packageStatusEntry 5 }
+
+packageUpgradeStatus	OBJECT-TYPE
+    SYNTAX	UpgradeStatus
+    MAX-ACCESS	read-write
+    STATUS 	current
+    DESCRIPTION 
+    	"Administrative status of the upgrade of the package:
+        0: Automatic. Upgrades are enabled according to available package list downloaded.
+        1: Force. Upgrade is enabled and forced to the version specified in packageUpgradeVersion.
+        2: Disabled. No upgrade.
+        Default = automatic (0)"  
+    DEFVAL { 0 }    
+    ::= { packageStatusEntry 6 }
+
+packageUpgradeVersion  OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+    	"Administratively configured version the package has to be updated to"
+    ::= { packageStatusEntry 7 }
+
+-- 
+-- Upgrade Management
+--
+
+servicesUpgrade OBJECT IDENTIFIER ::= { advancedServices 3 }
+
+enableUpgrade OBJECT-TYPE
+    SYNTAX Integer32 {
+          disabled(0),
+          enabled(1)
+          }
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+	"Enable / Disable the upgrade of Advanced Services
+          0:  Disable upgrades
+          1:  Enable upgrades
+     Default: 1"
+    DEFVAL { 1 }    
+    ::= { servicesUpgrade 1 }
+
+kickUpgrade OBJECT-TYPE
+    SYNTAX Integer32 {
+          normal(0),
+          upgrade(1)
+          }
+    MAX-ACCESS 	read-write
+    STATUS	current
+    DESCRIPTION
+    	"Setting this to 1 (one) kick an immediate upgrade cycle.
+	 Always read as 0 (zero) "
+    DEFVAL { 0 }    
+    ::= { servicesUpgrade 2 }
+
+
+periodicTimer OBJECT-TYPE
+    SYNTAX	Integer32
+    MAX-ACCESS 	read-write
+    STATUS	current
+    DESCRIPTION
+    "Duration of the periodic timer in seconds that launch regular
+    (automatic) service upgrade process.
+    Default value = 604800 seconds (equal to 7 days)."
+    DEFVAL { 604800 }    
+    ::= { servicesUpgrade 3 }
+
+periodicTimerRandomize OBJECT-TYPE
+    SYNTAX	Integer32
+    MAX-ACCESS	read-write
+    STATUS	current
+    DESCRIPTION
+    	"Duration of the randomization window of the periodic Timer in seconds.
+        Default value = 0 seconds.
+	 The real value of the timer will be:
+	 periodicTimer + periodicTimerRandomize * rand() , where rand() is a
+	 random number (chosen at each run of the timer) uniformly distributed
+	 between 0 and 1."
+    DEFVAL { 0 }     
+    ::= { servicesUpgrade 4 }
+
+upgradeURL OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS 	read-write
+    STATUS	current
+    DESCRIPTION
+    	"URL of the upgrade server to contact for upgrades.
+        Default: http://comcast-apdg.inventel.com/"
+    DEFVAL { "http://comcast-adpg.inventel.com/" }    
+    ::= { servicesUpgrade 5 }
+
+rescueUpgradeRetryTime OBJECT-TYPE
+    SYNTAX INTEGER (60..86400)
+    UNITS           "seconds"
+    MAX-ACCESS 	read-write
+    STATUS	current
+    DESCRIPTION
+    	"Duration in seconds of the time between rescue-mode upgrade attempts, after a failed initial attempt.
+         The default is 900 seconds (15 minutes), the minimum setting is 60 seconds (1 minute)
+         and the maximum setting is 86400 seconds (24 hours).
+         The default value is used if a value outside the min or max settings is entered."
+    DEFVAL { 900 }
+    ::= { servicesUpgrade 6 }
+
+rescueUpgradeRetryCount OBJECT-TYPE
+    SYNTAX INTEGER (0..10)
+    MAX-ACCESS 	read-write
+    STATUS	current
+    DESCRIPTION
+    	"Number of allowed retries of rescue-mode upgrade attempts, after a failed initial attempt.
+         The default is 3 retries, the minimum setting is 0 retries and the maximum is 10 retries.
+         The default value is used if a value outside the min or max settings is entered."
+    DEFVAL { 3 }
+    ::= { servicesUpgrade 7 }
+
+forcedUpgradeRetryTime OBJECT-TYPE
+    SYNTAX INTEGER (60..28800)
+    UNITS           "seconds"
+    MAX-ACCESS 	read-write
+    STATUS	current
+    DESCRIPTION
+    	"Duration in seconds of the time between forced upgrade attempts, after a failed initial attempt.
+         The default is 180 seconds (3 minutes), the minimum setting is 60 seconds (1 minute)
+         and the maximum setting is 28800 seconds (8 hours).
+         The default value is used if a value outside the min or max settings is entered."
+    DEFVAL { 180 }
+    ::= { servicesUpgrade 8 }
+
+forcedUpgradeRetryCount OBJECT-TYPE
+    SYNTAX INTEGER (0..10)
+    MAX-ACCESS 	read-write
+    STATUS	current
+    DESCRIPTION
+    	"Number of allowed retries of forced upgrade attempts, after a failed initial attempt.
+         The default is 2 retries, the minimum setting is 0 retries and the maximum is 10 retries.
+         The default value is used if a value outside the min or max settings is entered."
+    DEFVAL { 2 }
+    ::= { servicesUpgrade 9 }
+
+periodicUpgradeRetryTime OBJECT-TYPE
+    SYNTAX INTEGER (60..86400)
+    UNITS           "seconds"
+    MAX-ACCESS 	read-write
+    STATUS	current
+    DESCRIPTION
+    	"Duration in seconds of the time between periodic upgrade attempts, after a failed initial attempt.
+         The default is 900 seconds (15 minutes), the minimum setting is 60 seconds (1 minute)
+         and the maximum setting is 86400 seconds (24 hours).
+         The default value is used if a value outside the min or max settings is entered."
+    DEFVAL { 900 }
+    ::= { servicesUpgrade 10 }
+
+periodicUpgradeRetryCount OBJECT-TYPE
+    SYNTAX INTEGER (0..10)
+    MAX-ACCESS 	read-write
+    STATUS	current
+    DESCRIPTION
+    	"Number of allowed retries of periodic upgrade attempts, after a failed initial attempt.
+         The default is 3 retries, the minimum setting is 0 retries and the maximum is 10 retries.
+         The default value is used if a value outside the min or max settings is entered."
+    DEFVAL { 3 }
+    ::= { servicesUpgrade 11 }
+
+advancedServicesEventTrap NOTIFICATION-TYPE
+    OBJECTS { 
+              docsDevEvLevel,
+              docsDevEvId,
+              docsDevEvText,
+              ifPhysAddress,
+              docsIfCmCmtsAddress,
+              docsIfDocsisBaseCapability,
+              docsIfCmStatusDocsisOperMode,
+              docsIfCmStatusModulationType
+            }
+    STATUS current
+    DESCRIPTION
+        "An event to report Advanced Service Update progress."
+    ::= { advancedServices 4 }
+
+advancedServicesEventTrapEnable OBJECT-TYPE
+    SYNTAX Integer32 {
+          disabled(0),
+          enabled(1)
+          }
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+	"Enable / Disable the Advanced Services Event Trap
+	      0:  Disable Event Traps
+	      1:  Enable Event Traps
+	 Default: 0
+	 Note:  This setting is volatile and will be reset (to zero) after an AC-cycle."
+    DEFVAL { 0 }    
+    ::= { advancedServices 5 }
+
+END

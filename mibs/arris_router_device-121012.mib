@@ -1,0 +1,3240 @@
+ARRIS-ROUTER-DEVICE-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+   MODULE-IDENTITY, OBJECT-TYPE, Integer32, Unsigned32, Counter32,
+   NOTIFICATION-TYPE, OBJECT-IDENTITY
+      FROM SNMPv2-SMI
+   InetAddress,
+   InetAddressType,
+   InetAddressIPv6,
+   InetAddressPrefixLength   
+      FROM INET-ADDRESS-MIB
+   ifIndex 
+	  FROM IF-MIB
+   arrisProdIdRouter
+      FROM ARRIS-MIB
+   TruthValue, DisplayString, DateAndTime, MacAddress, RowStatus, PhysAddress
+      FROM SNMPv2-TC
+   DscpOrAny
+      FROM DIFFSERV-DSCP-TC
+   OBJECT-GROUP, MODULE-COMPLIANCE, NOTIFICATION-GROUP
+	  FROM SNMPv2-CONF;
+
+   arrisRouterMib MODULE-IDENTITY
+      LAST-UPDATED    "201212100000Z" -- Dec 10, 2012
+      ORGANIZATION    "ARRIS Broadband"
+      CONTACT-INFO    "Byron Griffin
+                       Postal: ARRIS Broadband
+                       3871 Lakefield Drive
+                       Suite 300
+                       Suwanee, GA 30024-1242
+                       U.S.A.
+                       Phone:  +1 503-495-9278
+                       E-mail: byron.griffin@arrisi.com"
+      DESCRIPTION
+       "This MIB module supplies the basic proprietary (ARRIS-specific)
+        management objects for ARRIS eRouter/router devices."
+    
+      -- Revision history 
+        REVISION "201212100000Z" -- Dec 10, 2012  
+         DESCRIPTION
+            "Add arrisRouterBSSArpAuditInterval MIB under arrisRouterBSSTable for periodical checking all ARP entries under this SSID are still valid."
+        REVISION "201211160000Z" -- Nov 16, 2012  
+         DESCRIPTION
+            "Add arrisRouterSoftGreCapable"
+        REVISION "201208020000Z" -- Aug 02, 2012
+         DESCRIPTION
+            "Update value of arrisRouterBssSecurityMode to support wpaWpa2Enterprise"
+        REVISION "201205300000Z" -- May 30, 2012
+         DESCRIPTION
+            "Add arrisRouterWiFiNumSSIDSupported "
+        REVISION "201204230000Z" -- Apr. 20, 2012
+         DESCRIPTION
+            "Add in third pass of SoftGRE MIBs, includes Failover and Radius"
+        REVISION "201203260000Z" -- Mar 26, 2012
+         DESCRIPTION
+            "Fix some syntax errors."
+        REVISION "201203150000Z" -- Mar 15, 2012
+         DESCRIPTION
+            "Add in updated VLan and DSCP Mibs for SoftGre"
+        REVISION "201202290000Z" -- Feb 29, 2012
+         DESCRIPTION
+            "Add in arrisRouterICtrlHNAPServerPort to iCtrl tree."
+        REVISION "201202230000Z" -- Feb 23, 2012
+         DESCRIPTION
+            "Add in arrisRouterSoftGre settings"
+        REVISION "201202220000Z" -- Feb 22, 2012
+         DESCRIPTION
+            "Merge TW/NA mibs into CT MIB file"
+        REVISION "201202200000Z" -- Feb 20, 2012
+         DESCRIPTION
+            "Fix OID for arrisRouterWpsConfigTimeout, arrisRouterWpsSTAPin
+             and arrisRouterWpsPushButton MIBs"
+        REVISION "201111170000Z" -- Nov 17, 2011
+         DESCRIPTION
+            "Remove arrisRouterWiFiTxPower MIB. No longer supported. Use 
+             the arrisRouterWiFiOutputPower MIB instead."
+        REVISION "201110060000Z" -- Oct 6, 2011
+         DESCRIPTION
+            "Added arrisRouterWiFiTxPower MIB"
+		REVISION "201108220000Z" -- Aug 22, 2011
+		 DESCRIPTION
+			"Added arrisRouterICtrl OIDs."
+		REVISION "201106290000Z" -- June 29, 2011
+		 DESCRIPTION 
+			"Add the wpaWpa2Psk(7) in arrisRouterBssSecurityMode"
+		REVISION "201105240000Z" -- May 24, 2011
+		 DESCRIPTION
+			"Modify the arrisRouterWpsDevicePIN from
+read-write to read-only"
+		REVISION "201104260000Z" -- April 26, 2011
+		 DESCRIPTION
+			"Added arrisRouterWiFiReset, arrisRouterTrustedDeviceManagedServicesTable,
+			 arrisRouterTrustedDeviceTable, arrisRouterFWIPFilterTable"
+		REVISION "201104220000Z" -- April 22, 2011
+		 DESCRIPTION
+			"Added arrisRouterFWVirtSrvTableEnabled, arrisRouterFWPortTrigTableEnabled,
+				arrisRouterManagedServicesEnabled, arrisRouterManagedSitesEnabled, arrisRouterManagedDevicesEnabled
+				arrisRouterFWMACFilterTable"
+	REVISION "201103110000Z" -- March 11, 2011
+		DESCRIPTION
+		"Added additional columns to the arrisRouterLanTable:
+arrisRouterLanClientOnline, arrisRouterLanClientComment,arrisRouterLanClientCustom."
+	REVISION "201103100000Z" -- March 10, 2011
+		DESCRIPTION
+		"Removed arrisRouterDeviceUpDownEntry, arrisRouterLanCustomCount, arrisRouterLanCustomTable, 
+		 arrisRouterWPAReAuthInterval, arrisRouterFWVirtSrvTOD, arrisRouterFWPortTrigTOD"
+	REVISION "201103080000Z" -- March 08, 2011
+		DESCRIPTION
+		"Added/updated arrisRouterFWBlockHTTP, arrisRouterFWBlockP2P, arrisRouterFWBlockIdent, arrisRouterFWBlockICMP, arrisRouterFWBlockMulticast, arrisRouterFWSecurityLevel, arrisRouterFWResetDefaults and arrisRouterLanCustomComments"
+	REVISION "201103070000Z" -- March 7, 2011
+	       	DESCRIPTION
+		"Added arrisRouterWanCurrentIpAddr and remove arrisRouterWanCurrentGW"
+	 REVISION "201103020000Z" -- March 2, 2011
+         	DESCRIPTION
+		"Added arrisRouterWanCurrentGW and arrisRouterWanDHCPExpire"
+	 REVISION "201101070000Z" -- January 7, 2011
+         DESCRIPTION
+	"Added arrisRouterWMMAPSD MIB"
+	  REVISION "201012240000Z" -- December 24, 2010
+         DESCRIPTION
+	"Updated arrisRouterLanPassThru description"
+	  REVISION "201009070000Z" -- September 07, 2010
+         DESCRIPTION
+	"Added arrisRouterWiFiResetDefaults"
+	  REVISION "201008110000Z" -- Auguest 11, 2010
+      	 DESCRIPTION
+      "Added arrisRouterLanClientAdapterType"	
+      REVISION "201007280000Z" -- July 28, 2010
+      	 DESCRIPTION
+      "Updated base on arris 20100727"	  
+	  REVISION "201007230000Z" -- July 23, 2010
+         DESCRIPTION
+		"Added arrisRouterSerialNumber, arrisRouterBootCodeVersion, arrisRouterHardwareVersion, arrisRouterFirmwareVersion"
+      REVISION "201007220000Z" -- July 22, 2010
+         DESCRIPTION
+			"Updated values for arrisRouterWpsPushButton.  Added arrisRouterWpsStatus.
+			Update values for arrisRouterWiFiMode.
+			Removed arrisRouterWpsConfigReg"			
+      REVISION "201007140000Z" -- July 14, 2010
+         DESCRIPTION
+			"Added numeric index to arrisRouterLanCustomTable."      
+      REVISION "201007120000Z" -- July 12, 2010
+         DESCRIPTION
+			"Added arrisRouterWebAccessSetting."      
+
+      REVISION "201007200000Z" -- July 20, 2010
+      	 DESCRIPTION
+      "Base on arris 20100630, update Comcast MIB"
+      REVISION "201006300000Z" -- June 30, 2010
+         DESCRIPTION
+			"Reduced size of arrisRouterTraceRtLog to 255.  Changed minimum value of arrisRouterWiFiBeaconInterval to 1."
+      REVISION "201006280000Z" -- June 28, 2010
+         DESCRIPTION
+			"Changed arrisRouterWiFiEnableRadio back to TruthValue -- typo fixed.  Made arrisRouterLanCustomIPAddr and arrisRouterLanCustomIPAddrType writable."
+      REVISION "201006200000Z" -- June 20, 2010
+         DESCRIPTION
+      			"Removed arrisRouterLanDNSTableFreeIdx and renumbered items below it."
+      REVISION "201006170000Z" -- June 17, 2010
+         DESCRIPTION
+			"Changed arrisRouterFWVirtSrvTable to use row status: add arrisRouterFWVirtSrvRowStatus and remove arrisRouterFWVirtSrvEnabled.
+			Changed arrisRouterFWIPFilterTable to use row status: add arrisRouterFWIPFilterRowStatus and remove arrisRouterFWIPFilterEnabled.
+			Changed arrisRouterFWMACFilterTable to use row status: add arrisRouterFWMACFilterRowStatus.
+			Change arrisRouterFWPortTrigTable to use row status: add arrisRouterFWPortTrigRowStatus and remove arrisRouterFWPortTrigEnabled.
+			Added arrisRouterLanPassThru to Lan interface.
+			Added arrisRouterLanFirewallOn to Lan interface."
+      REVISION "201005270000Z" -- May 27, 2010
+         DESCRIPTION
+			"Added arrisRouterLanGatewayIp2 and arrisRouterLanGatewayIp2Type to handle simultaneous IPv4 and IPv6 on LAN.
+			Added resetDefaults to arrisRouterFWApplySettings.  Added arrisRouterName.  Added arrisRouterFWAllowAll.
+			Added restartWLAN to arrisRouterLanSettings."
+      REVISION "201005260000Z" -- May 26, 2010
+         DESCRIPTION
+             "Added arrisRouterFWSecurityLevel and arrisRouterLanIPv6Mode and added arrisRouterLanCustomComments.  Put size ranges on most objects of type DisplayString."
+      REVISION "201005110000Z" -- May 11, 2010
+         DESCRIPTION
+             "Removed unnecessary enable 'firewall' and 'parental controls' logs.  These are always 'on'.  They can be configured to email or not.
+			 Removed arrisHostAccessHttpWan which duplicates functionality of arrisRouterFWEnableRemoteMgmt"
+      REVISION "201005070000Z" -- May 7, 2010
+         DESCRIPTION
+             "Added variables to obtain lowest 'available' index for tables that have the ability via RowStatus to create new rows."	  
+      REVISION "201005030000Z" -- May 3, 2010
+         DESCRIPTION
+             "Added user and MSO change log tables.  Added arrisRouterLanCustomTable for 'friendly name' and other attributes.  Enhanced arrisRouterClientsUpDownTable."
+      REVISION "201004290000Z" -- April 29, 2010
+         DESCRIPTION
+             "Removed unnecessary DST variable.  Added firewall and parental control log tables. Added web access table.  Removed unnecessary log config variables."
+      REVISION "201004270000Z" -- April 27, 2010
+         DESCRIPTION
+             "Merged WAN static/dynamic for simplicity.  Added global 'Apply settings'.  Added 'time-of-day' to firewall and parental control rules. Remove WMM VLAN -- not needed."
+      REVISION "201004250000Z" -- April 25, 2010
+         DESCRIPTION
+             "Updated Wan config to handle multiple IP addresses and separate out static vs. dynamic."      
+      REVISION "201004220000Z" -- April 22, 2010
+         DESCRIPTION
+             "Added 'apply log', made RIP settings 'global' and removed UPnP Lan tables, and update Wan config to handle multiple IP addresses."      
+      REVISION "201002110000Z" -- February 11, 2010
+         DESCRIPTION
+             "Initial Revision"      
+::= { arrisProdIdRouter 1 }
+
+arrisRouterMibObjects			 OBJECT IDENTIFIER ::= { arrisRouterMib 1 }
+arrisRouterWanConfig			 OBJECT IDENTIFIER ::= { arrisRouterMibObjects 1 }
+arrisRouterLanConfig			 OBJECT IDENTIFIER ::= { arrisRouterMibObjects 2 }
+arrisRouterWirelessCfg			 OBJECT IDENTIFIER ::= { arrisRouterMibObjects 3 }
+arrisRouterFWCfg				 OBJECT IDENTIFIER ::= { arrisRouterMibObjects 4 }
+arrisRouterSysCfg				 OBJECT IDENTIFIER ::= { arrisRouterMibObjects 5 }
+arrisRouterHostAccess			 OBJECT IDENTIFIER ::= { arrisRouterMibObjects 6 }
+arrisRouterPingMgmt				 OBJECT IDENTIFIER ::= { arrisRouterMibObjects 7 }
+arrisRouterTraceRtMgmt			 OBJECT IDENTIFIER ::= { arrisRouterMibObjects 8 }
+arrisRouterICtrl                 OBJECT IDENTIFIER ::= { arrisRouterMibObjects 10 }
+
+
+arrisRouterApplyAllSettings OBJECT-TYPE
+     SYNTAX      INTEGER { unknown(0), applySettings(1) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "This applies settings for the entire MIB.  All services and components in the router will be restarted"
+     ::= { arrisRouterMibObjects 9 }
+arrisRouterWanCurrentTable OBJECT-TYPE
+      SYNTAX      SEQUENCE OF ArrisRouterWanCurrentEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Table contains information for a specific Static Wan IP address.  In some environments, there may be both an IPv6 and IPv6 address or multiple IPv6 addresses."
+      ::= { arrisRouterWanConfig 7 }
+  
+arrisRouterWanCurrentEntry OBJECT-TYPE
+      SYNTAX      ArrisRouterWanCurrentEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Table contains information for a specific Static Wan IP address.  In some environments, there may be both an IPv6 and IPv6 address or multiple IPv6 addresses."
+      INDEX { arrisRouterWanCurrentIPIndex }	
+      ::= { arrisRouterWanCurrentTable 1 }  
+  
+ArrisRouterWanCurrentEntry ::= SEQUENCE {
+		arrisRouterWanCurrentIPIndex		Unsigned32,
+		arrisRouterWanCurrentIPAddrType		InetAddressType,
+		arrisRouterWanCurrentIPAddr 		InetAddress,
+		arrisRouterWanCurrentPrefix 		InetAddressPrefixLength,
+		arrisRouterWanCurrentGWType			InetAddressType,
+		arrisRouterWanCurrentGW				InetAddress,
+		arrisRouterWanCurrentIPType			INTEGER,
+        arrisRouterWanCurrentNetMask		        InetAddress,
+        arrisRouterWanCurrentPrefixDelegationV6     InetAddressIPv6,
+        arrisRouterWanCurrentPrefixDelegationV6Len  InetAddressPrefixLength,
+        arrisRouterWanCurrentPreferredLifetimeV6    INTEGER,
+        arrisRouterWanCurrentValidLifetimeV6        INTEGER
+	}
+
+arrisRouterWanCurrentIPIndex OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION "Index currently limit to 4."
+     ::= { arrisRouterWanCurrentEntry 1 }	
+	
+arrisRouterWanCurrentIPAddrType OBJECT-TYPE
+     SYNTAX      InetAddressType
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Static IP address type for Wan connection."
+     ::= { arrisRouterWanCurrentEntry 2 }
+
+arrisRouterWanCurrentIPAddr OBJECT-TYPE
+     SYNTAX      InetAddress
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Static IP address for Wan connection. "
+     ::= { arrisRouterWanCurrentEntry 3 }
+
+arrisRouterWanCurrentPrefix OBJECT-TYPE
+     SYNTAX      InetAddressPrefixLength
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Netmask (prefix) for Wan connection."
+     ::= { arrisRouterWanCurrentEntry 4 }
+     
+arrisRouterWanCurrentGWType OBJECT-TYPE
+     SYNTAX      InetAddressType
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Gateway address type for Wan connection."
+     ::= { arrisRouterWanCurrentEntry 5 }
+
+arrisRouterWanCurrentGW OBJECT-TYPE
+     SYNTAX      InetAddress
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Gateway address for Wan connection. "
+     ::= { arrisRouterWanCurrentEntry 6 }
+     
+arrisRouterWanCurrentIPType OBJECT-TYPE
+     SYNTAX      INTEGER { unknown(0), dynamic(1), static(2) }
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Type of IP address."
+     ::= { arrisRouterWanCurrentEntry 7 }
+
+arrisRouterWanCurrentNetMask OBJECT-TYPE
+     SYNTAX      InetAddress
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "The netmask for the WAN connection if it is IPv4."				 
+     ::= { arrisRouterWanCurrentEntry 8 }     
+
+arrisRouterWanCurrentPrefixDelegationV6 OBJECT-TYPE
+     SYNTAX      InetAddressIPv6
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "The prefix, or initial bits of the address, given to the router to delegate to its attached CPEs."
+     ::= { arrisRouterWanCurrentEntry 9 }  
+     
+arrisRouterWanCurrentPrefixDelegationV6Len OBJECT-TYPE
+     SYNTAX      InetAddressPrefixLength
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "The length for the prefix to be delegated to attached CPEs."
+     ::= { arrisRouterWanCurrentEntry 10 }
+
+arrisRouterWanCurrentPreferredLifetimeV6 OBJECT-TYPE
+     SYNTAX      INTEGER
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "The preferred lifetime for the assigned IPv6 address of the router."
+     ::= { arrisRouterWanCurrentEntry 11 }
+
+arrisRouterWanCurrentValidLifetimeV6 OBJECT-TYPE
+     SYNTAX      INTEGER
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "The valid lifetime for the assigned IPv6 address of the router."
+     ::= { arrisRouterWanCurrentEntry 12 }
+
+-- arrsiRouterWannCurrentEntry End   
+
+arrisRouterWanDHCPObjects	OBJECT IDENTIFIER ::= { arrisRouterWanConfig 12 }
+     
+arrisRouterWanRenewLease OBJECT-TYPE
+     SYNTAX      INTEGER { noApply(0), apply(1) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Set to apply(1) to renew the primary public Wan DHCP lease"
+     ::= { arrisRouterWanDHCPObjects 1 }
+
+arrisRouterWanReleaseLease OBJECT-TYPE
+     SYNTAX      INTEGER { noApply(0), apply(1) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Set to apply(1) to release the primary public Wan DHCP lease"
+     ::= { arrisRouterWanDHCPObjects 2 }
+
+arrisRouterWanDHCPDuration OBJECT-TYPE
+     SYNTAX      Unsigned32
+     UNITS		 "seconds"
+     MAX-ACCESS  read-only
+     STATUS      current
+      DESCRIPTION "The number of seconds that the current Wan DHCP lease is valid." 
+     ::= { arrisRouterWanDHCPObjects 3 }
+
+arrisRouterWanDHCPExpire OBJECT-TYPE
+     SYNTAX      DateAndTime
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "The date and time when the current Wan DHCP lease expires."
+     ::= { arrisRouterWanDHCPObjects 4 }
+
+arrisRouterWanRenewLeaseV6 OBJECT-TYPE
+     SYNTAX      INTEGER { noApply(0), apply(1) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "IPV6 Set to apply(1) to renew the primary public Wan DHCP lease"
+     ::= { arrisRouterWanDHCPObjects 5 }
+
+arrisRouterWanReleaseLeaseV6 OBJECT-TYPE
+     SYNTAX      INTEGER { noApply(0), apply(1) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "IPV6 Set to apply(1) to release the primary public Wan DHCP lease"
+     ::= { arrisRouterWanDHCPObjects 6 }
+
+arrisRouterWanDHCPDurationV6 OBJECT-TYPE
+     SYNTAX      Unsigned32
+     UNITS		 "seconds"
+     MAX-ACCESS  read-only
+     STATUS      current
+      DESCRIPTION "IPV6 The number of seconds that the current Wan DHCP lease is valid." 
+     ::= { arrisRouterWanDHCPObjects 7 }
+
+arrisRouterWanDHCPExpireV6 OBJECT-TYPE
+     SYNTAX      DateAndTime
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "IPV6 The date and time when the current Wan DHCP lease expires."
+     ::= { arrisRouterWanDHCPObjects 8 }
+
+arrisRouterWanConnTypeV6 OBJECT-TYPE
+     SYNTAX      INTEGER { unknown(0), dynamic(1), static(2) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "IPV6 type of Wan connection."         
+     ::= { arrisRouterWanConfig 16 }
+
+arrisRouterWanIPProvMode OBJECT-TYPE
+     SYNTAX      INTEGER { disabledBridge(0), ipv4(1), ipv6(2), dualStack(3)}
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "eRouter initialization mode."         
+     ::= { arrisRouterWanConfig 17 }
+
+arrisRouterSoftGreWanObjects   OBJECT IDENTIFIER ::= { arrisRouterWanConfig 19 }
+
+arrisRouterSoftGreWanTable OBJECT-TYPE
+     SYNTAX      SEQUENCE OF ArrisRouterSoftGreWanEntry
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION "Table contains information for a specific SoftGreWan"
+     ::= { arrisRouterSoftGreWanObjects 1 }
+
+arrisRouterSoftGreWanEntry OBJECT-TYPE
+     SYNTAX      ArrisRouterSoftGreWanEntry
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION "Table contains information for a specific SoftGreWan.  ONLY Index of 1 currently Supported!"
+     INDEX { ifIndex }	--from IF-MIB
+     ::= { arrisRouterSoftGreWanTable 1 }  
+
+ArrisRouterSoftGreWanEntry ::= SEQUENCE {  
+     arrisRouterSoftGreWanEnable                  TruthValue,
+     arrisRouterSoftGreMappedInterface            Unsigned32,
+     arrisRouterSoftGreMaxSessions                INTEGER,
+     arrisRouterSoftGreWanControllerFqdn          DisplayString,
+     arrisRouterSoftGreWanFailoverPingCount       INTEGER,
+     arrisRouterSoftGreWanFailoverPingInterval    INTEGER,
+     arrisRouterSoftGreWanFailoverThreshold       INTEGER,
+     arrisRouterSoftGreCircuitIdEnabled           TruthValue,
+     arrisRouterSoftGreRemoteIdEnabled            TruthValue,
+     arrisRouterSoftGreRadiusEnabled              TruthValue,
+     arrisRouterSoftGreRadiusServerAddressType    InetAddressType,
+     arrisRouterSoftGreRadiusServerAddress        InetAddress,
+     arrisRouterSoftGreRadiusServerPort           Unsigned32,
+     arrisRouterSoftGreRadiusKey                  DisplayString,
+     arrisRouterSoftGreRadiusReAuthInterval       Unsigned32,
+     arrisRouterSoftGreVlanQEnable                TruthValue,
+     arrisRouterSoftGreWanDscp                    DscpOrAny,
+     arrisRouterSoftGreWanDNSRetryTimer        Unsigned32
+}
+
+arrisRouterSoftGreWanEnable OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write 
+     STATUS      current
+     DESCRIPTION "Enable or disable the SoftGRE WiFi Hotspot Client."
+     DEFVAL { false }
+     ::= { arrisRouterSoftGreWanEntry 1 }
+
+arrisRouterSoftGreMappedInterface OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Name of the member physical network interface (or virtual
+                  network interface in the case of a wireless SSID) comprising 
+                  the logical interface, aka LAN subnet.                 
+                  This mib object takes in an unsigned integer with the
+                  following bitmap setup:
+
+                  0x00000001 // ethernet (unsupported)
+                  0x00000002 // usb (unsupported)
+                  0x00000004 // moca (unsupported)
+                  0x00000008 // ssid0 (unsupported)
+                  0x00000010 // ssid1 (unsupported)
+                  0x00000020 // ssid2
+                  0x00000040 // ssid3 (unsupported)
+                  0x00000080 // ssid4 (unsupported)
+                  0x00000100 // ssid5 (unsupported)
+                  0x00000200 // ssid6 (unsupported)
+                  0x00000400 // ssid7 (unsupported)
+                  Example of mapping the ssid2 to the
+                  SoftGre subnet: 0x00000020
+                  Note that by assigning this interface to the SoftGre
+                  Application causes it to be unusable for LAN services."
+     ::= { arrisRouterSoftGreWanEntry 2 }    
+
+arrisRouterSoftGreMaxSessions OBJECT-TYPE
+     SYNTAX      INTEGER
+     MAX-ACCESS  read-write
+     STATUS      current   
+     DESCRIPTION "The maximum  number of roaming devices for this AP
+                  Setting the number of concurrent SoftGre client sessions to 
+                  0 must cause the following actions to be performed by 
+                  the Gateway.
+                  Disable broadcast of SoftGre SSID (No clients can associate)
+                  SoftGRE interface is disabled (No routing possible)
+                  Release the public IP associated to the SoftGRE interface"
+     DEFVAL  { 5 }
+     ::= { arrisRouterSoftGreWanEntry 3 }   
+
+arrisRouterSoftGreWanControllerFqdn OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(0..255))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "The FQDN of the WLAN GW that will terminate tunnels from this AP."
+     ::= { arrisRouterSoftGreWanEntry 4 }
+     
+arrisRouterSoftGreWanFailoverPingCount OBJECT-TYPE
+     SYNTAX      INTEGER
+     MAX-ACCESS  read-write
+     STATUS      current   
+     DESCRIPTION "Number of ICMP Pings sent at a regular interval for WLAN GW
+                  reachability health check"
+     DEFVAL  { 3 }
+     ::= { arrisRouterSoftGreWanEntry 7 }
+
+arrisRouterSoftGreWanFailoverPingInterval OBJECT-TYPE
+     SYNTAX      INTEGER
+     MAX-ACCESS  read-write
+     STATUS      current   
+     DESCRIPTION "Configured interval in seconds between WLAN GW reachability health checks"
+     DEFVAL  { 60 }
+     ::= { arrisRouterSoftGreWanEntry 8 }
+
+arrisRouterSoftGreWanFailoverThreshold OBJECT-TYPE
+     SYNTAX      INTEGER
+     MAX-ACCESS  read-write
+     STATUS      current   
+     DESCRIPTION "Number of consecutive un-acknowledged pings before it is determined
+                  that the current WLAN GW is no longer available and will fail-over
+                  to another WLAN GW if the DNS responded with more than one WLAN GW IP"
+     DEFVAL  { 3 }
+     ::= { arrisRouterSoftGreWanEntry 9 }
+
+arrisRouterSoftGreCircuitIdEnabled OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write 
+     STATUS      current
+     DESCRIPTION "Enable or disable the SoftGRE Circuit ID being added to DHCP"
+     DEFVAL { true }
+     ::= { arrisRouterSoftGreWanEntry 10 }
+
+arrisRouterSoftGreRemoteIdEnabled OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write 
+     STATUS      current
+     DESCRIPTION "Enable or disable the SoftGRE RemoteId being added to DHCP"
+     DEFVAL { true }
+     ::= { arrisRouterSoftGreWanEntry 11 }
+
+arrisRouterSoftGreRadiusEnabled OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write 
+     STATUS      current
+     DESCRIPTION "Enable or disable Radius Authentication for the SoftGRE Tunnel"
+     DEFVAL { false }
+     ::= { arrisRouterSoftGreWanEntry 12 }
+
+arrisRouterSoftGreRadiusServerAddressType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The type of internet address used for arrisRouterRadiusAddress."
+    ::= { arrisRouterSoftGreWanEntry 13 }
+    
+arrisRouterSoftGreRadiusServerAddress OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The internet address of the RADIUS server for this service set.
+         If not specified and Radius Enabled, will default to WLAN GW"
+    ::= { arrisRouterSoftGreWanEntry 14 }
+    
+arrisRouterSoftGreRadiusServerPort OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The UDP port used to communicate with the RADIUS server for this 
+         service set.  Defaults to Port 1812"
+    DEFVAL  { 1812 }
+    ::= { arrisRouterSoftGreWanEntry 15 }
+    
+arrisRouterSoftGreRadiusKey OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(1..64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The RADIUS key."
+    ::= { arrisRouterSoftGreWanEntry 16 }
+    
+arrisRouterSoftGreRadiusReAuthInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The network re-authentication interval.  If set to zero, no
+         re-authentication will be performed."
+    ::= { arrisRouterSoftGreWanEntry 17 }
+
+arrisRouterSoftGreVlanQEnable  OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write 
+     STATUS      current
+     DESCRIPTION "Enable or disable the VLan Q tag being added to the packet"
+     DEFVAL { true }
+     ::= { arrisRouterSoftGreWanEntry 18 }
+
+arrisRouterSoftGreWanDscp OBJECT-TYPE
+    SYNTAX      DscpOrAny
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "This object allows the overwrite of the DSCP field per RFC 3260."
+    DEFVAL { 0 }     
+    ::= { arrisRouterSoftGreWanEntry 19 }
+
+arrisRouterSoftGreWanDNSRetryTimer OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-write
+     STATUS      current   
+     DESCRIPTION "Retry timer(seconds) triggered when HHG is unable to resolve the WLAN GW"
+     DEFVAL  { 300 }
+     ::= { arrisRouterSoftGreWanEntry 20 }    
+
+arrisRouterSoftGreSSIDTable OBJECT-TYPE
+     SYNTAX      SEQUENCE OF ArrisRouterSoftGreSSIDEntry
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION "Table contains information to be assigned per SSID across GRE tunnel.
+                  Table is 1 based"
+     ::= { arrisRouterSoftGreWanObjects 2 }
+  
+arrisRouterSoftGreSSIDEntry OBJECT-TYPE
+     SYNTAX      ArrisRouterSoftGreSSIDEntry
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION "Table contains the information to be assigned per SSID across GRE tunnel.
+                  Index is the SSID"
+     INDEX { ifIndex }	--from IF-MIB
+     ::= { arrisRouterSoftGreSSIDTable 1 }
+
+ArrisRouterSoftGreSSIDEntry ::= SEQUENCE {
+     arrisRouterSoftGreVLanId              Unsigned32,
+     arrisRouterSoftGreVLanPriority       Unsigned32
+}
+
+arrisRouterSoftGreVLanId  OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "The VLan ID to be used for this managed SSID.  
+                 Set to zero to not use VLan"
+    DEFVAL { 0 }     
+    ::= { arrisRouterSoftGreSSIDEntry  1 }
+
+arrisRouterSoftGreVLanPriority  OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "The VLan Priority to be used for this managed SSID."
+    DEFVAL { 0 }     
+    ::= { arrisRouterSoftGreSSIDEntry  2 }
+
+
+arrisRouterSoftGreCustomerOptOut OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "If the user has opted out of the service, setting this value to true
+                  the Gateway will ignore any of the provisioned HotSpot Configuration
+                  from the config file."
+     DEFVAL { false }
+     ::= { arrisRouterSoftGreWanObjects 3 }
+
+arrisRouterSoftGreRestore OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Restore XWiFi settings to factory default."
+     DEFVAL { false }
+     ::= { arrisRouterSoftGreWanObjects 4 }       
+     
+arrisRouterSoftGreCapable OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Indicates if the softGRE/Hotspot feature is available on this device."
+     DEFVAL { true }
+     ::= { arrisRouterSoftGreWanObjects 5 }
+
+     
+-- lan table
+
+arrisRouterLanSrvTable OBJECT-TYPE
+      SYNTAX      SEQUENCE OF ArrisRouterLanSrvEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Table contains information for a specific Lan."
+      ::= { arrisRouterLanConfig 2 }
+  
+arrisRouterLanSrvEntry OBJECT-TYPE
+      SYNTAX      ArrisRouterLanSrvEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Table contains information for a specific Lan."
+      INDEX { ifIndex }	--from IF-MIB
+      ::= { arrisRouterLanSrvTable 1 }  
+  
+ArrisRouterLanSrvEntry ::= SEQUENCE {
+		arrisRouterLanName						DisplayString,
+		arrisRouterLanSubnetMaskType 			InetAddressType,
+		arrisRouterLanSubnetMask 				InetAddress,
+		arrisRouterLanGatewayIpType 			InetAddressType,
+		arrisRouterLanGatewayIp 				InetAddress,
+		arrisRouterLanGatewayIp2Type 			InetAddressType,
+		arrisRouterLanGatewayIp2 				InetAddress,
+		arrisRouterLanUseDHCP					TruthValue,
+		arrisRouterLanStartDHCPType				InetAddressType,
+		arrisRouterLanStartDHCP					InetAddress,
+		arrisRouterLanEndDHCPType				InetAddressType,
+		arrisRouterLanEndDHCP					InetAddress,
+		arrisRouterLanLeaseTime					Unsigned32,
+		arrisRouterLanDomainName				DisplayString,
+		arrisRouterLanIPv6Mode					INTEGER,
+		arrisRouterLanPassThru					TruthValue,
+		arrisRouterLanPrefixLengthV6            InetAddressPrefixLength,
+		arrisRouterLanUseDHCPV6					TruthValue,
+		arrisRouterLanStartDHCPV6				InetAddressIPv6,
+		arrisRouterLanEndDHCPV6					InetAddressIPv6,
+		arrisRouterLanLeaseTimeV6				Unsigned32,
+		arrisRouterLanLinkLocalAddressV6		InetAddressIPv6
+	}
+ 
+arrisRouterLanName OBJECT-TYPE
+     SYNTAX      DisplayString (SIZE (0..32))
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Textual name of this Lan."
+     ::= { arrisRouterLanSrvEntry 1 }
+    
+arrisRouterLanSubnetMaskType OBJECT-TYPE
+      SYNTAX      InetAddressType
+      MAX-ACCESS  read-create
+      STATUS      current
+      DESCRIPTION
+          "Ip Address Type of the SubnetMask for a specific Network."
+      DEFVAL { ipv4 }
+      ::= { arrisRouterLanSrvEntry 2 }
+  
+arrisRouterLanSubnetMask OBJECT-TYPE
+      SYNTAX      InetAddress
+      MAX-ACCESS  read-create
+      STATUS      current
+      DESCRIPTION 
+          "Ip Address of the SubnetMask for a specific Network."
+      ::= { arrisRouterLanSrvEntry 3 }
+    
+arrisRouterLanGatewayIpType OBJECT-TYPE
+      SYNTAX      InetAddressType
+      MAX-ACCESS  read-create
+      STATUS      current
+      DESCRIPTION
+          "Ip Address Type of the Gateway for a specific Network."
+      DEFVAL { ipv4 }
+      ::= { arrisRouterLanSrvEntry 4 }
+  
+arrisRouterLanGatewayIp OBJECT-TYPE
+      SYNTAX      InetAddress
+      MAX-ACCESS  read-create
+      STATUS      current
+      DESCRIPTION 
+          "Ip Address of the Gateway for a specific Network."
+      ::= { arrisRouterLanSrvEntry 5 }
+
+arrisRouterLanGatewayIp2Type OBJECT-TYPE
+      SYNTAX      InetAddressType
+      MAX-ACCESS  read-create
+      STATUS      current
+      DESCRIPTION
+          "Ip Address Type of the Gateway for a specific Network."
+      DEFVAL { ipv4 }
+      ::= { arrisRouterLanSrvEntry 6 }
+  
+arrisRouterLanGatewayIp2 OBJECT-TYPE
+      SYNTAX      InetAddress
+      MAX-ACCESS  read-create
+      STATUS      current
+      DESCRIPTION 
+          "Ip Address of the Gateway for a specific Network."
+      ::= { arrisRouterLanSrvEntry 7 }
+
+arrisRouterLanUseDHCP OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Enable or disable the local DHCP server on this VLan."
+     DEFVAL	{ true }
+     ::= { arrisRouterLanSrvEntry 9 }
+
+arrisRouterLanStartDHCPType OBJECT-TYPE
+     SYNTAX      InetAddressType
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The type of IP address for the start of the range of IP addresses to be handed out by this DHCP server"
+     ::= { arrisRouterLanSrvEntry 10 }
+	
+arrisRouterLanStartDHCP OBJECT-TYPE
+     SYNTAX      InetAddress
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The start of the range of IP addresses to be handed out by this DHCP server"
+     ::= { arrisRouterLanSrvEntry 11 }
+
+arrisRouterLanEndDHCPType OBJECT-TYPE
+     SYNTAX      InetAddressType
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The type of IP address for the end of the range of IP addresses to be handed out by this DHCP server"
+     ::= { arrisRouterLanSrvEntry 12 }
+
+arrisRouterLanEndDHCP OBJECT-TYPE
+     SYNTAX      InetAddress
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The end of the range of IP addresses to be handed out by this DHCP server"
+     ::= { arrisRouterLanSrvEntry 13 }
+	
+arrisRouterLanLeaseTime OBJECT-TYPE
+     SYNTAX      Unsigned32
+     UNITS		 "seconds"
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The length of the lease time for dynamic (DHCP) IP addresses handed out by this device."
+     ::= { arrisRouterLanSrvEntry 14 }
+
+arrisRouterLanDomainName OBJECT-TYPE
+     SYNTAX      DisplayString (SIZE (0..64))
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Optional domain name for this lan"
+     ::= { arrisRouterLanSrvEntry 15 }
+
+
+arrisRouterLanIPv6Mode OBJECT-TYPE
+     SYNTAX      INTEGER { linkLocalOnly(1), siteLocalOnly(2) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "IPv6 setting."
+     ::= { arrisRouterLanSrvEntry 20 }
+          
+arrisRouterLanPassThru OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Get/set the Routing Mode.
+                 true(1): Bridge Mode(lan pass through)
+                 false(2): Router Mode"
+     ::= { arrisRouterLanSrvEntry 21 }
+
+arrisRouterLanPrefixLengthV6 OBJECT-TYPE
+     SYNTAX      InetAddressPrefixLength
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "IPV6 The length indicating the routable portion of the prefix.  
+                  This length is advertised to the host either through DHCP or 
+		  router advertisement.  The host uses this length as a clue to generate 
+		  the rest of the bits which makes up its 128-bit address."
+     ::= { arrisRouterLanSrvEntry 29 }
+                  
+arrisRouterLanUseDHCPV6 OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "IPV6 Enable or disable the local DHCPv6 server on this VLan."
+     DEFVAL	{ true }
+     ::= { arrisRouterLanSrvEntry 30 }
+    
+arrisRouterLanStartDHCPV6 OBJECT-TYPE
+     SYNTAX      InetAddressIPv6
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "IPV6 The start of the range of IP addresses to be handed out by this DHCP server.
+                  NOTE - Only 128 - prefix_length(arrisRouterLanPrefixLengthV6) bits should be configured."
+     ::= { arrisRouterLanSrvEntry 31 }
+
+arrisRouterLanEndDHCPV6 OBJECT-TYPE
+     SYNTAX      InetAddressIPv6
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "IPV6 The end of the range of IP addresses to be handed out by this DHCP instace.
+                  NOTE - Only 128 - prefix_length(arrisRouterLanPrefixLengthV6) bits should be configured."
+     ::= { arrisRouterLanSrvEntry 32 }
+
+arrisRouterLanLeaseTimeV6 OBJECT-TYPE
+     SYNTAX      Unsigned32
+     UNITS		 "seconds"
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "IPV6 lease time for dynamic (DHCP) IP addresses handed out by this DHCP server."
+     ::= { arrisRouterLanSrvEntry 33 }
+
+arrisRouterLanLinkLocalAddressV6 OBJECT-TYPE
+     SYNTAX      InetAddressIPv6 
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "IPV6 Link local IPV6 address"
+     ::= { arrisRouterLanSrvEntry 34 }
+
+-- list of currently connected clients
+
+arrisRouterClientObjects		OBJECT IDENTIFIER ::= { arrisRouterLanConfig 4 }
+
+arrisRouterLanClientCount OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Current count of clients on this Lan.  This corresponds to the number of rows in arrisRouterLanClientTable"
+     ::= { arrisRouterClientObjects 1 }
+
+arrisRouterLanClientTable OBJECT-TYPE
+      SYNTAX      SEQUENCE OF ArrisRouterLanClientEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Table contains the set of DHCP clients for this Lan."
+      ::= { arrisRouterClientObjects 2 }
+  
+arrisRouterLanClientEntry OBJECT-TYPE
+      SYNTAX      ArrisRouterLanClientEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Table contains the set of DHCP clients for this Lan."
+      INDEX { ifIndex, arrisRouterLanClientIPAddrType, arrisRouterLanClientIPAddr }
+      ::= { arrisRouterLanClientTable 1 }
+    
+ArrisRouterLanClientEntry ::= SEQUENCE {
+		arrisRouterLanClientIPAddrType		InetAddressType,
+		arrisRouterLanClientIPAddr			InetAddress,
+		arrisRouterLanClientHostName		DisplayString,
+		arrisRouterLanClientMAC				MacAddress,
+		arrisRouterLanClientAdapterType		INTEGER,
+		arrisRouterLanClientType			INTEGER,
+		arrisRouterLanClientRowStatus		RowStatus,
+		arrisRouterLanClientOnline			INTEGER,
+		arrisRouterLanClientComment			DisplayString,
+		arrisRouterLanClientCustom			INTEGER
+
+		}
+
+arrisRouterLanClientIPAddrType OBJECT-TYPE
+     SYNTAX      InetAddressType
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION "Current IP address type for the DHCP client."
+     ::= { arrisRouterLanClientEntry 1 }
+
+arrisRouterLanClientIPAddr OBJECT-TYPE
+     SYNTAX      InetAddress
+     MAX-ACCESS  read-create
+     STATUS      current
+     DESCRIPTION "Current IP address for the DHCP client."
+     ::= { arrisRouterLanClientEntry 2 }
+  
+arrisRouterLanClientHostName OBJECT-TYPE
+     SYNTAX      DisplayString (SIZE (0..64))
+     MAX-ACCESS  read-create
+     STATUS      current
+     DESCRIPTION "Hostname for the DHCP client."
+     ::= { arrisRouterLanClientEntry 3 }
+		
+arrisRouterLanClientMAC OBJECT-TYPE
+     SYNTAX      MacAddress
+     MAX-ACCESS  read-create
+     STATUS      current
+     DESCRIPTION "MAC address of the DHCP client."
+     ::= { arrisRouterLanClientEntry 4 }
+	 
+arrisRouterLanClientAdapterType OBJECT-TYPE
+     SYNTAX      INTEGER { unknown(0), ethernet(1), wireless(2), moca(3) }
+     MAX-ACCESS	read-only
+     STATUS		current
+     DESCRIPTION "The type of the adapter."
+     ::= { arrisRouterLanClientEntry 6 }
+
+   
+arrisRouterLanClientType OBJECT-TYPE
+     SYNTAX      INTEGER { unknown(0), dynamic(1), static(5) }
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Type of IP address.  This value can only be written or created with a value of static."
+     ::= { arrisRouterLanClientEntry 7 }
+
+arrisRouterLanClientRowStatus OBJECT-TYPE
+     SYNTAX			RowStatus
+     MAX-ACCESS		read-create
+     STATUS current
+     DESCRIPTION "To create or remove static clients.  It is not possible to remove rows that correspond to dynamic IP addresses."
+     ::= { arrisRouterLanClientEntry 13 }
+
+arrisRouterLanClientOnline OBJECT-TYPE
+     SYNTAX      INTEGER { offline(0), online(1) }
+     MAX-ACCESS read-only
+     STATUS current
+     DESCRIPTION "Returns the if the client is currently online (connected/active) or offline."
+     ::= { arrisRouterLanClientEntry 14 }
+
+arrisRouterLanClientComment OBJECT-TYPE
+	 SYNTAX DisplayString 
+     MAX-ACCESS read-create
+     STATUS current
+     DESCRIPTION "Comment field for the client."
+     ::= { arrisRouterLanClientEntry 15 }
+
+arrisRouterLanClientCustom OBJECT-TYPE
+     SYNTAX      INTEGER { unknown(0), custom(1) }
+     MAX-ACCESS read-only
+     STATUS current
+     DESCRIPTION "Returns whether the client is known in the client table or not."
+     ::= { arrisRouterLanClientEntry 16 }
+
+
+-- NOTE: Setup static routes using RFC4292 or at a minimum RFC 1213/1354		
+
+arrisRouterLanSettings OBJECT-TYPE
+     SYNTAX      INTEGER { doNothing(0), applyLan1(1), applyLan2(2), applyLan3(3), applyLan4(4), applyLan5(5), applyLan6(6), applyLan7(7), applyLan8(8), 
+						  applyAllLans(20), revertSettings(21), resetDefaults(22), restartWLAN(23) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "This always returns doNothing(0) when read.
+				Modify arrisRouterLanTable, arrisRouterRIPTable, and arrisRouterWirelessCfg and then set this value to applySettings(1) to apply the settings.
+				If applySettings fails, the modified settings will still be in the 'cache' until the device is rebooted or revertSettings(2) is used.
+				If several modifications have been made, to revert the settings back to the values stored in the non-volatile store, use revertSettings(2).
+				Reset all values in arrisRouterLanTable and arrisRouterWirelessCfg to their defaults by setting this value to resetDefaults(3).
+				Restart the Wireless LAN only (4)."
+     ::= { arrisRouterLanConfig 6 }
+     
+
+-- This is Wireless (WI-FI) config
+
+
+arrisRouterWiFiChannel OBJECT-TYPE
+     SYNTAX     Unsigned32 (0..216)
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION  "Controls and reflects the current channel number (802.11g) or
+				 control channel (802.11n).
+				 
+				 If set to (0), the device will be put in auto-channel mode where it automatically scans 
+				 for the least-crowded channel.
+
+				 For 802.11g cards, available channels are 1-14. 
+				 For 802.11n cards, available channels are 34-216.
+				 Channel selection is also subject to restrictions based on the selected
+				 country code."
+     ::= { arrisRouterWirelessCfg 2 }
+
+arrisRouterWiFiMode OBJECT-TYPE
+     SYNTAX      INTEGER { unknown(0), bOnly(1), gOnly(4), nOnly(6), mixGN(7), mixBGN(9) }     
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Controls and reflects the behavior of the device with regards to which
+				flavor of 802.11 is used. "				
+     ::= { arrisRouterWirelessCfg 3 }
+
+
+arrisRouterWiFiEnableRadio OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Enable or disable WiFi radio." 
+     DEFVAL { true }
+     ::= { arrisRouterWirelessCfg 12 }
+
+arrisRouterWiFiOutputPower OBJECT-TYPE
+    SYNTAX      INTEGER {
+                percent25(25),
+                percent50(50),
+                percent75(75),
+                percent100(100)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the output power relative to the hardware's maximum capability."
+    DEFVAL { percent100 }
+    ::= { arrisRouterWirelessCfg 16 }
+
+arrisRouterWiFi80211NSettings OBJECT IDENTIFIER ::= { arrisRouterWirelessCfg 21 }
+
+arrisRouterWiFi80211NBand OBJECT-TYPE
+    SYNTAX      INTEGER {
+		band24G(1),
+		band5G(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Determines which Band that we will be operating in. Either the 2.4G or the 5G Hz.  This only applies to 802.11n mode."
+    ::= { arrisRouterWiFi80211NSettings 1 }
+    
+
+arrisRouterWiFiGuardInterval OBJECT-TYPE
+     SYNTAX      INTEGER { gi400(0), gi800(1) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Spacing between transmission of symbols in nanoseconds."	 
+     DEFVAL { gi800 }
+     ::= { arrisRouterWiFi80211NSettings 6 }
+
+
+-- This provides support for multiple Basic Service Sets (BSS)
+
+arrisRouterBSSTable OBJECT-TYPE
+      SYNTAX      SEQUENCE OF ArrisRouterBSSEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Table contains settings for individual wireless networks (SSID)."
+      ::= { arrisRouterWirelessCfg 22 }
+  
+arrisRouterBSSEntry OBJECT-TYPE
+      SYNTAX      ArrisRouterBSSEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Table contains settings for individual wireless networks (SSID)."
+      INDEX { ifIndex }	--from IF-MIB
+      ::= { arrisRouterBSSTable 1 }
+    
+ArrisRouterBSSEntry ::= SEQUENCE {
+		arrisRouterBssID				PhysAddress,
+		arrisRouterBssSSID				DisplayString,
+		arrisRouterBssActive			TruthValue,
+		arrisRouterBssSSIDBroadcast		TruthValue,
+		arrisRouterBssSecurityMode		INTEGER,
+		arrisRouterBssNetworkIsolate	TruthValue,
+		arrisRouterBSSArpAuditInterval Unsigned32
+		}
+
+arrisRouterBssID OBJECT-TYPE
+     SYNTAX      PhysAddress
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "The physical address associated with this service set"
+     ::= { arrisRouterBSSEntry 1 }
+
+arrisRouterBssSSID OBJECT-TYPE
+     SYNTAX      DisplayString (SIZE(1..64))
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The SSID for this BSS."
+     ::= { arrisRouterBSSEntry 2 }
+     
+arrisRouterBssActive OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Select to enable/make active this SSID"
+     DEFVAL { false }
+     ::= { arrisRouterBSSEntry 3 }     
+
+arrisRouterBssSSIDBroadcast OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Select to broadcast or not this SSID.  It is somewhat more secure to NOT broadcast the SSID."
+     DEFVAL { true }
+     ::= { arrisRouterBSSEntry 4 }
+     
+arrisRouterBssSecurityMode OBJECT-TYPE
+     SYNTAX      INTEGER { disabled(0),
+							wep(1),
+							wpaPsk(2),
+							wpa2Psk(3),
+							wpaEnterprise(4),
+							wpa2Enterprise(5),
+							wepEnterprise(6),
+							wpaWpa2Psk(7),
+							wpaWpa2Enterprise(8)
+							}
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The security mode."
+     ::= { arrisRouterBSSEntry 5 }
+     
+    
+arrisRouterBssNetworkIsolate OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If set to true, this service set will
+         have access to the wide area internet, but will have restricted access
+         to the local area network.  If set to false, this service set will be authorized as a full member of
+         the local area network"
+	DEFVAL { false }         
+    ::= { arrisRouterBSSEntry 7 }
+
+arrisRouterBSSArpAuditInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the ARP audit interval for periodical checking all ARP entries under this SSID whether the entry is still valid.  
+         If set to zero, periodicical checking is disabled for this SSID."
+    ::= { arrisRouterBSSEntry 10 }
+    
+-- WEP configuration data if wep or wepEnterprise is selected security mode
+
+arrisRouterWEPTable OBJECT-TYPE
+      SYNTAX      SEQUENCE OF ArrisRouterWEPEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Table contains settings for wireless networks."
+      ::= { arrisRouterWirelessCfg 23 }
+  
+arrisRouterWEPEntry OBJECT-TYPE
+      SYNTAX      ArrisRouterWEPEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Table contains settings for wireless networks."
+      INDEX { ifIndex }
+      ::= { arrisRouterWEPTable 1 }
+
+ArrisRouterWEPEntry ::= SEQUENCE {
+	arrisRouterWEPCurrentKey			Unsigned32,
+	arrisRouterWEPEncryptionMode		INTEGER
+	}
+
+		
+arrisRouterWEPCurrentKey OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the default key which will be used when 64 or
+         128 bit encryption is enabled.  Indicates the entry from the 
+         arrisRouterWEP64BitKeyTable if arrisRouterWEPEncryptionMode is set to wep64(1), or
+         the entry from the arrisRouterWEP128BitKeyTable if arrisRouterWEPEncryptionMode
+         is set to wep128(2).
+         
+         This object may only be set to indicate an active row in the 
+         arrisRouterWEP64BitKeyTable or arrisRouterWEP128BitKeyTable.  If the value 
+         corresponds to a row which does not exist or a row which is not
+         active, the set will be rejected with an inconsistentValue error."
+    ::= { arrisRouterWEPEntry 1 }
+    
+arrisRouterWEPEncryptionMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                wep64(1),
+                wep128(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Selects the WEP encryption method used by this service set.
+         If set to wep64(1), then 64 bit WEP encryption will be
+         used with the keys from the arrisRouterWEP64BitKeyTable.  If set to 
+         wep128(2), then 128 bit WEP encryption will be used with keys from 
+         the arrisRouterWEP128BitKeyTable."
+    ::= { arrisRouterWEPEntry 2 }
+    
+	
+
+arrisRouterWEP64BitKeyTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterWEP64BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "A table of 40 bit key values used when operating in WEP 64 mode."
+    ::= { arrisRouterWirelessCfg 24 }
+    
+arrisRouterWEP64BitKeyEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterWEP64BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A key to be used by the row in the arrisRouterBSSTable identified by the 
+         value of ifIndex in the row index."
+    INDEX   { ifIndex, arrisRouterWEP64BitKeyIndex }
+    ::= { arrisRouterWEP64BitKeyTable 1 }
+    
+ArrisRouterWEP64BitKeyEntry ::= 
+    SEQUENCE    {
+                arrisRouterWEP64BitKeyIndex           Integer32,
+                arrisRouterWEP64BitKeyValue           OCTET STRING,
+                arrisRouterWEP64BitKeyStatus          RowStatus
+    }
+    
+arrisRouterWEP64BitKeyIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..4)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Identifies an instance of a key among those used by the service set 
+         identified by the value of ifIndex in the row index."
+    ::= { arrisRouterWEP64BitKeyEntry 1 }
+    
+arrisRouterWEP64BitKeyValue OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(5))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A 40 bit key to be used when the corresponding instance of
+         arrisRouterWiFiSecurityMode is set to wep(1) and the corresponding instance
+         of arrisRouterWEPEncryptionMode is set to wep64(1)."
+    ::= { arrisRouterWEP64BitKeyEntry 2 }
+    
+arrisRouterWEP64BitKeyStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         arrisRouterWEP64BitKeyStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of arrisRouterWEP64BitKeyValue has been set.
+         
+         Only rows with a status of active(1) will be applied.
+         
+         This object may not be set to a value of notInService(2) or destroy(6)
+         if the corresponding instance of arrisRouterWEPDefaultKey identifies
+         this row as they current key in use.  Such an attempt will be rejected
+         with an inconsistentValue error."
+    ::= { arrisRouterWEP64BitKeyEntry 3 }
+    
+    
+arrisRouterWEP128BitKeyTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterWEP128BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of 104 bit key values used when operating in WEP 128 mode."
+    ::= { arrisRouterWirelessCfg 25 }
+    
+arrisRouterWEP128BitKeyEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterWEP128BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A key to be used by the row in the arrisRouterBSSTable identified by the 
+         value of ifIndex in the row index."
+    INDEX   { ifIndex, arrisRouterWEP128BitKeyIndex }
+    ::= { arrisRouterWEP128BitKeyTable 1 }
+    
+ArrisRouterWEP128BitKeyEntry ::= 
+    SEQUENCE    {
+                arrisRouterWEP128BitKeyIndex           Integer32,
+                arrisRouterWEP128BitKeyValue           OCTET STRING,
+                arrisRouterWEP128BitKeyStatus          RowStatus
+    }
+    
+arrisRouterWEP128BitKeyIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..4)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Identifies an instance of a key among those used by the service set 
+         identified by the value of ifIndex in the row index."
+    ::= { arrisRouterWEP128BitKeyEntry 1 }
+    
+arrisRouterWEP128BitKeyValue OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(13))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A 104 bit key to be used when the corresponding instance of
+         arrisRouterWiFiSecurityMode is set to wep(1) and the corresponding instance
+         of arrisRouterWEPEncryptionMode is set to wep128(128)."
+    ::= { arrisRouterWEP128BitKeyEntry 2 }
+    
+arrisRouterWEP128BitKeyStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         arrisRouterWEP128BitKeyStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of arrisRouterWEP128BitKeyValue has been set.
+         
+         Only rows with a status of active(1) will be applied.
+         
+         This object may not be set to a value of notInService(2) or destroy(6)
+         if the corresponding instance of arrisRouterWEPDefaultKey identifies
+         this row as they current key in use.  Such an attempt will be rejected
+         with an inconsistentValue error."
+    ::= { arrisRouterWEP128BitKeyEntry 3 }
+
+		
+
+-- Objects used to control WPA based security modes
+    
+arrisRouterWPATable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterWPAEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table used to configure settings related to the WPA security modes."
+    ::= { arrisRouterWirelessCfg 26}
+    
+arrisRouterWPAEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterWPAEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry defining the WPA characteristics of an individual service set.
+         A row exists in this table for each row in the arrisRouterBSSTable for which
+         arrisRouterWiFiSecurityMode is set to wpaPsk(2), wpa2Psk(3), wpaEnterprise(4), 
+         or wpa2Enterprise(5)."
+    INDEX   { ifIndex  }
+    ::= { arrisRouterWPATable 1 }
+    
+ArrisRouterWPAEntry ::=
+    SEQUENCE    {
+                arrisRouterWPAAlgorithm            INTEGER,
+                arrisRouterWPAPreSharedKey         OCTET STRING,
+                arrisRouterWPAGroupRekeyInterval   Unsigned32,
+                arrisRouterWPAPreAuthEnable		   TruthValue
+    }
+    
+arrisRouterWPAAlgorithm OBJECT-TYPE
+    SYNTAX      INTEGER {
+                tkip(1),
+                aes(2),
+                tkipPlusAes(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the WPA encryption mode used by the service set.  
+         The WPA algorithm for WPA-PSK and WPA-Enterprise security mode is either
+         tkip(1) or aes(2).
+        
+         The WPA algorithm for WPA2-PSK and WPA2-Enterprise security mode is either
+         aes(2) or tkipPlusAes(3)."
+    ::= { arrisRouterWPAEntry 1 }
+    
+arrisRouterWPAPreSharedKey OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (8..64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPA Pre-Shared Key (PSK) used by this service set.  This 
+         value MUST be either a 64 byte hexadecimal number, OR an 8 to 63 
+         character ASCII string."
+    ::= { arrisRouterWPAEntry 2 }
+    
+arrisRouterWPAGroupRekeyInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPA Group Rekey Interval for this service set. If set to zero, 
+         periodic rekeying is disabled for this service set."
+    ::= { arrisRouterWPAEntry 3 }
+    
+arrisRouterWPAPreAuthEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enable or disable WPA2 pre-authentication. 
+         In preauthentication, a WPA2 wireless client can perform an 802.1X authentication with other wireless access points 
+         in its range when it is still connected to its current wireless access point"
+	DEFVAL { false }         
+    ::= { arrisRouterWPAEntry 5 }
+
+
+arrisRouterWMMCfg			 OBJECT IDENTIFIER ::= { arrisRouterWirelessCfg 29 }
+
+arrisRouterWMMEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Enable/disable WiFi MultiMedia (WMM) QOS support"       
+    DEFVAL { true }    
+    ::= { arrisRouterWMMCfg 1 }
+
+arrisRouterWMMAPSD OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Automatic Power Save Delivery is a more efficient power
+management method than legacy 802.11 Power Save Polling.
+                                Set the value here."
+        DEFVAL { true }
+    ::= { arrisRouterWMMCfg 2 }
+ 
+arrisRouterWPSCfg			 OBJECT IDENTIFIER ::= { arrisRouterWirelessCfg 30 }
+
+arrisRouterWpsMode OBJECT-TYPE
+    SYNTAX      INTEGER { disabled(0), enabled(1) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Get and set whether or not WiFi Protected Setup (WPS) is enabled or disabled."    
+    ::= { arrisRouterWPSCfg 1 }
+
+arrisRouterWpsConfigState OBJECT-TYPE
+    SYNTAX      INTEGER { disabled(0), enabled(1) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Get and set the WiFi Protected Setup (WPS) config state."    
+    ::= { arrisRouterWPSCfg 2 }
+
+arrisRouterWpsDevicePIN OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(8))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Get or set the WiFi Protected Setup (WPS) device PIN.  This is the PIN that is displayed to the user to input on their client device."
+    ::= { arrisRouterWPSCfg 3 }
+
+arrisRouterWpsDeviceName OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Name of this device"    
+    ::= { arrisRouterWPSCfg 4 }
+
+arrisRouterWpsModelName OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Model Name"    
+    ::= { arrisRouterWPSCfg 5 }
+
+arrisRouterWpsMfg OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(0..64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Manufacturer string"    
+    ::= { arrisRouterWPSCfg 6 }
+
+arrisRouterWpsConfigTimeout OBJECT-TYPE
+    SYNTAX      INTEGER { disabled(0), enabled(1) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Get and set whether the WiFi Protected Setup (WPS) uses timeout."    
+    ::= { arrisRouterWPSCfg 9 }
+
+arrisRouterWpsSTAPin OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(8))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Set the WiFi Protected Setup (WPS) PIN for a new station/device.  This is the PIN from a 'client' device."    
+    ::= { arrisRouterWPSCfg 10 }
+
+arrisRouterWpsPushButton OBJECT-TYPE
+    SYNTAX      INTEGER { unknown(0), activatePushButton(1), activatePINCfg(2), cancelWPS(3) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Set to 'activatePushButton' to push the virtual button on the Access Point and start the WPS push-button process.
+				Set to 'activePINCfg' to start the WPS PIN process.  The client device PIN should be written to arrisRouterWpsSTAPin
+				before triggering the WPS process.
+				Cancel an active WPS config (started with either 1 or 2) by setting this value to 'cancelWPS'."
+    ::= { arrisRouterWPSCfg 11 }
+
+arrisRouterWiFiResetDefaults OBJECT-TYPE
+    SYNTAX      INTEGER { resetWifiDefaults(1), resetWifiDefaultsPrimaryOnly(2), resetWiFiDefaultsGuestOnly(3) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Reset Wifi settings to factory default values.
+				 Use 'resetWifiDefaults(1)' to reset all Wireless Networks back to their default settings.
+				 Use 'resetWifiDefaultsPrimaryOnly(2)' to only reset the primary WiFi network.
+				 Use 'resetWiFiDefaultGuestOnly(3)' to reset all of the non-primary/guest WiFi networks.
+				 The wireless driver(s) will be immediately restarted to affect the change and any clients
+				 connected to the wireless network(s) will be disconnected."
+	::= { arrisRouterWirelessCfg 32 }
+
+arrisRouterWiFiReset OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Set to true to reset the Wifi driver/settings." 
+     ::= { arrisRouterWirelessCfg 35 }
+
+arrisRouterWiFiClientInfoTable OBJECT-TYPE
+      SYNTAX      SEQUENCE OF ArrisRouterWiFiClientInfoClientEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "This table contains detailed information about currently connected wireless client devices."
+      ::= { arrisRouterWirelessCfg 42 }
+  
+arrisRouterWiFiClientInfoEntry OBJECT-TYPE
+      SYNTAX      ArrisRouterWiFiClientInfoClientEntry
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION "Entry in the arrisRouterWiFiClientInfoTable."
+      INDEX { ifIndex, arrisRouterWiFiClientInfoIndex }
+      ::= { arrisRouterWiFiClientInfoTable 1 }
+    
+ArrisRouterWiFiClientInfoClientEntry ::= SEQUENCE {
+        arrisRouterWiFiClientInfoIndex            Integer32,
+        arrisRouterWiFiClientInfoIPAddrType       InetAddressType,
+        arrisRouterWiFiClientInfoIPAddr           InetAddress,
+        arrisRouterWiFiClientInfoIPAddrTextual    DisplayString,
+        arrisRouterWiFiClientInfoHostName         DisplayString,
+        arrisRouterWiFiClientInfoMAC              MacAddress,
+        arrisRouterWiFiClientInfoMACMfg           DisplayString,
+        arrisRouterWiFiClientInfoStatus           INTEGER,
+        arrisRouterWiFiClientInfoFirstSeen        DateAndTime,
+        arrisRouterWiFiClientInfoLastSeen         DateAndTime,
+        arrisRouterWiFiClientInfoIdleTime         Integer32,
+        arrisRouterWiFiClientInfoInNetworkTime    Integer32,
+        arrisRouterWiFiClientInfoState            DisplayString,
+        arrisRouterWiFiClientInfoFlags            DisplayString,
+        arrisRouterWiFiClientInfoTxPkts           Integer32,
+        arrisRouterWiFiClientInfoTxFailures       Integer32,
+        arrisRouterWiFiClientInfoRxUnicastPkts    Integer32,
+        arrisRouterWiFiClientInfoRxMulticastPkts  Integer32,
+        arrisRouterWiFiClientInfoLastTxPktRate    Integer32,
+        arrisRouterWiFiClientInfoLastRxPktRate    Integer32,
+        arrisRouterWiFiClientInfoRateSet          DisplayString,
+        arrisRouterWiFiClientInfoRSSI             Integer32,
+        arrisRouterWiFiClientInfoRxDecryptOk      Integer32,
+        arrisRouterWiFiClientInfoRxDecryptFail    Integer32,
+        arrisRouterWiFiClientInfoDHCPStatus      DisplayString
+        }
+        
+arrisRouterWiFiClientInfoIndex OBJECT-TYPE
+     SYNTAX      Integer32 (1..32)
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION "Index for the table."
+     ::= { arrisRouterWiFiClientInfoEntry 1 }
+
+arrisRouterWiFiClientInfoIPAddrType OBJECT-TYPE
+     SYNTAX      InetAddressType
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Current IP address type for the wireless client device."
+     ::= { arrisRouterWiFiClientInfoEntry 2 }
+
+arrisRouterWiFiClientInfoIPAddr OBJECT-TYPE
+     SYNTAX      InetAddress
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Current IP address for the wireless client device."
+     ::= { arrisRouterWiFiClientInfoEntry 3 }
+
+arrisRouterWiFiClientInfoIPAddrTextual OBJECT-TYPE
+     SYNTAX      DisplayString 
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "A human-readable textual representation of the arrisRouterWiFiClientInfoIPAddr."
+     ::= { arrisRouterWiFiClientInfoEntry 4 }
+  
+arrisRouterWiFiClientInfoHostName OBJECT-TYPE
+     SYNTAX      DisplayString (SIZE (0..64))
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Hostname for the wireless client device."
+     ::= { arrisRouterWiFiClientInfoEntry 5 }
+        
+arrisRouterWiFiClientInfoMAC OBJECT-TYPE
+     SYNTAX      MacAddress
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "MAC address of the wireless client device."
+     ::= { arrisRouterWiFiClientInfoEntry 6 }
+     
+arrisRouterWiFiClientInfoMACMfg OBJECT-TYPE
+     SYNTAX DisplayString (SIZE(0..64))
+     MAX-ACCESS read-only
+     STATUS current
+     DESCRIPTION "The manufacturer of the hardware adapter on the wireless client device."
+     ::= { arrisRouterWiFiClientInfoEntry 7 } 
+     
+arrisRouterWiFiClientInfoStatus OBJECT-TYPE
+     SYNTAX      INTEGER { down(0), up(1) }
+     MAX-ACCESS read-only
+     STATUS current
+     DESCRIPTION "The most recent known status of the wireless client device."
+     ::= { arrisRouterWiFiClientInfoEntry 8 }
+
+arrisRouterWiFiClientInfoFirstSeen OBJECT-TYPE
+     SYNTAX      DateAndTime
+     MAX-ACCESS read-only
+     STATUS current
+     DESCRIPTION "The time, if known, when this client was first seen. 
+                For 'dynamic' clients, this will usually be when the first DHCP lease was given out to this client since the last boot.
+                For 'staticDiscover' clients, this value will match the time of the first ARP response since the last boot.
+                For 'staticConfigure' clients, this value will match the time of the first ARP response since the last boot."
+     ::= { arrisRouterWiFiClientInfoEntry 9 }
+
+arrisRouterWiFiClientInfoLastSeen OBJECT-TYPE
+     SYNTAX      DateAndTime
+     MAX-ACCESS read-only
+     STATUS current
+     DESCRIPTION "The time, if known, when this client was most recently (last) seen. 
+                  If the device has been disconnected or powered off this value will reflect that.
+                  If the device is currently active, this value should match the current system time with a variability of up to 1 minute."
+     ::= { arrisRouterWiFiClientInfoEntry 10 }
+
+arrisRouterWiFiClientInfoIdleTime OBJECT-TYPE
+     SYNTAX     Integer32
+     UNITS      "seconds"
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The number of seconds that this wireless client device has been idle."
+     ::= { arrisRouterWiFiClientInfoEntry 11 }
+
+arrisRouterWiFiClientInfoInNetworkTime OBJECT-TYPE
+     SYNTAX     Integer32
+     UNITS      "seconds"
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The number of seconds that this wireless client device has been in the network.  This value will be reset when the wireless client device is disconnected or powered off.
+                   Thus this may not be equal to the elapsed time since: arrisRouterWiFiClientInfoFirstSeen."
+     ::= { arrisRouterWiFiClientInfoEntry 12 }
+
+arrisRouterWiFiClientInfoState OBJECT-TYPE
+     SYNTAX     DisplayString
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "A string representing the current connection state of this wireless client device.  It will indicate if the device is: AUTHENTICATED, ASSOCIATED, and/or AUTHORIZED."
+     ::= { arrisRouterWiFiClientInfoEntry 13 }
+     
+arrisRouterWiFiClientInfoFlags OBJECT-TYPE
+     SYNTAX     DisplayString
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "A string representing the current various capability flags for this wireless client device. "
+     ::= { arrisRouterWiFiClientInfoEntry 14 }
+
+arrisRouterWiFiClientInfoTxPkts OBJECT-TYPE
+     SYNTAX     Integer32
+     UNITS      "packets"
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The number packets transmitted from this wireless client device since it was last connected."
+     ::= { arrisRouterWiFiClientInfoEntry 15 }
+
+arrisRouterWiFiClientInfoTxFailures OBJECT-TYPE
+     SYNTAX     Integer32
+     UNITS      "packets"
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The number transmit packet failures from this wireless client device since it was last connected."
+     ::= { arrisRouterWiFiClientInfoEntry 16 }
+
+arrisRouterWiFiClientInfoRxUnicastPkts OBJECT-TYPE
+     SYNTAX     Integer32
+     UNITS      "packets"
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The number of unicast packets received by this wireless client device since it was last connected."
+     ::= { arrisRouterWiFiClientInfoEntry 17 }
+
+arrisRouterWiFiClientInfoRxMulticastPkts OBJECT-TYPE
+     SYNTAX     Integer32
+     UNITS      "packets"
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The number of multicast/broadcast packets received by this wireless client device since it was last connected."
+     ::= { arrisRouterWiFiClientInfoEntry 18 }
+
+arrisRouterWiFiClientInfoLastTxPktRate OBJECT-TYPE
+     SYNTAX     Integer32
+    UNITS      "kbps"
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The transmission rate of the last packet transmitted from this wireless client device in kilobits-per-second."
+     ::= { arrisRouterWiFiClientInfoEntry 19 }
+
+arrisRouterWiFiClientInfoLastRxPktRate OBJECT-TYPE
+     SYNTAX     Integer32
+     UNITS      "kbps"
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The reception rate of the last packet received by this wireless client device in kilobits-per-second."
+     ::= { arrisRouterWiFiClientInfoEntry 20 }
+
+arrisRouterWiFiClientInfoRateSet OBJECT-TYPE
+     SYNTAX     DisplayString
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The supported rate set for this wireless client device."
+     ::= { arrisRouterWiFiClientInfoEntry 21 }
+
+arrisRouterWiFiClientInfoRSSI OBJECT-TYPE
+     SYNTAX     Integer32
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The Received Signal Strength Indicator (RSSI) of the wireless client device.  This value usually displays as a negative, so a value closer to zero indicates more power."
+     ::= { arrisRouterWiFiClientInfoEntry 22 }
+
+arrisRouterWiFiClientInfoRxDecryptOk OBJECT-TYPE
+     SYNTAX     Integer32
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The number of receive packets successfully decrypted"
+     ::= { arrisRouterWiFiClientInfoEntry 23 }
+     
+arrisRouterWiFiClientInfoRxDecryptFail OBJECT-TYPE
+     SYNTAX     Integer32
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "The number of receive packets that failed to be decrypted"
+     ::= { arrisRouterWiFiClientInfoEntry 24 }
+
+arrisRouterWiFiClientInfoDHCPStatus OBJECT-TYPE
+     SYNTAX     DisplayString
+     MAX-ACCESS read-only     
+     STATUS current
+     DESCRIPTION "A string representing the current DHCP status of this wireless client device after it has associated.  
+     It will indicate if the device is: DISCOVERED, REQUESTED, CONNECTED or FAILED.
+     DISCOVERED: device has sent out DHCP Discover packet,
+     REQUESTED: device has sent out DHCP Request packet,
+     CONNECTED: DHCP has finished successfully,
+     FAILED: device can't get an IP, DHCP is failed."
+     ::= { arrisRouterWiFiClientInfoEntry 25 }
+
+
+arrisRouterWiFiNumSSIDSupported OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "Number of SSIDs Supported"
+     ::= { arrisRouterWirelessCfg 51 }
+
+-- firewall settings
+
+arrisRouterFWEnabled OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Is the firewall enabled or not"
+    DEFVAL { true }
+    ::= { arrisRouterFWCfg 1 }
+
+
+arrisRouterFWEnableDMZ OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Enable/disable any configured DMZ host"
+    ::= { arrisRouterFWCfg 6 }
+
+arrisRouterFWIPAddrTypeDMZ OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "The IP address type of the DMZ host"
+    ::= { arrisRouterFWCfg 7 }
+
+arrisRouterFWIPAddrDMZ OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "The IP address of the DMZ host"
+    ::= { arrisRouterFWCfg 8 }
+arrisRouterFWSecurityLevel OBJECT-TYPE
+    SYNTAX      INTEGER { minimum(1), medium(2), maximum(3), custom(4) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "This variable can be used to set a generic firewall 'level'.  
+				minimum: ALLOWS all incoming and outgoing connections except IDENT (port 113).
+				medium: REJECTS all incoming connections and ALLOWS all outgoing connections except IDENT (port 113), ICMP, Kazaa (port 1214), Bittorrent (Ports 6881-6999), Gnutella (6346),
+						Vuze (49152-65534)
+				maximum: REJECTS all incoming connections.  
+						REJECTS all outgoing connections except for: HTTP (80), HTTPS (443), DNS (53), Email (25,110,143,465,587,993,995), NTP (119, 123), VPN (500, 1723), iTunes (3689)
+				custom: Custom port filters and triggers are used."
+    ::= { arrisRouterFWCfg 9 }
+
+arrisRouterFWApplySettings OBJECT-TYPE
+	SYNTAX      INTEGER { noSet(0), applySettings(1) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Make modifications to any and all items under arrisRouterFWCfg and then apply all of these settings (1) or revert them all back to their
+				original settings."
+::= { arrisRouterFWCfg 10 }
+
+
+-- Virtual server (port forwarding) table
+
+arrisRouterFWVirtSrvTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterFWVirtSrvEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION   "A table of 'virtual servers'. This allows for incoming requests on specific port numbers to reach web servers, 
+					FTP servers, mail servers, etc. so they can be accessible from the public internet."
+    ::= { arrisRouterFWCfg 12 }
+    
+arrisRouterFWVirtSrvEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterFWVirtSrvEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION   "A table of 'virtual servers'. This allows for incoming requests on specific port numbers to reach web servers, 
+					FTP servers, mail servers, etc. so they can be accessible from the public internet."
+    INDEX   { arrisRouterFWVirtSrvIndex }
+    ::= { arrisRouterFWVirtSrvTable 1 }
+    
+ArrisRouterFWVirtSrvEntry ::= 
+    SEQUENCE    {
+                arrisRouterFWVirtSrvIndex			Unsigned32,
+				arrisRouterFWVirtSrvDesc			DisplayString,
+				arrisRouterFWVirtSrvPortStart		Unsigned32,
+				arrisRouterFWVirtSrvPortEnd			Unsigned32,
+				arrisRouterFWVirtSrvProtoType		INTEGER,
+				arrisRouterFWVirtSrvIPAddrType		InetAddressType,
+				arrisRouterFWVirtSrvIPAddr			InetAddress,
+				arrisRouterFWVirtSrvRowStatus		RowStatus
+    }
+    
+arrisRouterFWVirtSrvIndex OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Indicates the instance of this table row."
+    ::= { arrisRouterFWVirtSrvEntry 1 }
+    
+arrisRouterFWVirtSrvDesc OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..16))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "A textual description or name for this virtual server, i.e. My FTP"
+    ::= { arrisRouterFWVirtSrvEntry 2 }
+    
+arrisRouterFWVirtSrvPortStart OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..65535)
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "The beginning of the port range to forward to this virtual server."
+    ::= { arrisRouterFWVirtSrvEntry 3 }
+
+arrisRouterFWVirtSrvPortEnd OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..65535)
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "The end of the port range to forward to this virtual server."
+    ::= { arrisRouterFWVirtSrvEntry 4 }
+
+arrisRouterFWVirtSrvProtoType OBJECT-TYPE
+    SYNTAX      INTEGER { udp(0), tcp(1), both(2) }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "Specifies which protocol(s) are forwarded"
+    ::= { arrisRouterFWVirtSrvEntry 5 }
+
+arrisRouterFWVirtSrvIPAddrType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "Type of IP address on private network to forward to"
+    ::= { arrisRouterFWVirtSrvEntry 6 }
+
+arrisRouterFWVirtSrvIPAddr OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "IP address on private network to forward to"
+    ::= { arrisRouterFWVirtSrvEntry 7 }
+
+arrisRouterFWVirtSrvRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "Row status to add/remove rows"
+    ::= { arrisRouterFWVirtSrvEntry 11 }   
+
+-- IP Filtering - filter range(s) of IP addresses to block internet traffic to specific devices on the network
+
+arrisRouterFWIPFilterTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterFWIPFilterEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A table of IP addresses to filter to block internet traffic to specific devices on the network."
+    ::= { arrisRouterFWCfg 13 }
+    
+arrisRouterFWIPFilterEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterFWIPFilterEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A table of IP addresses to filter to block internet traffic to specific devices on the network."
+    INDEX   { arrisRouterFWIPFilterIndex }
+    ::= { arrisRouterFWIPFilterTable 1 }
+    
+ArrisRouterFWIPFilterEntry ::= 
+    SEQUENCE    {
+				arrisRouterFWIPFilterIndex			Unsigned32,
+				arrisRouterFWIPFilterDesc			DisplayString,
+				arrisRouterFWIPFilterPortStart		Unsigned32,
+				arrisRouterFWIPFilterPortEnd		Unsigned32,
+				arrisRouterFWIPFilterProtoType		INTEGER,
+				arrisRouterFWIPFilterTOD			Integer32,
+				arrisRouterFWIPFilterRowStatus		RowStatus
+    }
+    
+arrisRouterFWIPFilterIndex OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "Indicates the instance of this table row."
+    ::= { arrisRouterFWIPFilterEntry 1 }
+    
+arrisRouterFWIPFilterDesc OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..32))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "A textual description or name for this filtering rule/row"
+    ::= { arrisRouterFWIPFilterEntry 2 }
+
+arrisRouterFWIPFilterPortStart OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..65535)
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "The beginning of the port range to filter."
+    ::= { arrisRouterFWIPFilterEntry 7 }
+
+arrisRouterFWIPFilterPortEnd OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..65535)
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "The end of the port range to filter."
+    ::= { arrisRouterFWIPFilterEntry 8 }
+
+arrisRouterFWIPFilterProtoType OBJECT-TYPE
+    SYNTAX      INTEGER { udp(0), tcp(1), both(2) }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "Specifies which protocol(s) are filtered"
+    ::= { arrisRouterFWIPFilterEntry 9 }
+    
+arrisRouterFWIPFilterTOD OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "This is a 32-bit bitmask that sets the time of day to apply and days of the week to apply this rule. 
+				Bits 0-6 correspond to Sunday-Saturday.  Set the bit high (1) to enable this rule for the day of the week.
+				Bits 7-30 apply to hours of the day 00:00:00-23:00:00.  Each it corresponds to an hour.  Set the bit high to 
+				enable the rule for specified hour. "
+    ::= { arrisRouterFWIPFilterEntry 10 }   
+    
+arrisRouterFWIPFilterRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "Row status to add/remove rows"
+    ::= { arrisRouterFWIPFilterEntry 11 }   
+
+arrisRouterFWMACFilterTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterFWMACFilterEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A table of MAC addresses which are filtered/blocked by the firewall."
+    ::= { arrisRouterFWCfg 15 } 
+arrisRouterFWMACFilterEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterFWMACFilterEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A table of MAC addresses which are blocked or allowed by the firewall.  The behavior depends on arrisRouterFWAllowAll"
+    INDEX   { ifIndex, arrisRouterFWMACFilterIndex }
+    ::= { arrisRouterFWMACFilterTable 1 }
+    
+ArrisRouterFWMACFilterEntry ::= 
+    SEQUENCE    {
+                arrisRouterFWMACFilterIndex			Unsigned32,
+                arrisRouterFWMACFilterAddr			MacAddress,
+                arrisRouterFWMACFilterTOD			Integer32,
+                arrisRouterFWMACFilterRowStatus		RowStatus,
+				arrisRouterFWMACFilterHostName		DisplayString
+    }
+    
+arrisRouterFWMACFilterIndex OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "Indicates the instance of this table row."
+    ::= { arrisRouterFWMACFilterEntry 1 }
+    
+arrisRouterFWMACFilterAddr OBJECT-TYPE
+    SYNTAX      MacAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "A MAC address of a device on the local network which is filtered/blocked by the firewall."
+    ::= { arrisRouterFWMACFilterEntry 2 }
+    
+arrisRouterFWMACFilterTOD OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "This is a 32-bit bitmask that sets the time of day to apply and days of the week to apply this rule. 
+				Bits 0-6 correspond to Sunday-Saturday.  Set the bit high (1) to enable this rule for the day of the week.
+				Bits 7-30 apply to hours of the day 00:00:00-23:00:00.  Each it corresponds to an hour.  Set the bit high to 
+				enable the rule for specified hour. "
+    ::= { arrisRouterFWMACFilterEntry 3 }   
+
+arrisRouterFWMACFilterRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "Row status to add/remove rows"
+    ::= { arrisRouterFWMACFilterEntry 4 }   
+    
+arrisRouterFWMACFilterHostName OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "The name of the device on the local network which is filtered/blocked by the firewall."
+    ::= { arrisRouterFWMACFilterEntry 5 }   
+    
+-- Port Triggering
+
+arrisRouterFWPortTrigTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterFWPortTrigEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A table of port Trigs.  This allows configuration of dynamic Trigs to specific devices on the Lan
+				This allows for special applications that require specific port numbers with bi-directional traffic to function properly. 
+				Applications such as video conferencing, voice, gaming, and some messenging program features may require these special settings"
+    ::= { arrisRouterFWCfg 16 }
+    
+arrisRouterFWPortTrigEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterFWPortTrigEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A table of port Trigs.  This allows configuration of dynamic Trigs to specific devices on the Lan
+				This allows for special applications that require specific port numbers with bi-directional traffic to function properly. 
+				Applications such as video conferencing, voice, gaming, and some messenging program features may require these special settings"
+    INDEX   { arrisRouterFWPortTrigIndex }
+    ::= { arrisRouterFWPortTrigTable 1 }
+    
+ArrisRouterFWPortTrigEntry ::= 
+    SEQUENCE    {
+				arrisRouterFWPortTrigIndex			Unsigned32,
+				arrisRouterFWPortTrigDesc			DisplayString,
+				arrisRouterFWPortTrigPortStart		Unsigned32,
+				arrisRouterFWPortTrigPortEnd		Unsigned32,
+				arrisRouterFWPortTargPortStart		Unsigned32,
+				arrisRouterFWPortTargPortEnd		Unsigned32,
+				arrisRouterFWPortTrigProtoType		INTEGER,
+				arrisRouterFWPortTrigRowStatus		RowStatus
+			}
+    
+arrisRouterFWPortTrigIndex OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "Indicates the instance of this table row."
+    ::= { arrisRouterFWPortTrigEntry 1 }
+    
+arrisRouterFWPortTrigDesc OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..16))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "A textual description or name for this port trigger"
+    ::= { arrisRouterFWPortTrigEntry 2 }
+
+arrisRouterFWPortTrigPortStart OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "The beginning of the trigger port range."
+    ::= { arrisRouterFWPortTrigEntry 3 }
+
+arrisRouterFWPortTrigPortEnd OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "The end of the trigger port range."
+    ::= { arrisRouterFWPortTrigEntry 4 }
+
+arrisRouterFWPortTargPortStart OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "The beginning of the target port range."
+    ::= { arrisRouterFWPortTrigEntry 5 }
+
+arrisRouterFWPortTargPortEnd OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "The end of the target port range."
+    ::= { arrisRouterFWPortTrigEntry 6 }
+
+arrisRouterFWPortTrigProtoType OBJECT-TYPE
+    SYNTAX      INTEGER { udp(0), tcp(1), both(2) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Specifies which protocol(s) are filtered"
+    ::= { arrisRouterFWPortTrigEntry 7 }
+    
+arrisRouterFWPortTrigRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "Row status to add/remove rows"
+    ::= { arrisRouterFWPortTrigEntry 9 }   
+    
+
+arrisRouterFWFilterRules			 OBJECT IDENTIFIER ::= { arrisRouterFWCfg 17 }
+
+    
+arrisRouterFWPortScanProtect OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Enable/disable port scan protection"
+    DEFVAL	{ false }
+    ::= { arrisRouterFWFilterRules 7 }
+    
+ 
+
+arrisRouterFWFeatures		OBJECT IDENTIFIER ::= { arrisRouterFWCfg 19 }
+
+arrisRouterFWIPSecPassThru OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Enable/disable IPSEC passthru."
+    DEFVAL { false }
+    ::= { arrisRouterFWFeatures 2 }
+    
+arrisRouterFWPPTPPassThru OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Enable/disable PPTP passthru."
+    DEFVAL { false }
+    ::= { arrisRouterFWFeatures 3 }
+
+arrisRouterFWEnableRemoteMgmt OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Enable/disable remote web management."
+    DEFVAL { false }
+    ::= { arrisRouterFWFeatures 5 }
+
+arrisRouterFWEnableUPnP OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Enable/disable UPnP services, specifically Internet Gateway Device (IGD)."
+    DEFVAL { false }
+    ::= { arrisRouterFWFeatures 6 }
+
+    
+arrisRouterFWParentalControls OBJECT IDENTIFIER ::= { arrisRouterFWCfg 20 }
+
+arrisRouterKeywordCount  OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Current count of keywords in blocktable."
+    ::= { arrisRouterFWParentalControls 1 }
+
+ 
+
+arrisRouterKeywordBlkTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterKeywordBlkEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "A table of keywords to block when web surfing"
+    ::= { arrisRouterFWParentalControls 10 }    
+    
+arrisRouterKeywordBlkEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterKeywordBlkEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+	DESCRIPTION "A table of keywords to block when web surfing"
+    INDEX   { arrisRouterKeywordBlkIndex }
+    ::= { arrisRouterKeywordBlkTable 1 }
+    
+ArrisRouterKeywordBlkEntry ::= 
+    SEQUENCE    {
+                arrisRouterKeywordBlkIndex		Integer32,
+                arrisRouterKeywordBlkWord		DisplayString,
+                arrisRouterKeywordBlkTOD		Integer32,
+                arrisRouterKeywordBlkStatus		RowStatus
+    }
+    
+arrisRouterKeywordBlkIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..50)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "Indicates the instance of this table row."
+    ::= { arrisRouterKeywordBlkEntry 1 }
+    
+arrisRouterKeywordBlkWord OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (1..32))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION "The keyword to block."
+    ::= { arrisRouterKeywordBlkEntry 2 }
+    
+arrisRouterKeywordBlkTOD OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION  "This is a 32-bit bitmask that sets the time of day to apply and days of the week to apply this rule. 
+				Bits 0-6 correspond to Sunday-Saturday.  Set the bit high (1) to enable this rule for the day of the week.
+				Bits 7-30 apply to hours of the day 00:00:00-23:00:00.  Each it corresponds to an hour.  Set the bit high to 
+				enable the rule for specified hour. "
+    ::= { arrisRouterKeywordBlkEntry 3 }   
+        
+arrisRouterKeywordBlkStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         arrisRouterKeywordBlkStatus column is 'notReady'.
+
+         Only rows with a status of active(1) will be applied."
+    ::= { arrisRouterKeywordBlkEntry 4 }
+
+arrisRouterBlackListTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterBlackListEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "A table of domain names to block when web surfing"
+    ::= { arrisRouterFWParentalControls 12 }
+    
+arrisRouterBlackListEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterBlackListEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+	DESCRIPTION "A table of domain names to block when web surfing"
+    INDEX   { arrisRouterBlackListIndex }
+    ::= { arrisRouterBlackListTable 1 }
+    
+ArrisRouterBlackListEntry ::= 
+    SEQUENCE    {
+                arrisRouterBlackListIndex		Integer32,
+                arrisRouterBlackListDomain  	DisplayString,
+                arrisRouterBlackListTOD			Integer32,
+                arrisRouterBlackListStatus		RowStatus
+    }
+    
+arrisRouterBlackListIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..16)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "Indicates the instance of this table row."
+    ::= { arrisRouterBlackListEntry 1 }
+    
+arrisRouterBlackListDomain OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..64))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION "The domain to alway block - black listed."
+    ::= { arrisRouterBlackListEntry 2 }
+    
+arrisRouterBlackListTOD OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "This is a 32-bit bitmask that sets the time of day to apply and days of the week to apply this rule. 
+				Bits 0-6 correspond to Sunday-Saturday.  Set the bit high (1) to enable this rule for the day of the week.
+				Bits 7-30 apply to hours of the day 00:00:00-23:00:00.  Each it corresponds to an hour.  Set the bit high to 
+				enable the rule for specified hour. "
+    ::= { arrisRouterBlackListEntry 3 }   
+
+arrisRouterBlackListStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         arrisRouterBlackListStatus column is 'notReady'.
+
+         Only rows with a status of active(1) will be applied."
+    ::= { arrisRouterBlackListEntry 4 }
+
+arrisRouterTrustedDeviceTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterTrustedDeviceEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "A table of trusted devices which bypass parental controls."
+    ::= { arrisRouterFWParentalControls 16 }
+    
+arrisRouterTrustedDeviceEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterTrustedDeviceEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+	DESCRIPTION "A table of trusted devices which bypass parental controls."
+    INDEX   { arrisRouterTrustedDeviceIndex }
+    ::= { arrisRouterTrustedDeviceTable 1 }
+    
+ArrisRouterTrustedDeviceEntry ::= 
+    SEQUENCE    {
+                arrisRouterTrustedDeviceIndex		Integer32,
+                arrisRouterTrustedDeviceStatus		RowStatus,
+								arrisRouterTrustedDeviceName		DisplayString,
+								arrisRouterTrustedDeviceAddrType	InetAddressType,
+								arrisRouterTrustedDeviceAddr		InetAddress
+    }
+    
+arrisRouterTrustedDeviceIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..3)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "Indicates the instance of this table row."
+    ::= { arrisRouterTrustedDeviceEntry 1 }
+  
+arrisRouterTrustedDeviceStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         arrisRouterTrustedDeviceStatus column is 'notReady'.
+
+         Only rows with a status of active(1) will be applied."
+    ::= { arrisRouterTrustedDeviceEntry 3 }
+
+arrisRouterTrustedDeviceName OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION "The name of a device on the local network that bypasses parental controls."
+    ::= { arrisRouterTrustedDeviceEntry 4 }
+
+arrisRouterTrustedDeviceAddrType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION "IP address type for a device on the local network that bypasses parental controls."
+    ::= { arrisRouterTrustedDeviceEntry 5 }
+
+arrisRouterTrustedDeviceAddr OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION "IP address for a device on the local network that bypasses parental controls."
+    ::= { arrisRouterTrustedDeviceEntry 6 }
+
+arrisRouterManagedSitesEnabled OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Indicates whether parental controls' 'Managed Sites' are enabled"
+	DEFVAL { false }
+    ::= { arrisRouterFWParentalControls 18 }
+arrisRouterManagedServicesEnabled OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Indicates whether parental controls' 'Managed Services' are enabled"
+	DEFVAL { false }
+    ::= { arrisRouterFWParentalControls 19 }
+arrisRouterManagedDevicesEnabled OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Indicates whether parental controls' 'Managed Devices' are enabled"
+	DEFVAL { false }
+    ::= { arrisRouterFWParentalControls 20 }
+
+arrisRouterTrustedDeviceManagedServicesTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ArrisRouterTrustedDeviceManagedServicesEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "A table of trusted devices which bypasses parental controls' services' settings."
+    ::= { arrisRouterFWParentalControls 21 }
+    
+arrisRouterTrustedDeviceManagedServicesEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterTrustedDeviceManagedServicesEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+	DESCRIPTION "A table of trusted devices which bypasses parental controls' services' settings."
+    INDEX   { arrisRouterTrustedDeviceManagedServicesIndex }
+    ::= { arrisRouterTrustedDeviceManagedServicesTable 1 }
+    
+ArrisRouterTrustedDeviceManagedServicesEntry ::= 
+    SEQUENCE    {
+                arrisRouterTrustedDeviceManagedServicesIndex		Integer32,
+                arrisRouterTrustedDeviceManagedServicesStatus		RowStatus,
+								arrisRouterTrustedDeviceManagedServicesName			DisplayString,
+								arrisRouterTrustedDeviceManagedServicesAddrType		InetAddressType,
+								arrisRouterTrustedDeviceManagedServicesAddr			InetAddress
+    }
+    
+arrisRouterTrustedDeviceManagedServicesIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..3)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "Indicates the instance of this table row."
+    ::= { arrisRouterTrustedDeviceManagedServicesEntry 1 }
+    
+arrisRouterTrustedDeviceManagedServicesStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         arrisRouterTrustedDeviceManagedServicesStatus column is 'notReady'.
+
+         Only rows with a status of active(1) will be applied."
+    ::= { arrisRouterTrustedDeviceManagedServicesEntry 3 }
+
+arrisRouterTrustedDeviceManagedServicesName OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION "The name of a device on the local network that bypasses parental controls' services' settings."
+    ::= { arrisRouterTrustedDeviceManagedServicesEntry 4 }
+
+arrisRouterTrustedDeviceManagedServicesAddrType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION "IP address type for a device on the local network that bypasses parental controls' services' settings."
+    ::= { arrisRouterTrustedDeviceManagedServicesEntry 5 }
+
+arrisRouterTrustedDeviceManagedServicesAddr OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION "IP address for a device on the local network that bypasses parental controls services."
+    ::= { arrisRouterTrustedDeviceManagedServicesEntry 6 }
+
+   
+arrisRouterFWResetDefaults OBJECT-TYPE
+	SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Reset Firewall settings (only) to default values."
+    ::= { arrisRouterFWCfg 22 }
+    
+arrisRouterFWBlockHTTP OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Enable/disable blocking of incoming HTTP traffic."
+    ::= { arrisRouterFWCfg 23 }
+
+arrisRouterFWBlockP2P OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Enable/disable blocking of peer-to-peer applications."
+    ::= { arrisRouterFWCfg 24 }
+
+arrisRouterFWBlockIdent OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Enable/disable blocking of Ident protocol."
+    ::= { arrisRouterFWCfg 25 }
+
+arrisRouterFWBlockICMP OBJECT-TYPE
+	SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Specify to allow or not block ICMP messages such as Ping and trace route."
+	DEFVAL { false }
+    ::= { arrisRouterFWCfg 26 }
+
+arrisRouterFWBlockMulticast OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION  "Enable/disable blocking of multicast traffic."
+    DEFVAL { false }
+    ::= { arrisRouterFWCfg 27 }
+arrisRouterFWVirtSrvTableEnabled OBJECT-TYPE
+	SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Indicates whether Port Forwarding is enabled."
+	DEFVAL { true }
+    ::= { arrisRouterFWCfg 32 }
+	
+arrisRouterFWPortTrigTableEnabled OBJECT-TYPE
+	SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Indicates whether port triggering is enabled."
+	DEFVAL { true }
+    ::= { arrisRouterFWCfg 33 }
+arrisRouterAdminPassword OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "The administrative password to login to the router local device web UI."
+    ::= { arrisRouterSysCfg 1 }
+
+arrisRouterAdminTimeout OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS		"seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "The administrative login timeout to the router local device web UI."
+    ::= { arrisRouterSysCfg 2 }
+   
+arrisRouterReboot OBJECT-TYPE
+    SYNTAX      INTEGER { restart(1) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "This will restart the eRouter"
+    ::= { arrisRouterSysCfg 4 }
+
+arrisRouterFactoryDefaults OBJECT-TYPE
+    SYNTAX      INTEGER { restore(1) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "This will reset all router functions to their factory defaults."
+    ::= { arrisRouterSysCfg 5 }
+
+-- Settings for enabling SSH and web pages
+
+arrisRouterWebAccessSetting OBJECT-TYPE
+    SYNTAX      INTEGER { disableAll(0), enableLANWeb(1), enableWANWeb(2), enableAllWeb(3) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Mechanism to enable/disable the access to the entire Web GUI for WAN and/or LAN."
+    DEFVAL { enableLANWeb }
+    ::= { arrisRouterHostAccess 6 }
+
+-- for ping
+
+arrisRouterPingTargetAddrType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The type of internet address used for arrisRouterPingTargetAddress.  
+        
+         This object may be changed while a ping is in progress."
+    DEFVAL { ipv4 }
+    ::= { arrisRouterPingMgmt 1 }
+    
+arrisRouterPingTargetAddress OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the internet address of the entity to be pinged.  Note that if
+         an all-zeros value is specified for this object, then the ping will
+         be sent to the default gateway, if one exists.
+        
+         This object may be changed while a ping is in progress."
+    ::= { arrisRouterPingMgmt 2 }
+    
+arrisRouterPingNumPkts OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the number of pings to be sent.  This can be
+         set to any number between 1 and (2^32 - 1), or can be set to 'infinite'
+         by setting the value to 0.
+        
+         Note that if set to infinite, then the ping must be stopped explicitly
+         in order to get it to stop.
+         
+         This object may be changed while a ping is in progress."
+    DEFVAL { 3 }
+    ::= { arrisRouterPingMgmt 3 }
+    
+arrisRouterPingPktSize OBJECT-TYPE
+    SYNTAX      Unsigned32 (64..1518)
+    UNITS       "bytes"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the initial size of the ping packets that will 
+         be sent.  This size includes the LLC header, IP header, ICMP header, 
+         and the CRC32 at the end.  You must specify values between 64 and 1518, 
+         which are the min and max size Ethernet frames.
+         
+         This object may be changed while a ping is in progress."
+    DEFVAL { 64 }
+    ::= { arrisRouterPingMgmt 4 }
+   
+arrisRouterPingInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the amount of time (in milliseconds) that the
+         device will sleep before sending a ping.  Generally, this is the time
+         between when a ping reply is received and when the next ping will be
+         sent.
+        
+         Note that the amount of time between sending one ping and sending the
+         next ping varies depending on whether or not you enable waiting for
+         replies, and how long it takes to receive the reply.
+        
+         If waiting for replies is disabled, then this is the time between 
+         sending one ping and sending the next ping.
+         
+         This object may be changed while a ping is in progress."
+    DEFVAL { 0 }
+    ::= { arrisRouterPingMgmt 5 }
+    
+arrisRouterPingTimeout OBJECT-TYPE
+    SYNTAX      Integer32 (-1..65535)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the amount of time (in milliseconds) that the
+         device should wait for a reply after sending a ping.
+         
+         If set to any non-negative value, then the device will send a ping and 
+         wait for a response for the specified amount of time.  Event if 
+         set to 0, the thread will check for and process a reply packet.
+         
+         If set to -1, then the device will not wait at all, and won't even 
+         check for any replies.
+         
+         This object may be changed while a ping is in progress."
+    DEFVAL { 5000 }
+    ::= { arrisRouterPingMgmt 6 }
+    
+    
+arrisRouterPingVerifyReply OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables/disables verification of ping replies.  If enabled, and if 
+         waiting for replies is enabled, then if a reply is received, it will 
+         verify that it matches the ping that was sent, and that all of the 
+         data is intact.
+         
+         This object may be changed while a ping is in progress."
+    DEFVAL { true }
+    ::= { arrisRouterPingMgmt 7 }
+
+
+arrisRouterPingIpStackNumber OBJECT-TYPE
+    SYNTAX      Integer32 (0..8)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to select the IP stack from which the pings will be
+         sent.  Specifying 0 means that the pings will be sent from the same IP
+         stack on which this MIB is hosted.
+         
+         This object may not be changed while a ping is in progress."
+    DEFVAL { 0 }
+    ::= { arrisRouterPingMgmt 8 }        
+    
+arrisRouterPingStartStop OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Starts or stops the pings, as well as indicating whether a ping is in
+         progress when read.  If a ping is already in progress and this object
+         is set to true(1), then the ping will continue but the ping statistics
+         will be reset.
+         
+         This object may be changed while a ping is in progress."
+    DEFVAL { true }
+    ::= { arrisRouterPingMgmt 9 }
+    
+arrisRouterPingPktsSent OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the number of packets sent since the ping was started."
+    ::= { arrisRouterPingMgmt 10 }
+    
+arrisRouterPingRepliesReceived OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the number of replies received since the ping was started."
+    ::= { arrisRouterPingMgmt 11 }
+    
+arrisRouterPingRepliesVerified OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the number of replies which were verified since the ping was 
+         started."
+    ::= { arrisRouterPingMgmt 12 }
+    
+arrisRouterPingOctetsSent OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the total number of octets that have been sent in pings
+         since the ping was started."
+    ::= { arrisRouterPingMgmt 13 }
+    
+arrisRouterPingOctetsReceived OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the total number of octets that have been sent in pings
+         since the ping was started."
+    ::= { arrisRouterPingMgmt 14 }
+    
+arrisRouterPingIcmpErrors OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the total ICMP errors which have been received since the 
+         ping was started."
+    ::= { arrisRouterPingMgmt 15 }
+    
+arrisRouterPingLastIcmpError OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates value of the last ICMP error which was received, if any.  If 
+         there have been no errors, this object will have a value of 0."
+    ::= { arrisRouterPingMgmt 16 }
+
+
+-- traceroute
+
+
+arrisRouterTraceRtTargAddrType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "The type of internet address used for arrisRouterTraceRtTargetAddress."
+    DEFVAL { ipv4 }
+    ::= { arrisRouterTraceRtMgmt 1 }
+    
+arrisRouterTraceRtTargetAddr OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Sets the internet address of the entity for the trace route."
+    ::= { arrisRouterTraceRtMgmt 2 }
+    
+arrisRouterTraceRtMaxHops OBJECT-TYPE
+    SYNTAX      Integer32 (1..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "The maximum number of hops for the trace route"
+    ::= { arrisRouterTraceRtMgmt 3 }
+
+arrisRouterTraceRtDataSize OBJECT-TYPE
+    SYNTAX      Integer32 (1..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "The data size of the trace route packet"
+    ::= { arrisRouterTraceRtMgmt 4 }
+
+arrisRouterTraceRtResolveHosts OBJECT-TYPE
+    SYNTAX      INTEGER { noResolve(0), resolve(1) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Whether or not to resolve host names"
+     DEFVAL		{ resolve }
+    ::= { arrisRouterTraceRtMgmt 5 }
+    
+arrisRouterTraceRtBasePort OBJECT-TYPE
+    SYNTAX      Integer32 (1..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Base port to use for trace route"
+    ::= { arrisRouterTraceRtMgmt 6 }
+
+arrisRouterTraceRtStart OBJECT-TYPE
+    SYNTAX      INTEGER { traceRouteNotRunning(0), traceRouteRunning(1), startTrace(10) }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Start a running trace route.  Will return traceRouteRunning(0) if a trace route is currently running.  "
+    ::= { arrisRouterTraceRtMgmt 7 }
+
+arrisRouterTraceRtLog OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (1..255))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The most recent output log for trace route.  Up to 255 bytes.  Individual lines are separated by a newline \n"
+    ::= { arrisRouterTraceRtMgmt 8 }
+arrisRouterICtrlPortMapCount OBJECT-TYPE
+    SYNTAX      Integer32 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Count of the rows in the table: arrisRouterICtrlPortMapTable"
+    ::= { arrisRouterICtrl 1 }
+
+arrisRouterICtrlPortMapTable OBJECT-TYPE
+     SYNTAX      SEQUENCE OF ArrisRouterICtrlPortMapEntry
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION "This table contains IP port mappings."
+     ::= { arrisRouterICtrl 2 }
+
+arrisRouterICtrlPortMapEntry OBJECT-TYPE
+    SYNTAX      ArrisRouterICtrlPortMapEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "This table contains IP port mappings"
+    INDEX   { arrisRouterICtrlPortMapIndex }
+    ::= { arrisRouterICtrlPortMapTable 1 }
+    
+ArrisRouterICtrlPortMapEntry ::= 
+    SEQUENCE    {
+                arrisRouterICtrlPortMapIndex                Integer32,
+                arrisRouterPortMapDescription               DisplayString,
+                arrisRouterPortMapInternalClientAddrType    InetAddressType,
+                arrisRouterPortMapInternalClientAddr        InetAddress,
+                arrisRouterPortMapProtocol                  INTEGER,
+                arrisRouterPortMapExternalPort              Unsigned32,
+                arrisRouterPortMapInternalPort              Unsigned32,
+                arrisRouterPortMapRowStatus                 RowStatus
+                }
+
+arrisRouterICtrlPortMapIndex OBJECT-TYPE
+     SYNTAX      Integer32 (1..255)
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION "Table index"
+     ::= { arrisRouterICtrlPortMapEntry 1 }
+
+arrisRouterPortMapDescription OBJECT-TYPE
+     SYNTAX      DisplayString
+     MAX-ACCESS  read-create
+     STATUS      current
+     DESCRIPTION "Provides a descriptive human-readable string explaining the
+                  usage of the port mapping. For example, Port 80 might be represented as
+                  Web Server."
+     ::= { arrisRouterICtrlPortMapEntry 2 }
+
+arrisRouterPortMapInternalClientAddrType OBJECT-TYPE
+     SYNTAX     InetAddressType
+     MAX-ACCESS  read-create
+     STATUS      current
+     DESCRIPTION  "This is the IP address type of the destination host that traffic assigned to this port from the WAN will be mapped to on the LAN."
+     ::= { arrisRouterICtrlPortMapEntry 3 }
+
+arrisRouterPortMapInternalClientAddr OBJECT-TYPE
+     SYNTAX     InetAddress
+     MAX-ACCESS  read-create
+     STATUS      current
+     DESCRIPTION  "This is the IP address of the destination host that traffic assigned to this port from the WAN will be mapped to on the LAN."
+     ::= { arrisRouterICtrlPortMapEntry 4 }
+
+arrisRouterPortMapProtocol OBJECT-TYPE
+     SYNTAX      INTEGER { tcp(1), udp(2) }
+     MAX-ACCESS  read-create
+     STATUS      current
+     DESCRIPTION "Can be 'UDP' or 'TCP'. Used to set the specific IP protocol type that this port is mapped for."
+     DEFVAL { tcp }
+     ::= { arrisRouterICtrlPortMapEntry 5 }
+
+arrisRouterPortMapExternalPort  OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-create
+     STATUS      current
+     DESCRIPTION "The port number that an external host will connect to on the WAN side of the router that will be mapped"
+     ::= { arrisRouterICtrlPortMapEntry 6 }
+
+arrisRouterPortMapInternalPort  OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-create
+     STATUS      current
+     DESCRIPTION "port number that will be used on the destination host"
+     ::= { arrisRouterICtrlPortMapEntry 7 }
+     
+arrisRouterPortMapRowStatus OBJECT-TYPE
+     SYNTAX     RowStatus
+     MAX-ACCESS read-create
+     STATUS     current
+     DESCRIPTION "For creating new rows"
+     ::= { arrisRouterICtrlPortMapEntry 8 }
+    
+arrisRouterICtrlGetDeviceSettings                 OBJECT IDENTIFIER ::= { arrisRouterICtrl 3 }
+arrisRouterICtrlIsDeviceReady                     OBJECT IDENTIFIER ::= { arrisRouterICtrl 4 }
+arrisRouterICtrlReboot                            OBJECT IDENTIFIER ::= { arrisRouterICtrl 5 }
+arrisRouterICtrlSetDeviceSettings                 OBJECT IDENTIFIER ::= { arrisRouterICtrl 6 }
+arrisRouterICtrlRouterSettings                    OBJECT IDENTIFIER ::= { arrisRouterICtrl 7 }
+arrisRouterICtrlWLanRadioSettings                 OBJECT IDENTIFIER ::= { arrisRouterICtrl 8 }
+arrisRouterICtrlSetBridgeConnect                  OBJECT IDENTIFIER ::= { arrisRouterICtrl 9 }
+arrisRouterICtrlGetWanSettings                    OBJECT IDENTIFIER ::= { arrisRouterICtrl 10 }
+
+arrisRouterICtrlDeviceSettingsFWversion OBJECT-TYPE
+     SYNTAX      DisplayString
+     MAX-ACCESS  read-only
+     STATUS      current
+     DESCRIPTION "The Firmware Version."
+     ::= { arrisRouterICtrlGetDeviceSettings 1 }
+
+
+arrisRouterICtrlDeviceStatus OBJECT-TYPE
+     SYNTAX      INTEGER { error(0), ok(1) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "This method is used to determine if a given device is ready to process HNAP calls. 
+                  It can be used in a reboot sequence, so that an HNAP client knows when an HNAP server has completed rebooting and is
+                  ready to begin processing commands again. If the device returns OK, it must be available to respond to
+                  additional requests until further state changes are made."
+     ::= { arrisRouterICtrlIsDeviceReady 1 }
+
+arrisRouterICtrlInitiateReboot OBJECT-TYPE
+     SYNTAX      INTEGER { reboot(1) }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Initiate a reboot."
+     ::= { arrisRouterICtrlReboot 1 }
+
+
+arrisRouterICtrlSetDeviceName OBJECT-TYPE
+     SYNTAX      DisplayString
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "A user-readable friendly name to use for this device. This name is used for the following:
+                    End users associate this name with devices when displayed by device management software (for example,
+                        the icon that displays in Network Magic's network map for this device).
+                    You should use it for DHCP leases and other network identification."
+     ::= { arrisRouterICtrlSetDeviceSettings 1 }
+
+arrisRouterICtrlSetAdminPassword OBJECT-TYPE
+     SYNTAX      DisplayString
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The administrator password for this device"
+     ::= { arrisRouterICtrlSetDeviceSettings 2 }
+
+
+arrisRouterICtrlRouterManageRemote OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Indicates if remote management is enabled for this device.
+                    true: the administrative interface and HNAP interfaces are
+                            accessible from the WAN side of the router.
+                    false: the administrative interface and HNAP interfaces are
+                            only accessible from the LAN side of the router"
+     ::= { arrisRouterICtrlRouterSettings 1 }
+
+arrisRouterICtrlRouterRemotePort OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Returns the port number that can be used to access the router management interface from the WAN side"                    
+     ::= { arrisRouterICtrlRouterSettings 2 }
+     
+arrisRouterICtrlRouterRemoteSSL OBJECT-TYPE
+     SYNTAX      TruthValue
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Indicates if the secure SSL port is available for this device.
+                    true: the remote port specified by RemotePort will ONLY accept SSL connections.
+                    false: the remote port specified by RemotePort will NOT accept SSL connections"
+     ::= { arrisRouterICtrlRouterSettings 3 }
+
+
+arrisRouterICtrlWLanRadioMacAddress OBJECT-TYPE
+     SYNTAX      MacAddress
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The MAC address for this interface. The device will still return this, even if the WLAN interface is currently disabled."
+     ::= { arrisRouterICtrlWLanRadioSettings 1 }
+
+arrisRouterICtrlWLanRadioChannelWidth OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "Width of each channel. This corresponds to the 802.11n channel width standard. Valid values are:
+                    0: Automatic
+                    20: 20 MHz channel width
+                    40: 40 MHz channel width
+                    Notes:
+                        If a router is configured in Automatic selection mode it
+                            should return 0 to indicate this.
+                        It is not possible for an HNAP client to interrogate the
+                            currently selected channel width of a router configured in
+                            automatic mode."
+     ::= { arrisRouterICtrlWLanRadioSettings 2 }
+
+
+arrisRouterICtrlSetBridgeEthernetPort OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The parameter 'EthernetPort' determines which physical Ethernet LAN
+                    port is able to accept bridged traffic.  This port must correspond to the physically
+                    numbered ports on the device."
+     ::= { arrisRouterICtrlSetBridgeConnect 1 }
+
+arrisRouterICtrlSetBridgeMinutes OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The parameter 'Minutes' specifies the maximum amount of time the bridge is to remain active after which the bridge is immediately closed without warning,
+                 secondary calls to SetBridgeConnect that specify the same port and time value should update the existing timeout value to be based on the time of the 
+                 latest call with the latest timeout value (and should not close the bridge for any reason)"
+     ::= { arrisRouterICtrlSetBridgeConnect 2 }
+
+
+arrisRouterICtrlGetWanType OBJECT-TYPE
+     SYNTAX      DisplayString
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The type of configuration. Can be one of the following values, depending on the WAN configurations supported by the device.
+                    BigPond
+                    DHCP
+                    DHCPPPPoE
+                    DynamicL2TP
+                    DynamicPPTP
+                    Static
+                    StaticL2TP
+                    StaticPPPoE
+                    StaticPPTP
+                    BridgedOnly
+                    Static1483Bridged
+                    Dynamic1483Bridged
+                    Static1483Routed
+                    StaticPPPOA
+                    DynamicPPPOA" 
+    DEFVAL { "DHCP" }
+     ::= { arrisRouterICtrlGetWanSettings 2 }
+
+arrisRouterICtrlGetWanMTU OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The maximum packet size (maximum transmission unit (MTU)) in octets. 
+                  This cannot exceed what the router supports (that is, the MTU value that the router provides in response to a GETxxx method)." 
+     ::= { arrisRouterICtrlGetWanSettings 3 }
+     
+arrisRouterICtrlGetWanPrefixLen OBJECT-TYPE
+     SYNTAX      InetAddressPrefixLength
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The prefix (netmask) for the Wan connection." 
+     ::= { arrisRouterICtrlGetWanSettings 4 }
+
+arrisRouterICtrlGetWanGatewayAddrType OBJECT-TYPE
+     SYNTAX      InetAddressType
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The type for the gateway IP address for this router."
+     ::= { arrisRouterICtrlGetWanSettings 5 }
+
+arrisRouterICtrlGetWanGatewayAddr OBJECT-TYPE
+     SYNTAX      InetAddress
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The the gateway IP address for this router.
+                     If Type is set to DHCP, DHCPPPPoE, DynamicPPPOA or Dynamic1483Bridged this returns the DHCPconfigured values. 
+                     If DHCP has not acquired an address yet, this should return 0.0.0.0 (for IPv4) or the equivalent IPv6 unconfigured IP address"
+     ::= { arrisRouterICtrlGetWanSettings 6 }
+
+arrisRouterICtrlGetWanDNSPrimaryAddrType OBJECT-TYPE
+     SYNTAX      InetAddressType
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The type for the DNS address."
+     ::= { arrisRouterICtrlGetWanSettings 7 }
+
+arrisRouterICtrlGetWanDNSPrimaryAddr OBJECT-TYPE
+     SYNTAX      InetAddress
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The DNS primary setting for this router.
+                    If DHCP is being used as the WAN Type, a device should
+                    return DNS settings it may have obtained from the DHCP
+                    lease. Both DNS settings may be blank in the event that there
+                    is no current lease.
+                    For non-DHCP WAN Types, these settings should always be
+                    valid."
+     ::= { arrisRouterICtrlGetWanSettings 8 }
+
+arrisRouterICtrlGetWanDNSSecondaryAddrType OBJECT-TYPE
+     SYNTAX      InetAddressType
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The type for the DNS address."
+     ::= { arrisRouterICtrlGetWanSettings 9 }
+
+arrisRouterICtrlGetWanDNSSecondaryAddr OBJECT-TYPE
+     SYNTAX      InetAddress
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The DNS secondary setting for this router.
+                    If DHCP is being used as the WAN Type, a device should
+                    return DNS settings it may have obtained from the DHCP
+                    lease. Both DNS settings may be blank in the event that there
+                    is no current lease.
+                    For non-DHCP WAN Types, these settings should always be
+                    valid."
+     ::= { arrisRouterICtrlGetWanSettings 10 }
+
+arrisRouterICtrlGetWanMacAddress OBJECT-TYPE
+     SYNTAX      MacAddress
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The MAC address for the WAN interface."
+     ::= { arrisRouterICtrlGetWanSettings 11 }
+
+arrisRouterICtrlHNAPServerPort OBJECT-TYPE
+     SYNTAX      Unsigned32
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION "The port used by the internal HNAP server to receive messages from the HNAP client."                    
+     DEFVAL { 8081 }
+     ::= { arrisRouterICtrl 11 }
+
+END
+
+

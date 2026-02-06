@@ -1,0 +1,3857 @@
+GI-BTI-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+	Counter32, Integer32, enterprises,
+	MODULE-IDENTITY,	OBJECT-TYPE,  IpAddress, NOTIFICATION-TYPE
+		FROM SNMPv2-SMI
+	DisplayString, TruthValue, DateAndTime, TEXTUAL-CONVENTION
+		FROM SNMPv2-TC;
+
+gi OBJECT IDENTIFIER
+	::= { enterprises 1166 }
+
+giproducts OBJECT IDENTIFIER
+	::= { gi 1 }
+
+btiMIB MODULE-IDENTITY
+	LAST-UPDATED "0412030100Z" -- November 09, 2004.
+	ORGANIZATION "Motorola Broadband Communications"
+	CONTACT-INFO
+	"Abhijit Chatterjee
+	Motorola Broadband Communications
+	101 Tournament Drive
+	Horsham PA 19044
+	215 323 2521
+
+	Kevin Marez
+	Motorola Broadband Communications
+	6450 Sequence Drive
+	San Diego CA 92121
+	858 404 3785"
+	DESCRIPTION
+	"The managed objects for the MTA.
+	Motorola Product #465914-001
+	All information contained in this file or document is confidential
+	and proprietary to General Instrument Corporation, doing business as
+	Motorola, Inc. Broadband Communications Sector. No license, expressed
+	or implied, under any patent, copyright or trade secret right
+	is granted or implied by the conveyance of this document. No part of
+	this file or document may be reproduced, transmitted, transcribed,
+	stored in a retrieval system, translated into any language or computer
+	language, in any form or by any means, electronic, mechanical,
+	magnetic, optical, chemical, manual, or otherwise without the prior
+	written permission of General Instrument Corporation, doing
+	business as Motorola, Inc. Broadband Communications Sector.
+	Copyright (c) 2000 Motorola, Inc. All rights reserved."
+
+REVISION "200412090000Z"
+DESCRIPTION
+"Edited by Kevin Marez.
+- Merged with the current version of the BTI MIB being maintained in document format.
+REV 1.7 - 12/09/2004."
+
+REVISION "200412090000Z"
+DESCRIPTION
+"Edited by Kevin Marez.
+- Changed the Revision numbering from letters to major.minor numbering.
+- For all intents and purposes this is the initial version to be
+- forward.
+REV 1.5 - 12/09/2004."
+
+REVISION "200412030000Z"
+DESCRIPTION
+"Edited by Kevin Marez.
+- Changed the default for upsConfigLowBattTime per Comcast spec.
+REV P - 12/03/2004."
+
+REVISION "200411090000Z"
+DESCRIPTION
+"Edited by Kevin Marez.
+- Specified a single temperature MIB.  With changes being made to the
+number of batteries being supported by each product, only one MIB is
+required to report the temperature.
+- Removed all event counters.
+- Defined the indexing for all tables.
+REV O - 11/09/2004 - Modifications per Howard Cohen's request."
+
+REVISION "200410220000Z"
+DESCRIPTION
+"Edited by Kevin Marez.
+- Changed some objects to be per battery pack vs. per UPS.
+- Modified UPS MIBs to accomodate both an internal and external UPS
+REV N - 10/22/2004 - Updated some structures within the UPS MIB portion."
+
+REVISION "200409210000Z"
+DESCRIPTION
+"Edited by Kevin Marez.
+- Incorporated BTI UPS MIB objects and did some clean-up.
+REV M - 09/21/2004 - Revamp of BTI MIB."
+
+
+REVISION "200407280000Z"
+DESCRIPTION
+"Edited by Kevin Marez.
+- BTI MIB Overhaul for the SBV5120 products.
+REV L - 08/27/2004 - Revamp of BTI MIB."
+
+	REVISION "0404220100Z" -- April 22nd, 2004.
+	DESCRIPTION
+	"Initial release on 7/12/99
+	Updated descriptions on 8/20
+	Added MIB version, changed jitter buffer size unit types 8/23
+	added g726 codec type 9/15
+	Added environment group 10/7
+	Added two new alarm states 7/28/00
+	Added CRs 0003-0197, 0004-0365,0006-0017, 0007-0001, 0007-0094,
+	0007-0095, 0007-0096, 0007-0100, 0007-0101,0007-0281, 0007-0382
+	REV H - 7/28/00
+	REV J - 10/03/01 - international additions, btiDebug update, Scorpion
+	REV J - 12/12/01 - tones update, caller ID controls, format improvements
+	REV K - 10/31/03 - measures for dial-tone delay, post-dial delay, Syslog control via btiCpeInterfaceEnable
+	REV K2 - 4/15/04 - objects to initiate Foreign Volatge detection test, read FV Test output, MTA-specific Syslog Server IP
+	REV K3 - 4/22/04 - more objects for Foreign Volatge detection test"
+	::= { giproducts 200 }
+
+
+--
+-- OBJECTS
+--
+btiTAIdent OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	--DEFAULT set-function-async		null_set_async
+	--DEFAULT test-function-async		null_test_async
+	::= { btiMIB 1 }
+
+btiTAControl OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	::= { btiMIB 2 }
+
+btiTAConfig OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	::= { btiMIB 3 }
+
+btiTAEnvironment OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	::= { btiMIB 9 } -- for ease in development
+
+btiTAStatus OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	::= { btiMIB 4 }
+
+btiTASummCallPackStat OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	::= { btiMIB 5 }
+
+btiTALine OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	::= { btiMIB 6 }
+
+btiAlarm OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	::= { btiMIB 7 }
+
+btiNotificationPrefix	OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	::= { btiMIB 8 }
+
+btiNotifications OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	::= { btiNotificationPrefix 0 }
+
+--btiRTP  OBJECT IDENTIFIER ::= { btiMIB 11 }
+
+btiUps OBJECT IDENTIFIER
+	--DEFAULT next-function-async		std_next_async
+	::= { btiMIB 12 }
+
+--
+--	Textual Conventions
+--
+	VoicePhsFields::= TEXTUAL-CONVENTION
+		STATUS        current
+		DESCRIPTION
+		"Each bit represents a field in the Ethernet header, IP header,
+		UDP header or RTP header of a voice packet for packet header suppression."
+
+		SYNTAX        BITS
+		{
+			enetFldDstAddr(0),
+			enetFldSrcAddr(1),
+			enetFldType(2),
+			ipFldVersHlen(3),
+			ipFldTos(4),
+			ipFldTlen(5),
+			ipFldId(6),
+			ipFldFrag(7),
+			ipFldTtl(8),
+			ipFldProtocol(9),
+			ipFldCksum(10),
+			ipFldSrcAddr(11),
+			ipFldDstAddr(12),
+			udpFldSrcPort(13),
+			udpFldDstPort(14),
+			udpFldLen(15),
+			udpFldCksum(16),
+			rtpFldVersetc(17),
+			rtpFldPt(18),
+			rtpFldSeqNum(19),
+			rtpFldTimeStamp(20),
+			rtpFldSsrc(21),
+			enetFldCrc(22),
+			reserved1(23),
+			reserved2(24),
+			reserved3(25),
+			reserved4(26),
+			reserved5(27),
+			reserved6(28),
+			reserved7(29),
+			reserved8(30),
+			reserved9(31)
+		}
+
+
+
+--
+--	Telephony Adapter Ident Group
+--
+btiManufacturer 	OBJECT-TYPE
+	SYNTAX         DisplayString (SIZE(0..127))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the Manufacturer for the device."
+	::= { btiTAIdent 1 }
+
+btiModelNumber	OBJECT-TYPE
+	SYNTAX         DisplayString (SIZE(0..127))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the Model Number for the device."
+	::= { btiTAIdent 2 }
+
+btiMibVersion	OBJECT-TYPE
+	SYNTAX         DisplayString (SIZE(0..127))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the version of the MIB - useful for manager to identify which
+	 MIB version and therefore which MIB attributes are implemented.."
+	::= { btiTAIdent 3 }
+
+--
+--	Telephony Adapter Control Group
+--
+btiSoftResetNow	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         deprecated
+	DESCRIPTION
+	"Setting this object to True(1) causes the device to interact with
+	the DHCP server.
+	It does not cause reload of the config file.
+	Reading this object always returns False(2)."
+	::= { btiTAControl 1 }
+
+btiMaxResetDelay	OBJECT-TYPE
+	SYNTAX         Integer32 (1..32767)
+	UNITS          "minutes"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The MTA starts a timer with this value when the new code
+	completes downloading. If all calls are not terminated before this
+	timer expires, the MTA sends an Inform to the Element Manager and
+	restarts the timer. If the timer expires a second time, the MTA
+	autonomously terminates the calls, resets itself, and the new code
+	is loaded without waiting for the calls to terminate on their own."
+	DEFVAL { 120 }
+	::= { btiTAControl 2 }
+
+btiPostCallCompletionResetDelay	OBJECT-TYPE
+	SYNTAX         Integer32 (1..32767)
+	UNITS          "seconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"After code download and when no calls are in progress, this timer
+	is started. Reset of the bti occurs after this timeout if no new calls
+	are in progress. The timer is reset if a new call is made while the
+	timer is running."
+	DEFVAL { 120 }
+	::= { btiTAControl 3 }
+
+
+btiHfcEnable	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"When set to TRUE, the HFC port is fully active for transmitting and receiving
+	all traffic. When set to FALSE, all upstream and downstream communication
+	is disabled."
+	DEFVAL { true }
+	::= { btiTAControl 4 }
+
+
+btiTALineNomJitterBufferSizeVoice	OBJECT-TYPE
+	SYNTAX         Integer32 (0..160)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The setting for the nominal amount of jitter the bti can compensate for
+	voice calls .	The nominal setting in the DSP should be as close to,
+	but not less than, the MIB setting."
+	DEFVAL { 15 }
+	::= { btiTAControl 5 }
+
+btiTALineMaxJitterBufferSizeVoice	OBJECT-TYPE
+	SYNTAX         Integer32 (0..160)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The  setting for the maximum amount of jitter the bti can compensate
+	for voice calls The maximum setting in the DSP should be as close to,
+	but not less than, the MIB setting."
+	DEFVAL { 30 }
+	::= { btiTAControl 6 }
+
+btiTALineNomJitterBufferSizeNonVoice	OBJECT-TYPE
+	SYNTAX         Integer32 (0..160)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The setting for the nominal amount of jitter the bti can compensate
+	for non-voice calls. The nominal setting in the DSP should be as close to,
+	but not less than, the MIB setting."
+	DEFVAL { 15 }
+	::= { btiTAControl 7 }
+
+btiTALineMaxJitterBufferSizeNonVoice	OBJECT-TYPE
+	SYNTAX         Integer32 (0..160)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The setting for the maximum amount of jitter the bti can compensate
+	for non-voice calls. The maximum setting in the DSP should be as close to,
+	but not less than, the MIB setting."
+	DEFVAL { 30 }
+	::= { btiTAControl 8 }
+
+btiTelephonyEventInterval	OBJECT-TYPE
+	SYNTAX         Integer32 (0..3600)
+	UNITS          "seconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Periodic rate in seconds at which RTP Named Telephony events messages,
+	for example hook state, are reported in the absence of state changes.
+	If this value is set to zero, only a single message is tranmitted."
+	DEFVAL { 5 }
+	::= { btiTAControl 9 }
+
+btiUsePiggybacking	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The piggyback Enable flag indicates if the MTA should use piggybacking
+	to send messages where required by the NCS specification.
+	When the flag is FALSE the MTA will NOT send piggybacked messages
+	but will still accept a piggybacked message from the call agent."
+	DEFVAL { true }
+	::= { btiTAControl 10 }
+
+btiPowerRingFrequency	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		twenty(1),
+		twentyFive(2),
+		thirtyThreePointThreeThree(3),
+		fifty(4)
+	}
+	UNITS          "Hertz"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The power ring frequency is the frequency at which the sinusoidal
+	voltage must travel down the twisted pair to make terminal equipment ring.
+	Different countries define different electrical characteristics to make
+	this happen. ETS 300 001 Jan 1997 lists the frequency ranges that are
+	defined for each country.  This MIB is only supported on Euro variants."
+	DEFVAL { twenty }
+	::= { btiTAControl 11 }
+
+
+btiPCMCoding 	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		aLaw(1),
+		uLaw(2)
+	}
+	MAX-ACCESS     read-write
+	STATUS         deprecated
+	DESCRIPTION
+	"This is the Pulse Code Modulation (PCM) format used by a EMTA when coding
+	and decoding analog telephone signals. The default will be aLaw(1)."
+	DEFVAL { uLaw }
+	::= { btiTAControl 12 }
+
+
+btiCIDMode 	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		northAmerican(1),
+		duringRingingETS(2),
+		dtAsETS(3),
+		rpAsETS(4),
+		lrAsETS(5)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"For both on-hook and off-hook Caller ID, btiCIDMode selects between
+	North American modulation (BellCore 202)and ETS modulation (V.23).
+	For on-hook Caller ID, it also selects between sending the FSK between
+	the first and second ring pattern (NorthAmerican and DuringRingingETS),
+	Dual Tone Alert Signal (DtAsETS), after a Ring Pulse (RpAsETS) or,
+	after a Line Reversal followed by a Dual Tone Alert Signal (LrAsETS).
+	This MIB is only supported on Euro variants."
+	DEFVAL { northAmerican }
+	::= { btiTAControl 13 }
+
+
+btiCIDFskAfterRing	OBJECT-TYPE
+	SYNTAX         Integer32 (500..2000)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Determines the delay between the end of the first ringing pattern and
+	the transmission of the FSK containing the Caller ID information.
+	It is only used when btiCIDMode is NorthAmerican or DuringRingingETS.
+	This MIB is only supported on Euro variants."
+	DEFVAL { 550 }
+	::= { btiTAControl 14 }
+
+
+btiCIDFskAfterDTAS	OBJECT-TYPE
+	SYNTAX         Integer32 (45..500)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Determines the delay between the Dual Tone Alert Signal (DT-AS) and
+	the transmission of the FSK containing the Caller ID information.
+	It is only used when btiCIDMode is DtAsETS or LrAsETS.
+	This MIB is only supported on Euro variants."
+	DEFVAL { 60 }
+	::= { btiTAControl 15 }
+
+
+btiCIDRingAfterFSK	OBJECT-TYPE
+	SYNTAX         Integer32 (200..500)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Determines the delay between the complete transmission of the FSK
+	containing the Caller ID information and the first ring pattern.
+	It is only used when btiCIDMode is DtAsETS, RpAsETS or LrAsETS.
+	This MIB is only supported on Euro variants."
+	DEFVAL { 250 }
+	::= { btiTAControl 16 }
+
+
+btiCIDDTASAfterLR	OBJECT-TYPE
+	SYNTAX         Integer32 (100..655)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Determines the delay between the end of the Line Reversal and
+	Dual Tone Alert Signal (DT-AS).
+	It is only used when btiCIDMode is LrAsETS.
+	This MIB is only supported on Euro variants."
+	DEFVAL { 150 }
+	::= { btiTAControl 17 }
+
+
+btiPulseSignalTable	OBJECT-TYPE
+	SYNTAX         SEQUENCE OF BtiPulseSignalEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The Pulse signal table defines the pulse signal operation. There are four
+	types of international pulse signals: initial ring, meter pulse, reverse
+	polarity and no battery. The Pulse duration type is specific and it is
+	specified with a 1 to 32 value.  This MIB is only supported on Euro variants."
+	::= { btiTAControl 18 }
+
+
+btiPulseSignalEntry	OBJECT-TYPE
+	SYNTAX         BtiPulseSignalEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"Unique value ranging from 1 to 32 that will correspond to the value specified
+	by the operator.  This MIB is only supported on Euro variants."
+	INDEX { btiPulseSignalIndex }
+	::= {btiPulseSignalTable 1}
+
+BtiPulseSignalEntry ::= SEQUENCE
+{
+	btiPulseSignalIndex             Integer32,
+	btiPulseSignalDuration          Integer32,
+	btiPulseSignalType              INTEGER
+}
+
+btiPulseSignalIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 32)
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The table index equivalent to the operator specific pulse type and duration.
+
+This MIB is only supported on Euro variants."
+	::= {btiPulseSignalEntry 1}
+
+btiPulseSignalDuration	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 5000)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The pulse duration varies according to the operator and country.  This MIB
+
+is only supported on Euro variants."
+	DEFVAL { 1000 }
+	::= {btiPulseSignalEntry 2}
+
+btiPulseSignalType	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		initialRing(1),
+		meterPulse(2),
+		reversePolarity(3),
+		noBattery(4)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"There are four types of international pulse signals.  This MIB is only
+
+supported on Euro variants."
+	DEFVAL { initialRing }
+	::= {btiPulseSignalEntry 3}
+
+
+btiRingCadenceTable 	OBJECT-TYPE
+	SYNTAX         SEQUENCE OF BtiRingCadenceEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"In V5.2, Cadence rings is defined by the telco governing body for each
+	country. The bti must be able to support various range of cadence patterns
+	and cadence periods. The bti will be able to support country specific
+	provisioning of the cadence and idle period. There will be at most 3 on/off
+	transitions per cadence period. Each cadence pattern will be assigned a
+	unique value ranging 1-128 that will correspond to the value send by the LE
+	SIGNAL message. Bti will derive the cadence periods from the ring Cadence
+	table entry as provisioned by the customer.  This MIB is only supported on
+
+Euro variants."
+	::= {btiTAControl 19 }
+
+btiRingCadenceEntry	OBJECT-TYPE
+	SYNTAX         BtiRingCadenceEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"Unique value ranging from 1 to 128 that will correspond to the value send by
+	the LE based on country specific cadence. One row per cadence cycle.  This MIB
+
+is only supported on Euro variants."
+	INDEX {btiRingCadenceIndex }
+	::= {btiRingCadenceTable 1}
+
+BtiRingCadenceEntry ::= SEQUENCE
+{
+	btiRingCadenceIndex		Integer32,
+	btiRingCadence			OCTET STRING
+}
+
+btiRingCadenceIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 128)
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The table index equivalent to the country specific cadence (0 - 127)."
+	::= { btiRingCadenceEntry 1 }
+
+btiRingCadence	OBJECT-TYPE
+	SYNTAX         OCTET STRING (SIZE(2..26))
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the Ring Cadence BitString.
+	The first octet of the bit string represents the length in bits
+	of the duration of the cadence
+	Each Bit after the first octet represents 50 ms
+	and 1 represents ring and 0 represent silent.
+	The first bit of the second octet is the first bit of the ring cadence.
+	Only 200 Bits can be set total to represent 10000 ms of total cadence cycle.
+
+This MIB is only supported on Euro variants."
+	::= { btiRingCadenceEntry 2 }
+
+btiStandardRingCadence	OBJECT-TYPE
+	SYNTAX         OCTET STRING (SIZE(2..26))
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the Ring Cadence BitString for the standard ring.
+	The first octet of the bit string represents the length in bits
+	of the duration of the cadence
+	Each Bit after the first octet represents 50 ms
+	and 1 represents ring and 0 represent silent.
+	The first bit of the second octet is the first bit of the ring cadence.
+	Only 200 Bits can be set total to represent 10000 ms of total cadence cycle."
+	::= { btiTAControl 20 }
+
+
+btiRingSplashCadence	OBJECT-TYPE
+	SYNTAX         OCTET STRING (SIZE(2..26))
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the Ring Cadence BitString for splash ring.
+	The first octet of the bit string represents the length in bits
+	of the duration of the cadence
+	Each Bit after the first octet represents 50 ms
+	and 1 represents ring and 0 represent silent.
+	The first bit of the second octet is the first bit of the ring cadence.
+	Only 200 Bits can be set total to represent 10000 ms of total cadence cycle."
+	::= { btiTAControl 21 }
+
+
+--
+--	Tone Table
+--
+btiToneTable	OBJECT-TYPE
+	SYNTAX         SEQUENCE OF BtiToneEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The International Tone table defines the various tone operations.
+	There are 32 different types of tones ranging from 1 to 33."
+	::= {btiTAControl  22 }
+
+btiToneEntry	OBJECT-TYPE
+	SYNTAX         BtiToneEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"Unique value ranging from 1 to 33 that will correspond to the different Tone
+	types that are being supported by the EMTA. These tones can be provisioned based
+	on country specific needs."
+	INDEX { btiToneType }
+	::= {btiToneTable 1}
+
+BtiToneEntry ::= SEQUENCE
+{
+	btiToneType               INTEGER,
+	btiToneDbLevel            Integer32,
+	btiToneFreqType           INTEGER,
+	btiToneNumFrequencies     Integer32,
+	btiToneFirstFrequency     Integer32,
+	btiToneSecondFrequency    Integer32,
+	btiToneThirdFrequency     Integer32,
+	btiToneFourthFrequency    Integer32,
+	btiToneNumOnOffTimes      Integer32,
+	btiToneFirstToneOn        Integer32,
+	btiToneFirstToneOff       Integer32,
+	btiToneSecondToneOn       Integer32,
+	btiToneSecondToneOff      Integer32,
+	btiToneThirdToneOn        Integer32,
+	btiToneThirdToneOff       Integer32,
+	btiToneFourthToneOn       Integer32,
+	btiToneFourthToneOff      Integer32,
+	btiWholeToneRepeatCount   Integer32,
+	btiToneSteady             TruthValue
+}
+
+btiToneType  	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		dtmf0(2),
+		dtmf1(3),
+		dtmf2(4),
+		dtmf3(5),
+		dtmf4(6),
+		dtmf5(7),
+		dtmf6(8),
+		dtmf7(9),
+		dtmf8(10),
+		dtmf9(11),
+		dtmfToneStar(12),
+		dtmfTonePound(13),
+		dtmfA(14),
+		dtmfB(15),
+		dtmfC(16),
+		dtmfD(17),
+		busy(18),
+		confirmation(19),
+		dial(20),
+		messageWaiting(21),
+		offHookWarning(22),
+		ringBack(31),
+		reOrder(33),
+		callWaiting1(39),
+		callWaiting2(40),
+		callWaiting3(41),
+		callWaiting4(42),
+		alertingSignal(43),
+		testTone(44),
+		specialDial(45),
+		specialInfo(46),
+		release(47),
+		congestion(48),
+		userDefinedOne(49)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This defines the type of tone being accessed."
+	::={btiToneEntry 1 }
+
+btiToneDbLevel	OBJECT-TYPE
+	SYNTAX         Integer32 (-60 .. 4)
+	UNITS          "dbm"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the decibel level at which tones could be generated."
+	DEFVAL { -4 }
+	::={btiToneEntry 2 }
+
+
+btiToneFreqType		OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		allFrequencies (1),
+		singleFrequencySequence (2),
+		dualFrequencySequence (3),
+		allFrequenciesModulated (4)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This object describes how the frequencies are applied.
+
+	allFrequencies indicates all frequences specifed by btiToneNumFrequencies are
+	mixed to form a single tone.  The tone is then applied in sequence using the
+	number of on/off times specified in btiToneNumOnOffTimes.
+
+	singleFrequecySequence indicates all frequencies specified by
+	btiToneNumFrequencies are applied in sequence using the corresponding frequency
+	number on/off time (eg. btiToneFirstFrequency uses btiToneFirstToneOn and
+	btiToneFirstToneOff,  btiToneSecondFrequency uses btiToneSecondToneOn and
+	btiToneSecondToneOff, ... ).  For this tone type btiToneNumFrequencies MUST
+	equal btiToneNumOnOffTimes.
+
+	dualFrequencySequence indicates two pairs of frequencies are mixed to form
+	two sequenced tones.  The first and second frequency are mixed to form tone one
+	and are applied using btiToneFirstToneOn and btiToneFirstToneOff.  The third
+	and forth frequency are mixed to form tone two and are applied using
+	btiToneSecondToneOn and btiToneSecondToneOff.  For this tone type
+	btiToneNumFrequencies MUST equal 4 and btiToneNumOnOffTimes MUST equal 2
+
+	allFrequenciesModulated indicates all frequences specifed by
+	btiToneNumFrequencies are modulated to form a single tone.  The tone is then
+	applied in sequence using the number of on/off times specified in
+	btiToneNumOnOffTimes.
+	"
+	DEFVAL { allFrequencies }
+	::={ btiToneEntry 3 }
+
+
+btiToneNumFrequencies	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 4)
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Specifies the number of frequencies specified in the table entry."
+	DEFVAL { 1 }
+	::={btiToneEntry 4}
+
+btiToneFirstFrequency	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 4000)
+	UNITS          "Hertz"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the first frequency at which the tones could be generated in a
+	multiple frequency tone."
+	::={btiToneEntry 5}
+
+btiToneSecondFrequency	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 4000)
+	UNITS          "Hertz"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the second frequency at which the tones could be generated in a
+	multiple frequency tone."
+	::={btiToneEntry 6}
+
+btiToneThirdFrequency	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 4000)
+	UNITS          "Hertz"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the third frequency at which the tones could be generated."
+	::={btiToneEntry 7}
+
+btiToneFourthFrequency	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 4000)
+	UNITS          "Hertz"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the fourth frequency at which the tones could be generated."
+	::={btiToneEntry 8}
+
+btiToneNumOnOffTimes	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 4)
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Specifies the number of on/off times specified in the table entry."
+	DEFVAL { 1 }
+	::={btiToneEntry 9}
+
+btiToneFirstToneOn	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 5000)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the first tone interval."
+	::={ btiToneEntry 10}
+
+btiToneFirstToneOff	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 5000)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the first idle interval."
+	::={ btiToneEntry 11 }
+
+btiToneSecondToneOn	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 5000)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the second tone interval."
+	::={ btiToneEntry 12 }
+
+btiToneSecondToneOff	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 5000)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the second idle interval."
+	::={ btiToneEntry 13 }
+
+btiToneThirdToneOn	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 5000)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the third tone interval."
+	::={ btiToneEntry 14 }
+
+btiToneThirdToneOff	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 5000)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+		"This is the third idle interval."
+	::={ btiToneEntry 15 }
+
+btiToneFourthToneOn	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 5000)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the fourth tone interval."
+	::={ btiToneEntry 16 }
+
+btiToneFourthToneOff	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 5000)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the Fourth idle interval."
+	::={ btiToneEntry 17 }
+
+btiWholeToneRepeatCount	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 5000)
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the repeat count, which signifies how many times to repeat
+	the entire on-off sequence."
+	::={ btiToneEntry 18 }
+
+btiToneSteady	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the steady tone. Set to true to continue the last tone
+	after on-off sequence."
+	::={ btiToneEntry 19 }
+
+--
+-- End of Tone Table
+--
+btiSingleFileProvisioning	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"When set to True, only one configuration file is to be requested.
+	When set to False, two config files are to be requested."
+	DEFVAL { false }
+	::= { btiTAControl 23 }
+
+btiQuarBuffLimit	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 255)
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Maximum number of events stored in the quarantine buffer.
+	When the maximum number of events is reached, the oldest event is discarded"
+	DEFVAL { 30 }
+	::={ btiTAControl 24 }
+
+btiDtmfInsertMode	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		none(1),
+		frf11(2),
+		rfc2833(3)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Selects between DTMF relay modes."
+	DEFVAL { none }
+	::={ btiTAControl 25 }
+
+
+btiDtmfInsertDownstreamPower	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 255)
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"Configures the playout volume for relayed DTMF tones ."
+	DEFVAL { 30 }
+	::={ btiTAControl 26 }
+
+
+btiDtmfInsertUpstreamPower	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 31)
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"Configures the volume level reported in DTMF relay messages."
+	DEFVAL { 0 }
+	::={ btiTAControl 27 }
+
+
+btiDtmfInsertShutoffCount	OBJECT-TYPE
+	SYNTAX         Integer32 (0 .. 31)
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"The number of RTP packets in a row that are required to infer that
+	a tone has ended."
+	DEFVAL { 0 }
+	::={ btiTAControl 28 }
+
+
+btiToneDetectionRule	OBJECT-TYPE
+	SYNTAX         BITS
+	{
+		processInternal(0),
+		notifySgm(1)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"When set, processInternal indicates that, in the event of
+	a modem tone detection, the necessary actions should be processed
+	independently of the call agent. When set, notifySgm indicates that
+	in the event of modem tone detection the call agent should be notified
+	as requested."
+	DEFVAL { {processInternal, notifySgm} }
+	::={ btiTAControl 29 }
+
+btiServiceFlowSharing	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		discourage(1),
+		favor(2)
+	}
+	MAX-ACCESS     read-write
+	STATUS         deprecated
+	DESCRIPTION
+		"Allows selection of a proprietary SID selection mode."
+	DEFVAL { discourage }
+	::={ btiTAControl 30 }
+
+btiUpstreamVoicePhsFields	OBJECT-TYPE
+	SYNTAX         VoicePhsFields
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This object is used to override the suppression of specific fields
+	during Payload Header Suppression of upstream voice packets.
+	Each bit represents a field in the Ethernet header, IP header,
+	UDP header or RTP header of a voice packet.
+	If a bit value is 1, then the corresponding field will not be suppressed.
+	If a bit value is 0, then the corresponding field will be suppressed if
+	the MTA is currently set up to suppress that field."
+	DEFVAL { { } }
+	::={ btiTAControl 31 }
+
+btiDownstreamVoicePhsFields	OBJECT-TYPE
+	SYNTAX         VoicePhsFields
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This object is used to override the suppression of specific fields
+	during Payload Header Suppression of downstream voice packets.
+	Each bit represents a field in the Ethernet header, IP header,
+	UDP header or RTP header of a voice packet.
+	If a bit value is 1, then the corresponding field will not be suppressed.
+	If a bit value is 0, then the corresponding field will be suppressed if
+	the MTA is currently set up to suppress that field."
+	DEFVAL { { } }
+	::={ btiTAControl 32 }
+
+btiIPowerSavingModeEnable	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"True enables the power-saving mode of the CG
+	False disables the power-saving mode of the CG ."
+	DEFVAL { false }
+	::={ btiTAControl 33 }
+
+btiUserLedMode	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		on(1),
+		off(2),
+		slowBlink(3),
+		fastBlink(4)
+	}
+	MAX-ACCESS     read-write
+	STATUS         deprecated
+	DESCRIPTION
+	"On turns on the User LED. Off turns off the User LED.
+	slowBlink blinks the User LED at a rate of 1 on/off cycles per second.
+	fastBlink blinks the User LED at a rate of 2 on/off cycles per second ."
+	DEFVAL { off }
+	::={ btiTAControl 34 }
+
+btiCpeInterfaceEnable	OBJECT-TYPE
+	SYNTAX         BITS
+	{
+		telnet(0),
+		http(1),
+		snmp(2),
+		syslog(3),
+		advgui(4)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"When set, indicates access into the CG is available through the CPE interface
+	for a particular function. When cleared, indicates that function is disallowed
+	through the CPE interface. This does not affect access to the CG over the HFC interface."
+	DEFVAL { { http,snmp } }
+	::= { btiTAControl 35 }
+
+btiHfcInterfaceEnable	OBJECT-TYPE
+	SYNTAX         BITS
+	{
+		telnet(0),
+		http(1),
+		snmp(2),
+		syslog(3),
+		advgui(4)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"When set, indicates access into the CG is available through the HFC interface
+	for a particular function. When cleared, indicates that function is disallowed
+	through the HFC interface. This does not affect access to the CG over the CPE interface."
+	DEFVAL { { http,snmp } }
+	::= { btiTAControl 36 }
+
+btiSyslogServerAddressIP	OBJECT-TYPE
+	SYNTAX         IpAddress
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the IP Address of the Syslog Server for the MTA"
+	::= { btiTAControl 37 }
+
+btiDtmfSignalDurationInterdigitInterval	OBJECT-TYPE
+	SYNTAX         Integer32 (40 .. 75)
+	UNITS		   "milliseconds"
+ 	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Defines the Signal Duration and Interdigit Interval for
+      the DTMF encoder.  Default value is 50ms for Telcordia, or
+      65ms for ETSI."
+      REFERENCE	   "Telcordia GR-506, Section 15.4.8 and 15.4.9;
+                     ES 201 235"
+      ::= { btiTAControl 38 }
+
+btiSlicLineVoltagePowerCycle	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 60)
+	UNITS		   "seconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Defines the time delay before line voltage is applied to
+      the SLIC in the event of a power cycle (hard reset).  This
+      object is used in conjunction with home alarm systems in the
+      event of a power cycle via hard reset."
+	DEFVAL { 1 }
+      ::= { btiTAControl 39 }
+
+btiSlicLineVoltageSoftReboot	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 5)
+	UNITS		   "seconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Defines the time delay before line voltage is applied to
+      the SLIC in the event of a soft reboot.  This
+      object is used in conjunction with home alarm systems in the
+      event of a power cycle via soft reboot."
+	DEFVAL { 1 }
+      ::= { btiTAControl 40 }
+
+btiTAAdaptiveJitterEnable	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enables/Disables the adaptive jitter mode.  If the value is
+	True(1), the device is in Adaptive Jitter mode.  If the value
+	is False(2), the device is in Fixed Jitter mode."
+	DEFVAL { false }
+      ::= { btiTAControl 41 }
+
+btiActiveCallSwUpgradeMode  OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+                accept(1),
+                reject(2),
+                deferReboot(3)
+	}
+	MAX-ACCESS     read-write
+        STATUS         current
+	DESCRIPTION
+        "Sets the mode of operations for software upgrades while there
+         is an active call. If the value is accept(1), the device will
+         perform the software upgrade and reboot upon completion. If
+         the value is reject(2), the device will reject the request to
+         perform a software upgrade. If the value is deferReboot(3),
+         the device will perform the software upgrade, but will defer
+         reboot until there are no active calls"
+        DEFVAL { accept }
+        ::={ btiTAControl 42 }
+
+--
+--	Telephony Adapter Config Group
+--
+btiElementManagerDomainName	OBJECT-TYPE
+	SYNTAX         DisplayString (SIZE(1..127))
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"This is the FQDN of the telephony element manager"
+	::= { btiTAConfig 1 }
+
+btiElementManagerIPAddress	OBJECT-TYPE
+	SYNTAX         IpAddress
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"This is the IP Address of the telephony element manager"
+	::= { btiTAConfig 2 }
+
+
+
+
+--
+--	Telephony Adapter Environment Group
+--
+
+btiSignallingProtocol	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		undefined(1),
+		sgcp1dot1(2),
+		mgcp(3),
+		limitedNCS1dot0(4),
+		completelNCS1dot0(5)
+	}
+	MAX-ACCESS     read-write
+	STATUS         deprecated
+	DESCRIPTION
+	"This is the signaling protocol the MTA must use."
+	DEFVAL { limitedNCS1dot0 }
+	::= { btiTAEnvironment 1 }
+
+
+btiQosType	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		undefined(1),
+		bestEffort(2),
+		skeletonQOS(3),
+		pqos(4),
+		dqos(5),
+		unauthorizedDQOS(6),
+		unautorizedPQOS(7)
+	}
+        MAX-ACCESS     read-write
+        STATUS         current
+	DESCRIPTION
+	"This is the QOS type the MTA must use."
+	DEFVAL { undefined }
+	::= { btiTAEnvironment 2 }
+
+btiCmtsType	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		undefined(1),
+		cisco(2),
+		motorolaDCM(3),
+		arris(4),
+		broadcom(5),
+		bas(6),
+		motorolaRD(7),
+		threeCom(8),
+		cadant(9),
+		terayon(10)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the CMTS type the MTA must use."
+	DEFVAL { motorolaRD }
+	::= { btiTAEnvironment 3 }
+
+
+btiCmtsRevision	OBJECT-TYPE
+	SYNTAX         DisplayString (SIZE(1..32))
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"This is the revision of the CMTS the MTA must use."
+	::= { btiTAEnvironment 4 }
+
+
+btiCallAgentMfg	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		undefined(1),
+		telcordia(2),
+		lucentPathstar(3),
+		clarent(4),
+		lucent7RE(5),
+		nueraGR303(6),
+		netspeak(7),
+		lucentAGCS(8),
+		cisco(9),
+		xybridge(10),
+		nueraV52(11),
+		marconi(12),
+		nortel(13),
+		tollbridgeV52(14),
+		tropico(15),
+		convergent(16),
+		tollbridgeGR303(17),
+		siemens(18),
+		syndeo(19),
+		cedarpoint(20),
+		gallery(21)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the manufacturer of the call agent (or micro-call agent in gr303)
+	 that the MTA must use."
+	DEFVAL { undefined }
+	::= { btiTAEnvironment 5 }
+
+btiCallAgentRevision	OBJECT-TYPE
+	SYNTAX         DisplayString (SIZE(1..32))
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"This is the revision of the call agent the MTA must use."
+	::= { btiTAEnvironment 6 }
+
+
+btiFilterMGCP	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"This is incompatible with PacketCable Security.
+
+	When set to TRUE, all call signaling messages must be filtered from
+	the Ethernet port of the MTA. When FALSE, no checking of call signaling
+	messages to or from the Ethernet port will occur."
+	DEFVAL { false }
+	::= { btiTAEnvironment 7 }
+
+btiDebug	OBJECT-TYPE
+	SYNTAX         OCTET STRING (SIZE(1..255))
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is debug string for development."
+	::= { btiTAEnvironment 8 }
+
+btiEndpointNameBase	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		zeroBased(1),
+		oneBased(2)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Specifies whether endpoint names are zero-based or one-based.
+	Line identifiers have the format: aaln/x@domain.name, where aaln\x
+	is the endpoint name, and x may be 0..3 for SGCP or 1..4 for  MGCP/NCS.
+	This attribute configures the base for systems that use MGCP
+	but do not comply with the endpoint naming. Default is 1."
+	DEFVAL { oneBased }
+	::= { btiTAEnvironment 9 }
+
+
+btiSignalling	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		noInbandSignalling(1),
+		inbandSignalling (2)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"Indicates whether signaling is inband or not for a GR303 system."
+
+	::= { btiTAEnvironment 10 }
+
+
+btiSigProtocolString	OBJECT-TYPE
+	SYNTAX         DisplayString (SIZE(1..127))
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"This is the string sent to the CMS to identify the signaling protocol
+	being used by the MTA."
+	DEFVAL { "MGCP 1.0 NCS 1.0" }
+	::= { btiTAEnvironment 11 }
+
+
+
+--
+--	Telephony Adapter Status Group
+--
+btiPOCTResult	OBJECT-TYPE
+	SYNTAX         Integer32
+	MAX-ACCESS     read-only
+	STATUS         deprecated
+	DESCRIPTION
+	"This is the result of the POCT tests.
+	The btiPOCTResult is a bit map represented as a sum,
+	therefore, it can represent multiple conditions simultaneously.
+
+	The various bit positions are:
+	0		BTIPoctPass
+	1		BTICpuFailed
+	2		BTIRamFailed
+	4		BTIRomNotPresented
+	8		BTICmCircuitFailed
+	16		BTIDspRamFailed
+	32		BTIDspNotPresented
+	64		BTICodecLoopbackFailed
+	128		BTISlic1Failed
+	256		BTISlic2Failed
+	512		BTISlic3Failed
+	1024		BTISlic4Failed
+	"
+	::= { btiTAStatus 1 }
+
+btiBatteryStatus	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		ok(1),
+		error(2),
+		needsReplacement(3),
+		low(4),
+		missing(5)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the battery status for the device.
+
+	OK indicates there is no problem with the battery,
+	Error indicates the battery status cannot be read,
+	NeedsReplacement indicates the battery should be replaced.
+	Low indicates Battery output is below a threshold,
+	Missing indicates Battery cannot be detected electrically
+	"
+	::= { btiTAStatus 2 }
+
+
+btiAcStatus	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		acPower(1),
+		batteryPower(2)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the UPS status for the device. Battery indicates that
+	the battery is being used to supply power. AC Power indicates
+	that the power is supplied by the AC power."
+	::= { btiTAStatus 3 }
+
+
+btiDevLinePowerStatus	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		network(1),
+		ups(2)
+	}
+	MAX-ACCESS     read-only
+	STATUS         obsolete
+	DESCRIPTION
+	"This is the power status for the device. Network indicates that
+	the line power source is being used. Ups indicates the
+	AC/battery power source through the UPS is being used."
+	::= { btiTAStatus 4 }
+
+btiInternetSecurityLockStatus	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"True indicates customer has isolated CPE interfaces from HFC network.
+	False indicates customer has not isolated CPE interfaces from the HFC
+	network."
+	DEFVAL { false }
+	::={ btiTAStatus 5 }
+
+
+--
+--	Summary Call Packet Statistics
+--
+btiAverageDelay	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is estimate of network latency across all connections."
+	::= { btiTASummCallPackStat 1 }
+
+btiInterarrivalJitter 	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the estimate of the statistical variance of the RTP data
+	packet interarrival time over all the lines"
+	::= { btiTASummCallPackStat 2 }
+
+btiReceivedOctets	OBJECT-TYPE
+	SYNTAX         Counter32
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the total number of octets received for the device."
+	::= { btiTASummCallPackStat 3 }
+
+btiSentOctets	OBJECT-TYPE
+	SYNTAX         Counter32
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the total number of octets sent for the device."
+	::= { btiTASummCallPackStat 4 }
+
+btiSentPackets	OBJECT-TYPE
+	SYNTAX         Counter32
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the total number of RTP packets sent for the device."
+	::= { btiTASummCallPackStat 5 }
+
+btiReceivedPackets	OBJECT-TYPE
+	SYNTAX         Counter32
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the total number of RTP packets received for the device."
+	::= { btiTASummCallPackStat 6 }
+
+btiLostPackets	OBJECT-TYPE
+	SYNTAX         Counter32
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is the total number of RTP packets lost for the device."
+	::= { btiTASummCallPackStat 7 }
+
+
+--
+--	Tables of per telephone line data
+--
+--	Line status table
+btiTALineStatTable	OBJECT-TYPE
+	SYNTAX         SEQUENCE OF BtiTALineStatEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"One entry per telephone line"
+	::= { btiTALine 1 }
+
+
+btiTALineStatEntry	OBJECT-TYPE
+	SYNTAX         BtiTALineStatEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"Per telephone line data. One row per line, created by the agent"
+	INDEX { btiTALineStatIndex }
+    --DEFAULT test-function-async   	null_test_async
+    --DEFAULT set-function-async    	null_set_async
+    --DEFAULT get-function-async    	btiTALineStatEntry_get
+    --DEFAULT next-function-async   	btiTALineStatEntry_next
+    --DEFAULT cookie        		(char *)0
+	::= { btiTALineStatTable 1 }
+
+BtiTALineStatEntry ::= SEQUENCE
+{
+	btiTALineStatIndex		Integer32,
+	btiTAHookStatus			INTEGER,
+	btiTALineNumActiveConn		Integer32,
+	btiTALineNumInactiveConn	Integer32,
+	btiTALineCodecUsed		INTEGER,
+	btiTALineSignal			INTEGER,
+	btiTALineOverTempAlarm		INTEGER,
+	btiTALineIfIndex		Integer32,
+	btiTALineDialToneDelayMin	Integer32,
+	btiTALineDialToneDelayMax	Integer32,
+	btiTALineDialToneDelayAvg	Integer32,
+	btiTALineDialToneDelayLast	Integer32,
+	btiTALinePostDialDelayMin	Integer32,
+	btiTALinePostDialDelayMax	Integer32,
+	btiTALinePostDialDelayAvg	Integer32,
+	btiTALinePostDialDelayLast	Integer32,
+	btiTALinePostPickupDelayMin	Integer32,
+	btiTALinePostPickupDelayMax	Integer32,
+	btiTALinePostPickupDelayAvg	Integer32,
+	btiTALinePostPickupDelayLast	Integer32,
+	btiTALineGR909resultsValidFlag	TruthValue,
+	btiTALineACloopVoltage		Integer32,
+	btiTALineDCloopVoltage		Integer32,
+	btiTALineACringVoltage		Integer32,
+	btiTALineDCringVoltage		Integer32,
+	btiTALineACtipVoltage		Integer32,
+	btiTALineDCtipVoltage		Integer32,
+	btiTALineHazardFlag		TruthValue,
+	btiTALineForeignVoltageFlag	TruthValue,
+	btiTALineJitterMin		Integer32,
+	btiTALineJitterMax		Integer32,
+	btiTALineJitterAvg		Integer32,
+	btiTALineJitterLast		Integer32,
+	btiTALineLatencyMin		Integer32,
+	btiTALineLatencyMax		Integer32,
+	btiTALineLatencyAvg		Integer32,
+	btiTALineLatencyLast		Integer32,
+	btiTALineQuarantineStatus	TruthValue,
+	btiTALineQuarantineDurationTrap	INTEGER,
+	btiTALineQuarantineEventTrap	INTEGER,
+	btiTALineQuarantineCount	INTEGER,
+	btiTALineQuarantineDuration	INTEGER,
+	btiTALineResistiveFaultTestResult	INTEGER,
+	btiTALineRecieverOffHookTestResult	INTEGER,
+        btiTALineRENTestResult		INTEGER
+}
+
+
+
+
+
+-- Line Status Table
+btiTALineStatIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (1..4)
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The table index equivalent to the line # (1 - 4) of the telephone
+	line."
+	::= { btiTALineStatEntry 1 }
+
+btiTAHookStatus	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		onHook(1),
+		offHook(2),
+		disconnected(3)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The onhook/off hook status of the line."
+	::= { btiTALineStatEntry 2 }
+
+btiTALineNumActiveConn	OBJECT-TYPE
+	SYNTAX         Integer32 (0..4)
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The number of connections for this line whose mode is recv only,
+	send only, send/recv, but not inactive."
+	::= { btiTALineStatEntry 3 }
+
+btiTALineNumInactiveConn	OBJECT-TYPE
+	SYNTAX         Integer32 (0..8)
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The number of connections for this line whose mode is inactive."
+	::= { btiTALineStatEntry 4 }
+
+btiTALineCodecUsed 	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		none(1),
+		g711u(2),
+		g728(3),
+		g7231(4),
+		g729(5),
+		g729A(6),
+		g729E(7),
+		g726dot32(8),
+		g726dot16(9),
+		g726dot24(10),
+		g726dot40(11),
+		g711a(12)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The line voice coder / decoder."
+	::= { btiTALineStatEntry 5 }
+
+btiTALineSignal	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		none(1),
+		dtmfTone0(2),
+		dtmfTone1(3),
+		dtmfTone2(4),
+		dtmfTone3(5),
+		dtmfTone4(6),
+		dtmfTone5(7),
+		dtmfTone6(8),
+		dtmfTone7(9),
+		dtmfTone8(10),
+		dtmfTone9(11),
+		dtmfToneStar(12),
+		dtmfTonePound(13),
+		dtmfToneA(14),
+		dtmfToneB(15),
+		dtmfToneC(16),
+		dtmfToneD(17),
+		busyTone(18),
+		confirmTone(19),
+		dialTone(20),
+		mesgWaitInd(21),
+		offhookWarnTone(22),
+		distinctiveRing0(23),
+		distinctiveRing1(24),
+		distinctiveRing2(25),
+		distinctiveRing3(26),
+		distinctiveRing4(27),
+		distinctiveRing5(28),
+		distinctiveRing6(29),
+		distinctiveRing7(30),
+		ringbackOnConn(31),
+		ringing(32),
+		reorderTone(33),
+		ringsplash(34),
+		ringbackTone(35),
+		stutterDialTone(36),
+		visualMesgWaitIndOn(37),
+		visualMesgWaitIndOff(38),
+		callWaitTone1(39),
+		callWaitTone2(40),
+		callWaitTone3(41),
+		callWaitTone4(42)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The signal currently being generated by the TA toward the line.
+	Busy Tone
+	Confirmation Tone
+	Dial Tone
+	Off-hook warning tone
+	Ringback Tone
+	Reorder Tone
+	Stutter / Message Waiting Indicator Tone
+	Call Waiting Tone
+	Distinctive Call Waiting Tone
+	Call Forward Ring
+	Distinctive Ring
+	"
+	::= { btiTALineStatEntry 6 }
+
+btiTALineOverTempAlarm	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		true(1),
+		false(2),
+		notSupported(3)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"NotSupported indicates this feature is not supported on the chosen
+	hardware platform.
+	True indicates the SLIC for this line has exceeded the safe operating
+	temperature of 175 degrees C and is disabled.
+	False indicates that the SLIC for this line is operating at
+	an acceptable temperature."
+	::= { btiTALineStatEntry 7 }
+
+btiTALineIfIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (0..32768)
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The corresponding ifTable ifIndex object for this line."
+	::= { btiTALineStatEntry 8 }
+
+btiTALineDialToneDelayMin	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is minimum MTA measured delay between detection of off-hook & playout of dial tone."
+	::= { btiTALineStatEntry 9 }
+
+btiTALineDialToneDelayMax	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is maximum MTA measured delay between detection of off-hook & playout of dial tone."
+	::= { btiTALineStatEntry 10 }
+
+btiTALineDialToneDelayAvg	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is average MTA measured delay between detection of off-hook & playout of dial tone."
+	::= { btiTALineStatEntry 11 }
+
+btiTALineDialToneDelayLast	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is last/current MTA measured delay between detection of off-hook & playout of dial tone."
+	::= { btiTALineStatEntry 12 }
+
+btiTALinePostDialDelayMin	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is minimum MTA measured delay between last-digit dialed and ring-back signal from Call Agent."
+	::= { btiTALineStatEntry 13 }
+
+btiTALinePostDialDelayMax	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is maximum MTA measured delay between last-digit dialed and ring-back signal from Call Agent."
+	::= { btiTALineStatEntry 14 }
+
+btiTALinePostDialDelayAvg	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is average MTA measured delay between last-digit dialed and ring-back signal from Call Agent."
+	::= { btiTALineStatEntry 15 }
+
+btiTALinePostDialDelayLast	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is last/current MTA measured delay between last-digit dialed and ring-back signal from Call Agent."
+	::= { btiTALineStatEntry 16 }
+
+btiTALinePostPickupDelayMin	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is minimum MTA measured delay between when a line goes off-hook while ringing & voice path is established."
+	::= { btiTALineStatEntry 17 }
+
+btiTALinePostPickupDelayMax	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is maximum MTA measured delay between when a line goes off-hook while ringing & voice path is established."
+	::= { btiTALineStatEntry 18 }
+
+btiTALinePostPickupDelayAvg	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is average MTA measured delay between when a line goes off-hook while ringing & voice path is established."
+	::= { btiTALineStatEntry 19 }
+
+btiTALinePostPickupDelayLast	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is last/current MTA measured delay between when a line goes off-hook while ringing & voice path is established."
+	::= { btiTALineStatEntry 20 }
+
+btiTALineGR909resultsValidFlag	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"If TRUE it indicates that a GR909 Test Results are valid"
+	::= { btiTALineStatEntry 21 }
+
+btiTALineACloopVoltage	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "mV"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"AC Line Loop Voltage in milliVolts"
+	::= { btiTALineStatEntry 22 }
+
+btiTALineDCloopVoltage	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "mV"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"DC Line Loop Voltage in milliVolts"
+	::= { btiTALineStatEntry 23 }
+
+btiTALineACringVoltage	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "mV"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"AC Line Ring Voltage in milliVolts"
+	::= { btiTALineStatEntry 24 }
+
+btiTALineDCringVoltage	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "mV"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"DC Line Ring Voltage in milliVolts"
+	::= { btiTALineStatEntry 25 }
+
+btiTALineACtipVoltage	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "mV"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"AC Line Tip Voltage in milliVolts"
+	::= { btiTALineStatEntry 26 }
+
+btiTALineDCtipVoltage	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "mV"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"DC Line Tip Voltage in milliVolts"
+	::= { btiTALineStatEntry 27 }
+
+btiTALineHazardFlag	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"If TRUE it indicates that a Hazardous Voltage condition exists in the line"
+	::= { btiTALineStatEntry 28 }
+
+btiTALineForeignVoltageFlag	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"If TRUE it indicates that a Foreign Voltage has been detected in the line"
+	::= { btiTALineStatEntry 29 }
+
+btiTALineJitterMin	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is minimum MTA measured jitter for all calls."
+	::= { btiTALineStatEntry 30 }
+
+btiTALineJitterMax	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is maximum MTA measured jitter for all calls."
+	::= { btiTALineStatEntry 31 }
+
+btiTALineJitterAvg	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is average MTA measured jitter for all calls."
+	::= { btiTALineStatEntry 32 }
+
+btiTALineJitterLast	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is last MTA measured jitter for all calls."
+	::= { btiTALineStatEntry 33 }
+
+btiTALineLatencyMin	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is minimum MTA measured latency for all calls."
+	::= { btiTALineStatEntry 34 }
+
+btiTALineLatencyMax	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is maximum MTA measured latency for all calls."
+	::= { btiTALineStatEntry 35 }
+
+btiTALineLatencyAvg	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is average MTA measured latency for all calls."
+	::= { btiTALineStatEntry 36 }
+
+btiTALineLatencyLast	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This is last/current MTA measured latency for all calls."
+	::= { btiTALineStatEntry 37 }
+
+btiTALineQuarantineStatus	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"true means line is in a quarantined state, false means line is in normal state."
+	::= { btiTALineStatEntry 38 }
+
+btiTALineQuarantineDurationTrap	OBJECT-TYPE
+	SYNTAX         INTEGER
+	UNITS		   "seconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"If the device remains in the quarantine state for longer than this
+	time, a trap will be generated."
+	::= { btiTALineStatEntry 39 }
+
+btiTALineQuarantineEventTrap	OBJECT-TYPE
+	SYNTAX         INTEGER
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"If the device enters the quarantine state more than this number of
+	times, a trap will be generated."
+	::= { btiTALineStatEntry 40 }
+
+btiTALineQuarantineCount	OBJECT-TYPE
+	SYNTAX         INTEGER
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"Counts the number of times the quarantine state has been entered."
+	::= { btiTALineStatEntry 41 }
+
+btiTALineQuarantineDuration	OBJECT-TYPE
+	SYNTAX         INTEGER
+	UNITS		   "seconds"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"Reports the amount of time that the device has been in the
+	quarantine state."
+	::= { btiTALineStatEntry 42 }
+
+btiTALineResistiveFaultTestResult	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		tipGndShort(1),
+		ringGndShort(2),
+		tipRingShort(4),
+		tipGndRngGndShort(3),
+		tipRngTipGndShort(5),
+		tipRngRngGndShort(6),
+		tipGndRngGndTipRngShort(7),
+		measureError(8)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This the result of the GR909- Resistive Fault Test of the line."
+	::= { btiTALineStatEntry 43 }
+
+btiTALineRecieverOffHookTestResult	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		highImpedance(1),
+		offHook(2),
+		isdnDevice(3),
+		resistiveImpairement(4),
+                measureError(5)
+
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This the result of the GR-909 Reciever Off Hook test.
+	Only for 5220"
+	::= { btiTALineStatEntry 44 }
+
+btiTALineRENTestResult	OBJECT-TYPE
+	SYNTAX         INTEGER
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This the result of the GR-909 Ringing Equivalency Number (REN)
+	if equal to 0 then load is  greater than 0.175 REN and less than 0.5REN.
+	if equal to -1 then load is less than 0.175REN
+	otherwise the number is equal to the load of the REN which is in integer"
+	::= { btiTALineStatEntry 45 }
+
+--
+--	Line Digit Map Table
+--
+btiTALineDigitMapTable	OBJECT-TYPE
+	SYNTAX         SEQUENCE OF BtiTALineDigitMapEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"One entry per telephone line"
+	::= { btiTALine 2 }
+
+btiTALineDigitMapEntry	OBJECT-TYPE
+	SYNTAX         BtiTALineDigitMapEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"Per telephone line data. One row per line, created by the agent"
+	INDEX { btiTALineStatIndex,
+		btiTALineDigitMapIndex }
+        --DEFAULT test-function-async   	null_test_async
+        --DEFAULT set-function-async    	null_set_async
+        --DEFAULT get-function-async    	btiTALineDigitMapEntry_get
+        --DEFAULT next-function-async   	btiTALineDigitMapEntry_next
+        --DEFAULT cookie        		(char *)0
+	::= { btiTALineDigitMapTable 1 }
+
+BtiTALineDigitMapEntry ::= SEQUENCE
+{
+	btiTALineDigitMapIndex	Integer32,
+	btiTALineDigitMap		DisplayString
+}
+
+btiTALineDigitMapIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (1..32)
+	MAX-ACCESS		not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The table index equivalent to a line in the digit map."
+	::= { btiTALineDigitMapEntry 1 }
+
+btiTALineDigitMap	OBJECT-TYPE
+	SYNTAX         DisplayString(SIZE(0..255))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The digit map for TA line specified in btiTALineStatIndex.
+	Each btiTALineDigitMapIndex is one line in the digit map."
+	::= { btiTALineDigitMapEntry 2 }
+
+
+--
+--	Line Provision Table
+--
+btiTALineProvisionTable	OBJECT-TYPE
+	SYNTAX         SEQUENCE OF BtiTALineProvisionEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"One entry per telephone line"
+	::= { btiTALine 3 }
+
+btiTALineProvisionEntry	OBJECT-TYPE
+	SYNTAX         BtiTALineProvisionEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"Per telephone line data. One row per line, created by the agent"
+	INDEX { btiTALineProvisionIndex }
+    --DEFAULT test-function-async   	null_test_async
+    --DEFAULT set-function-async    	null_set_async
+    --DEFAULT get-function-async    	btiTALineProvisionEntry_get
+    --DEFAULT next-function-async   	btiTALineProvisionEntry_next
+    --DEFAULT cookie        		(char *)0
+	::= { btiTALineProvisionTable 1 }
+
+BtiTALineProvisionEntry ::= SEQUENCE
+{
+	btiTALineProvisionIndex		Integer32,
+	btiTALineEndpointName		DisplayString,
+	btiTALineSGCPCallAgentIP	IpAddress,
+	btiTALineSGCPCallAgentName	DisplayString,
+	btiTALineSGCPCallAgentUdpPort	Integer32,
+	btiTALineEndpointDomainName	DisplayString,
+	btiTALineProvisionIfIndex	Integer32
+}
+
+btiTALineProvisionIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (1..4)
+	MAX-ACCESS		not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The table index equivalent to the line # (1 - 4) of the telephone
+	line."
+	::= { btiTALineProvisionEntry 1 }
+
+btiTALineEndpointName	OBJECT-TYPE
+	SYNTAX         DisplayString(SIZE(1..127))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The line number used in SGCP signaling. An example of this is:
+	aaln/1@rgw34.whatever.net
+	where:
+	aaln identifies that is referring to an analog line
+	1 is the line number (wild cards acceptable)
+	@rgw34.whatever.net refers to the domain name.
+	"
+	::= { btiTALineProvisionEntry 2 }
+
+btiTALineSGCPCallAgentIP 	OBJECT-TYPE
+	SYNTAX         IpAddress
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"The per line SGCP call agent IP address."
+	::= { btiTALineProvisionEntry 3 }
+
+btiTALineSGCPCallAgentName	OBJECT-TYPE
+	SYNTAX         DisplayString (SIZE(0..127))
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"The per line SGCP call agent name."
+	::= { btiTALineProvisionEntry 4 }
+
+btiTALineSGCPCallAgentUdpPort	OBJECT-TYPE
+	SYNTAX         Integer32 (1025..65535)
+	MAX-ACCESS     read-write
+	STATUS	   obsolete
+	DESCRIPTION
+	"The per line SGCP call agent UDP Port."
+	DEFVAL { 2427 }
+	::= { btiTALineProvisionEntry 5 }
+
+btiTALineEndpointDomainName	OBJECT-TYPE
+	SYNTAX         DisplayString(SIZE(1..127))
+	MAX-ACCESS     read-write
+	STATUS         obsolete
+	DESCRIPTION
+	"Already covered in PacketCable MTA MIB
+
+	A text string giving the fully qualified domain name (FQDN)
+	for this endpoint. If this attribute is a null string,
+	the device domain name is used."
+	::= { btiTALineProvisionEntry 6 }
+
+btiTALineProvisionIfIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (0..32768)
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The corresponding ifTable ifIndex object for this line."
+	::= { btiTALineProvisionEntry 7 }
+
+
+--
+--	 Line config table
+--
+btiTALineConfigTable	OBJECT-TYPE
+	SYNTAX         SEQUENCE OF BtiTALineConfigEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"One entry per telephone line"
+	::= { btiTALine 4  }
+
+btiTALineConfigEntry	OBJECT-TYPE
+	SYNTAX         BtiTALineConfigEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"Per telephone line data. One row per line, created by the agent"
+	INDEX { btiTALineConfigIndex  }
+    --DEFAULT test-function-async   	btiTALineConfigEntry_test
+    --DEFAULT set-function-async    	btiTALineConfigEntry_set
+    --DEFAULT get-function-async    	btiTALineConfigEntry_get
+    --DEFAULT next-function-async   	btiTALineConfigEntry_next
+    --DEFAULT cookie        		(char *)0
+	::= { btiTALineConfigTable 1 }
+
+BtiTALineConfigEntry ::= SEQUENCE
+{
+	btiTALineConfigIndex		Integer32,
+	btiTALineEnable			TruthValue,
+	btiTALineLoopback		TruthValue,
+	btiTALineComfortNoiseLevel	Integer32,
+	btiTALineEchoCancelEnable	TruthValue,
+	btiTALineEchoCancelTailLength	Integer32,
+	btiTALineEchoCancelMode		TruthValue,
+	btiTALineNomJitterBufferSize	Integer32,
+	btiTALineMaxJitterBufferSize	Integer32,
+	btiTALineOnHookDebounce		Integer32,
+	btiTALineOffHookDebounce	Integer32,
+	btiTALineRxGain			Integer32,
+	btiTALineTxGain			Integer32,
+	btiTALineVADEnable		TruthValue,
+	btiTALinePacketizationPeriod	INTEGER,
+	btiTALinePartialDialTimeout	Integer32,
+	btiTALineCriticalDialTimeout	Integer32,
+	btiTALineAnalogLoopbackResults	INTEGER,
+	btiTALinePulseDialMinMakeTime	Integer32,
+	btiTALinePulseDialMaxMakeTime	Integer32,
+	btiTALinePulseDialMinBreakTime	Integer32,
+	btiTALinePulseDialMaxBreakTime	Integer32,
+	btiTALinePulseDialInterdigitTime	Integer32,
+	btiTALineMinHookFlash		Integer32,
+	btiTALineMaxHookFlash		Integer32,
+	btiTALineLoopCurrent		INTEGER,
+	btiTALineConfigIfIndex		Integer32
+}
+
+-- Line Config table
+btiTALineConfigIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (1..4)
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The table index equivalent to the line # (1 - 4) of the telephone
+	line."
+	::= { btiTALineConfigEntry 1 }
+
+btiTALineEnable	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         deprecated
+	DESCRIPTION
+	"True indicates enabled which connects the subscriber line to the TA.
+	False indicates disabled which disconnects the subscriber line from
+	the TA"
+	DEFVAL { true }
+	::= { btiTALineConfigEntry 2 }
+
+btiTALineLoopback	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"True indicates enabled which puts the device into the line loopback
+	state.
+	False indicates disabled which removes the device from the line
+	loopback state"
+	DEFVAL { false }
+	::= { btiTALineConfigEntry 3 }
+
+
+btiTALineComfortNoiseLevel	OBJECT-TYPE
+	SYNTAX         Integer32 ( -70..-50 | 0 )
+	UNITS          "dBm"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The level of comfort noise that is played out."
+	DEFVAL { 0 }
+	::= { btiTALineConfigEntry 4 }
+
+btiTALineEchoCancelEnable	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"False indicates echo cancellation disabled per line.
+	True indicates echo cancellation enabled per line "
+	DEFVAL { true }
+	::= { btiTALineConfigEntry 5 }
+
+btiTALineEchoCancelTailLength	OBJECT-TYPE
+	SYNTAX         Integer32 (0..32)
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The per line echo cancellation tail length in milliseconds."
+	DEFVAL { 8 }
+	::= { btiTALineConfigEntry 6 }
+
+btiTALineEchoCancelMode	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Turns on/off the non-linear processor mode of the echo canceller."
+	DEFVAL { true }
+	::= { btiTALineConfigEntry 7 }
+
+btiTALineNomJitterBufferSize	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The current setting for the nominal amount of jitter the bti can compensate."
+	::= { btiTALineConfigEntry 8 }
+
+btiTALineMaxJitterBufferSize	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The current setting for the maximum amount of jitter the bti can compensate ."
+	::= { btiTALineConfigEntry 9 }
+
+btiTALineOnHookDebounce	OBJECT-TYPE
+	SYNTAX         Integer32 (1..1000)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The length of the on-hook debounce."
+	DEFVAL { 50 }
+	::= { btiTALineConfigEntry 10 }
+
+btiTALineOffHookDebounce	OBJECT-TYPE
+	SYNTAX         Integer32 (1..1000)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The length of the off hook debounce."
+	DEFVAL { 100 }
+	::= { btiTALineConfigEntry 11 }
+
+btiTALineTxGain	OBJECT-TYPE
+	SYNTAX         Integer32 (-14..14)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The per line transmitter gain.  This is related to the DSP
+	gain."
+	DEFVAL { 0 }
+	::= { btiTALineConfigEntry 12 }
+
+btiTALineRxGain	OBJECT-TYPE
+	SYNTAX         Integer32 (-14..14)
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The per line receiver gain.  This is related to the DSP
+	gain."
+	DEFVAL { 0 }
+	::= { btiTALineConfigEntry 13 }
+
+
+btiTALineVADEnable	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         deprecated
+	DESCRIPTION
+	"True indicates voice activity detection is enabled.
+	False indicates voice activity detection is disabled."
+	DEFVAL { false }
+	::= { btiTALineConfigEntry 14 }
+
+btiTALinePacketizationPeriod	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		none(1),
+		five(2),
+		ten(3),
+		twenty(4),
+		thirty(5),
+		forty(6),
+		fifty(7),
+		sixty(8),
+		seventy(9),
+		eighty(10)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The length of the voice sample periods in milliseconds."
+	DEFVAL { ten }
+	::= { btiTALineConfigEntry 15 }
+
+btiTALinePartialDialTimeout	OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         deprecated
+	DESCRIPTION
+	"The length of the partial dial timeout in milliseconds."
+	DEFVAL { 16000 }
+	::= { btiTALineConfigEntry 16 }
+
+btiTALineCriticalDialTimeout		OBJECT-TYPE
+	SYNTAX         Integer32
+	UNITS          "ms"
+	MAX-ACCESS     read-write
+	STATUS         deprecated
+	DESCRIPTION
+	"The length of the critical dial timeout in milliseconds."
+	DEFVAL { 4000 }
+	::= { btiTALineConfigEntry 17 }
+
+btiTALineAnalogLoopbackResults	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		none(1),
+		inProcess(2),
+		pass(3),
+		failed(4),
+		interrupted(5)
+	}
+	MAX-ACCESS     read-only
+	STATUS         deprecated
+	DESCRIPTION
+	"The results of the analog loopback test."
+	::= { btiTALineConfigEntry 18 }
+
+btiTALinePulseDialMinMakeTime	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 200)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the minimum make pulse width for the dial pulse."
+	DEFVAL { 25 }
+	::= { btiTALineConfigEntry 19 }
+
+btiTALinePulseDialMaxMakeTime	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 200)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the maximum make pulse width for the dial pulse."
+	DEFVAL { 55 }
+	::= { btiTALineConfigEntry 20 }
+
+btiTALinePulseDialMinBreakTime	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 200)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the minimum break pulse width for the dial pulse."
+	DEFVAL { 45 }
+	::= { btiTALineConfigEntry 21 }
+
+btiTALinePulseDialMaxBreakTime	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 200)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the maximum break pulse width for the dial pulse."
+	DEFVAL { 75 }
+	::= { btiTALineConfigEntry 22 }
+
+
+btiTALinePulseDialInterdigitTime	OBJECT-TYPE
+	SYNTAX         Integer32 (100 .. 1500)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the pulse dial inter-digit timeout."
+	DEFVAL { 100 }
+	::= { btiTALineConfigEntry 23 }
+
+btiTALineMinHookFlash	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 1000)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the minimum time a line needs to be on hook for a valid hook flash."
+	DEFVAL { 300 }
+	::= { btiTALineConfigEntry 24 }
+
+btiTALineMaxHookFlash	OBJECT-TYPE
+	SYNTAX         Integer32 (1 .. 1800)
+	UNITS          "Milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This is the maximum time a line needs to be on hook for a valid hook flash."
+	DEFVAL { 1000 }
+	::= { btiTALineConfigEntry 25 }
+
+
+btiTALineLoopCurrent	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		normal(1),
+		high(2),
+		notSupported(3)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"NotSupported indicates this feature is not supported on the
+	chosen hardware platform
+	Normal indicates that the the DC current in the loop is at the
+	normal level for the SLIC.
+	High indicates that the the DC current in the loop is at the
+	high level for the SLIC."
+	DEFVAL { normal }
+	::= { btiTALineConfigEntry 26 }
+
+btiTALineConfigIfIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (0..32768)
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The corresponding ifTable ifIndex object for this line."
+	::= { btiTALineConfigEntry 27 }
+
+
+--
+--	 xgcp core objects table
+--
+btiTALineXgcpCoreObjectsTable	OBJECT-TYPE
+	SYNTAX         SEQUENCE OF BtiTALineXgcpCoreObjectsEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"One entry per telephone line"
+	::= { btiTALine 5 }
+
+btiTALineXgcpCoreObjectsEntry	OBJECT-TYPE
+	SYNTAX         BtiTALineXgcpCoreObjectsEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"Per telephone line data. One row per line, created by the agent"
+	INDEX { btiTALineXgcpIndex  }
+    --DEFAULT test-function-async   	btiTALineXgcpCoreObjectsEntry_test
+    --DEFAULT set-function-async    	btiTALineXgcpCoreObjectsEntry_set
+    --DEFAULT get-function-async    	btiTALineXgcpCoreObjectsEntry_get
+    --DEFAULT next-function-async   	btiTALineXgcpCoreObjectsEntry_next
+    --DEFAULT cookie        		(char *)0
+	::= { btiTALineXgcpCoreObjectsTable 1 }
+
+BtiTALineXgcpCoreObjectsEntry ::= SEQUENCE
+{
+	btiTALineXgcpIndex			Integer32,
+	btiTALineXgcpInBadVersions		Counter32,
+	btiTALineXgcpRequestTimeOut		Integer32,
+	btiTALineXgcpRequestRetries		Integer32,
+	btiTALineXgcpAdminStatus		INTEGER,
+	btiTALineXgcpOperStatus			INTEGER,
+	btiTALineXgcpUnRecognizedPackets	Counter32,
+	btiTALineXgcpIfIndex			Integer32
+}
+
+btiTALineXgcpIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (1..4)
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The table index equivalent to the line # (1 - 4) of the telephone line."
+	::= { btiTALineXgcpCoreObjectsEntry 1 }
+
+btiTALineXgcpInBadVersions	OBJECT-TYPE
+	SYNTAX         Counter32
+	UNITS          "messages"
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The total number of incoming messages which were delivered to
+	the protocol entity and were for an unsupported protocol version.
+
+In the event the message received is a wild-card (* or $), all
+     interfaces that match the wild-card should increment
+      their counter."
+ 	::= { btiTALineXgcpCoreObjectsEntry 2 }
+
+btiTALineXgcpRequestTimeOut	OBJECT-TYPE
+	SYNTAX         Integer32 (1..100000)
+	UNITS          "milliseconds"
+	MAX-ACCESS     read-write
+	STATUS         deprecated
+	DESCRIPTION
+	"The request timeout is used to determine the timeout value used
+	for retransmitting unacknowledged message.
+	 It is the responsibility of the requesting entity to provide
+	 suitable timeouts for all outstanding commands, and to retry
+	 commands when timeouts exceeded."
+
+	DEFVAL { 500 }
+	::= { btiTALineXgcpCoreObjectsEntry 3 }
+
+btiTALineXgcpRequestRetries 	OBJECT-TYPE
+	SYNTAX         Integer32 (0..10)
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This object specifies the number of retries for a request that
+	exceeds timeout.
+	It is the responsibility of the requesting entity to provide
+	suitable timeouts for all outstanding commands, and to retry
+	when times out.  In the event the message received is a
+
+wild-card (* or $), all interfaces that match the
+     wild-card should increment their counter."
+
+	DEFVAL { 3 }
+	::= { btiTALineXgcpCoreObjectsEntry 4 }
+
+btiTALineXgcpAdminStatus	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		up		(1),
+		down		(2),
+		gracefulDown	(3)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The desired state of the protocol entity.
+
+	The possible admin statuses are:
+		up - bring up protocol entity administratively
+		down - bring down protocol entity administratively
+		gracefulDown - gracefully shut down protocol entity
+                                  administratively.
+
+	 A graceful shutdown indicates that the protocol
+	 will be taken out of service after the restart
+	 delay timer timeouts or all connections are torn down.
+
+	When in graceDown, the xgcpOperStatus goes from up to
+	down via shutDownInProgress."
+
+	DEFVAL { up }
+	::= { btiTALineXgcpCoreObjectsEntry 5 }
+
+btiTALineXgcpOperStatus	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		up                      (1),
+		down                    (2),
+		shutDownInProgress      (3)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This object indicates the current operational
+	status of the protocol entity.
+
+	The possible operating statuses are:
+		up - protocol up
+		down - protocol down
+		shutDownInProgress - Shut down in progress.
+
+	The operating status - shutDownInProgress indicates
+	that the Media Gateway is in a transition state from
+	up to down. This state happens when resources are in
+	the process of being cleaned up and new resource
+	can't be allocated.
+
+If there is no connection or restart delay timer timeouts	then xgcpOperStatus moves from
+	shutDownInProgress to down."
+
+	::= { btiTALineXgcpCoreObjectsEntry 6 }
+
+btiTALineXgcpUnRecognizedPackets 	OBJECT-TYPE
+	SYNTAX         Counter32
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This refers to the count of unrecognized packets since reset.
+
+In the event the message received is a
+     wild-card (* or $), all interfaces that match the
+      wild-card should increment their counter."
+ 	::= { btiTALineXgcpCoreObjectsEntry 7 }
+
+btiTALineXgcpIfIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (0..32768)
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The corresponding ifTable ifIndex object for this line."
+	::= { btiTALineXgcpCoreObjectsEntry 8 }
+
+
+btiTALineXgcpMsgStatTable	OBJECT-TYPE
+	SYNTAX         SEQUENCE OF BtiTALineXgcpMsgStatEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"One entry per telephone line"
+	::= { btiTALine 6 }
+
+btiTALineXgcpMsgStatEntry	OBJECT-TYPE
+	SYNTAX         BtiTALineXgcpMsgStatEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"Per telephone line data. One row per line, created by the agent"
+	INDEX { btiTALineXgcpMsgStatIndex  }
+    --DEFAULT test-function-async   	null_test_async
+    --DEFAULT set-function-async    	null_set_async
+    --DEFAULT get-function-async    	btiTALineXgcpMsgStatEntry_get
+    --DEFAULT next-function-async   	btiTALineXgcpMsgStatEntry_next
+    --DEFAULT cookie        		(char *)0
+	::= { btiTALineXgcpMsgStatTable 1 }
+
+BtiTALineXgcpMsgStatEntry ::= SEQUENCE
+{
+	btiTALineXgcpMsgStatIndex	Integer32,
+	btiTALineXgcpSuccessMessages	Counter32,
+	btiTALineXgcpFailMessages 	Counter32,
+	btiTALineXgcpMsgIfIndex		Integer32
+}
+
+
+btiTALineXgcpMsgStatIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (1..4)
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The table index equivalent to the line# (1-4) of the telephone line."
+	::= { btiTALineXgcpMsgStatEntry 1 }
+
+btiTALineXgcpSuccessMessages 	OBJECT-TYPE
+	SYNTAX         Counter32
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This object specifies the count of successful messages
+	that communicate with the Media Gateway Controller on
+	that IP address.  In the event the message received is a
+
+wild-card (* or $), all interfaces that match the
+     wild-card should increment their counter.
+
+	Successful messages apply to both transmit and receive messages.
+
+	Transmit: Positive ACK is received from the Media
+                  Gateway Controller
+
+	Receive: Positive ACK is sent to the Media Gateway
+                 Controller. This implies that the format of the message
+                 is correct and the request can be fulfilled."
+	::= { btiTALineXgcpMsgStatEntry 2 }
+
+btiTALineXgcpFailMessages 	OBJECT-TYPE
+	SYNTAX         Counter32
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"This object specifies the count of failed  messages
+	that communicate with the Media Gateway Controller on
+	that IP address.  In the event the message received is a
+
+wild-card (* or $), all interfaces that match the
+     wild-card should increment their counter.
+
+	Failed messages apply to both transmit and receive messages.
+
+	Transmit:	Either NAK is received from the MGC or message
+			times out waiting for ACK.
+	Receive:	Format of the received message is bad or
+			the request can not be fulfilled. "
+	::= { btiTALineXgcpMsgStatEntry 3 }
+
+btiTALineXgcpMsgIfIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (0..32768)
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The corresponding ifTable ifIndex object for this line."
+	::= { btiTALineXgcpMsgStatEntry 4 }
+
+
+--
+--	Line Control table
+--
+btiTALineControlTable	OBJECT-TYPE
+	SYNTAX         SEQUENCE OF BtiTALineControlEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"One entry per telephone line"
+	::= { btiTALine 7 }
+
+
+btiTALineControlEntry	OBJECT-TYPE
+	SYNTAX         BtiTALineControlEntry
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"Per telephone line data. One row per line, created by the agent"
+	INDEX { btiTALineControlIndex }
+    --DEFAULT test-function-async   	btiTALineControlEntry_test
+    --DEFAULT set-function-async    	btiTALineControlEntry_set
+    --DEFAULT get-function-async    	btiTALineControlEntry_get
+    --DEFAULT next-function-async   	btiTALineControlEntry_next
+    --DEFAULT cookie        		(char *)0
+	::= { btiTALineControlTable 1 }
+
+BtiTALineControlEntry ::= SEQUENCE
+{
+	btiTALineControlIndex			Integer32,
+	btiTALineStartGR909Test			Integer32,
+	btiTALineClearGR909Results		TruthValue,
+	btiTALineControlIfIndex			Integer32
+}
+
+-- Line Control Table
+btiTALineControlIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (1..4)
+	MAX-ACCESS     not-accessible
+	STATUS         current
+	DESCRIPTION
+	"The table index equivalent to the line # (1 - 4) of the telephone
+	line."
+	::= { btiTALineControlEntry 1 }
+
+btiTALineStartGR909Test	OBJECT-TYPE
+	SYNTAX         Integer32 (1..5)
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Setting this object to 1 causes the Foreign Voltage Test (GR909).
+				2 Reserved.
+				3 Test Resistive Fault (GR909).
+				4 Test Reciever Off Hook (GR909).
+				5 Test REN (GR909)
+		to be run on the line.
+	Reading this object always returns false(2)."
+	::= { btiTALineControlEntry 2 }
+
+btiTALineClearGR909Results	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Setting this object to true(1) causes the GR909 results to be cleared for the line.
+	Reading this object always returns false(2)."
+	::= { btiTALineControlEntry 3 }
+
+btiTALineControlIfIndex	OBJECT-TYPE
+	SYNTAX         Integer32 (0..32768)
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The corresponding ifTable ifIndex object for this line."
+	::= { btiTALineControlEntry 4 }
+
+
+--
+--	Trap Info Group
+--
+btiTrapChangedValueEnable      	OBJECT-TYPE
+	SYNTAX         TruthValue
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enables/disables generation of the Changed Value trap."
+	DEFVAL { false }
+	::= { btiAlarm 1 }
+
+btiTrapChangedValueOID      	OBJECT-TYPE
+	SYNTAX         OBJECT IDENTIFIER
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"The object identifier of the object whose value changed."
+	::= { btiAlarm 2 }
+
+btiTrapTextInfo	OBJECT-TYPE
+	SYNTAX         DisplayString
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"Text information pertaining to the trap."
+	::= { btiAlarm 3 }
+
+btiAlarmState	OBJECT-TYPE
+	SYNTAX         OCTET STRING (SIZE(4))
+	MAX-ACCESS     read-only
+	STATUS         deprecated
+	DESCRIPTION
+	"Alarm condition used in Alarm notification.
+
+	The btiTAAlarmState is a bit map represented as a sum,
+	therefore, it can represent multiple conditions simultaneously.
+
+	The various bit values in octet 1 are:
+	0		BTITANoAlarm
+	1		BTITABatteryFailure
+	2		BTITASwHwFailure
+	4		BTITAPowerOnOrReboot
+	8		BTITAResetDelayed
+	16		BTITAPowerOnPrimaryFromBattery
+	32		BTITAProvisioningComplete
+	64		BTITAProvisioningFailed
+	128		BTITASoftwareDownloadFail
+
+	The various bit values in octet 2 are:
+	0		BTITACallFlowNoAlarm
+	1		BTITALine1CallFlowSignallingError
+	2		BTITALine2CallFlowSignallingError
+	4		BIITALine3CallFlowSignallingError
+	8		BTITALine4CallFlowSignallingError
+
+	The various bit values in octet 3 are:
+	0		BTITACANoAlarm
+	1		BTITALine1NoResponseWithCA
+	2		BTITALine2NoResponseWithCA
+	4		BIITALine3NoResponseWithCA
+	8		BTITALine4NoResponseWithCA
+
+	The various bit values in octet 4 are:
+	0		BTITAOverTempNoAlarm
+	1		BTITALine1SLICOverTemp
+	2		BTITALine2SLICOverTemp
+	4		BIITALine3SLICOverTemp
+	8		BTITALine4SLICOverTemp
+	16		BTITALine1SLICForeignVoltage
+	32		BTITALine2SLICForeignVoltage
+	84		BIITALine3SLICForeignVoltage
+	128		BTITALine4SLICForeignVoltage
+	"
+	::= { btiAlarm 4 }
+
+btiAlarmStateBitMap	OBJECT-TYPE
+	SYNTAX         BITS
+	{
+	batteryFailure(0),
+	swHwFailure(1),
+	powerOnOrReboot(2),
+	resetDelayed(3),
+	powerOnPrimaryFromBattery(4),
+	provisioningComplete(5),
+	provisioningFailed(6),
+	softwareDownloadFail(7),
+	line1CallFlowSignallingError(8),
+	line2CallFlowSignallingError(9),
+	line1NoResponseWithCallAgent(10),
+	line2NoResponseWithCallAgent(11),
+	line1SLICPowerAlarm(12),
+	line2SLICPowerAlarm(13),
+	line1SLICForeignVoltage(14),
+	line2SLICForeignVoltage(15),
+	reserved1(16),
+	reserved2(17),
+	reserved3(18),
+	reserved4(19),
+	reserved5(20),
+	reserved6(21),
+	reserved7(22),
+	reserved8(23),
+	reserved9(24),
+	reserved10(25),
+	reserved11(26),
+	reserved12(27),
+	reserved13(28),
+	reserved14(29),
+	reserved15(30),
+	reserved16(31)
+	}
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"MTA Alarm conditions used in Alarm notification.
+	This is a bit map and therefore it can represent multiple conditions simultaneously."
+	::={ btiAlarm 5 }
+
+
+--
+-- Notifications
+--
+btiConfigurationChangeTrap NOTIFICATION-TYPE
+	OBJECTS
+	{
+		btiTrapChangedValueOID,
+		btiTrapTextInfo
+	}
+	STATUS         current
+	DESCRIPTION
+	"When an objects data is modified, either thru the SNMP set command
+	or by other means, this trap --is generated to indicate that change.
+	btiTrapTextInfo contains the value of the changed object, along with
+	any other pertinent text information."
+	::= { btiNotifications 1 }
+
+btiAlarmInform NOTIFICATION-TYPE
+	OBJECTS
+	{
+		btiAlarmStateBitMap,
+		btiTrapTextInfo
+	}
+	STATUS         current
+	DESCRIPTION
+	"This inform is issued when a condition occurs where it is mandatory
+	to notify the management station or a condition occurs that represents
+	a serious problem to the operation of the MTA.  For the AlarmStates
+	callFlowSignallingError and noResponseWithCA  the btiTraptextInfo
+	field is used to include the line number affected. For the AlarmStates
+	ProvisioningFailed and ProvisioningComplete the btiTraptextInfo contains
+	the MAC address followed by descriptive text in the following format:
+	'XXXXXXXXXXXX Provisioning Complete' for provisioning complete and
+	'XXXXXXXXXXXX Provisioning Failed' for provisioning failed, where
+	XXXXXXXXXXXX is the MAC address."
+	::= { btiNotifications 2 }
+
+-- btiUps MIB Objects
+
+btiUpsInfo OBJECT IDENTIFIER
+    --DEFAULT test-function-async   	btiUpsInfo_test
+    --DEFAULT set-function-async    	btiUpsInfo_set
+    --DEFAULT get-function-async    	btiUpsInfo_get
+    --DEFAULT next-function-async   	std_next_async
+    --DEFAULT cookie        		(char *)0
+	::= { btiUps 1 }
+
+--
+-- The following objects are from RFC-1628
+--
+   btiUpsBatteryStatus OBJECT-TYPE
+       SYNTAX     INTEGER {
+           unknown(1),
+           batteryNormal(2),
+           batteryLow(3),
+           batteryDepleted(4)
+       }
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "The indication of the capacity remaining in the UPS
+               system's batteries.   A value of batteryNormal
+               indicates that the remaining run-time is greater than
+               upsConfigLowBattTime.  A value of batteryLow indicates
+               that the remaining battery run-time is less than or
+               equal to upsConfigLowBattTime.  A value of
+               batteryDepleted indicates that the UPS will be unable
+               to sustain the present load when and if the utility
+               power is lost (including the possibility that the
+               utility power is currently absent and the UPS is
+               unable to sustain the output)."
+       ::= { btiUpsInfo 1 }
+
+   btiUpsSecondsOnBattery OBJECT-TYPE
+       SYNTAX     INTEGER (0..2147483647)
+       UNITS      "seconds"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "If the unit is on battery power, the elapsed time
+               since the UPS last switched to battery power, or the
+               time since the network management subsystem was last
+               restarted, whichever is less.  Zero shall be returned
+               if the unit is not on battery power."
+       ::= { btiUpsInfo 2 }
+
+   btiUpsEstimatedMinutesRemaining OBJECT-TYPE
+       SYNTAX     INTEGER (1..2147483647)
+       UNITS      "minutes"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "An estimate of the time to battery charge depletion
+               under the present load conditions if the utility power
+               is off and remains off, or if it were to be lost and
+               remain off.  Zero shall be returned if the unit is not
+		   on battery power."
+       ::= { btiUpsInfo 3 }
+
+   btiUpsEstimatedChargeRemaining OBJECT-TYPE
+       SYNTAX     INTEGER (0..100)
+       UNITS      "percent"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "An estimate of the battery charge remaining expressed
+               as a percent of full charge."
+       ::= { btiUpsInfo 4 }
+
+   btiUpsConfigLowBattTime OBJECT-TYPE
+       SYNTAX     INTEGER (0..2147483647)
+       UNITS      "minutes"
+       MAX-ACCESS read-write
+       STATUS     current
+       DESCRIPTION
+               "The value of upsEstimatedMinutesRemaining at which
+               a lowBattery condition is declared.  For agents which
+               support only discrete (discontinuous) values, then the
+               agent shall round up to the next supported value.  If
+               the requested value is larger than the largest
+               supported value, then the largest supported value
+               shall be selected.  This value shall be preserved
+	       across a power cycle."
+       DEFVAL { 55 }
+       ::= { btiUpsInfo 5 }
+
+
+   btiUpsNumberOfBatteries OBJECT-TYPE
+       SYNTAX     INTEGER
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Displays the number of batteries present in the
+		device.  This variable indicates the number of rows
+		in the btiUpsBattInfo table."
+       ::= { btiUpsInfo 7 }
+
+   btiUpsBattInfoTable OBJECT-TYPE
+       SYNTAX     SEQUENCE OF BtiUpsBattInfoEntry
+       MAX-ACCESS not-accessible
+       STATUS     current
+       DESCRIPTION
+               "A list of table entries.  The number of entries
+               is given by the value of btiUpsNumberOfBatteries."
+       ::= { btiUpsInfo 8 }
+
+   btiUpsBattInfoEntry OBJECT-TYPE
+       SYNTAX     BtiUpsBattInfoEntry
+       MAX-ACCESS not-accessible
+       STATUS     current
+       DESCRIPTION
+               "An entry containing information applicable to a
+               particular battery pack."
+       INDEX { btiUpsBattInfoIndex }
+	    --DEFAULT test-function-async   	null_test_async
+	    --DEFAULT set-function-async    	null_set_async
+	    --DEFAULT get-function-async    	btiUpsBattInfoEntry_get
+	    --DEFAULT next-function-async   	btiUpsBattInfoEntry_next
+	    --DEFAULT cookie        		(char *)0
+       ::= { btiUpsBattInfoTable 1 }
+
+   BtiUpsBattInfoEntry ::= SEQUENCE {
+       btiUpsBattInfoIndex   INTEGER,
+       btiUpsBattInfoEpromRev   OCTET STRING,
+       btiUpsBattInfoPackSupplier   OCTET STRING,
+       btiUpsBattInfoModelNumber   OCTET STRING,
+       btiUpsBattInfoSerialNumber   OCTET STRING,
+       btiUpsBattInfoPcbRev   OCTET STRING,
+       btiUpsBattInfoCellSupplier   OCTET STRING,
+       btiUpsBattInfoMaxCapacity   INTEGER,
+       btiUpsBattInfoCellDate   DateAndTime,
+       btiUpsBattInfoPackDate   DateAndTime,
+       btiUpsBattInfoResistorValue   INTEGER
+   }
+
+   btiUpsBattInfoIndex OBJECT-TYPE
+       SYNTAX     INTEGER (0..4)
+       MAX-ACCESS not-accessible
+       STATUS     current
+       DESCRIPTION
+               "This index value is bounded by the
+		value of btiUpsNumberOfBatteries.  This
+		index correlates to a physical
+		location within the MTA/UPS.  The index
+		should be physically identified on the
+		chassis of the device in close proximity
+		to the battery pack itself."
+       ::= { btiUpsBattInfoEntry 1 }
+
+   btiUpsBattInfoEpromRev   OBJECT-TYPE
+       SYNTAX     OCTET STRING(SIZE(0..255))
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Contains the revision version of the EPROM."
+       ::= { btiUpsBattInfoEntry 2 }
+
+   btiUpsBattInfoPackSupplier   OBJECT-TYPE
+       SYNTAX     OCTET STRING(SIZE(0..255))
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Contains the manufacturer of the battery pack."
+       ::= { btiUpsBattInfoEntry 3 }
+
+   btiUpsBattInfoModelNumber   OBJECT-TYPE
+       SYNTAX     OCTET STRING(SIZE(0..255))
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Contains the model number for the battery."
+       ::= { btiUpsBattInfoEntry 4 }
+
+   btiUpsBattInfoSerialNumber   OBJECT-TYPE
+       SYNTAX     OCTET STRING
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Contains the serial number for the battery."
+       ::= { btiUpsBattInfoEntry 5 }
+
+   btiUpsBattInfoPcbRev   OBJECT-TYPE
+       SYNTAX     OCTET STRING
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Contains the board revision for the PCB."
+       ::= { btiUpsBattInfoEntry 6 }
+
+   btiUpsBattInfoCellSupplier   OBJECT-TYPE
+       SYNTAX     OCTET STRING
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Contains the manufacturer of the cell."
+       ::= { btiUpsBattInfoEntry 7 }
+
+   btiUpsBattInfoMaxCapacity   OBJECT-TYPE
+       SYNTAX     INTEGER
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Contains the max capacity (in mAh) for the battery
+		pack."
+       ::= { btiUpsBattInfoEntry 8 }
+
+   btiUpsBattInfoCellDate   OBJECT-TYPE
+       SYNTAX     DateAndTime
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Contains the cell date for the battery pack."
+       ::= { btiUpsBattInfoEntry 9 }
+
+   btiUpsBattInfoPackDate   OBJECT-TYPE
+       SYNTAX     DateAndTime
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Contains the date of the battery pack."
+       ::= { btiUpsBattInfoEntry 10 }
+
+   btiUpsBattInfoResistorValue   OBJECT-TYPE
+       SYNTAX     INTEGER
+       UNITS	"ohms"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Contains the resistor value (in ohms) for the
+		corresponding battery entry."
+       ::= { btiUpsBattInfoEntry 11 }
+
+
+--
+-- btiUpsTrapIntervals
+--
+
+btiUpsTrapInt OBJECT IDENTIFIER
+    --DEFAULT test-function-async   	btiUpsTrapInt_test
+    --DEFAULT set-function-async    	btiUpsTrapInt_set
+    --DEFAULT get-function-async    	btiUpsTrapInt_get
+    --DEFAULT next-function-async   	std_next_async
+    --DEFAULT cookie        		(char *)0
+	::= { btiUps 3 }
+
+   btiUpsOverTempTrapInt OBJECT-TYPE
+       SYNTAX     INTEGER (0..2160)
+       UNITS      "hours"
+       MAX-ACCESS read-write
+       STATUS     current
+       DESCRIPTION
+               "Allows the user to define the frequency of the trap
+		associated with excessive temperature.  A value
+		of 0 indicates only one trap is sent.  A maximum
+		value of 2160 corresponds to a 90-day interval.
+		This value shall be preserved across a power cycle."
+       DEFVAL { 720 }
+       ::= { btiUpsTrapInt 1 }
+
+   btiUpsReplaceBatteryTrapInt OBJECT-TYPE
+       SYNTAX     INTEGER (0..2160)
+       UNITS      "hours"
+       MAX-ACCESS read-write
+       STATUS     current
+       DESCRIPTION
+               "Allows the user to define the frequency of the trap
+		associated with replacing the battery.  A value
+		of 0 indicates only one trap is sent.  A maximum
+		value of 2160 corresponds to a 90-day interval.
+		This value shall be preserved across a power cycle."
+       DEFVAL { 720 }
+       ::= { btiUpsTrapInt 2 }
+
+   btiUpsLowBatteryTrapInt OBJECT-TYPE
+       SYNTAX     INTEGER (0..2160)
+       UNITS      "hours"
+       MAX-ACCESS read-write
+       STATUS     current
+       DESCRIPTION
+               "Allows the user to define the frequency of the trap
+		associated with low battery power.  A value
+		of 0 indicates only one trap is sent.  A maximum
+		value of 2160 corresponds to a 90-day interval.
+		This value shall be preserved across a power cycle."
+       DEFVAL { 720 }
+       ::= { btiUpsTrapInt 3 }
+
+   btiUpsNoCalInfoTrapInt OBJECT-TYPE
+       SYNTAX     INTEGER (0..2160)
+       UNITS      "hours"
+       MAX-ACCESS read-write
+       STATUS     current
+       DESCRIPTION
+               "Allows the user to define the frequency of the trap
+		associated with No Calibration Information.  A value
+		of 0 indicates only one trap is sent.  A maximum
+		value of 2160 corresponds to a 90-day interval.
+		This value shall be preserved across a power cycle."
+       DEFVAL { 720 }
+       ::= { btiUpsTrapInt 4 }
+
+
+
+--
+--  btiUpsCalInfo
+--
+
+btiUpsCalInfo OBJECT IDENTIFIER
+    --DEFAULT test-function-async   	btiUpsCalInfo_test
+    --DEFAULT set-function-async    	btiUpsCalInfo_set
+    --DEFAULT get-function-async    	btiUpsCalInfo_get
+    --DEFAULT next-function-async   	std_next_async
+    --DEFAULT cookie        			(char *)0
+ 	::= { btiUps 4 }
+
+   btiUpsCalInterval OBJECT-TYPE
+       SYNTAX     INTEGER  ( 90 .. 365 )
+       UNITS      "days"
+       MAX-ACCESS read-write
+       STATUS     current
+       DESCRIPTION
+               "This value defines the periodic interval at
+		which calibration is performed.  This interval
+		is based on the btiUpsLastCalDate value.
+		Calibration should occur on all batteries present.
+		This value cannot be set in the range of 0 - 89."
+	DEFVAL { 90 }
+       ::= { btiUpsCalInfo 1 }
+
+   btiUpsLastCalDate OBJECT-TYPE
+       SYNTAX     DateAndTime
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "This value defines the most recent date that
+            calibration was performed on any battery pack.
+		The next calibration will be performed based on
+		this date plus the CalInterval.  The default value
+            is set to the current date/time.  This value
+            should only be updated if calibration is
+            successful.  The value is shown in Local Time."
+       ::= { btiUpsCalInfo 2 }
+
+   btiUpsCalibrateNow OBJECT-TYPE
+       SYNTAX     TruthValue
+       MAX-ACCESS read-write
+       STATUS     current
+       DESCRIPTION
+               "Setting this value to True(1) initiates a
+		calibration of all batteries immediately.  This
+		value should always return False(2) when read."
+       ::= { btiUpsCalInfo 3 }
+
+
+
+   btiUpsCalInfoTable OBJECT-TYPE
+       SYNTAX     SEQUENCE OF BtiUpsCalInfoEntry
+       MAX-ACCESS not-accessible
+       STATUS     current
+       DESCRIPTION
+               "A list of table entries.  The number of entries
+                is determined by the value of
+		btiUpsNumberOfBatteries."
+       ::= { btiUpsCalInfo 4 }
+
+   btiUpsCalInfoEntry OBJECT-TYPE
+       SYNTAX     BtiUpsCalInfoEntry
+       MAX-ACCESS not-accessible
+       STATUS     current
+       DESCRIPTION
+               "An entry containing information applicable to a
+               particular battery pack."
+       INDEX { btiUpsCalInfoIndex }
+	    --DEFAULT test-function-async   	null_test_async
+	    --DEFAULT set-function-async    	null_set_async
+	    --DEFAULT get-function-async    	btiUpsCalInfoEntry_get
+	    --DEFAULT next-function-async   	btiUpsCalInfoEntry_next
+	    --DEFAULT cookie        		(char *)0
+       ::= { btiUpsCalInfoTable 1 }
+
+   BtiUpsCalInfoEntry ::= SEQUENCE {
+       btiUpsCalInfoIndex         INTEGER,
+       btiUpsCalOperStatus 	INTEGER,
+       btiUpsCalTempHiDisable INTEGER,
+       btiUpsCalTempLowDisable INTEGER,
+       btiUpsCalTimeLowSoftWarning INTEGER,
+       btiUpsCalChgCurrentMax     INTEGER,
+       btiUpsCalChgCurrentTrickle INTEGER,
+       btiUpsCalChgCurrentTerminate INTEGER,
+       btiUpsCalVoltageHiDisable INTEGER,
+       btiUpsCalVoltageOverCharge INTEGER,
+       btiUpsCalVoltageFullCharge INTEGER,
+       btiUpsCalVoltageIdleStart INTEGER,
+       btiUpsCalVoltageChgLow INTEGER,
+       btiUpsCalVoltageFullDischarge INTEGER,
+       btiUpsCalVoltageLowSoftDis INTEGER,
+       btiUpsCalVoltageLowHardDis INTEGER,
+       btiUpsCalTimeOverVoltDischarge INTEGER,
+       btiUpsCalTimeCCCVCharge INTEGER,
+       btiUpsCalTimeIdleRestart INTEGER,
+       btiUpsCalCapacity INTEGER,
+       btiUpsCalVoltageAgeMax INTEGER,
+       btiUpsCalVoltageAgeMin INTEGER,
+       btiUpsCalTimeAgeNew INTEGER,
+       btiUpsCalTimeAgeReplace INTEGER,
+       btiUpsCalDischargeRate INTEGER
+	}
+
+
+   btiUpsCalInfoIndex OBJECT-TYPE
+       SYNTAX     INTEGER (0..4)
+       MAX-ACCESS not-accessible
+       STATUS     current
+       DESCRIPTION
+               "This index value is bounded by the
+		value of btiUpsNumberOfBatteries.  This
+		index correlates to a physical
+		location within the MTA/UPS.  The index
+		should be physically identified on the
+		chassis of the device in close proximity
+		to the battery pack itself."
+       ::= { btiUpsCalInfoEntry 1 }
+
+   btiUpsCalOperStatus OBJECT-TYPE
+       SYNTAX     INTEGER
+       {
+       	 unknown(1),
+         inProgress(2),
+         pass(3),
+	     fail(4)
+       }
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Reports the status of the last calibration that
+		was performed, or indicates that a calibration
+		is currently in progress.  Unknown(1) is reported when
+		the calibration status is indeterminant (for example,
+		following a complete loss of device power).  InProgress(2)
+		is reported while calibration of any battery
+		pack is in progress.  Pass(3) is reported when
+		all battery packs are calibrated successfully.  Fail(4)
+		is reported if any individual battery fails
+		calibration."
+       ::= { btiUpsCalInfoEntry 2}
+
+   btiUpsCalTempHiDisable OBJECT-TYPE
+       SYNTAX     INTEGER
+	 UNITS 	"celcius"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "High temperature at which battery is disabled."
+	 DEFVAL { 60 }
+       ::= { btiUpsCalInfoEntry 3 }
+
+   btiUpsCalTempLowDisable OBJECT-TYPE
+       SYNTAX     INTEGER
+	 UNITS 	"celcius"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Low temperature at which battery is disabled."
+	 DEFVAL { 0 }
+       ::= { btiUpsCalInfoEntry 4 }
+
+   btiUpsCalTimeLowSoftWarning OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"seconds"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Max time battery voltage allowed below
+		VoltageLowSoftDisable before disabled."
+	 DEFVAL { 15 }
+       ::= { btiUpsCalInfoEntry 5 }
+
+   btiUpsCalChgCurrentMax OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mA"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Maximum charge current."
+ 	 DEFVAL { 500 }
+       ::= { btiUpsCalInfoEntry 6 }
+
+   btiUpsCalChgCurrentTrickle OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mA"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Low rate charge current."
+	 DEFVAL { 0 }
+       ::= { btiUpsCalInfoEntry 7 }
+
+   btiUpsCalChgCurrentTerminate OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mA"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "End of charge current (constant voltage state)."
+	 DEFVAL { 50 }
+       ::= { btiUpsCalInfoEntry 8 }
+
+   btiUpsCalVoltageHiDisable OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mV"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "High voltage at which battery is disabled in mV."
+	 DEFVAL { 13600 }
+       ::= { btiUpsCalInfoEntry 9 }
+
+   btiUpsCalVoltageOverCharge OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mV"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Voltage at which overcharge circuit is enabled."
+	 DEFVAL { 12850 }
+       ::= { btiUpsCalInfoEntry 10 }
+
+   btiUpsCalVoltageFullCharge OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mV"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Voltage at which charge terminates and overcharge
+		discharge terminates."
+	 DEFVAL { 12600 }
+       ::= { btiUpsCalInfoEntry 11 }
+
+	btiUpsCalVoltageIdleStart OBJECT-TYPE
+		SYNTAX INTEGER
+	 	UNITS 	"mV"
+       	MAX-ACCESS read-only
+       	STATUS     current
+       	DESCRIPTION
+               "Voltage at which charge is allowed to restart."
+	 	DEFVAL { 12000 }
+       	::= { btiUpsCalInfoEntry 12 }
+
+	btiUpsCalVoltageChgLow  OBJECT-TYPE
+		SYNTAX INTEGER
+	 	UNITS 	"mV"
+       	MAX-ACCESS read-only
+       	STATUS     current
+       	DESCRIPTION
+               "Voltage at which a low warning condition exists."
+	 	DEFVAL { 10000 }
+       	::= { btiUpsCalInfoEntry 13 }
+
+
+	btiUpsCalVoltageFullDischarge OBJECT-TYPE
+		SYNTAX INTEGER
+	 	UNITS 	"mV"
+       	MAX-ACCESS read-only
+       	STATUS     current
+       	DESCRIPTION
+               "Voltage at which battery is fully discharged."
+	 	DEFVAL { 10200 }
+       	::= { btiUpsCalInfoEntry 14 }
+
+
+
+   btiUpsCalVoltageLowSoftDis OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mV"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Voltage at which the battery will be disabled
+		if the condition exists for longer than
+		TimeLowSoftDisable."
+	 DEFVAL { 9000 }
+       ::= { btiUpsCalInfoEntry 15 }
+
+   btiUpsCalVoltageLowHardDis OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mV"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Voltage at which battery is instantly disabled."
+	 DEFVAL { 7500 }
+       ::= { btiUpsCalInfoEntry 16 }
+
+   btiUpsCalTimeOverVoltDischarge OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"minutes"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Max time where overcharge circuit is enabled before
+		fault."
+	 DEFVAL { 60 }
+       ::= { btiUpsCalInfoEntry 17 }
+
+   btiUpsCalTimeCCCVCharge OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"minutes"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Max time where CCCV charge is enabled before fault."
+	 DEFVAL { 960 }
+       ::= { btiUpsCalInfoEntry 18 }
+
+   btiUpsCalTimeIdleRestart OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"hours"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Minimum time before battery is allowed to recharge
+		(given it meets all prior requirements)."
+	 DEFVAL { 168 }
+       ::= { btiUpsCalInfoEntry 19 }
+
+   btiUpsCalCapacity OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mAh"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Capacity of the cell pack."
+	 DEFVAL { 2200 }
+       ::= { btiUpsCalInfoEntry 20 }
+
+   btiUpsCalVoltageAgeMax OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mV"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Voltage at which discharge age calibration current is
+		applied."
+	 DEFVAL { 12200 }
+       ::= { btiUpsCalInfoEntry 21 }
+
+   btiUpsCalVoltageAgeMin OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"mV"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Voltage at which discharge age calibration current is
+		removed."
+	 DEFVAL { 11880 }
+       ::= { btiUpsCalInfoEntry 22 }
+
+   btiUpsCalTimeAgeNew OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"minutes"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Discharge time for new cell pack between VoltageAgeMax
+		and VoltageAgeMin."
+	 DEFVAL { 68 }
+       ::= { btiUpsCalInfoEntry 23 }
+
+   btiUpsCalTimeAgeReplace OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"minutes"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Discharge time for a cell pack (that is determined to
+		be replaced) between VoltageAgeMax and VoltageAgeMin."
+	 DEFVAL { 44 }
+       ::= { btiUpsCalInfoEntry 24 }
+
+   btiUpsCalDischargeRate OBJECT-TYPE
+       SYNTAX     INTEGER
+ 	 UNITS 	"seconds"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "The constant current rate at which these values
+		were calculated."
+	 DEFVAL { 215 }
+       ::= { btiUpsCalInfoEntry 25 }
+
+--
+--  btiUpsTemp
+--
+
+btiUpsTemperature OBJECT IDENTIFIER
+    --DEFAULT test-function-async   	null_test_async
+    --DEFAULT set-function-async    	null_set_async
+    --DEFAULT get-function-async    	btiUpsTemperature_get
+    --DEFAULT next-function-async   	std_next_async
+    --DEFAULT cookie        		(char *)0
+	::= { btiUps 5 }
+
+   btiUpsTempCurrent OBJECT-TYPE
+       SYNTAX     INTEGER
+       UNITS	"celcius"
+       MAX-ACCESS read-only
+       STATUS     current
+       DESCRIPTION
+               "Reports the current temperature of the
+		internal battery or external UPS."
+       ::= { btiUpsTemperature 1 }
+
+--
+-- btiUpsEventCounters  removed
+--
+
+
+END
+

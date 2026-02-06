@@ -1,0 +1,142 @@
+--*****************************************************************
+--
+-- THOMSON-BROADBAND.MIB:  Thomson Inc.
+--
+-- Copyright (c) 2004 by Thomson Inc.
+-- All rights reserved.
+-- 
+--*****************************************************************
+
+--**************************************************************************
+--                                                                          
+--    Copyright 2004 Thomson Inc.
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--             Thomson Inc.                                   
+--             101 W 103rd St.                                   
+--             Indianapolis, IN  46290  USA                                   
+--    All information contained in this document is Thomson Inc.    
+--    company private, proprietary, and trade secret.                       
+--                                                                          
+--**************************************************************************
+--
+--    Filename:      thomson-broadband.mib
+--    Author:        Gary Gutknecht
+--    Creation Date: March 20, 2003
+--
+--**************************************************************************
+--
+--    Description:
+--
+--      Thomson Broadband Product MIB.
+--      
+--**************************************************************************
+
+THOMSON-BROADBAND-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE,
+        Unsigned32
+            FROM SNMPv2-SMI 
+        enterprises
+            FROM SNMPv2-SMI;
+                      
+-- assigned by IANA
+thomson     OBJECT IDENTIFIER ::= { enterprises 2863 }
+
+broadband MODULE-IDENTITY
+        LAST-UPDATED    "0403150000Z" -- March 30, 2004
+        ORGANIZATION    "Thomson Inc."
+        CONTACT-INFO
+            "        David Ryan
+             Postal: Thomson Inc.
+                     101 W 103rd St.
+                     Indianapolis, IN  46290
+                     U.S.A.
+             Phone:  +1 317 587 4553
+             E-mail: david.ryan@thomson.net"
+        DESCRIPTION
+            "Thomson broadband product MIB." 
+--  assigned by David Jeffries of Thomson Inc.
+--              101 W 103rd St.
+--              Indianapolis, IN  46290
+--              U.S.A.
+--              Phone:  +1 317 587 4238
+--              E-mail: david.jeffries@thomson.net
+        ::= { thomson 205 }
+    
+--*****************************************************************
+--
+-- Thomson broadband cable modem objects.
+-- 
+--*****************************************************************
+
+cableModem OBJECT IDENTIFIER 
+        ::= { broadband 1 }
+
+cableModemNotifications OBJECT IDENTIFIER
+        ::= { broadband 500 }
+
+--*****************************************************************
+--
+-- Thomson broadband cable gateway objects.
+-- 
+--*****************************************************************
+
+cableGateway OBJECT IDENTIFIER 
+        ::= { broadband 10 }
+
+--*****************************************************************
+--
+-- Thomson broadband USB objects.
+-- 
+--*****************************************************************
+
+broadbandUsb OBJECT IDENTIFIER 
+        ::= { broadband 100 }
+
+--*****************************************************************
+--
+-- Thomson broadband enterprise objects.
+-- 
+--*****************************************************************
+
+bbEnterprises OBJECT IDENTIFIER 
+        ::= { broadband 999 }
+
+--*****************************************************************
+--
+-- Thomson broadband product models.
+-- 
+--*****************************************************************
+
+pidA800 OBJECT IDENTIFIER ::= { broadband 43008 }
+dcw615  OBJECT IDENTIFIER ::= { pidA800 615 }
+
+pidA801 OBJECT IDENTIFIER ::= { broadband 43009 }
+dcm315  OBJECT IDENTIFIER ::= { pidA801 315 }
+dcm325  OBJECT IDENTIFIER ::= { pidA801 325 }
+tcm390  OBJECT IDENTIFIER ::= { pidA801 390 }
+tcm410  OBJECT IDENTIFIER ::= { pidA801 410 }
+
+pidA802 OBJECT IDENTIFIER ::= { broadband 43010 }
+dcw625  OBJECT IDENTIFIER ::= { pidA802 625 }
+tcw690  OBJECT IDENTIFIER ::= { pidA802 690 }
+
+pidA804 OBJECT IDENTIFIER ::= { broadband 43012 }
+dcw645  OBJECT IDENTIFIER ::= { pidA804 645 }
+
+pidA806 OBJECT IDENTIFIER ::= { broadband 43014 }
+tcm420  OBJECT IDENTIFIER ::= { pidA806 420 }
+dcm425  OBJECT IDENTIFIER ::= { pidA806 425 }
+
+pidA807 OBJECT IDENTIFIER ::= { broadband 43015 }
+tcw720  OBJECT IDENTIFIER ::= { pidA807 720 }
+dcw725  OBJECT IDENTIFIER ::= { pidA807 725 }
+
+pidA808 OBJECT IDENTIFIER ::= { broadband 43016 }
+thg520  OBJECT IDENTIFIER ::= { pidA808 520 }
+dhg525  OBJECT IDENTIFIER ::= { pidA808 525 }
+
+END

@@ -1,0 +1,1717 @@
+-- vim: set ts=4, set expandtab, match Todo /\%>79v/
+-- ***********************************************************************
+-- ***********************************************************************
+--                             ROUTER
+--                      SNMP/MIB : MIB Files
+--
+--            Copyright (C) 2012 Hitron Technologies Inc.
+--                       All Rights Reserved.
+-- ***********************************************************************
+--  Filename    : HITRON-RG-NI.mib
+--  Description : Network Interface MIB
+-- ***********************************************************************
+--
+
+HITRON-RG-NI-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+    , OBJECT-TYPE
+    , NOTIFICATION-TYPE
+    , enterprises
+    , Integer32
+    , IpAddress
+    , Unsigned32
+    , Counter32
+        FROM SNMPv2-SMI -- RFC2578
+
+    DisplayString
+    , MacAddress
+    , TruthValue
+    , RowStatus
+    , TimeStamp
+    , DateAndTime
+        FROM SNMPv2-TC  -- RFC2579
+    
+    InetAddressType
+    , InetAddress
+    , InetAddressPrefixLength
+    , InetPortNumber
+    , InetVersion
+        FROM INET-ADDRESS-MIB -- RFC4001
+
+    hitronRg
+    , LanIfType
+    , LanAddrTitle
+    , WanAddrTitle
+        FROM HITRON-RG-MIB
+    
+    ;  --End of IMPORTS
+
+hitronRgNi  MODULE-IDENTITY
+    LAST-UPDATED    "201210291943Z" -- Oct. 29, 2012
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "Liangfeng Wu
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8120
+        E-mail: wuliangfeng@sz.hitrontech.com
+
+        Haibo Xi
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8148
+        E-mail: xihaibo@sz.hitrontech.com"
+
+    DESCRIPTION
+        "MIB module for Network Interface(NI) configuration"
+
+    REVISION    "201210291943Z" -- Oct. 29, 2012
+    DESCRIPTION
+        "Because SixRd's Border Relay Address is IPv4 address,change 
+         type to IpAddress"
+
+    REVISION    "201210220001Z" -- Oct. 22, 2012
+    DESCRIPTION
+        "Remove netifLanRipDefaultMetric from netifLanRipEntry.
+        Only Wan interface's metric is settable"
+
+    REVISION    "201209290001Z" -- Sep. 29, 2012
+    DESCRIPTION
+        "Add netifWan and netifLanRip netifLanRipng"
+
+    REVISION    "201209051505Z" -- Sep. 05, 2012
+    DESCRIPTION
+        "Initial Version"
+
+    ::= { hitronRg 18 }
+
+    -- LAN Interfaces
+    netifLan    OBJECT IDENTIFIER  ::= { hitronRgNi 1 }
+
+        -- Basic LAN Interface table
+        netifLanBaseTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifLanBaseEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "LAN interface table including the basic information."
+            ::= { netifLan 1 }
+
+            netifLanBaseEntry OBJECT-TYPE
+                SYNTAX      NetifLanBaseEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the basic LAN interface table."
+                INDEX       { netifLanBaseType,
+                              netifLanBaseIndex }
+                ::= { netifLanBaseTable 1 }
+
+            NetifLanBaseEntry ::=
+                SEQUENCE {
+                    netifLanBaseType            LanIfType,
+                    netifLanBaseIndex           Integer32,
+                    netifLanBaseName            DisplayString,
+                    netifLanBaseIpv6Enable      TruthValue,
+                    netifLanBaseIgmpProxyEnable TruthValue,
+                    netifLanBaseMldProxyEnable  TruthValue,
+                    netifLanBaseIpv6RaDnsEnable TruthValue
+                }
+            
+            netifLanBaseType  OBJECT-TYPE
+                SYNTAX      LanIfType
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "LAN interface type, this value combined with the index
+                    of this types of interface, used to uniquely identify a
+                    LAN interface."
+                ::= { netifLanBaseEntry 1 }
+
+            netifLanBaseIndex OBJECT-TYPE
+                SYNTAX      Integer32
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Index value based on the RG model, the interface 
+                    identified by a particular value of this index is not 
+                    the same as identified by the same value of ifIndex."
+                ::= { netifLanBaseEntry 2 }
+
+            netifLanBaseName  OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only   -- change to read-write in future
+                STATUS      current
+                DESCRIPTION
+                    "The name of a particular interface."
+                ::= { netifLanBaseEntry 3 }
+            
+            netifLanBaseIpv6Enable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable IPv6 on this LAN interface."
+                ::= { netifLanBaseEntry 4 }
+            
+            netifLanBaseIgmpProxyEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable the IGMP proxy on this LAN interface."
+                ::= { netifLanBaseEntry 5 }
+            
+            netifLanBaseMldProxyEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable the MLD proxy on this LAN interface."
+                ::= { netifLanBaseEntry 6 }
+
+            netifLanBaseIpv6RaDnsEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable the manually configured DNS(static 
+                     DNS) for Router Advertisement on this interface.
+                     The static DNS has priority over the one obtained via
+                     DHCP on WAN interface."
+                ::= { netifLanBaseEntry 7 }
+
+        -- LAN Interface Address Table(child table of LAN interface Table)
+        netifLanAddrTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifLanAddrEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "This table includes all the addresses that configured on 
+                 this interface."
+            ::= { netifLan 2 }
+            
+            netifLanAddrEntry OBJECT-TYPE
+                SYNTAX      NetifLanAddrEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the netifLanAddrTable"
+                INDEX       { netifLanBaseType,
+                              netifLanBaseIndex, 
+                              netifLanAddrTitle,
+                              netifLanAddrIndex }
+                ::= { netifLanAddrTable 1 }
+
+            NetifLanAddrEntry ::=
+                SEQUENCE {
+                    netifLanAddrTitle           LanAddrTitle,
+                    netifLanAddrIndex           Integer32,
+                    netifLanAddrType            InetAddressType,
+                    netifLanAddrValue           InetAddress,
+                    netifLanAddrPrefixLength    InetAddressPrefixLength
+                }
+            
+            netifLanAddrTitle OBJECT-TYPE
+                SYNTAX      LanAddrTitle
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Titile of the address, check the TC of LanAddrTitle 
+                    for details."
+                ::= { netifLanAddrEntry 1 }
+
+            netifLanAddrIndex OBJECT-TYPE
+                SYNTAX      Integer32
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Index of addresses with the same title."
+                ::= { netifLanAddrEntry 2 }
+
+            netifLanAddrType OBJECT-TYPE
+                SYNTAX      InetAddressType
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Internet address type of this entry."
+                ::= { netifLanAddrEntry 3 }
+
+            netifLanAddrValue OBJECT-TYPE
+                SYNTAX      InetAddress
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "The value of Internet address."
+                ::= { netifLanAddrEntry 4 }
+
+            netifLanAddrPrefixLength OBJECT-TYPE
+                SYNTAX      InetAddressPrefixLength
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "This value identifies the Internet network address 
+                    prefix.  "
+                ::= { netifLanAddrEntry 5 }
+
+        -- LAN DHCPv4 Server Table(extension to the LAN interface Table)
+        netifLanDhcpv4ServerTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifLanDhcpv4ServerEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "LAN interface DHCPv4 Server table"
+            ::= { netifLan 3 }
+
+            netifLanDhcpv4ServerEntry OBJECT-TYPE
+                SYNTAX      NetifLanDhcpv4ServerEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the DHCPv4 Server Table"
+                AUGMENTS    { netifLanBaseEntry }
+                ::= { netifLanDhcpv4ServerTable 1 }
+    
+            NetifLanDhcpv4ServerEntry ::= 
+                SEQUENCE {
+                    netifLanDhcpv4ServerEnable      TruthValue,
+                    netifLanDhcpv4ServerPoolStart   IpAddress,
+                    netifLanDhcpv4ServerPoolEnd     IpAddress,
+                    netifLanDhcpv4ServerLeasetime   Unsigned32
+                }
+    
+            netifLanDhcpv4ServerEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/disable the DHCPv4 Server on the particular 
+                    LAN interface."
+                ::= { netifLanDhcpv4ServerEntry 1 }
+    
+            netifLanDhcpv4ServerPoolStart OBJECT-TYPE
+                SYNTAX      IpAddress
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Start IP address of the DHCPv4 pool"
+                ::= { netifLanDhcpv4ServerEntry 2 }
+    
+            netifLanDhcpv4ServerPoolEnd OBJECT-TYPE
+                SYNTAX      IpAddress
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "End IP address of the DHCPv4 Pool"
+                ::= { netifLanDhcpv4ServerEntry 3 }
+    
+            netifLanDhcpv4ServerLeasetime OBJECT-TYPE
+                SYNTAX      Unsigned32(180..4294967295)
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Lease time in seconds"
+                ::= { netifLanDhcpv4ServerEntry 4 }
+
+        -- IPv6 Router Advertisement Table(extension to the LAN Base Table)
+        netifLanIpv6RaTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifLanIpv6RaEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "LAN interface IPv6 RA Table"
+            ::= { netifLan 4 }
+
+            netifLanIpv6RaEntry OBJECT-TYPE
+                SYNTAX      NetifLanIpv6RaEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the IPv6 RA Table"
+                AUGMENTS    { netifLanBaseEntry }
+                ::= { netifLanIpv6RaTable 1 }
+    
+            NetifLanIpv6RaEntry ::= 
+                SEQUENCE {
+                    netifLanIpv6RaEnable            TruthValue,
+                    netifLanIpv6RaAdvIntvlMax       Unsigned32,
+                    netifLanIpv6RaAdvIntvlMin       Unsigned32,
+                    netifLanIpv6RaManaged           TruthValue,
+                    netifLanIpv6RaOtherConfig       TruthValue,
+                    netifLanIpv6RaLinkMTU           Unsigned32,
+                    netifLanIpv6RaHopLimit          Unsigned32
+                }
+
+            netifLanIpv6RaEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable Router Advertisement on this interface
+                    ."
+                ::= { netifLanIpv6RaEntry 1 }
+
+            netifLanIpv6RaAdvIntvlMax OBJECT-TYPE
+                SYNTAX      Unsigned32(4..1800)
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "The maximum time in seconds allowed between sending 
+                     unsolicited multicast router advertisements from the 
+                     interface, in seconds. "
+                ::= { netifLanIpv6RaEntry 2 }
+
+            netifLanIpv6RaAdvIntvlMin OBJECT-TYPE
+                SYNTAX      Unsigned32(3..1350)
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "The minimum time in seconds allowed between sending 
+                     unsolicited multicast router advertisements from the 
+                     interface. The maximun value must be no greater than 
+                     0.75 * netifLanIpv6RaAdvIntvlMax. "
+                ::= { netifLanIpv6RaEntry 3 }
+
+            netifLanIpv6RaManaged OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "If true, hosts use the administered (stateful) 
+                    protocol for address autoconfiguration in addition to 
+                    any addresses autoconfigured using stateless address 
+                    autoconfiguration."
+                ::= { netifLanIpv6RaEntry 4 }
+
+            netifLanIpv6RaOtherConfig OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "If true, hosts use the administered (stateful) 
+                    protocol for autoconfiguration of other (non-address) 
+                    information. "
+                ::= { netifLanIpv6RaEntry 5 }
+
+            netifLanIpv6RaLinkMTU OBJECT-TYPE
+                SYNTAX      Unsigned32(1280..1800)
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "The MTU option is used in router advertisement 
+                    messages to insure that all nodes on a link use the 
+                    same MTU value in those cases where the link MTU is 
+                    not well known.  If specified, i.e. not 0, must not be 
+                    smaller than 1280 and not greater than the maximum MTU 
+                    allowed for this link (e.g. ethernet has a maximum MTU 
+                    of 1500. See RFC 4864). "
+                ::= { netifLanIpv6RaEntry 6 }
+
+            netifLanIpv6RaHopLimit OBJECT-TYPE
+                SYNTAX      Unsigned32(1..256)
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "The default value that should be placed in the Hop 
+                    Count field of the IP header for outgoing (unicast) IP 
+                    packets.  The value should be set to the current 
+                    diameter of the Internet. The value zero means 
+                    unspecified (by this router) ."
+                ::= { netifLanIpv6RaEntry 7 }
+
+        -- IPv6 Router Advertisement Manually Configured Prefix(extension)
+        netifLanIpv6RaPrefixTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifLanIpv6RaPrefixEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "LAN interface IPv6 RA Static Prefix Table"
+            ::= { netifLan 5 }
+
+            netifLanIpv6RaPrefixEntry OBJECT-TYPE
+                SYNTAX      NetifLanIpv6RaPrefixEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the IPv6 RA Static Prefix Table"
+                AUGMENTS    { netifLanBaseEntry }
+                ::= { netifLanIpv6RaPrefixTable 1 }
+    
+            NetifLanIpv6RaPrefixEntry ::= 
+                SEQUENCE {
+                    netifLanIpv6RaPrefixEnable     TruthValue,
+                    netifLanIpv6RaPrefixType       InetAddressType,
+                    netifLanIpv6RaPrefixAddr       InetAddress,
+                    netifLanIpv6RaPrefixLength     InetAddressPrefixLength,
+                    netifLanIpv6RaPrefixOnlink     TruthValue,
+                    netifLanIpv6RaPrefixAuto       TruthValue,
+                    netifLanIpv6RaPrefixVLT        Unsigned32,
+                    netifLanIpv6RaPrefixPLT        Unsigned32
+                }
+
+            netifLanIpv6RaPrefixEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable the manually configured prefix(static 
+                     prefix) for Router Advertisement on this interface.
+                     The static prefix has priority over the one obtained 
+                     via IA_PD."
+                ::= { netifLanIpv6RaPrefixEntry 1 }
+            
+            netifLanIpv6RaPrefixType OBJECT-TYPE
+                SYNTAX      InetAddressType
+                MAX-ACCESS  read-only -- always ipv6
+                STATUS      current
+                DESCRIPTION
+                    "Internet address type of the prefix. Must be ipv6 here
+                    ."
+                ::= { netifLanIpv6RaPrefixEntry 2 }
+
+            netifLanIpv6RaPrefixAddr OBJECT-TYPE
+                SYNTAX      InetAddress
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Internet address value of the prefix."
+                ::= { netifLanIpv6RaPrefixEntry 3 }
+            
+            netifLanIpv6RaPrefixLength OBJECT-TYPE
+                SYNTAX      InetAddressPrefixLength
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Prefix length."
+                ::= { netifLanIpv6RaPrefixEntry 4 }
+
+            netifLanIpv6RaPrefixOnlink OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "If true, indicates that this prefix can be used for 
+                    on-link determination. If false, the advertisement
+                    makes no statement about on-link or off-link properties
+                    of the prefix. "
+                ::= { netifLanIpv6RaPrefixEntry 5 }
+
+            netifLanIpv6RaPrefixAuto OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "If true, indicates that this prefix can be used for 
+                    autonomous address configuration as specified in RFC 
+                    4862."
+                ::= { netifLanIpv6RaPrefixEntry 6 }
+
+            netifLanIpv6RaPrefixVLT OBJECT-TYPE
+                SYNTAX      Unsigned32
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "The length of time in seconds that the prefix is valid
+                    for the purpose of on-link determination. Check RFC4862
+                    for more details."
+                ::= { netifLanIpv6RaPrefixEntry 7 }
+
+            netifLanIpv6RaPrefixPLT OBJECT-TYPE
+                SYNTAX      Unsigned32
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "The length of time in seconds that addresses generated
+                    from the prefix via stateless address autoconfiguration
+                    remain preferred. Check RFC4862 for more details. "
+                ::= { netifLanIpv6RaPrefixEntry 8 }
+
+        -- IPv6 Router Advertisement manually configured DNS
+
+            netifLanIpv6RaDnsTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF NetifLanIpv6RaDnsEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "This table is used to configure the DNS advertised on 
+                    LAN interface."
+            ::= { netifLan 6 }
+            
+                netifLanIpv6RaDnsEntry OBJECT-TYPE
+                    SYNTAX      NetifLanIpv6RaDnsEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the netifLanIpv6RaDnsTable."
+                    INDEX       { netifLanBaseType,
+                                  netifLanBaseIndex,
+                                  netifLanIpv6RaDnsIndex }
+                    ::= { netifLanIpv6RaDnsTable 1 }
+    
+                NetifLanIpv6RaDnsEntry ::=
+                    SEQUENCE {
+                        netifLanIpv6RaDnsIndex      Integer32,
+                        netifLanIpv6RaDnsAddrType   InetAddressType,
+                        netifLanIpv6RaDnsAddrValue  InetAddress
+                    }
+    
+                netifLanIpv6RaDnsIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "The index of the manually configured DNS."
+                    ::= { netifLanIpv6RaDnsEntry 1 }
+                
+                netifLanIpv6RaDnsAddrType OBJECT-TYPE
+                    SYNTAX      InetAddressType
+                    MAX-ACCESS  read-only -- always ipv6
+                    STATUS      current
+                    DESCRIPTION
+                        "Internet address type of the manually configured 
+                        DNS."
+                    ::= { netifLanIpv6RaDnsEntry 2 }
+    
+                netifLanIpv6RaDnsAddrValue OBJECT-TYPE
+                    SYNTAX      InetAddress
+                    MAX-ACCESS  read-write
+                    STATUS      current
+                    DESCRIPTION
+                        "Internet address value of the manually configured 
+                        DNS."
+                    ::= { netifLanIpv6RaDnsEntry 3 }
+
+        -- LAN DHCPv6 Server Table(extension to the LAN interface Table)
+        netifLanDhcpv6ServerTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifLanDhcpv6ServerEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "LAN interface DHCPv6 Server table"
+            ::= { netifLan 7 }
+
+            netifLanDhcpv6ServerEntry OBJECT-TYPE
+                SYNTAX      NetifLanDhcpv6ServerEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the DHCPv6 Server Table"
+                AUGMENTS    { netifLanBaseEntry }
+                ::= { netifLanDhcpv6ServerTable 1 }
+    
+            NetifLanDhcpv6ServerEntry ::= 
+                SEQUENCE {
+                    netifLanDhcpv6ServerEnable      TruthValue,
+                    netifLanDhcpv6ServerRapidCommit TruthValue
+                }
+    
+            netifLanDhcpv6ServerEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/disable the DHCPv6 Server on the particular LAN
+                    interface."
+                ::= { netifLanDhcpv6ServerEntry 1 }
+            
+             netifLanDhcpv6ServerRapidCommit OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "If true, the DHCPv6 server will handle Rapid-Commit 
+                    option ."
+                ::= { netifLanDhcpv6ServerEntry 2 }
+        
+        -- IPv4 MAC-IP binding (LAN child table)
+        netifLanMacIpBindTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifLanMacIpBindEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "This table is used to configure the reserved IP address
+                for particular MAC address in DHCPv4 pool."
+            ::= { netifLan 8 }
+        
+            netifLanMacIpBindEntry OBJECT-TYPE
+                SYNTAX      NetifLanMacIpBindEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the netifLanMacIpBindTable."
+                INDEX       { netifLanBaseType,
+                              netifLanBaseIndex,
+                              netifLanMacIpBindIndex }
+                ::= { netifLanMacIpBindTable 1 }
+    
+            NetifLanMacIpBindEntry ::=
+                SEQUENCE {
+                    netifLanMacIpBindIndex          Integer32,
+                    netifLanMacIpBindRowStatus      RowStatus,
+                    netifLanMacIpBindDescription    DisplayString,
+                    netifLanMacIpBindHostName       DisplayString,
+                    netifLanMacIpBindMacAddress     MacAddress,
+                    netifLanMacIpBindIpAddress      IpAddress
+                }
+    
+            netifLanMacIpBindIndex OBJECT-TYPE
+                SYNTAX      Integer32
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Index of the MAC-IP binding table."
+                ::= { netifLanMacIpBindEntry 1 }
+    
+            netifLanMacIpBindRowStatus OBJECT-TYPE
+                SYNTAX      RowStatus
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "RowStatus used to manage the creation and deletion of 
+                    conceptual row. "
+                ::= { netifLanMacIpBindEntry 2 }
+    
+            netifLanMacIpBindDescription OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "Description of this MAC-IP binding entry."
+                DEFVAL      { "New Mac-IP binding" }
+                ::= { netifLanMacIpBindEntry 3 }
+                
+            netifLanMacIpBindHostName   OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "Name of the host with the MAC address."
+                DEFVAL      { "Unknow Host" }
+                ::= { netifLanMacIpBindEntry 4 }
+    
+            netifLanMacIpBindMacAddress OBJECT-TYPE
+                SYNTAX      MacAddress
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "MAC address used to binding."
+                ::= { netifLanMacIpBindEntry 5 }
+    
+            netifLanMacIpBindIpAddress OBJECT-TYPE
+                SYNTAX      IpAddress
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "IPv4 address used to binding."
+                ::= { netifLanMacIpBindEntry 6 }
+
+        -- LAN Rip Table(extension to the LAN interface Table)
+        netifLanRipTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifLanRipEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "LAN interface Rip table"
+            ::= { netifLan 9 }
+
+            netifLanRipEntry OBJECT-TYPE
+                SYNTAX      NetifLanRipEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the Rip Table"
+                AUGMENTS    { netifLanBaseEntry }
+                ::= { netifLanRipTable 1 }
+    
+            NetifLanRipEntry ::= 
+                SEQUENCE {
+                    netifLanRipSend          INTEGER,
+                    netifLanRipReceive       INTEGER,
+                    netifLanRipAuthType      INTEGER,
+                    netifLanRipAuthKey       OCTET STRING,
+                    netifLanRipAuthId        INTEGER
+                }
+            netifLanRipSend OBJECT-TYPE
+                SYNTAX   INTEGER {
+                            rip1 (1),
+                            rip2 (2),
+                            rip1orRip2 (3),
+                            doNotSend (4)
+                         }
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                   "What the router sends on this interface.
+                   ripVersion1 implies sending RIP updates compliant
+                   with  RFC  1058.   ripVersion2 implies
+                   multicasting RIP-2 updates.  rip1orRip2 indicates
+                   the use of  RIP on a This interface RIP-1 and RIP-2
+                   updates."
+               DEFVAL { doNotSend }
+               ::= { netifLanRipEntry 1 }
+
+            netifLanRipReceive OBJECT-TYPE
+                SYNTAX   INTEGER {
+                            rip1 (1),
+                            rip2 (2),
+                            rip1orRip2 (3),
+                            doNotRecieve (4)
+                         }
+                MAX-ACCESS   read-create
+                STATUS   current
+                DESCRIPTION
+                   "This indicates which version of RIP updates
+                   are to be accepted."
+               DEFVAL { doNotRecieve }
+               ::= { netifLanRipEntry 2 }
+
+            netifLanRipAuthType OBJECT-TYPE
+                SYNTAX   INTEGER {
+                            noAuthentication (1),
+                            simplePassword (2),
+                            md5 (3)
+                         }
+                MAX-ACCESS   read-create
+                STATUS   current
+                DESCRIPTION
+                   "The type of Authentication used on this
+                   interface."
+               DEFVAL { noAuthentication }
+               ::= { netifLanRipEntry 3 }
+
+           netifLanRipAuthKey OBJECT-TYPE
+                SYNTAX      OCTET STRING (SIZE(0..16))
+                MAX-ACCESS   read-create
+                STATUS   current
+                DESCRIPTION
+                   "The value to be used as the Authentication Key
+                   whenever the corresponding instance of
+                   netifLanRipAuthType has a value other than
+                   noAuthentication.  A modification of the corresponding
+                   instance of netifLanRipAuthType does not modify
+                   the rip2IfConfAuthKey value.  If a string shorter
+                   than 16 octets is supplied, it will be left-
+                   justified and padded to 16 octets, on the right,
+                   with nulls (0x00).
+
+                   Reading this object always results in an  OCTET
+                   STRING of length zero; authentication may not
+                   be bypassed by reading the MIB object."
+               DEFVAL { ''h }
+               ::= { netifLanRipEntry 4 }
+
+            netifLanRipAuthId OBJECT-TYPE
+                SYNTAX      INTEGER
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                   "The value to be used as the Authentication Id
+                   whenever the corresponding instance of
+                   netifLanRipAuthType is md5."
+               ::= { netifLanRipEntry 5 }
+
+         -- LAN Ripng Table(extension to the LAN interface Table)
+        netifLanRipngTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifLanRipngEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "LAN interface Ripng table"
+            ::= { netifLan 10 }
+
+            netifLanRipngEntry OBJECT-TYPE
+                SYNTAX      NetifLanRipngEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the Ripng Table"
+                AUGMENTS    { netifLanBaseEntry }
+                ::= { netifLanRipngTable 1 }
+    
+            NetifLanRipngEntry ::= 
+                SEQUENCE {
+                    netifLanRipngSendEnable     TruthValue,
+                    netifLanRipngReceiveEnable  TruthValue
+                }
+
+            netifLanRipngSendEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable Ripng Send on this LAN interface."
+               ::= { netifLanRipngEntry 1 }
+
+            netifLanRipngReceiveEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                   "Enable/Disable Ripng Receive on this LAN interface."
+               ::= { netifLanRipngEntry 2 }
+
+
+    -- WAN interfaces
+    netifWan    OBJECT IDENTIFIER  ::= { hitronRgNi 2 }
+        
+        -- Basic WAN interface Table
+        netifWanBaseTable  OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifWanBaseEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "This table includes all the addresses that configured on 
+                 this interface."
+            ::= { netifWan 1 }
+            
+            netifWanBaseEntry OBJECT-TYPE
+                SYNTAX      NetifWanBaseEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the netifWanDhcp6Table"
+                INDEX       { netifWanBaseIndex }
+                ::= { netifWanBaseTable 1 }
+
+            NetifWanBaseEntry ::=
+                SEQUENCE {
+                    netifWanBaseIndex                   Integer32,
+                    netifWanBaseName                    DisplayString,
+                    netifWanBaseInitMode                INTEGER,
+                    netifWanBaseIp4Status               INTEGER,
+                    netifWanBaseIp6Status               INTEGER,
+                    netifWanBaseIp6DefaultGw            DisplayString
+                } 
+
+            netifWanBaseIndex OBJECT-TYPE
+                SYNTAX      Integer32
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Index value based on the RG model, the interface 
+                    identified by a particular value of this index is not 
+                    the same as identified by the same value of ifIndex."
+                ::= { netifWanBaseEntry 1 }
+      
+            netifWanBaseName OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Interface Name."
+                ::= { netifWanBaseEntry 2 }
+      
+            netifWanBaseInitMode OBJECT-TYPE
+                SYNTAX      INTEGER {
+                                disable(1),
+                                dual(2),
+                                alter(3),
+                                ipv6(4),
+                                ipv4(5)
+                            }
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Router Initialization IP Mode"
+                ::= { netifWanBaseEntry 3 }
+
+            netifWanBaseIp4Status OBJECT-TYPE
+                SYNTAX      INTEGER {
+                                start(1),
+                                dhcp(2),
+                                dhcpfailed(3),
+                                online(4),
+                                sixrd(5),
+                                notstart(6)
+                            }
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Erouter Ipv4 Status"
+                ::= { netifWanBaseEntry 4 }
+
+            netifWanBaseIp6Status OBJECT-TYPE
+                SYNTAX      INTEGER {
+                                start(1),
+                                dhcp(2),
+                                dhcpfailed(3),
+                                online(4),
+                                dslite(5),
+                                notstart(6)
+                            }
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Erouter Ipv6 Status"
+                ::= { netifWanBaseEntry 5 }
+
+            netifWanBaseIp6DefaultGw OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "IPv6 router obtained from RA"
+                ::= { netifWanBaseEntry 6 }
+
+ 
+        -- WAN interface address table(child)
+        netifWanAddrTable  OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifWanAddrEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "This table includes all the addresses that configured on 
+                 this interface."
+            ::= { netifWan 2 }
+            
+            netifWanAddrEntry OBJECT-TYPE
+                SYNTAX      NetifWanAddrEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the netifWanDhcp6Table"
+                INDEX       { netifWanBaseIndex,
+                              netifWanAddrTitle }
+                ::= { netifWanAddrTable 1 }
+
+            NetifWanAddrEntry ::=
+                SEQUENCE {
+                    netifWanAddrTitle                   WanAddrTitle,
+                    netifWanAddrType                    InetAddressType,
+                    netifWanAddrValue                   InetAddress,
+                    netifWanAddrPrefixLength            InetAddressPrefixLength
+                } 
+
+            netifWanAddrTitle OBJECT-TYPE
+                SYNTAX      WanAddrTitle
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Titile of the address, check the TC of WanAddrTitle 
+                    for details."
+                ::= { netifWanAddrEntry 1 }
+
+            netifWanAddrType OBJECT-TYPE
+                SYNTAX      InetAddressType
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Internet address type of this entry."
+                ::= { netifWanAddrEntry 2 }
+
+            netifWanAddrValue OBJECT-TYPE
+                SYNTAX      InetAddress
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "The value of Internet address."
+                ::= { netifWanAddrEntry 3 }
+
+            netifWanAddrPrefixLength OBJECT-TYPE
+                SYNTAX      InetAddressPrefixLength
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "This value identifies the Wan Interface network address 
+                    prefix.  "
+                ::= { netifWanAddrEntry 4 }
+
+        -- WAN interface DHCPv4 information(extension)(read-only)
+        netifWanDhcp4Table OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifWanDhcp4Entry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "This table includes all the addresses that configured on 
+                 this interface."
+            ::= { netifWan 3 }
+            
+            netifWanDhcp4Entry OBJECT-TYPE
+                SYNTAX      NetifWanDhcp4Entry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the netifWanDhcp4Table"
+                AUGMENTS    { netifWanBaseEntry }
+                ::= { netifWanDhcp4Table 1 }
+
+            NetifWanDhcp4Entry ::=
+                SEQUENCE {
+                    netifWanDhcp4DhcpServer             IpAddress,
+                    netifWanDhcp4Address                IpAddress,
+                    netifWanDhcp4Router                 IpAddress,
+                    netifWanDhcp4Dns1                   IpAddress,
+                    netifWanDhcp4Dns2                   IpAddress,
+                    netifWanDhcp4LogServer              IpAddress,
+                    netifWanDhcp4HostName               DisplayString,
+                    netifWanDhcp4DomainName             DisplayString,
+                    netifWanDhcp4SixRdPrefixType        InetAddressType,
+                    netifWanDhcp4SixRdPrefixValue       InetAddress,
+                    netifWanDhcp4SixRdPrefixLen         InetAddressPrefixLength,
+                    netifWanDhcp4SixRdIp4MaskLen        Unsigned32,
+                    netifWanDhcp4SixRdBrAddr            DisplayString
+                } 
+
+            netifWanDhcp4DhcpServer OBJECT-TYPE
+                SYNTAX      IpAddress
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "DHCP Server Address."
+                ::= { netifWanDhcp4Entry 1 }
+
+            netifWanDhcp4Address OBJECT-TYPE
+                SYNTAX      IpAddress
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Wan Interface Address Got From DHCP Server."
+                ::= { netifWanDhcp4Entry 2 }
+
+            netifWanDhcp4Router OBJECT-TYPE
+                SYNTAX      IpAddress
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Wan Interface's Router Got From DHCP Server."
+                ::= { netifWanDhcp4Entry 3 }
+
+            netifWanDhcp4Dns1 OBJECT-TYPE
+                SYNTAX      IpAddress
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "The First Dns Server of Wan Interface Got From DHCP Server."
+                ::= { netifWanDhcp4Entry 4 }
+
+            netifWanDhcp4Dns2 OBJECT-TYPE
+                SYNTAX      IpAddress
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "The Second Dns Server of Wan Interface Got From DHCP Server."
+                ::= { netifWanDhcp4Entry 5 }
+
+            netifWanDhcp4LogServer OBJECT-TYPE
+                SYNTAX      IpAddress
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "The Log Server of Wan Interface Got From DHCP Server."
+                ::= { netifWanDhcp4Entry 6 }
+
+            netifWanDhcp4HostName OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "HostName of Wan Interface Got From DHCP Server."
+                ::= { netifWanDhcp4Entry 7 }
+
+            netifWanDhcp4DomainName OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Domain Name of Wan Interface Got From DHCP Server."
+                ::= { netifWanDhcp4Entry 8 }        
+
+            netifWanDhcp4SixRdPrefixType OBJECT-TYPE
+                SYNTAX     InetAddressType
+                MAX-ACCESS read-only -- always ipv4
+                STATUS     current
+                DESCRIPTION
+                    "The Type of SixRd prefix."
+                ::= { netifWanDhcp4Entry 9 }
+
+            netifWanDhcp4SixRdPrefixValue OBJECT-TYPE
+                SYNTAX     InetAddress
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The SixRdPprefix of This SixRd domain Got From DHCP Server."
+                ::= { netifWanDhcp4Entry 10 }
+            
+            netifWanDhcp4SixRdPrefixLen OBJECT-TYPE
+                SYNTAX     InetAddressPrefixLength
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The Length of SixRd prefix Got From DHCP Server."
+                ::= { netifWanDhcp4Entry 11 }
+
+            netifWanDhcp4SixRdIp4MaskLen OBJECT-TYPE
+                SYNTAX     Unsigned32 (0..32)
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The number of high-order bits that are
+                    identical across all CE IPv4 addresses within
+                    this SixRd domain."
+                ::= { netifWanDhcp4Entry 12 }
+
+            netifWanDhcp4SixRdBrAddr OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "The Border Relay Address of SixRd Got From DHCP Server."
+                ::= { netifWanDhcp4Entry 13 }
+
+        -- WAN interface DHCPv6 information(extension)(read-only)
+        netifWanDhcp6Table OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifWanDhcp6Entry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "This table includes all Dhcp Information that Got From
+                 Dhcpv6 Server."
+            ::= { netifWan 4 }
+            
+            netifWanDhcp6Entry OBJECT-TYPE
+                SYNTAX      NetifWanDhcp6Entry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the netifWanDhcp6Table"
+                AUGMENTS    { netifWanBaseEntry }
+
+                ::= { netifWanDhcp6Table 1 }
+
+            NetifWanDhcp6Entry ::=
+                SEQUENCE {
+                    netifWanDhcp6DhcpServer             DisplayString,
+                    netifWanDhcp6IaAddress              DisplayString,
+                    netifWanDhcp6IaPreferredTime        Unsigned32,
+                    netifWanDhcp6IaValidTime            Unsigned32,
+                    netifWanDhcp6PrefixAddress          DisplayString,
+                    netifWanDhcp6PrefixPreferredTime    Unsigned32,
+                    netifWanDhcp6PrefixValidTime        Unsigned32,
+                    netifWanDhcp6Dns1                   DisplayString,
+                    netifWanDhcp6Dns2                   DisplayString,
+                    netifWanDhcp6AftrName               DisplayString
+                } 
+
+            netifWanDhcp6DhcpServer OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "The Dhcpv6 Server "
+                ::= { netifWanDhcp6Entry 1 }
+
+            netifWanDhcp6IaAddress OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Erouter Ipv6 Address"
+                ::= { netifWanDhcp6Entry 2 }
+
+            netifWanDhcp6IaPreferredTime OBJECT-TYPE
+                SYNTAX     Unsigned32
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The Preferred Time of IA ADDRESS."
+                ::= { netifWanDhcp6Entry 3 }
+
+            netifWanDhcp6IaValidTime OBJECT-TYPE
+                SYNTAX     Unsigned32
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The Valid Time of IA ADDRESS."
+                ::= { netifWanDhcp6Entry 4 }
+
+            netifWanDhcp6PrefixAddress OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "The IA Prefix."
+                ::= { netifWanDhcp6Entry 5 }
+
+            netifWanDhcp6PrefixPreferredTime OBJECT-TYPE
+                SYNTAX     Unsigned32
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The Preferred Time of IA PREFIX."
+                ::= { netifWanDhcp6Entry 6}
+            
+            netifWanDhcp6PrefixValidTime OBJECT-TYPE
+                SYNTAX     Unsigned32
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The Valid Time of IA PREFIX."
+                ::= { netifWanDhcp6Entry 7 }
+
+            netifWanDhcp6Dns1 OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "The First Dns Server Got From DHCPv6 Server."
+                ::= { netifWanDhcp6Entry 8 }
+
+            netifWanDhcp6Dns2 OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "The Second Dns Server Got From DHCPv6 Server."
+                ::= { netifWanDhcp6Entry 9 }
+            
+            netifWanDhcp6AftrName OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "The Aftr Domain Name Got From DHCPv6 Server."
+                ::= { netifWanDhcp6Entry 10 }
+
+        netifWanDsLite OBJECT IDENTIFIER ::= { netifWan 5 }
+
+            netifWanDsLiteEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable the DsLite."
+                ::= { netifWanDsLite 1 }
+            
+            netifWanDsLiteDhcpPrecedence OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Dhcp prior or mib prior. TRUE:dhcp Prior"
+                ::= { netifWanDsLite 2 }
+
+            netifWanDsLiteAftrName OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Aftr Domain Name."
+                ::= { netifWanDsLite 3 }
+            
+            netifWanDsLiteTcpMssClampSize OBJECT-TYPE
+                SYNTAX      Unsigned32 (0|700..1420)
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Tcp MSS Clamp Size of Dslite."
+                ::= { netifWanDsLite 4 }
+
+            netifWanDsLiteStatus OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Is Dslite Running."
+                ::= { netifWanDsLite 5 }
+
+            netifWanDsLiteAftrAddr OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Current Using Aftr Address."
+                ::= { netifWanDsLite 6 }
+
+            netifWanDsLiteIfIndex OBJECT-TYPE
+                SYNTAX      Unsigned32
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Which Interface Dslite is running on. The interface identified by netifWanBaseIndex,
+                     this index is not the same as identified by the same value of ifIndex."
+                ::= { netifWanDsLite 7 }
+
+        netifWanSixRd OBJECT IDENTIFIER ::= { netifWan 6 }
+
+            netifWanSixRdEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable the SixRd."
+                ::= { netifWanSixRd 1 }
+            
+            netifWanSixRdDhcpPrecedence OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Dhcp prior or mib prior. TRUE:dhcp Prior"
+                ::= { netifWanSixRd 2 }
+
+            netifWanSixRdStatus OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Is SixRd Running."
+                ::= { netifWanSixRd 3 }
+
+            netifWanSixRdPrefixType OBJECT-TYPE
+                SYNTAX     InetAddressType
+                MAX-ACCESS read-only
+                STATUS     current
+                DESCRIPTION
+                    "The type of SixRd prefix."
+                ::= { netifWanSixRd 4 }
+
+            netifWanSixRdPrefixValue OBJECT-TYPE
+                SYNTAX     InetAddress
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The SixRd prefix of this SixRd domain."
+                ::= { netifWanSixRd 5 }
+
+            netifWanSixRdPrefixLen OBJECT-TYPE
+                SYNTAX     Unsigned32 (0..128)
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The length of SixRd prefix."
+                ::= { netifWanSixRd 6 }
+
+            netifWanSixRdIp4MaskLen OBJECT-TYPE
+                SYNTAX     Unsigned32 (0..32)
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The number of high-order bits that are
+                    identical across all CE IPv4 addresses within
+                    this SixRd domain."
+                ::= { netifWanSixRd 7 }
+
+            netifWanSixRdBrAddr OBJECT-TYPE
+                SYNTAX     IpAddress
+                MAX-ACCESS read-write
+                STATUS     current
+                DESCRIPTION
+                    "The Border Relay Address."
+                ::= { netifWanSixRd 8 }
+
+            netifWanSixRdTcpMssClampSize OBJECT-TYPE
+                SYNTAX      Unsigned32 (0|700..1420)
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Tcp MSS Clamp Size of SixRd."
+                ::= { netifWanSixRd 9 }
+
+            netifWanSixRdIfIndex OBJECT-TYPE
+                SYNTAX      Unsigned32
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Which Interface SixRd is running on, The interface identified by netifWanBaseIndex, 
+                    this index is not the same as identified by the same value of ifIndex."
+                ::= { netifWanSixRd 10 }
+
+        -- Wan Rip Table(extension to the Wan interface Table)
+        netifWanRipTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifWanRipEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "Wan interface Rip table"
+            ::= { netifWan 9 }
+
+            netifWanRipEntry OBJECT-TYPE
+                SYNTAX      NetifWanRipEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the Rip Table"
+                AUGMENTS    { netifWanBaseEntry }
+                ::= { netifWanRipTable 1 }
+    
+            NetifWanRipEntry ::= 
+                SEQUENCE {
+                    netifWanRipSend             INTEGER,
+                    netifWanRipReceive          INTEGER,
+                    netifWanRipDefaultMetric    INTEGER,
+                    netifWanRipAuthType         INTEGER,
+                    netifWanRipAuthKey          OCTET STRING,
+                    netifWanRipAuthId           INTEGER,
+                    netifWanRipUpdateInterval   Unsigned32
+                }
+            netifWanRipSend OBJECT-TYPE
+                SYNTAX   INTEGER {
+                            rip1 (1),
+                            rip2 (2),
+                            rip1orRip2 (3),
+                            doNotSend (4)
+                         }
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                   "What the router sends on this interface.
+                   ripVersion1 implies sending RIP updates compliant
+                   with  RFC 1058.   ripVersion2 implies
+                   multicasting RIP-2 updates.  rip1orRip2 indicates
+                   the use of  RIP on a This interface RIP-1 and RIP-2
+                   updates."
+               DEFVAL { doNotSend }
+               ::= { netifWanRipEntry 1 }
+
+            netifWanRipReceive OBJECT-TYPE
+                SYNTAX   INTEGER {
+                            rip1 (1),
+                            rip2 (2),
+                            rip1orRip2 (3),
+                            doNotRecieve (4)
+                         }
+                MAX-ACCESS   read-create
+                STATUS   current
+                DESCRIPTION
+                   "This indicates which version of RIP updates
+                   are to be accepted."
+               DEFVAL { doNotRecieve }
+               ::= { netifWanRipEntry 2 }
+
+            netifWanRipDefaultMetric OBJECT-TYPE
+                SYNTAX   INTEGER ( 0..15 )
+                MAX-ACCESS   read-create
+                STATUS   current
+                DESCRIPTION
+                   "This variable indicates the metric that is to
+                   be used for the default route entry in RIP updates
+                   originated on this interface."
+               ::= { netifWanRipEntry 3 }
+
+            netifWanRipAuthType OBJECT-TYPE
+                SYNTAX   INTEGER {
+                            noAuthentication (1),
+                            simplePassword (2),
+                            md5 (3)
+                         }
+                MAX-ACCESS   read-create
+                STATUS   current
+                DESCRIPTION
+                   "The type of Authentication used on this
+                   interface."
+               DEFVAL { noAuthentication }
+               ::= { netifWanRipEntry 4 }
+
+           netifWanRipAuthKey OBJECT-TYPE
+                SYNTAX      OCTET STRING (SIZE(0..16))
+                MAX-ACCESS   read-create
+                STATUS   current
+                DESCRIPTION
+                   "The value to be used as the Authentication Key
+                   whenever the corresponding instance of
+                   netifWanRipAuthType has a value other than
+                   noAuthentication.  A modification of the corresponding
+                   instance of netifWanRipAuthType does not modify
+                   the netifWanRipAuthKey value.  If a string shorter
+                   than 16 octets is supplied, it will be left-
+                   justified and padded to 16 octets, on the right,
+                   with nulls (0x00).
+
+                   Reading this object always results in an  OCTET
+                   STRING of length zero; authentication may not
+                   be bypassed by reading the MIB object."
+               DEFVAL { ''h }
+               ::= { netifWanRipEntry 5 }
+
+            netifWanRipAuthId OBJECT-TYPE
+                SYNTAX      INTEGER
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                   "The value to be used as the Authentication Id
+                   whenever the corresponding instance of
+                   netifWanRipAuthType is md5."
+               ::= { netifWanRipEntry 6 }
+
+            netifWanRipUpdateInterval OBJECT-TYPE
+                SYNTAX      Unsigned32
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                   "The value to be used as Rip Update Interval."
+               ::= { netifWanRipEntry 7 }
+
+         -- Wan Ripng Table(extension to the Wan interface Table)
+        netifWanRipngTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF NetifWanRipngEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "Wan interface Ripng table"
+            ::= { netifWan 10 }
+
+            netifWanRipngEntry OBJECT-TYPE
+                SYNTAX      NetifWanRipngEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Entry of the Ripng Table"
+                AUGMENTS    { netifWanBaseEntry }
+                ::= { netifWanRipngTable 1 }
+    
+            NetifWanRipngEntry ::= 
+                SEQUENCE {
+                    netifWanRipngSendEnable     TruthValue,
+                    netifWanRipngReceiveEnable  TruthValue
+                }
+
+            netifWanRipngSendEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable Ripng Send on this Wan interface."
+               ::= { netifWanRipngEntry 1 }
+
+            netifWanRipngReceiveEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                   "Enable/Disable Ripng Receive on this Wan interface."
+               ::= { netifWanRipngEntry 2 }
+
+
+        netifWanOspfTable OBJECT-TYPE
+            SYNTAX       SEQUENCE OF NetifWanOspfEntry
+            MAX-ACCESS   not-accessible
+            STATUS       current
+            DESCRIPTION
+               "Information about this router's virtual interfaces
+               that the OSPF Process is configured to carry on."
+            ::= { netifWan 11 }
+
+            netifWanOspfEntry OBJECT-TYPE
+                SYNTAX       NetifWanOspfEntry
+                MAX-ACCESS   not-accessible
+                STATUS       current
+                DESCRIPTION
+                  "Information about a single virtual interface.
+
+                  Information in this table is persistent and when this object
+                  is written the entity SHOULD save the change to non-volatile
+                  storage."
+
+               AUGMENTS    { netifWanBaseEntry }
+               ::= { netifWanOspfTable 1 }
+
+            NetifWanOspfEntry ::=
+                SEQUENCE {
+                    netifWanOspfAreaId          IpAddress,
+                    netifWanOspfRtrDeadInterval Unsigned32,
+                    netifWanOspfAuthKey         OCTET STRING,
+                    netifWanOspfAuthType        INTEGER,
+                    netifWanOspfAuthId          INTEGER,
+                    netifWanOspfCost            INTEGER
+                  }
+
+            netifWanOspfAreaId OBJECT-TYPE
+                SYNTAX       IpAddress
+                MAX-ACCESS   read-only 
+                STATUS       current
+                DESCRIPTION
+                   "The transit area that the virtual link
+                   traverses.  By definition, this is not 0.0.0.0."
+                ::= { netifWanOspfEntry 1 }
+
+            netifWanOspfRtrDeadInterval OBJECT-TYPE
+
+                SYNTAX       Unsigned32
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION
+                    "The number of seconds that a router's Hello
+                    packets have not been seen before its
+                    neighbors declare the router down.  This should be
+                    some multiple of the Hello interval.  This
+                    value must be the same for the virtual neighbor."
+                DEFVAL { 60 }
+                ::= { netifWanOspfEntry 2 }
+
+
+            netifWanOspfAuthKey OBJECT-TYPE
+                SYNTAX       OCTET STRING (SIZE(0..256))
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION
+                  "The cleartext password used as an OSPF
+                  authentication key when simplePassword security
+                  is enabled.  This object does not access any OSPF
+                  cryptogaphic (e.g., MD5) authentication key under
+                  any circumstance.
+
+                  If the key length is shorter than 8 octets, the
+                  agent will left adjust and zero fill to 8 octets.
+
+                  Unauthenticated interfaces need no authentication
+                  key, and simple password authentication cannot use
+                  a key of more than 8 octets.
+
+                  Note that the use of simplePassword authentication
+                  is NOT recommended when there is concern regarding
+                  attack upon the OSPF system.  SimplePassword
+                  authentication is only sufficient to protect against
+                  accidental misconfigurations because it re-uses
+                  cleartext passwords.  [RFC1704]
+
+                  When read, ospfIfAuthKey always returns an octet
+                  string of length zero."
+               DEFVAL { '0000000000000000'H } -- 0.0.0.0.0.0.0.0
+               ::= { netifWanOspfEntry 3 }
+
+
+            netifWanOspfAuthType OBJECT-TYPE
+                SYNTAX  INTEGER {
+                               none (0),
+                               simplePassword (1),
+                               md5 (2)
+                            }   
+               MAX-ACCESS   read-create
+               STATUS       current
+               DESCRIPTION
+                  "The authentication type specified for a virtual interface."
+               DEFVAL { none } 
+               ::= { netifWanOspfEntry 4 }
+
+            netifWanOspfAuthId OBJECT-TYPE
+                SYNTAX       INTEGER
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION
+                  "The authentication Id specified for a virtual interface."
+                ::= { netifWanOspfEntry 5 }
+
+            netifWanOspfCost OBJECT-TYPE
+                SYNTAX       INTEGER
+                MAX-ACCESS   read-create
+                STATUS       current
+                DESCRIPTION
+                  "The Cost specified for a virtual interface."
+                ::= { netifWanOspfEntry 6 }
+                        
+    netifCommit    OBJECT IDENTIFIER  ::= { hitronRgNi 4 }        
+        netifCommitAll  OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Commit all RgNi settings."
+            ::= { netifCommit 1 }
+  
+END

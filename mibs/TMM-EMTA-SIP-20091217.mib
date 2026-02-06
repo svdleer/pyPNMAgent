@@ -1,0 +1,971 @@
+TMM-EMTA-SIP-MIB DEFINITIONS ::= BEGIN          
+IMPORTS
+        MODULE-IDENTITY, 
+        OBJECT-TYPE,enterprises, 
+        Integer32
+                FROM SNMPv2-SMI
+        ifIndex
+                FROM IF-MIB
+        SnmpAdminString 
+                FROM SNMP-FRAMEWORK-MIB
+        InetPortNumber
+                FROM INET-ADDRESS-MIB;
+        
+
+thomson       OBJECT IDENTIFIER ::= { enterprises 2863 }
+tmmVoip       OBJECT IDENTIFIER ::= { thomson 78 }
+tmmMta        OBJECT IDENTIFIER ::= { tmmVoip 3 }
+                
+tmmEmtaSip   MODULE-IDENTITY
+        LAST-UPDATED    "0912170000Z"  -- 2009/12/17
+        ORGANIZATION    "Thomson"
+        CONTACT-INFO    "Eric Cren
+        			Postal: Thomson
+        					1 avenue Belle-Fontaine
+        					CS17616 
+        					35576 Cesson-Sign       					FRANCE
+        			Phone: +33 2 99 27 37 05
+        			E-mail: eric.cren@thomson.net"
+        DESCRIPTION
+            "Controls the behavior of SIP Embedded MTA fuctions.
+             Contains extra parameters on top of tmmMta tree
+             needed for SIP device to function properly.
+             This MIB is active only at the MTA IP address.
+             Can be part of MTA configuration file."
+        ::= { tmmMta 4 }
+
+TmmMtaCodecType ::= TEXTUAL-CONVENTION  
+       STATUS       current  
+       DESCRIPTION    
+           "Codec types mapping."
+       SYNTAX INTEGER { 
+			pcmu     (0),  -- G.711 u-law - 64 kbps
+			pcma     (1),  -- G.711 A-law - 64 kbps
+			g7231    (2),  -- G.723.1
+			g7231A   (3),  -- G.723.1 Annex A
+			g726-16  (4),  -- G.726 16kbps
+			g726-24  (5),  -- G.726 24kbps
+			g726-32  (6),  -- G.726 32kbps
+			g726-40  (7),  -- G.726 40kbps
+			g728     (8),  -- G.728
+			g729     (9),  -- G.729
+			g729B    (10), -- G.729 Annex B
+			g729A    (11), -- G.729 Annex A
+			g729AB   (12), -- G.729 Annex A Annex B
+			g729E    (13), -- G.729 Annex E
+			lpcm-128 (14), -- Linear PCM Narrowband - 128 kbps
+			bv16     (15), -- BroadVoice Narrowband - 16 kbps
+			bv32     (16), -- BroadVoice Wideband - 32 kbps
+			pcmu-WB  (17), -- G.711 u-law Wideband - 128 kbps
+			pcma-WB  (18), -- G.711 A-law Wideband - 128 kbps
+			lpcm-256 (19), -- Linear PCM Wideband - 256 kbps
+			t38      (20)  -- T.38
+       }     
+
+tmmEmtaSipEndPointTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF TmmEmtaSipEndPointEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       "This table describes the MTA EndPoint
+        Volume configuration. "
+   ::=  { tmmEmtaSip 1 }
+
+tmmEmtaSipEndPointEntry  OBJECT-TYPE
+    SYNTAX        TmmEmtaSipEndPointEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        " List of attributes for a single MTA endpoint interface."
+    INDEX { ifIndex }
+    ::= { tmmEmtaSipEndPointTable 1 }
+
+TmmEmtaSipEndPointEntry  ::= SEQUENCE {
+    tmmEmtaSipEndPointProxyAddress          SnmpAdminString,
+    tmmEmtaSipEndPointProxyPortRemote       InetPortNumber,
+    tmmEmtaSipEndPointProxyUsername         SnmpAdminString,
+    tmmEmtaSipEndPointProxyPassword         SnmpAdminString,
+    tmmEmtaSipEndPointProxyDisplayName      SnmpAdminString,
+    tmmEmtaSipEndPointRegistrarAddress      SnmpAdminString,
+    tmmEmtaSipEndPointRegistrarPortRemote   InetPortNumber,   
+    tmmEmtaSipEndPointRegistrationTimeout	INTEGER,
+    tmmEmtaSipEndPointCallerNameDisplay		INTEGER
+    }             
+    
+tmmEmtaSipEndPointProxyAddress OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines FQDN or IP of SIP Proxy.
+         This is a mandatory object for endpoints to provision.
+         Overwrites tmmEmtaSipDeviceProxyAddress for specific endpoint."
+    ::= { tmmEmtaSipEndPointEntry 1 }
+
+tmmEmtaSipEndPointProxyPortRemote OBJECT-TYPE
+    SYNTAX InetPortNumber
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines UDP destination port for messages sent to SIP Proxy"
+    DEFVAL { 5060 }
+    ::= { tmmEmtaSipEndPointEntry 2 }
+    
+tmmEmtaSipEndPointProxyUsername OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines username for SIP Proxy registration.
+         This is equal to phone number.
+         This is a mandatory object for endpoint to provision."
+    ::= { tmmEmtaSipEndPointEntry 3 }
+
+tmmEmtaSipEndPointProxyPassword OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines password for SIP Proxy registration."
+    ::= { tmmEmtaSipEndPointEntry 4 }
+
+
+tmmEmtaSipEndPointProxyDisplayName OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines display name for callerID."
+    ::= { tmmEmtaSipEndPointEntry 5 }
+
+
+
+tmmEmtaSipEndPointRegistrarAddress OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines FQDN or IP of SIP Registrar.
+         If not specified, this object equals to tmmEmtaSipEndPointProxyAddress.
+         Overwrites tmmEmtaSipDeviceRegistrarAddress for specific endpoint."
+    ::= { tmmEmtaSipEndPointEntry 6 }
+
+tmmEmtaSipEndPointRegistrarPortRemote OBJECT-TYPE
+    SYNTAX InetPortNumber
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines UDP destination port for SIP messages sent to SIP Registrar."
+    DEFVAL { 5060 }
+    ::= { tmmEmtaSipEndPointEntry 7 }     
+    
+tmmEmtaSipEndPointCallerNameDisplay OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "0: DO NOT send display-name as caller name to the line.
+         1: Send display-name as caller name to the line.
+                  
+         [note] Caller Name == display-name in INVITE message From field" 
+         
+    DEFVAL { 1 }
+    ::= { tmmEmtaSipEndPointEntry 8 }    
+
+
+
+-- SIP EMTA Device
+tmmEmtaSipDevice   OBJECT IDENTIFIER ::=  { tmmEmtaSip 2 }
+
+tmmEmtaSipDeviceSipPortLocal OBJECT-TYPE
+    SYNTAX InetPortNumber
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines UDP source port for SIP messages (sent to
+         registrar or proxy."
+    DEFVAL { 5060 }
+    ::= { tmmEmtaSipDevice 1 }
+tmmEmtaSipDeviceSipLogsPortRemote OBJECT-TYPE
+    SYNTAX InetPortNumber
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines UDP destination port for Syslog messages."
+    DEFVAL { 514 }
+    ::= { tmmEmtaSipDevice 2 }
+    
+tmmEmtaSipDeviceSipLogsAddress OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines FQDN or IP of Syslog server.
+         All SIP packets will be sent to this server
+         as syslog messages for debuging purposes.
+         If not specified, this is turned off."
+    ::= { tmmEmtaSipDevice 3 }
+
+tmmEmtaSipDeviceDigitMap OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..511))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines digit map.
+         Default value depends on current phone number."
+    ::= { tmmEmtaSipDevice 4 }
+
+tmmEmtaSipDeviceDigitMapTimeout OBJECT-TYPE
+    SYNTAX Gauge32
+    UNITS         "milliseconds"
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Defines timeout for digit entry."
+    DEFVAL { 5000 }
+    ::= { tmmEmtaSipDevice 5 }
+
+tmmEmtaSipDeviceEchoCanceller OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Controls echo canceller state."
+    DEFVAL { 1 }
+    ::= { tmmEmtaSipDevice 6 }
+
+tmmEmtaSipDeviceSilentSuppression OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Controls silent suppression."
+    DEFVAL { 0 }
+    ::= { tmmEmtaSipDevice 7 }
+
+-- update by Luke@20091217 for TT2642
+tmmEmtaSipDeviceDtmfRelay OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1),    
+        subtract(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the value which controls the usage of the DTMF
+        Relay. Setting this object to 'enable(1)' causes the MTA to use the
+        DTMF Tone Relay as per RFC2833. Setting this object to 'disable(0)'
+        causes the eMTA to pass DTMF tones inband.  Setting this object to
+        'subtract(2)' causes eMTA to mute DTMF tones from the encoded audio and
+        pass DTMF as signaling events through INFO method."
+    DEFVAL {enabled}
+    ::= { tmmEmtaSipDevice 8 }    
+    
+tmmEmtaSipDeviceRegisterExpireSet OBJECT-TYPE
+    SYNTAX Unsigned32
+    UNITS "Seconds"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+    "This object sets expire field in the REGISTER message to SIP proxy.
+    The value of 0 means expire field will not be sent out."
+    DEFVAL { 0 }
+    ::= { tmmEmtaSipDevice 9} 
+
+tmmEmtaSipDeviceCallForwardNoAnswerTimeout OBJECT-TYPE
+    SYNTAX Unsigned32
+    UNITS "Seconds"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+    "This object sets CallForwardNoAnswer timeout. It's used when CallForwardNoAnswer
+    feature is enabled."
+    DEFVAL { 40 }
+    ::= { tmmEmtaSipDevice 10 }             
+
+tmmEmtaSipDeviceDNSNonAuthAnsCache OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: MTA does not cache non-authoritative DNS answer (default)
+         1: MTA cache non-authoritative DNS answer"
+    DEFVAL { 0 }
+    ::= { tmmEmtaSipDevice 11 }     
+
+tmmEmtaSipDeviceRegisterOnOffhook OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: MTA does not send REGISTER upon off-hook event when status is unregistered (default)
+         1: MTA sends REGISTER upon off-hook event when status is unregistered"
+    DEFVAL { 0 }
+    ::= { tmmEmtaSipDevice 12 } 
+
+tmmEmtaSipDeviceRegisterResendTimer OBJECT-TYPE
+    SYNTAX Unsigned32
+    UNITS "Seconds"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+    "This object sets delay between REGISTER failure and the next REGISTER sent out."
+    DEFVAL { 3600 }
+    ::= { tmmEmtaSipDevice 13 } 
+
+tmmEmtaSipDeviceEnableIpDialing OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: MTA does not support IP dialing.
+         1: MTA support IP dialing by default.
+         [note] 
+         When enabled. IP dailing match dialed digits before regular digitmap.
+         I.E. IP dailing is with higher priority than regualr digitmap.
+         
+         IP dailing digitmap: [1-9][1-9].[1-9].*[1-9][1-9].[1-9].*[1-9][1-9].[1-9].#"
+    DEFVAL { 1 }
+    ::= { tmmEmtaSipDevice 14 }                  
+    
+tmmEmtaSipDeviceAdvertizeSdpRfc3407 OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: Not advertize full RFC3407 SDP.
+         1: Advertize full RFC3407 SDP.  (default)
+         [note] 
+         When enabled, the length of SDP is longer."
+    DEFVAL { 1 }
+    ::= { tmmEmtaSipDevice 15 } 
+    
+tmmEmtaSipDeviceCodecPreference OBJECT-TYPE
+    SYNTAX INTEGER {
+        PCMU(0),
+        PCMA(1),
+        G729A(11)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+         "pcmu     (0),  -- G.711 u-law - 64 kbps
+		  pcma     (1)   -- G.711 A-law - 64 kbps   
+          g729A    (11), -- G.729 Annex A		  
+         "
+    DEFVAL { 0 }
+    ::= { tmmEmtaSipDevice 16 } 
+
+tmmEmtaSipDevicePoundEscapeEnabled OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+         "US-ASCII character # is an escaped character defined in RFC2396 and encoded as %23 in SIP URI.
+          For example, SIP URI will be encoded as sip:%2312345@host when dialing #12345. 
+          1: # will be sent as %23.
+          0: # will be sent as original character # for some specific requirements.
+         "
+    DEFVAL { 1 }
+    ::= { tmmEmtaSipDevice 17 }   
+      
+      
+tmmEmtaSipDeviceRtcpXrSuppport OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+         "  Control RTCP-XR support:        
+         	1: Supporting RTCP-XR
+         	0: Not supporting RTCP-XR
+         "
+    DEFVAL { 1 }
+    ::= { tmmEmtaSipDevice 18 }    
+    
+-- Add by Luke@20090716 for TT2796   
+tmmEmtaSipDeviceRegAuthControl OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+         "  Control REGISTRATION upon receiving 403 Forbidden:        
+         	0: (default)
+         	    Upon receiving 403 Forbidden, endpoint keeps retrying with the same authorization information.
+         	n: (non-zero INTEGER)
+         	    For n times, upon receiving 403 Forbidden, endpoint reset the authorization information before re-sending REGISTER.
+         "
+    DEFVAL { 0 }
+    ::= { tmmEmtaSipDevice 19 }         
+    
+-- 102209 - Early media support
+tmmEmtaSipDeviceRecvEarlyMedia OBJECT-TYPE
+    SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+         "Early Media support: 
+          0: Not accepting media before negotiation (default)       
+         	1: Receiving early media before SDP negotiation. 
+         	   (Expecting codec: PCMU 20ms)
+         "
+    DEFVAL { 0 }
+    ::= { tmmEmtaSipDevice 20 }   
+    
+-- 102209        
+    
+-- SIP EMTA FEATURE
+tmmEmtaSipFeatureTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF TmmEmtaSipFeatureEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       "This table describes the MTA EndPoint
+        Volume configuration. "
+   ::=  { tmmEmtaSip 3 }
+
+tmmEmtaSipFeatureEntry  OBJECT-TYPE
+    SYNTAX        TmmEmtaSipFeatureEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        " List of attributes for a single MTA endpoint interface."
+    INDEX { ifIndex }
+    ::= { tmmEmtaSipFeatureTable 1 }
+
+TmmEmtaSipFeatureEntry  ::= SEQUENCE {
+    tmmEmtaSipCallForwardingOnBusy          INTEGER,
+    tmmEmtaSipCallForwardingOnNoAnswer		INTEGER,
+    tmmEmtaSipCallForwardingUnconditional   INTEGER,
+    tmmEmtaSipCallTransfer					INTEGER,
+    tmmEmtaSipCallReturn					INTEGER,
+    tmmEmtaSipCallWaiting					INTEGER,
+    tmmEmtaSipThreeWay						INTEGER,
+    tmmEmtaSipConsultation					INTEGER,
+    tmmEmtaSipCallForwardingNumber  				SnmpAdminString,
+    tmmEmtaSipCallForwardingOnBusyNumber  			SnmpAdminString,
+    tmmEmtaSipCallForwardingOnNoAnswerNumber  			SnmpAdminString,
+    tmmEmtaSipCallForwardingUnconditionalNumber  		SnmpAdminString,
+    tmmEmtaSipCLIRFeature                   INTEGER,
+    tmmEmtaSipCallWaitingAndThreeWayType    INTEGER,
+    tmmEmtaSipFeatureCodeOverridings  INTEGER,
+    tmmEmtaSipPerCallCallWaitingDisable INTEGER
+    }
+
+tmmEmtaSipCallForwardingOnBusy OBJECT-TYPE
+   SYNTAX INTEGER { 
+    disable(0), 
+    enable(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+    "" 
+    DEFVAL { 1 } 
+    ::= { tmmEmtaSipFeatureEntry 1 }   
+    
+tmmEmtaSipCallForwardingOnNoAnswer   OBJECT-TYPE
+ SYNTAX INTEGER { 
+    disable(0), 
+    enable(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+    "" 
+    DEFVAL { 1 } 
+    ::= { tmmEmtaSipFeatureEntry 2 }   
+
+tmmEmtaSipCallForwardingUnconditional  OBJECT-TYPE
+ SYNTAX INTEGER { 
+    disable(0), 
+    enable(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+    "" 
+    DEFVAL { 1 } 
+    ::= { tmmEmtaSipFeatureEntry 3 } 
+    
+tmmEmtaSipCallTransfer OBJECT-TYPE
+	SYNTAX INTEGER { 
+	disable(0), 
+	enable(1) 
+	}
+	MAX-ACCESS read-write 
+	STATUS current 
+	DESCRIPTION 
+	"" 
+	DEFVAL { 1 } 
+	::= { tmmEmtaSipFeatureEntry 4 }    
+
+tmmEmtaSipCallReturn OBJECT-TYPE
+	SYNTAX INTEGER { 
+	disable(0), 
+	enable(1) 
+	}
+	MAX-ACCESS read-write 
+	STATUS current 
+	DESCRIPTION 
+	"" 
+	DEFVAL { 1 } 
+	::= { tmmEmtaSipFeatureEntry 5 }  
+
+tmmEmtaSipCallWaiting OBJECT-TYPE
+	SYNTAX INTEGER { 
+	disable(0), 
+	enable(1) 
+	}
+	MAX-ACCESS read-write 
+	STATUS current 
+	DESCRIPTION 
+	"" 
+	DEFVAL { 1 } 
+	::= { tmmEmtaSipFeatureEntry 6 }
+ 
+tmmEmtaSipThreeWay  OBJECT-TYPE
+	SYNTAX INTEGER { 
+	disable(0), 
+	enable(1) 
+	}
+	MAX-ACCESS read-write 
+	STATUS current 
+	DESCRIPTION 
+	"" 
+	DEFVAL { 1 } 
+	::= { tmmEmtaSipFeatureEntry 7 }	
+	
+tmmEmtaSipConsultation   OBJECT-TYPE
+	SYNTAX INTEGER { 
+	disable(0), 
+	enable(1) 
+	}
+	MAX-ACCESS read-write 
+	STATUS current 
+	DESCRIPTION 
+	"" 
+	DEFVAL { 1 } 
+	::= { tmmEmtaSipFeatureEntry 8 }	
+	
+tmmEmtaSipCallForwardingNumber OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object defines the call forwarding number"
+    ::= { tmmEmtaSipFeatureEntry 9 }     
+		
+tmmEmtaSipCallForwardingOnBusyNumber OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object defines the call forwarding on busy number"
+    ::= { tmmEmtaSipFeatureEntry 10 }  
+
+tmmEmtaSipCallForwardingOnNoAnswerNumber OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object defines the call forwarding on no answer number"
+    ::= { tmmEmtaSipFeatureEntry 11 }  
+		
+tmmEmtaSipCallForwardingUnconditionalNumber OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object defines the call forwarding unconditional number"
+    ::= { tmmEmtaSipFeatureEntry 12 }  
+		
+-- 20071011 - TT1865 - change default value to 1 (enabled)
+tmmEmtaSipCLIRFeature OBJECT-TYPE
+   SYNTAX INTEGER { 
+    disable(0), 
+    enable(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "This object controls whether the CLIR is enabled or disabled.
+         0: disabled (both per call and permanent)
+         1: enabled (default)" 
+    DEFVAL { 1 } 
+    ::= { tmmEmtaSipFeatureEntry 13 }   
+          
+tmmEmtaSipCallWaitingAndThreeWayType OBJECT-TYPE
+   SYNTAX INTEGER { 
+    NA(0), 
+    EU(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "This object controls Callwaiting and Three way calling type
+         0: North America
+         1: Europe" 
+    DEFVAL { 0 } 
+    ::= { tmmEmtaSipFeatureEntry 14 }   
+
+-- Add by Lenny: 20080226
+tmmEmtaSipFeatureCodeOverridings OBJECT-TYPE
+      SYNTAX INTEGER { 
+      disabled(0), 
+      callWaitingToggle(1)
+      }
+      MAX-ACCESS read-write 
+      STATUS current 
+      DESCRIPTION 
+        "This object will override original Call feature Codes as followings.  
+            disabled(0): Keep using the original Call features
+            callWaitingToggle(1): This will use the code in tmmEmtaSipCallWaitingEnableCode for doing callWaitingToggle       
+            Where callWaitingToggle is defined in TT2061, and callWaitingCancelOnce is defined in TT2062"
+      DEFVAL { 0 }
+      ::= { tmmEmtaSipFeatureEntry 15 }  
+
+-- Add by Lenny: 20080226      
+tmmEmtaSipPerCallCallWaitingDisable OBJECT-TYPE
+	SYNTAX INTEGER { 
+	disable(0), 
+	enable(1) 
+	}
+	MAX-ACCESS read-write 
+	STATUS current 
+	DESCRIPTION 
+        "This object controls Call Waiting Toggle feature.  This feature 
+        is enabled only when Country Code is set to Austria
+         0: disable
+         1: enable" 
+	DEFVAL { 0 } 
+	::= { tmmEmtaSipFeatureEntry 16 }	
+
+    	
+-- Begin: tmmEmtaSipFeatureCode
+tmmEmtaSipFeatureCode   OBJECT IDENTIFIER ::=  { tmmEmtaSip 4 }
+
+--Jack@20080215 TT2046 DON'T NEED
+--tmmEmtaSipCallForwardDisableCode OBJECT-TYPE
+--    SYNTAX OCTET STRING (SIZE (0..7))
+--    MAX-ACCESS    read-only
+--    STATUS        current
+--    DESCRIPTION
+--        "This object defines the feature code to allow users to disable 
+--        Call Forward Feature by dialing the feature code. 
+--        [NOTE] All three Call Forward Features would be disabled at the same time"
+--    DEFVAL { "*70" }    
+--    ::= { tmmEmtaSipFeatureCode 1 }    
+          
+--tmmEmtaSipCallForwardingNumberCode OBJECT-TYPE
+--    SYNTAX OCTET STRING (SIZE (0..7))
+--    MAX-ACCESS    read-only
+--    STATUS        current
+--    DESCRIPTION
+--        "This object defines the feature code to allow users to input 
+--        Call Forward Number by dialing the feature code following by the number forwarded to."
+--    DEFVAL { "*74" }    
+--    ::= { tmmEmtaSipFeatureCode 2 }                 
+    
+tmmEmtaSipCallForwardingOnBusyEnableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to enable 
+        Call Forward on Busy Feature by dialing the feature code."
+    DEFVAL { "*72" }    
+    ::= { tmmEmtaSipFeatureCode 3 }   
+    
+tmmEmtaSipCallForwardingOnNoAnswerEnableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to enable 
+        Call Forward No Answer Feature by dialing the feature code."
+    DEFVAL { "*71" }    
+    ::= { tmmEmtaSipFeatureCode 4 }   
+    
+tmmEmtaSipCallForwardingUnconditionalEnableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to enable 
+        Call Forward Unconditional Feature by dialing the feature code."
+    DEFVAL { "*73" }    
+    ::= { tmmEmtaSipFeatureCode 5 }   
+    
+tmmEmtaSipCallReturnCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to access 
+        Call Return Feature by dialing the feature code."
+    DEFVAL { "*69" }    
+    ::= { tmmEmtaSipFeatureCode 6 }    
+    
+tmmEmtaSipCallWaitingEnableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to enable 
+        Call Waiting Feature by dialing the feature code."
+    DEFVAL { "*61" }    
+    ::= { tmmEmtaSipFeatureCode 7 }    
+
+tmmEmtaSipCallWaitingDisableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to disable 
+        Call Waiting Feature by the dialing feature code."
+    DEFVAL { "*60" }    
+    ::= { tmmEmtaSipFeatureCode 8 } 
+    
+    
+tmmEmtaSipCallRedialCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to access 
+        Call Redial Feature by dialing the feature code."
+    DEFVAL { "*68" }    
+    ::= { tmmEmtaSipFeatureCode 9 }     
+    
+tmmEmtaSipCallForwardingOnBusyDisableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to disable 
+        Call Forward On Busy Feature by dialing the feature code."
+    DEFVAL { "*75" }    
+    ::= { tmmEmtaSipFeatureCode 10 }  
+      
+tmmEmtaSipCallForwardingOnNoAnswerDisableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to disable 
+        Call Forward On No Answer Feature by dialing the feature code."
+    DEFVAL { "*76" }    
+    ::= { tmmEmtaSipFeatureCode 11 }      
+    
+tmmEmtaSipCallForwardingUnconditionalDisableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to disable 
+        Call Forward Unconditaional Feature by dialing the feature code."
+    DEFVAL { "*77" }    
+    ::= { tmmEmtaSipFeatureCode 12 }    
+
+tmmEmtaSipPerCallCLIREnableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to enable 
+         Per Call CLIR Feature by dialing the feature code followed by the number
+         <ex> *82<number>"
+    DEFVAL { "*82" }    
+    ::= { tmmEmtaSipFeatureCode 13 }     
+     
+tmmEmtaSipPermanentCLIREnableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to enable 
+         Permanent CLIR Feature by dialing the feature code." 
+    DEFVAL { "*83" }    
+    ::= { tmmEmtaSipFeatureCode 14 }     
+
+tmmEmtaSipPermanentCLIRDisableCode OBJECT-TYPE
+    SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to disable 
+         Permanent CLIR Feature by dialing the feature code." 
+    DEFVAL { "*84" }    
+    ::= { tmmEmtaSipFeatureCode 15 }     
+
+-- Add by Simon: 2008019
+tmmEmtaSipPerCallCallWaitingDisableCode OBJECT-TYPE
+		SYNTAX OCTET STRING (SIZE (0..7))
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This object defines the feature code to allow users to disable 
+         Per Call Call Waiting Feature by dialing the feature code 
+         followed by the number, <ex> *19# <number>"
+    DEFVAL { "*19#" }   
+    ::= { tmmEmtaSipFeatureCode 16 }
+         
+-- End: tmmEmtaSipFeatureCode
+
+-- Begin: tmmEmtaSipFeatureActivation
+tmmEmtaSipFeatureActivationTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF TmmEmtaSipFeatureActivationEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       "This table list the MTA EndPoint Feature Activation"
+   ::=  { tmmEmtaSip 5 }
+
+
+tmmEmtaSipFeatureActivationEntry  OBJECT-TYPE
+    SYNTAX        TmmEmtaSipFeatureActivationEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        " List of attributes for a single MTA endpoint interface."
+    INDEX { ifIndex }
+    ::= { tmmEmtaSipFeatureActivationTable 1 }
+
+TmmEmtaSipFeatureActivationEntry  ::= SEQUENCE {
+    tmmEmtaSipCallForwardDisable          		INTEGER,
+    tmmEmtaSipCallForwardingOnBusyEnable		INTEGER,
+    tmmEmtaSipCallForwardingOnNoAnswerEnable	INTEGER,
+    tmmEmtaSipCallForwardingUnconditionalEnable	INTEGER,
+    tmmEmtaSipCallWaitingEnable					INTEGER,
+    tmmEmtaSipPermanentCLIREnable				INTEGER
+    }
+
+tmmEmtaSipCallForwardDisable OBJECT-TYPE
+   SYNTAX INTEGER { 
+    false(0), 
+    true(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "Set this object to true(1) will disable call forwarding features.
+         Always return false(0)
+         [note] All three Call Forward Features would be disabled at the same time"
+    DEFVAL { 0 }         
+    ::= { tmmEmtaSipFeatureActivationEntry 1 }
+
+tmmEmtaSipCallForwardingOnBusyEnable OBJECT-TYPE
+   SYNTAX INTEGER { 
+    disable(0), 
+    enable(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "This object enable or disable CFB. 
+         Return disable(0) if tmmEmtaSipCallForwardingOnBusyNumber is not set.
+         [note1] All three Call Forward Features would be disabled at the same time when set to disable(0)
+         [note2] tmmEmtaSipCallForwardingOnBusyNumber needs to be set for this feature to be activated.
+         0: disabled (default)
+         1: enabled" 
+    DEFVAL { 0 }         
+    ::= { tmmEmtaSipFeatureActivationEntry 2 }
+
+tmmEmtaSipCallForwardingOnNoAnswerEnable OBJECT-TYPE
+   SYNTAX INTEGER { 
+    disable(0), 
+    enable(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "This object enable or disable CFNA. 
+         Return disable(0) if tmmEmtaSipCallForwardingOnNoAnswerNumber  is not set.
+         [note1] All three Call Forward Features would be disabled at the same time when set to disable(0)
+         [note2] tmmEmtaSipCallForwardingOnNoAnswerNumber  needs to be set for this feature to be activated.
+         0: disabled (default)
+         1: enabled" 
+    DEFVAL { 0 }         
+    ::= { tmmEmtaSipFeatureActivationEntry 3 }
+
+tmmEmtaSipCallForwardingUnconditionalEnable OBJECT-TYPE
+   SYNTAX INTEGER { 
+    disable(0), 
+    enable(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "This object enable or disable CFNA. 
+         Return disable(0) if tmmEmtaSipCallForwardingUnconditionalNumber is not set.
+         [note1] All three Call Forward Features would be disabled at the same time when set to disable(0)
+         [note2] tmmEmtaSipCallForwardingUnconditionalNumber needs to be set for this feature to be activated.
+         0: disabled (default)
+         1: enabled" 
+    DEFVAL { 0 }         
+    ::= { tmmEmtaSipFeatureActivationEntry 4 }
+
+tmmEmtaSipCallWaitingEnable OBJECT-TYPE
+   SYNTAX INTEGER { 
+    disable(0), 
+    enable(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "This object is enable or disable call waiting.
+         0: disabled
+         1: enabled" 
+    DEFVAL { 0 }         
+    ::= { tmmEmtaSipFeatureActivationEntry 5 }
+
+tmmEmtaSipPermanentCLIREnable OBJECT-TYPE
+   SYNTAX INTEGER { 
+    disable(0), 
+    enable(1) 
+    }
+    MAX-ACCESS read-write 
+    STATUS current 
+    DESCRIPTION 
+        "This object enable or disable permanent CLIR feature.
+         0: disabled
+         1: enabled" 
+    DEFVAL { 0 }         
+    ::= { tmmEmtaSipFeatureActivationEntry 6 }
+        
+-- End: tmmEmtaSipFeatureActivation   
+
+END

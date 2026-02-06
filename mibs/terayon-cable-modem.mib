@@ -1,0 +1,260 @@
+TERAYON-CABLE-MODEM-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        IpAddress,
+        Unsigned32,
+		enterprises
+                FROM SNMPv2-SMI
+        RowStatus,
+        TruthValue,
+        TAddress
+                FROM SNMPv2-TC
+        usmUserEntry
+                FROM SNMP-USER-BASED-SM-MIB
+        snmpTargetAddrEntry, 
+        SnmpTagValue
+                FROM SNMP-TARGET-MIB
+        OBJECT-GROUP,
+        MODULE-COMPLIANCE
+                FROM SNMPv2-CONF;
+
+
+-- The root of Terayon's subtree under the enterprises branch of the OID tree.
+-- terayon OBJECT IDENTIFIER ::= { enterprises 1456 }
+
+terayon MODULE-IDENTITY 
+        LAST-UPDATED    "9909200000Z" -- September 20, 1999
+        ORGANIZATION    "Cadence Design Systems (Canada) Ltd."
+        CONTACT-INFO
+            "        David Raftus
+             Postal: Cadence Design Systems (Canada) Ltd.
+                     1130 Morrison Drive, Suite 310
+                     Ottawa, Ontario K2H 9N6
+                     Canada
+             Phone:  613 726 2767
+             E-mail: draftus@cadence.com"
+        DESCRIPTION
+			"This is the MIB module for vendor specific SNMP objects
+			 for the Terayon Cable Modem." 
+        ::= { enterprises 1456 }
+
+-- Generic Terayon product subtree.
+terayonProducts OBJECT IDENTIFIER ::= { terayon 1 }
+
+-- Specific Terayon product subtree
+terayonUcm2CableModem OBJECT IDENTIFIER ::= { terayonProducts 1 }
+
+terayonUcm2CableModemMib OBJECT IDENTIFIER ::= { terayonUcm2CableModem 1 }
+
+-- terayonUcm2CableModemMib MODULE-IDENTITY
+--        LAST-UPDATED    "9909200000Z"  September 20, 1999
+--        ORGANIZATION    "Cadence Design Systems (Canada) Ltd."
+--        CONTACT-INFO
+--            "        David Raftus
+--             Postal: Cadence Design Systems (Canada) Ltd.
+--                     1130 Morrison Drive, Suite 310
+--                     Ottawa, Ontario K2H 9N6
+--                     Canada--
+--             Phone:  613 726 2767
+--             E-mail: draftus@cadence.com"
+--        DESCRIPTION
+--			"This is the MIB module for vendor specific SNMP objects
+--			 for the Terayon Cable Modem." 
+--        ::= { terayonUcm2CableModem 1 }
+
+
+
+
+
+terayonUcm2CableModemMibObjects  OBJECT IDENTIFIER ::= { terayonUcm2CableModemMib 1 }
+
+terayonSysDescriptor OBJECT IDENTIFIER ::= { terayonUcm2CableModemMibObjects 1 }
+
+-- terayonSnmpV3MIB OBJECT IDENTIFIER ::= { terayonUcm2CableModem 2 }
+
+-- terayonUsmTargetTagObjects OBJECT IDENTIFIER ::= { terayonSnmpV3MIB 1 }
+
+-- terayonTgtAddressMaskObjects OBJECT IDENTIFIER ::= { terayonSnmpV3MIB 2 }
+
+
+terayonEthChipVeNetMAC110 OBJECT-TYPE
+        SYNTAX      OBJECT IDENTIFIER
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+			"This object identifies the ethernet chipset used by the Terayon
+			 cable modem. It appears here because the chipset does not appear
+			 as one of the options in RFC1643, the Ethernet-Like MIB definition,
+			 or RFC2666, Definitions of Object Identifiers for Identifying
+			 Ethernet Chip Sets.
+			 Instructions in RFC1643 state that the chipset identity must appear
+			 in the enterprise specific section of the registration tree if not
+			 present in RFC1643."
+        ::= { terayonSysDescriptor 1 }
+
+
+terayonConfigFileBadTLV OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+			"This object provides visibility into configuration file accuracy 
+			 by indicating the progress of TLV processing. A value of zero indicates 
+			 the configuration file contained no errors and was processed correctly.
+			 Any other value signifies the ordinal TLV at which processing halted due
+			 to error."
+	    DEFVAL {0}
+        ::= { terayonSysDescriptor 2 }
+
+
+
+-- ****************************************************************************
+
+
+
+
+
+
+
+terayonSnmpV3MIB OBJECT IDENTIFIER ::= { terayonUcm2CableModem 2 }
+
+terayonUsmTargetTagObjects OBJECT IDENTIFIER ::= { terayonSnmpV3MIB 1 }
+
+terayonTgtAddressMaskObjects OBJECT IDENTIFIER ::= { terayonSnmpV3MIB 2 }
+
+terayonSnmpDebugObjects OBJECT IDENTIFIER ::= { terayonSnmpV3MIB 3 }
+
+    --
+    -- The terayonUsmTargetTagTable
+    --
+terayonUsmTargetTagTable OBJECT-TYPE
+        SYNTAX       SEQUENCE OF TerayonUsmTargetTagEntry 
+        MAX-ACCESS   not-accessible
+        STATUS       current
+        DESCRIPTION
+              "Table to add an SnmpTagValue to the usmUserTable."
+        ::= { terayonUsmTargetTagObjects 1 }
+
+
+terayonUsmTargetTagEntry OBJECT-TYPE
+        SYNTAX       TerayonUsmTargetTagEntry
+        MAX-ACCESS   not-accessible
+        STATUS       current
+        DESCRIPTION
+                   "Adds an SnmpTagValue to a usmUserEntry."
+        AUGMENTS { usmUserEntry }
+        ::= { terayonUsmTargetTagTable 1 }
+
+TerayonUsmTargetTagEntry ::= SEQUENCE {
+        terayonUsmTargetTag     SnmpTagValue
+    }
+
+terayonUsmTargetTag OBJECT-TYPE
+        SYNTAX       SnmpTagValue
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+              "This object specifies a set of transport endpoints from which
+              an agent will accept management requests.  If a management
+              request generated by this user is received on a transport
+              endpoint other than the transport endpoints identified
+              by this object, the request is deemed unauthentic.
+
+              The transports identified by this object are normally
+              specified in the snmpTargetAddrTable, and are selected
+              using tag matching as specified in the SNMPv3 Applications
+              document (rfc2263).
+
+              If the value of this object has zero-length, then
+              transport endpoints are not checked when authenticating
+              messages generated by this user."
+         DEFVAL { ''H }     -- the empty string
+        ::= { terayonUsmTargetTagEntry 1 }
+
+
+
+    --
+    -- The terayonTgtAddressMaskTable
+    --
+
+terayonTgtAddressMaskTable OBJECT-TYPE
+        SYNTAX       SEQUENCE OF TerayonTgtAddressMaskEntry
+        MAX-ACCESS   not-accessible
+        STATUS       current
+        DESCRIPTION
+              "Table to add an address mask to the
+               snmpTargetAddrTable."
+        ::= { terayonTgtAddressMaskObjects 1 }
+
+terayonTgtAddressMaskEntry OBJECT-TYPE
+        SYNTAX       TerayonTgtAddressMaskEntry
+        MAX-ACCESS   not-accessible
+        STATUS       current
+        DESCRIPTION
+                   "Adds an address mask to an snmpTargetAddrEntry."
+        AUGMENTS { snmpTargetAddrEntry }
+        ::= { terayonTgtAddressMaskTable 1 }
+
+TerayonTgtAddressMaskEntry ::= SEQUENCE {
+        terayonTgtAddressMask     TAddress
+    }
+
+terayonTgtAddressMask OBJECT-TYPE
+        SYNTAX       TAddress
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+              "This object is used to qualify the value of the
+               corresponding instance of snmpTargetAddrTAddress.
+               The format of this object is determined by the
+               corresponding instance of snmpTargetAddrTDomain.
+
+               When performing transport address validation on
+               a received packet, the value of this object is
+               used as a mask to determine whether a source
+               address matches a particular entry in the
+               snmpTargetAddrTable.  In general, the comparison
+               using this mask value is performed as follows for
+               each octet contained in the source address and
+               snmpTargetAddrTAddress value:
+                   (sourceAddr & tgtAddressMask) ==
+                      (snmpTargetAddrTAddress & tgtAddressMask)
+               if the values are equal for all octets, the source
+               address matches the entry."
+         DEFVAL { ''H }     -- the empty string
+        ::= { terayonTgtAddressMaskEntry 1 }
+
+terayonSnmpVersion OBJECT-TYPE
+        SYNTAX INTEGER {
+            snmpv1Orsnmpv2c(1),
+            snmpv3(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object controls operation of the SNMP protocol version "
+        ::= { terayonSnmpDebugObjects 1}
+
+
+terayonSnmpPort OBJECT-TYPE
+        SYNTAX Integer32 (1..65535)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object controls the UDP port for SNMP"
+        ::= { terayonSnmpDebugObjects 2}
+
+
+terayonSnmpTrapPort OBJECT-TYPE
+        SYNTAX Integer32 (1..65535)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object controls the UDP port for SNMP TRAPs"
+        ::= { terayonSnmpDebugObjects 3}
+
+
+
+END

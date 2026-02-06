@@ -1,0 +1,1058 @@
+
+CS1000-MIB DEFINITIONS ::= BEGIN
+                               
+--
+--  FILE INFO:
+--    $Workfile:   cs1000.mib  $
+--    $Revision:   1.0  $
+--    $Date:   01 Aug. 2000 10:13:00  $
+--
+--IMPORTS
+--    MODULE-IDENTITY, OBJECT-TYPE, NOTIFICATION-TYPE,
+--    ObjectName, Integer32, Counter32 
+--        FROM SNMPv2-SMI
+--    DisplayString, TestAndIncr, TimeStamp
+--      FROM SNMPv2-TC
+--  MODULE-COMPLIANCE, OBJECT-GROUP
+--      FROM SNMPv2-CONF
+--  system, ifIndex
+--      FROM RFC1213-MIB
+--
+--  CS1000-MIB MODULE-IDENTITY
+--      LAST-UPDATED "00022200000Z"
+--      ORGANIZATION "Motorola Broadband Communications Sector"
+--      CONTACT-INFO "Jiun-Li Jang
+--                    Motorola BCS
+--                    Digital Network System
+--                    101 Tournament Dr.
+--                    Horsham, PA  19044
+--
+--                    Tel: +1 215 323 1454
+--                    Fax: +1 215 323 0364
+--                    E-mail: jjang@gi.com"
+--
+--      DESCRIPTION  "The MIB module for the CS1000.
+--                    The MIB tree for this MIB is shown below:
+--                    revision number 1.0
+--
+--          The objects in this MIB are organized as follows:"
+--
+-- csSystem
+--     csSystemInfo
+--         csSystemOsAndVersion
+--         csSystemAppVersion
+--     csNetworkInfoTable
+--         csNetworkIndex
+--         csNetworkDescription
+--         csNetworkMacAddress
+--         csNetworkIpAddress
+--         csNetworkSubnet
+-- csStatus
+--     csStatusSummary
+--         csCarouselMgrUp
+--         csNumberOfCarousels
+--         csAggregateBitRate
+--
+    IMPORTS
+        Counter, Gauge, IpAddress, TimeTicks
+                        FROM RFC1155-SMI
+        DisplayString   FROM RFC1213-MIB
+        OBJECT-TYPE     FROM RFC-1212
+        TRAP-TYPE       FROM RFC-1215
+--br    dnsAlarms       FROM NLSBBN-TRAPS-MIB
+        dnsAlarms       FROM DNS-TRAPS-MIB
+        trapIdentifier,     
+        trapNetworkElemModelNumber,
+        trapNetworkElemSerialNum,
+        trapPerceivedSeverity,
+        trapNetworkElemOperState,
+        trapNetworkElemAlarmStatus,
+        trapNetworkElemAdminState,
+        trapNetworkElemAvailStatus, 
+        trapText,
+        trapNETrapLastTrapTimeStamp,
+        trapChangedObjectId,
+        trapAdditionalInfoInteger1, 
+        trapAdditionalInfoInteger2, 
+        trapAdditionalInfoInteger3,     
+        trapChangedValueDisplayString,  
+        trapChangedValueOID, 
+        trapChangedValueIpAddress,                     
+        trapChangedValueInteger  
+                        FROM NLSBBN-TRAPS-MIB
+        cs1000          FROM NLS-BBNIDENT-MIB;
+-- All representations of MAC addresses in this MIB Module
+-- use, as a textual convention (i.e. this convention does
+-- not affect their encoding), the data type:
+
+        MacAddress ::= OCTET STRING (SIZE (6))    -- a 6 octet
+                                                  -- address in the
+                                                  -- "canonical" order
+-- groups in the cs1000 MIB
+
+        csSystem            OBJECT IDENTIFIER  ::= {cs1000 1} 
+        csSystemInfo        OBJECT IDENTIFIER  ::= {csSystem 1}
+        csStatus            OBJECT IDENTIFIER  ::= {cs1000 2}
+        csStatusSummary     OBJECT IDENTIFIER  ::= {csStatus 1}
+       
+--*****************************************
+--
+-- CS System Group
+--   CS System Information Group
+--
+--*****************************************
+
+csSystemOsAndVersion OBJECT-TYPE
+                SYNTAX  DisplayString
+                ACCESS  read-only
+                STATUS  mandatory
+
+                DESCRIPTION "Operating sytem name and version."
+                REFERENCE   " -- "
+        ::= { csSystemInfo 1 }
+
+csSystemAppVersion OBJECT-TYPE
+                SYNTAX  DisplayString
+                ACCESS  read-only
+                STATUS  mandatory
+
+                DESCRIPTION "CS application version."
+                REFERENCE   " -- "
+        ::= { csSystemInfo 2 }
+
+--*****************************************
+--
+-- CS System Group
+--   CS Network Information Table Group
+--
+--*****************************************
+
+csNetworkInfoTable OBJECT-TYPE
+                SYNTAX  SEQUENCE OF CsNetworkInfoTableEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION "The table of information for network interface
+                             cards installed on CS1000."
+                REFERENCE   " -- "
+        ::= { csSystem 2 }
+
+csNetworkInfoTableEntry OBJECT-TYPE
+                SYNTAX  CsNetworkInfoTableEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION "An entry (conceptual row) in the CS1000
+                             network information table."
+                REFERENCE   " -- "
+                INDEX  { csNetworkIndex }
+        ::= { csNetworkInfoTable 1}
+ 
+CsNetworkInfoTableEntry ::= SEQUENCE 
+       {
+           csNetworkIndex         INTEGER,
+           csNetworkDescription   DisplayString,
+           csNetworkMacAddress    MacAddress,
+           csNetworkIpAddress     IpAddress,
+           csNetworkSubnet        IpAddress
+       }
+
+csNetworkIndex OBJECT-TYPE
+                SYNTAX  INTEGER(1..3)
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION "The auxiliary variable used for identifying
+                             instances of the columnar objects.  Here the
+                             index is the network interface number."
+                REFERENCE   " -- "
+        ::= { csNetworkInfoTableEntry 1 }
+
+csNetworkDescription OBJECT-TYPE
+                SYNTAX  DisplayString
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The description of the NIC."
+                REFERENCE   " -- "
+        ::= { csNetworkInfoTableEntry 2 }
+
+csNetworkMacAddress OBJECT-TYPE
+                SYNTAX  MacAddress
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The MAC address of the NIC."
+                REFERENCE   " -- "
+        ::= { csNetworkInfoTableEntry 3 }
+
+csNetworkIpAddress OBJECT-TYPE
+                SYNTAX  IpAddress
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The IP address of the NIC."
+                REFERENCE   " -- "
+        ::= { csNetworkInfoTableEntry 4 }
+
+csNetworkSubnet OBJECT-TYPE
+                SYNTAX  IpAddress
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The subnet mask of the NIC."
+                REFERENCE   " -- "
+        ::= { csNetworkInfoTableEntry 5 }
+
+--*****************************************
+--
+-- CS Status Group
+--   CS Status Summary Group
+--
+--*****************************************
+
+csCarouselMgrUp OBJECT-TYPE
+                SYNTAX  INTEGER
+                         {
+                          down    (1),
+                          up      (2)
+                         }
+                ACCESS  read-only
+                STATUS  mandatory
+
+                DESCRIPTION "The status of Carousel manager."
+                REFERENCE   " -- "
+        ::= { csStatusSummary 1 }
+
+csNumberOfCarousels OBJECT-TYPE
+                SYNTAX  INTEGER
+                ACCESS  read-only
+                STATUS  mandatory
+
+                DESCRIPTION "The number of Carousel."
+                REFERENCE   " -- "
+        ::= { csStatusSummary 2 }
+
+csAggregateBitRate OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory  
+
+                DESCRIPTION "The aggregate bit rate of the carousel."
+                REFERENCE   " -- "
+        ::= { csStatusSummary 3 }
+
+-- *******************************************************************
+--  The CS1000 Traps Group.
+--
+--  This group contains those objects which are specifically related
+--  to trap & alarm processed by the NC1500.  Trap ID starts at 1000.
+-- *******************************************************************
+--
+--trapSettopCreateFail TRAP-TYPE
+--           ENTERPRISE cs1000
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger,  
+--                        trapAdditionalInfoInteger1, 
+--                        trapAdditionalInfoInteger2, 
+--                        trapAdditionalInfoInteger3     
+--              }
+--              DESCRIPTION
+--             "This trap is issued if an attempt is made to create a 
+--              settop class.  No option parameters are used."
+--        ::= 1000
+--
+--trapDiskLoadError TRAP-TYPE
+--           ENTERPRISE cs1000
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger,  
+--                        trapAdditionalInfoInteger1, 
+--                        trapAdditionalInfoInteger2, 
+--                        trapAdditionalInfoInteger3     
+--              }
+--              DESCRIPTION
+--             "This trap is issued if disk loading of settop information
+--              is failed.  No option parameters are used."
+--        ::= 1001
+--
+--trapAppNetEnetFail TRAP-TYPE
+--           ENTERPRISE cs1000
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger,  
+--                        trapAdditionalInfoInteger1, 
+--                        trapAdditionalInfoInteger2, 
+--                        trapAdditionalInfoInteger3     
+--              }
+--              DESCRIPTION
+--             "This trap is issued if initialization of Application Server
+--              Ethernet card is failed.  No option parameters are used."
+--         ::= 1002
+--
+--trapNoOobQForPath TRAP-TYPE
+--           ENTERPRISE cs1000
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger,  
+--                        trapAdditionalInfoInteger1, 
+--                        trapAdditionalInfoInteger2, 
+--                        trapAdditionalInfoInteger3     
+--              }
+--              DESCRIPTION
+--             " This trap is issued if downstream interface service has no
+--               downstream path ID with it.
+--               The trapAdditionalInfoInteger1 p
+--               trapAdditionalInfoInteger2 and trapAdditionalInfoInteger3
+--               are not used."
+--         ::= 1003
+--
+--trapNoServiceFreq TRAP-TYPE
+--           ENTERPRISE cs1000
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger,  
+--                        trapAdditionalInfoInteger1, 
+--                        trapAdditionalInfoInteger2, 
+--                        trapAdditionalInfoInteger3     
+--              }
+--              DESCRIPTION
+--             " This trap is issued if while processing demod
+--               messages the total length of the resulting
+--               datagram exceeds the maximum allowed size. 
+--               The trapAdditionalInfoInteger1 will contain the
+--               length of the datagram.  
+--               The trapAdditionalInfoInteger2 will contain the
+--               maximum length and trapAdditionalInfoInteger3
+--               is not used." 
+--         ::= 1004
+--
+--trapSettopDatabaseFull TRAP-TYPE
+--           ENTERPRISE cs1000
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger,  
+--                        trapAdditionalInfoInteger1, 
+--                        trapAdditionalInfoInteger2, 
+--                        trapAdditionalInfoInteger3     
+--              }
+--              DESCRIPTION
+--             " This trap is issued if the DAQ task cannot
+--               send UDP datagrams to the destination address. 
+--               The trapAdditionalInfoInteger1 will contain the
+--               value returned by the sendto() routine.
+--               trapAdditionalInfoInteger2 will contain the
+--               length of the message being sent and
+--               trapAdditionalInfoInteger3 is not used." 
+--        ::= 1005
+--
+--trapNoMacMsgQueue TRAP-TYPE
+--           ENTERPRISE cs1000
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger,  
+--                        trapAdditionalInfoInteger1, 
+--                        trapAdditionalInfoInteger2, 
+--                        trapAdditionalInfoInteger3     
+--              }
+--              DESCRIPTION
+--             " This trap is issued if the TCP server address is
+--               specified as 0 and the TCP task is terminated
+--               because of that.  The trapAdditionalInfoInteger1,
+--               trapAdditionalInfoInteger2 and trapAdditionalInfoInteger3
+--               are not used."
+--        ::= 1006
+--
+--trapNoAppMsgQueue TRAP-TYPE
+--           ENTERPRISE cs1000
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger,  
+--                        trapAdditionalInfoInteger1, 
+--                        trapAdditionalInfoInteger2, 
+--                        trapAdditionalInfoInteger3     
+--              }
+--              DESCRIPTION
+--             " This trap is issued if the RPD could not connect to
+--               the TCP server.  The trapAdditionalInfoInteger1,
+--               trapAdditionalInfoInteger2 and trapAdditionalInfoInteger3
+--               are not used."
+--        ::= 1007
+--
+--trapSocketBindFail TRAP-TYPE
+--           ENTERPRISE cs1000
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger,  
+--                        trapAdditionalInfoInteger1, 
+--                        trapAdditionalInfoInteger2, 
+--                        trapAdditionalInfoInteger3     
+--              }
+--              DESCRIPTION
+--             " This trap is issued when a send via the TCP interface failed.
+--               The trapAdditionalInfoInteger1 will contain the task and
+--               Function ID.  The trapAdditionalInfoInteger2 and the
+--               trapAdditionalInfoInteger3 are not used."
+--        ::= 1008
+--
+--trapSendToFail TRAP-TYPE
+--           ENTERPRISE cs1000
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger,  
+--                        trapAdditionalInfoInteger1, 
+--                        trapAdditionalInfoInteger2, 
+--                        trapAdditionalInfoInteger3     
+--              }
+--              DESCRIPTION
+--             " This trap is issued when a receive via the TCP interface
+--               failed.  The trapAdditionalInfoInteger1 will contain the
+--               task and Function ID.  The trapAdditionalInfoInteger2 and
+--               the trapAdditionalInfoInteger3 are not used."
+--        ::= 1009
+--
+-- *******************************************************************
+--  Alarm OIDs.  These OIDs correspond to traps declared above and
+--  have the same number as the trap number above.
+-- *******************************************************************
+--
+--alarmSettopCreateFail OBJECT-TYPE
+--           SYNTAX      INTEGER
+--           ACCESS      read-only
+--           STATUS      mandatory
+--           DESCRIPTION 
+--              "Alarm which occurs when an attempt to create a 
+--               settop class instance was failed.
+--               This is a counter for the trap 1000."
+--   ::= { ncAlarms 1000 }
+--
+--alarmDiskLoadError OBJECT-TYPE
+--           SYNTAX      INTEGER
+--           ACCESS      read-only
+--           STATUS      mandatory
+--           DESCRIPTION 
+--              "Alarm which occurs when loading settop information from
+--               disk was failed.
+--               This is a counter for the trap 1001."
+--   ::= { ncAlarms 1001 }
+--
+--alarmAppNetEnetFail OBJECT-TYPE
+--           SYNTAX      INTEGER
+--                        {
+--                         ok                 (1),
+--                         undetermined       (2),
+--                         warning            (3),
+--                         minor              (4),
+--                         major              (5),
+--                         critical           (6)
+--                        }
+--           ACCESS      read-only
+--           STATUS      mandatory
+--           DESCRIPTION 
+--              "Alarm which occurs when initializing the Application
+--               Server Ethernet card was failed.
+--               This is a condition for the trap 1002."
+--   ::= { ncAlarms 1002 }
+--
+--alarmNoOobQForPath OBJECT-TYPE
+--           SYNTAX      INTEGER
+--           ACCESS      read-only
+--           STATUS      mandatory
+--           DESCRIPTION 
+--              "Alarm which occurs when downstream interface service has no
+--               downstream path ID associated with it.
+--               This is a counter for the trap 1003."
+--   ::= { ncAlarms 1003 }
+--
+--alarmNoServiceFreq OBJECT-TYPE
+--           SYNTAX      INTEGER
+--           ACCESS      read-only
+--           STATUS      mandatory
+--           DESCRIPTION 
+--              "Alarm which occurs when a downstream path ID has no
+--               service channel frequency associated with it.
+--               This is a counter for the trap 1004."
+--   ::= { ncAlarms 1004 }
+--
+--alarmSettopDatabaseFull OBJECT-TYPE
+--           SYNTAX      INTEGER
+--           ACCESS      read-only
+--           STATUS      mandatory
+--           DESCRIPTION 
+--              "Alarm which occurs when settop database table is full.
+--               This is a counter for the trap 1005."
+--   ::= { ncAlarms 1005 }
+--
+--alarmNoMacMsgQueue OBJECT-TYPE
+--           SYNTAX      INTEGER
+--           ACCESS      read-only
+--           STATUS      mandatory
+--           DESCRIPTION 
+--              "Alarm which occurs when downstream task could not find
+--               the MAC message queue.
+--               This is a counter for the trap 1006."
+--   ::= { ncAlarms 1006 }
+--
+--alarmNoAppMsgQueue OBJECT-TYPE
+--           SYNTAX      INTEGER
+--           ACCESS      read-only
+--           STATUS      mandatory
+--           DESCRIPTION 
+--              "Alarm which occurs when downstream task could not find
+--               the application message queue.  This is a counter for
+--               the trap 1007."
+--   ::= { ncAlarms 1007 }
+--
+--alarmSocketBindFail OBJECT-TYPE
+--           SYNTAX      INTEGER
+--           ACCESS      read-only
+--           STATUS      mandatory
+--           DESCRIPTION 
+--              "Alarm which occurs when a downstream task failed to bind.
+--               a socket.  This is a counter for the trap 1008."
+--   ::= { ncAlarms 1008 }
+--
+--alarmSendToFail OBJECT-TYPE
+--           SYNTAX      INTEGER
+--                        {
+--                         ok                 (1),
+--                         undetermined       (2),
+--                         warning            (3),
+--                         minor              (4),
+--                         major              (5),
+--                         critical           (6)
+--                        }
+--           ACCESS      read-only
+--           STATUS      mandatory
+--           DESCRIPTION 
+--              "Alarm which occurs when a sendto call in downstream interface
+--               failed.  This is a condition for the trap 1009."
+--   ::= { ncAlarms 1009 }
+--
+-- *******************************************************************
+--  The NLSBBN Traps Group.
+--
+--  This group contains those objects which are commonly defined but
+--  the ENTERPRISE is specific to the NC1500.  Trap IDs start at 1.
+-- *******************************************************************
+--
+--trapNewNEFound TRAP-TYPE
+--           ENTERPRISE nc1500
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedValueOID
+--                }
+--           DESCRIPTION
+--             "This trap is isssued if a Proxy Agent Detected A New NE.
+--              trapPerceivedSeverity - 'indeterminate'
+--              trapChangedValueOID - This  variable identifies the new
+--              Network Element.  This trap is not issues by non-proxy
+--              agents."
+--   ::= 1
+--
+--
+--trapNewNELost TRAP-TYPE
+--           ENTERPRISE nc1500
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedValueOID
+--                }
+--           DESCRIPTION
+--             "This trap is isssued if a Proxy Agent lost communication with
+--              NE.  trapPerceivedSeverity - 'critical'.
+--              trapChangedValueOID - This  variable identifies the new
+--              Network Element. This trap is not issues by non-proxy agents."
+--   ::= 2
+--
+--
+--trapConfigurationChangeInteger TRAP-TYPE
+--           ENTERPRISE nc1500
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueInteger
+--                }
+--           DESCRIPTION
+--             "This trap is issued if configuration of a single variable
+--              with integer type was changed (via ANY interface).  
+--              TrapChangedValueInteger variable may contain current reading
+--              of that variable.
+--              trapPerceivedSeverity - 'indeterminate'"
+--   ::= 3
+--
+--
+--trapConfigurationChangeDisplayString TRAP-TYPE
+--           ENTERPRISE nc1500
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueDisplayString
+--               }
+--           DESCRIPTION
+--             "This trap is issued if configuration of a single variable
+--              with DispalayString type was changed (via ANY interface).  
+--              TrapChangedValueDisplayString variable may contain current
+--              reading of that variable.
+--              trapPerceivedSeverity - 'indeterminate'"
+--   ::= 4
+--
+--
+--trapConfigurationChangeOID TRAP-TYPE
+--           ENTERPRISE nc1500
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueOID
+--               }
+--           DESCRIPTION
+--             "This trap is issued if configuration of a single variable
+--              with OID type was changed (via ANY interface).  
+--              TrapChangedValueOID variable may contain current reading
+--              of that variable.
+--              trapPerceivedSeverity - 'indeterminate'"
+--   ::= 5
+--
+--trapConfigurationChangeIpAddress TRAP-TYPE
+--           ENTERPRISE nc1500
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp,
+--                        trapChangedObjectId,
+--                        trapChangedValueIpAddress
+--               }
+--           DESCRIPTION
+--             "This trap is issued if configuration of a single variable
+--              with IpAddress type was changed (via ANY interface).  
+--              TrapChangedValueIpAddress variable may contain current reading
+--              of that variable.
+--              trapPerceivedSeverity - 'indeterminate'"
+--   ::= 6
+--
+--
+--trapToBeSendQueueOverflow TRAP-TYPE
+--           ENTERPRISE nc1500
+--           VARIABLES
+--               {       
+--                        trapIdentifier,
+--                        trapNetworkElemModelNumber,
+--                        trapNetworkElemSerialNum,
+--                        trapPerceivedSeverity,
+--                        trapNetworkElemOperState,
+--                        trapNetworkElemAlarmStatus,  
+--                        trapNetworkElemAdminState,
+--                        trapNetworkElemAvailStatus,
+--                        trapText,
+--                        trapNETrapLastTrapTimeStamp
+--               }
+--           DESCRIPTION
+--             "This trap is issued if SNMP agent's TrapToBeSendQueue is full.
+--              trapPerceivedSeverity - 'major'
+--              trapNetworkElemModelNumber - Model # of the Agent
+--              trapNetworkElemSerialNum - Serial # of the Agent
+--              trapNetworkElemOperState - from Ident MIB
+--              trapNetworkElemAlarmStatus - from Ident MIB   
+--              trapNetworkElemAdminState - from Ident MIB
+--              trapNetworkElemAvailStatus - from Ident MIB"
+--   ::= 7
+--
+-- *******************************************************************
+--  The DNS Traps Group.
+--
+--  This group contains those objects which are commonly defined but
+--  ENTERPRISE is sepecific to NC1500. Traps ID starts from 20. 
+-- *******************************************************************
+
+trapConditionNotInList TRAP-TYPE
+           ENTERPRISE cs1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+                        trapAdditionalInfoInteger2, 
+                        trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued if a condition is being cleared and
+               it is not in the condition list.
+               trapAdditionalInfoInteger1 : Task and Function ID (task
+                                            and function generates the
+                                            error condition)
+               trapAdditionalInfoInteger2 : Condition number
+               trapAdditionalInfoInteger3 : Condition severity" 
+   ::= 20
+
+trapConditionAlreadyInList TRAP-TYPE
+            ENTERPRISE cs1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+                        trapAdditionalInfoInteger2, 
+                        trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued if a condition is being set and
+               it is already in the condition list.
+               trapAdditionalInfoInteger1 : Task and Function ID (task
+                                            and function generates the
+                                            error condition)
+               trapAdditionalInfoInteger2 : Condition number
+               trapAdditionalInfoInteger3 : Condition severity"
+   ::= 21
+
+trapConditionListFull TRAP-TYPE
+            ENTERPRISE cs1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+                        trapAdditionalInfoInteger2, 
+                        trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued if a condition is being set and
+               the condition list is full.
+               trapAdditionalInfoInteger1 : Task and Function ID (task
+                                            and function generates the
+                                            error condition)
+               trapAdditionalInfoInteger2 : Condition number
+               trapAdditionalInfoInteger3 : Condition servirty" 
+   ::= 22
+
+trapInvalidCaseInSwitch TRAP-TYPE
+            ENTERPRISE cs1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+                        trapAdditionalInfoInteger2, 
+                        trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued when in a switch statement the
+               default case is reached.  The trapAdditionalInfoInteger1
+               will contain the task and Function ID.  The
+               trapAdditionalInfoInteger2 will contain value of the switch.
+               The trapAdditionalInfoInteger3 is not used."
+   ::= 23
+
+trapCannotCreateSemaphore TRAP-TYPE
+            ENTERPRISE cs1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+                        trapAdditionalInfoInteger2, 
+                        trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued when a semaphore cannot
+               be created. The trapAdditionalInfoInteger1 will contain the
+               task and Function ID, the trapAdditionalInfoInteger2 and
+               trapAdditionalInfoInteger3 will not be used."
+   ::= 24
+
+trapCannotOpenSocket TRAP-TYPE
+            ENTERPRISE cs1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+                        trapAdditionalInfoInteger2, 
+                        trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued when a socket cannot
+               be opened. The trapAdditionalInfoInteger1 will contain the
+               task and Function ID. The trapAdditionalInfoInteger2 will
+               contain the errno returned by the call to socket(). The
+               trapAdditionalInfoInteger3 is not used."
+   ::= 25
+
+trapUnknownMessageReceived TRAP-TYPE
+            ENTERPRISE cs1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+                        trapAdditionalInfoInteger2, 
+                        trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued when an unknown message
+               is received.  The trapAdditionalInfoInteger1 will contain the
+               task and Function ID. The trapAdditionalInfoInteger2 will 
+               contain the message ID and the trapAdditionalInfoInteger3 is
+               not used."
+   ::= 26
+
+trapInvalidMessageReceived TRAP-TYPE
+            ENTERPRISE cs1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+                        trapAdditionalInfoInteger2, 
+                        trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued when an invalid message
+               is received.  The trapAdditionalInfoInteger1 will contain the
+               task and Function ID. The trapAdditionalInfoInteger2 will
+               contain the message ID and the trapAdditionalInfoInteger3 is
+               not used."
+   ::= 27
+
+END
+

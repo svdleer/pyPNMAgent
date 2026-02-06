@@ -1,0 +1,210 @@
+
+--****************************************************************************
+--    Filename: THOMSON-DECT-MIB.txt
+--    Author:  Clément Moreau 
+--    Creation Date: 2008/01
+--
+--**************************************************************************
+--    Description:
+--
+--		private MIB for management of DECT Services
+--		
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+THOMSON-DECT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Integer32
+        FROM SNMPv2-SMI
+    thomson, broadband
+    	FROM THOMSON-MIB
+    DateAndTime,
+    DisplayString,
+    TEXTUAL-CONVENTION
+        FROM SNMPv2-TC ;
+
+dect MODULE-IDENTITY
+    LAST-UPDATED "200802190000Z"
+    ORGANIZATION "Thomson"
+    CONTACT-INFO
+        "	E-mail: "
+    DESCRIPTION
+        "Thomson private MIB for management of DECT Services"                      
+    REVISION      "200802190000Z"
+    DESCRIPTION
+        "Syntax check"                      
+    REVISION      "200802010000Z"
+    DESCRIPTION
+        "Initial version of this MIB module."
+    ::= { thomson 78 200 1 }
+
+--              
+-- Textual Conventions
+--
+
+HandsetStatus ::= TEXTUAL-CONVENTION
+    STATUS      current
+    DESCRIPTION
+	"A handset status"
+    SYNTAX INTEGER  { 
+     		handsetOk(0),
+     		handsetNotFound(1),
+		handsetInLine(2)	
+		}
+
+--
+-- DECT Service status
+--
+
+moduleSWVersion OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS	current
+    DESCRIPTION
+    	"Version of the software running in the DECT module"
+    ::= { dect 1 }
+
+
+--- Handset Table : a list of handset
+
+handsetTable	OBJECT-TYPE
+    SYNTAX	SEQUENCE OF HandsetEntry
+    MAX-ACCESS 	not-accessible
+    STATUS	current
+    DESCRIPTION
+    	"List of the 5 possible paired handset"
+    ::= { dect 2 }
+
+handsetEntry OBJECT-TYPE
+    SYNTAX	HandsetEntry
+    MAX-ACCESS  not-accessible
+    STATUS 	current
+    DESCRIPTION
+    	"An entry containing a handset"
+    INDEX 	{ handsetIndex }
+    ::= { handsetTable 1 }
+
+HandsetEntry ::= SEQUENCE {
+    handsetIndex	Integer32,
+    handsetIpei		DisplayString,
+    handsetHwVersion	DisplayString,
+    handsetSwVersion	DisplayString,
+    handsetEndptNumber	Integer32,
+    handsetStatus	HandsetStatus,
+    handsetLastConnection DateAndTime
+}
+
+handsetIndex	OBJECT-TYPE
+    SYNTAX	Integer32 (1..32)
+    MAX-ACCESS	not-accessible
+    STATUS	current
+    DESCRIPTION
+	"Index of the list (dect slot number)"
+    ::= { handsetEntry 1 }
+
+handsetIpei	OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS	read-write
+    STATUS 	current
+    DESCRIPTION
+	"IPEI of the handset associated to this slot (empty if no handset
+	 write empty to unpair)"
+    ::= { handsetEntry 2 }
+
+handsetHwVersion OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS	read-only
+    STATUS	current
+    DESCRIPTION
+	" Hardware version of the handset"
+    ::= { handsetEntry 3 }
+
+handsetSwVersion OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS	read-only
+    STATUS	current
+    DESCRIPTION
+	"Software version of the handset"
+    ::= { handsetEntry 4 }
+
+handsetEndptNumber OBJECT-TYPE
+    SYNTAX	Integer32
+    MAX-ACCESS	read-write
+    STATUS	current
+    DESCRIPTION
+	"Endpoint number to which the handset/dect slot is associated"
+    ::= { handsetEntry 5 }
+
+handsetStatus	OBJECT-TYPE
+    SYNTAX	HandsetStatus
+    MAX-ACCESS	read-only
+    STATUS	current
+    DESCRIPTION
+	"Handset Status"
+    ::= { handsetEntry 6 }
+
+handsetLastConnection OBJECT-TYPE
+    SYNTAX	DateAndTime
+    MAX-ACCESS	read-only
+    STATUS	current
+    DESCRIPTION
+	"Last time the ACG has seen the handset connection"
+    ::= { handsetEntry 7 }
+
+--- Endpoint Table : associate NCS ids with TN
+
+endptTable	OBJECT-TYPE
+    SYNTAX	SEQUENCE OF EndptEntry
+    MAX-ACCESS 	not-accessible
+    STATUS	current
+    DESCRIPTION
+    	"List of the 5 possible endpt"
+    ::= { dect 3 }
+
+endptEntry OBJECT-TYPE
+    SYNTAX	EndptEntry
+    MAX-ACCESS  not-accessible
+    STATUS 	current
+    DESCRIPTION
+    	"An entry containing a endpt"
+    INDEX 	{ endptIndex }
+    ::= { endptTable 1 }
+
+EndptEntry ::= SEQUENCE {
+    endptIndex	Integer32,
+    endptNCSId	DisplayString,
+    endptTN	DisplayString
+}
+
+endptIndex	OBJECT-TYPE
+    SYNTAX	Integer32 ( 1 .. 32 )
+    MAX-ACCESS	not-accessible
+    STATUS	current
+    DESCRIPTION
+	"Index of the list"
+    ::= { endptEntry 1 }
+
+endptNCSId	OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+	"NCSId of the endpoint"
+    ::= { endptEntry 2 }
+
+endptTN		OBJECT-TYPE
+    SYNTAX	DisplayString
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+	"TN of the endpoint"
+    ::= { endptEntry 3 }
+
+END
+
+

@@ -1,0 +1,74 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: Ntgr-usb-mgmt.mib
+--    Creation Date: February 26, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--      private MIB for usb management
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-USB-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, MODULE-IDENTITY, 
+	enterprises FROM SNMPv2-SMI 
+	TruthValue
+		FROM SNMPv2-TC
+	cableMgmt
+		FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrUsbMgmt MODULE-IDENTITY
+	LAST-UPDATED "201302260000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"This is the MIB Module for Netgear Cable Gateway device."
+::= { cableMgmt 21 }
+
+
+-- -
+-- - Netgear Group
+-- -
+
+
+-- February 26, 2013
+-- 
+-- Object Definitions
+-- 
+-- 
+-- MIB objects
+-- 
+
+usbPortEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"If set to false(0), the usb port will shutdown."
+	::= { ntgrUsbMgmt 1 }
+END

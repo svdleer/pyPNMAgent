@@ -1,0 +1,1552 @@
+    SMC-WIRELESS-N-MIB  DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        IpAddress,
+        experimental,
+        private,
+        enterprises                     FROM SNMPv2-SMI
+        
+    	MODULE-COMPLIANCE,
+    	OBJECT-GROUP                    FROM SNMPv2-CONF
+    	
+    	TEXTUAL-CONVENTION,
+	    PhysAddress,
+    	RowStatus,
+    	TruthValue,
+        DateAndTime,
+	TimeStamp,                       
+        DisplayString                 FROM SNMPv2-TC;
+            
+-- Textual Conventions
+	smcNetworks			OBJECT IDENTIFIER ::= { enterprises 202 }
+ wlsRangeExtenderControl 	OBJECT IDENTIFIER ::= {  smcWirelessN 13 }
+ wlsMultipleSsidManagement 	OBJECT IDENTIFIER ::= {  smcWirelessN 15 }
+
+
+
+    smcWirelessN	MODULE-IDENTITY
+    LAST-UPDATED "201201160000Z" -- Jan 16, 2012
+    ORGANIZATION "SMC Networks, Inc."
+    CONTACT-INFO
+      "     aRyeh Elkon
+       	    SMC Networks Inc
+            1873 S Bellaire St	
+            Suite 1025	
+            Denver, CO 80222
+            USA
+            Phone: +1 949 679 8267
+            E-mail: elkon@smc.com"
+    DESCRIPTION
+        "The MIB module to describe the SMC wireless 11n Access Point functions."
+
+    REVISION "200910190000Z"
+    DESCRIPTION
+        "Initial Compilable Version."
+
+    REVISION "201001200000Z"
+    DESCRIPTION
+        "add value for ieee80211gn mode."
+
+    REVISION "201004300000Z"
+    DESCRIPTION
+        "add wlsReset."
+
+    REVISION "201005100000Z"
+    DESCRIPTION
+        "add wlsBaseEnable per SSID."
+
+    REVISION "201005190000Z"
+    DESCRIPTION
+        "add wlsBaseAllowHnap per SSID."
+
+    REVISION "201007160000Z"
+    DESCRIPTION
+		"change wlsSecOperMode syntax."
+		
+    REVISION "201007300000Z"
+    DESCRIPTION
+		"change wlsSecOperMode syntax."
+
+    REVISION "201010120000Z"
+    DESCRIPTION
+		"Add wlsOperatorsSsidGuiStatus
+            wlsOperatorsSsidAllowGuiManagementMask
+            and wlsSubscriberSsidMask."
+
+    REVISION "201102020000Z"
+    DESCRIPTION
+     "change location
+               wlsSubscriberSsidMask             moved to wlsMultipleSsidManagement 3
+
+     add 
+            wlsClientNumber          smcWirelessN 6
+		wlsSetToAllDefault	 smcWirelessN 5
+	wlsWPSEnable 		 smcWirelessN  20
+	wlsWPSSecurity 		 smcWirelessN  21
+	wlsWPSEncryption 		 smcWirelessN  22
+	wlsWPSConfigured 		 smcWirelessN  24
+	wlsWPSAPPIN 		 smcWirelessN  25
+      wlsWPSSTATIONPIN 		 smcWirelessN 51
+
+      wlsMAC 		     	smcWirelessN  26
+	wlsBGProtectionMode 	smcWirelessN  27
+	wlsIGMPSnooping 		smcWirelessN  28
+	wlsOperationMode 		smcWirelessN  29
+	wlsChannelBW 		smcWirelessN  30
+	wlsMCS 		 	smcWirelessN  31
+	wlsRDB 		 	smcWirelessN  32
+	wlsExtensionChannel 	smcWirelessN  33
+	wlsAMSDU 		 	smcWirelessN  34
+	wlsAutoBlockAck 		smcWirelessN  35
+	wlsDeclineBAReq 		smcWirelessN  36
+	wlsHtTxStream 		smcWirelessN  37
+	wlsHtRxStream 		smcWirelessN  38
+	wlsWMMPsr 		 	smcWirelessN  39
+	wlsSTBC 			smcWirelessN  40
+	wlsGI 	 		smcWirelessN  41
+
+		wlsRadiusServerAddr     wlsSecEntry 13   
+            wlsRadiusServerPort     wlsSecEntry 14  
+
+		Add  the following tables:
+			MAC Filtering table
+			Range Extenders Table 
+			
+"
+
+    REVISION "201102140000Z"
+    DESCRIPTION
+		"Fix syntax to address compilation errors"
+
+    REVISION "201105060000Z"
+    DESCRIPTION
+		"Add  wlsTxPowerBoostFactor smcWirelessN 60  "
+
+    REVISION "201105190000Z"
+    DESCRIPTION
+		"Change  wlsTxPowerBoostFactor(smcWirelessN 60) definition  "
+
+    REVISION "201111230000Z"
+    DESCRIPTION
+                 " Add      wlsSubscriberSsidAllowGuiManagementMask  wlsMultipleSsidManagement 4 "
+
+
+    REVISION "201112290000Z"
+    DESCRIPTION
+                 " Add       wlsSecEncryption   (wlsSecEntry 15) "
+
+    REVISION "201201160000Z"
+	DESCRIPTION
+		" editorial changes "
+
+
+    ::= { smcNetworks 62 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Administrative Configuration
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	wlsEnable OBJECT-TYPE
+		SYNTAX TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Enable/Disable wireless."
+        DEFVAL { true }
+	    ::= { smcWirelessN 1 }
+
+	wlsCusAdminManagementEnable OBJECT-TYPE
+		SYNTAX TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Enable/Disable wireless configuration for customer user."
+        DEFVAL { true }
+	    ::= { smcWirelessN 2 }
+
+	wlsReset OBJECT-TYPE
+		SYNTAX TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Set to True to reset wireless AP without reset the whole device. When read, returns False."
+        ::= { smcWirelessN 4 }
+
+	wlsSetToAllDefault OBJECT-TYPE
+     		SYNTAX      TruthValue
+     		MAX-ACCESS  read-write
+     		STATUS      current
+     		DESCRIPTION
+             "When set  to true(1) the device MUST reset to default values on all of the  SSIDs.
+             Reading this object always return false(2)."
+     		DEFVAL { false }
+	   ::= { smcWirelessN 5 }
+	   
+
+       wlsClientNumber OBJECT-TYPE
+		  SYNTAX INTEGER
+	    MAX-ACCESS	read-only
+	    STATUS		  current
+	    DESCRIPTION
+		    "Number of wireless client connected."
+	    ::= { smcWirelessN 6 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- WPS Configuration
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+   wlsWPSEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS   read-write
+      STATUS              current
+      DESCRIPTION
+              "WPS status."
+      DEFVAL { true }
+          ::= { smcWirelessN 20 }
+   
+   wlsWPSSecurity OBJECT-TYPE
+      SYNTAX DisplayString
+      MAX-ACCESS  read-only
+      STATUS              current
+      DESCRIPTION
+              "WPS security."
+      ::= { smcWirelessN 21 }
+
+   wlsWPSEncryption OBJECT-TYPE
+      SYNTAX DisplayString
+      MAX-ACCESS  read-only
+      STATUS              current
+      DESCRIPTION
+              "WPS encryption."
+      ::= { smcWirelessN 22 }
+
+  wlsWPSPasshrase OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE(0|5..63))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The Password used to derive WPS encryption. 
+                 Reading this object could return zero string if 
+                 the WEP key was already derived."
+        ::= { smcWirelessN 23 }
+
+
+  wlsWPSConfigured OBJECT-TYPE
+      SYNTAX DisplayString
+      MAX-ACCESS  read-only
+      STATUS              current
+      DESCRIPTION
+              "WPS configured."
+      ::= { smcWirelessN 24 }
+      
+   wlsWPSAPPIN OBJECT-TYPE
+      SYNTAX DisplayString
+      MAX-ACCESS  read-only
+      STATUS              current
+      DESCRIPTION
+              "WPS AP PIN."
+      ::= { smcWirelessN 25 }     
+
+  wlsWPSSTATIONPIN OBJECT-TYPE
+      SYNTAX      INTEGER
+      MAX-ACCESS  read-write
+      STATUS      current
+      DESCRIPTION
+              "PIN to wifi client"
+      ::= { smcWirelessN 51 }	
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             The Base Table                            |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    wlsBaseTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF WlsBaseEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+                "Configuration for 802.11 wireless interfaces."
+        ::= { smcWirelessN 3 }
+
+    wlsBaseEntry OBJECT-TYPE
+        SYNTAX      WlsBaseEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+                "An entry in wlsBaseTable"
+        INDEX { wlsBaseSsidIndex }
+        ::= { wlsBaseTable 1 }
+
+    WlsBaseEntry ::= 
+        SEQUENCE { 
+                  wlsBaseSsidIndex          INTEGER,
+                  wlsBaseSetToDefault       TruthValue,
+                  wlsBaseDesiredSsid        OCTET STRING,
+                  wlsBaseAdvertiseSsid      TruthValue,
+                  wlsBaseRadio		   	INTEGER,
+                  wlsBasePhyCapabilities    BITS,
+                  wlsBasePhyOperMode        INTEGER,
+                  wlsBasePhyChannelAutoScan TruthValue,
+                  wlsBasePhyCurrentChannel  INTEGER,
+                  wlsBaseNatEnable          TruthValue,
+                  wlsBaseTosValue           INTEGER,
+                  wlsBaseVlanId             INTEGER,
+                  wlsBaseWmmEnable          TruthValue,
+                  wlsBaseBandwidth          INTEGER,
+                  wlsBaseHtMode             INTEGER,
+                  wlsBaseEnable             TruthValue,
+                  wlsBaseAllowHnap          TruthValue
+                 }
+
+    wlsBaseSsidIndex OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The Ssid index."
+        ::= { wlsBaseEntry 1 }
+
+    wlsBaseSetToDefault OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "When set  to true(1) the device MUST reset to default values on this SSID.
+                Reading this object always return false(2)."
+        DEFVAL { false }
+        ::= { wlsBaseEntry 2 }
+
+    wlsBaseDesiredSsid OBJECT-TYPE
+        SYNTAX OCTET STRING
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "This attribute reflects the Service Set ID (Ssid)
+            The default for the SSID1 should be constructed using
+            model name + last 2 digit WAN MAC address."
+        ::= { wlsBaseEntry 3 }
+
+    wlsBaseAdvertiseSsid OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "When set to false(2) the device does not advertise the BSS
+                Ssid in a proprietary manner. To avoid interoperability
+                problems and service disruption it is RECOMMENDED to set
+                this object always to true. This feature does not provide
+                any security, and does not prevent Wireless Stations to
+                obtain the Ssid by sniffing frames from other stations in
+                the ESS. If the device does not support the feature of
+                turning on/off the Ssid advertisement, this object always
+                reports 'true(1)' and reports the error 'wrongValue' when
+                set to 'false(2)."
+        DEFVAL { true }
+        ::= { wlsBaseEntry 4 }
+
+    wlsBaseRadio OBJECT-TYPE
+        SYNTAX      INTEGER {radio24G(1)}
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Wireless radio band."
+        DEFVAL { radio24G }
+        ::= { wlsBaseEntry 5 }
+
+    wlsBasePhyCapabilities OBJECT-TYPE
+        SYNTAX      BITS {
+                          ieee80211a(0),
+                          ieee80211b(1),
+                          ieee80211g(2),
+                          ieee80211r(3),
+                          ieee80211n(4)
+                        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "Indicates the PHY capabilities of the wireless interface."
+        ::= { wlsBaseEntry 6 }
+
+    wlsBasePhyOperMode OBJECT-TYPE
+        SYNTAX      INTEGER {
+                             ieee80211a(1),
+                             ieee80211b(2),
+                             ieee80211g(4),
+                             ieee80211r(8),
+                             ieee80211bg(24),
+                             ieee80211n(16),
+                             ieee80211gn(32),
+                             ieee80211bgn(40)
+                            }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Indicates the PHY mode of operation being set for the
+                wireless interface. "
+        ::= { wlsBaseEntry 7 }
+
+    wlsBasePhyChannelAutoScan OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "When set to true(1), the device will scan the available channels and
+                 use a free channel.
+                 When set to false(2), the device will use the statically configured
+                 channel ID set in wlsBasePhyCurrentChannel."
+        DEFVAL { true }
+        ::= { wlsBaseEntry 8 }
+
+    wlsBasePhyCurrentChannel OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "When read, device reports the current operating frequency channel.
+                 When written, device reports error if wlsBasePhyChannelAutoScan is set to true(1)."
+        ::= { wlsBaseEntry 9 }
+
+    wlsBaseNatEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Enable NAT when set to true(1), 
+                 disable NAT when set to false(2). 
+                 When NAT is disabled, all traffic from this ifIndex 
+                 should be bridged to support Hot Spot feature."
+        ::= { wlsBaseEntry 10 }
+
+
+    wlsBaseTosValue OBJECT-TYPE
+        SYNTAX      INTEGER (0..7)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Type of service value in the IP frame. When configured, received IP packets 
+                 will be forced to carry this ToS value for forwarding."
+        ::= { wlsBaseEntry 11 }
+
+    wlsBaseVlanId OBJECT-TYPE
+        SYNTAX      INTEGER (0..1024)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "VLAN ID value in the 802.1Q frame. When configured, received packets 
+                 will be forced to tag this VLAN ID value for forwarding. VLAN ID 0 is for untagged VLAN."
+        DEFVAL { 0 }
+        ::= { wlsBaseEntry 12 }
+
+    wlsBaseWmmEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Enable WiFi Multi Media when set to true(1), 
+                 disable WiFi Multi Media when set to false(2)."
+        DEFVAL { false }
+        ::= { wlsBaseEntry 13 }
+
+    wlsBaseBandwidth OBJECT-TYPE
+        SYNTAX      INTEGER (0..100)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Percentage of bandwidth."
+        ::= { wlsBaseEntry 14 }
+
+    wlsBaseHtMode OBJECT-TYPE
+        SYNTAX      INTEGER {
+                             ht20(1),
+                             ht40(2),
+                             ht40plus(3)
+                            }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "For 11n, HT mode."
+        DEFVAL { ht20 }
+        ::= { wlsBaseEntry 15 }
+
+    wlsBaseEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Enable SSID when set to true(1), 
+                 disable when set to false(2)."
+        DEFVAL { true }
+        ::= { wlsBaseEntry 16 }
+
+    wlsBaseAllowHnap OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Allow HNAP to control this SSID when set to true(1), 
+                 deny HNAP access when set to false(2)."
+        DEFVAL { false }
+        ::= { wlsBaseEntry 17 }
+        
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             The Security Table                            |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    wlsSecTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF WlsSecEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+                "Specifics controls for configuring the 
+                security mechanisms of 802.11 wireless interfaces."
+        ::= { smcWirelessN 10 }
+
+    wlsSecEntry OBJECT-TYPE
+        SYNTAX      WlsSecEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+                "An entry in wlsSecTable associated to a 
+                wireless Ssid Index."
+        INDEX { wlsBaseSsidIndex }
+        ::= { wlsSecTable 1 }
+
+    WlsSecEntry ::= 
+        SEQUENCE { 
+                  wlsSecCapabilities        BITS,
+                  wlsSecOperMode            INTEGER,
+                  wlsSecPassPhraseToWEPKey  OCTET STRING,
+                  wlsSecUsePassPhraseToWEPKeyAlg TruthValue,
+                  wlsSecWEPKeyId            INTEGER,
+                  wlsSecWEPKey1Value        OCTET STRING,
+                  wlsSecWEPKey2Value        OCTET STRING,
+                  wlsSecWEPKey3Value        OCTET STRING,
+                  wlsSecWEPKey4Value        OCTET STRING,
+                  wlsSecPSKPassPhraseToKey  OCTET STRING,
+                  wlsSecWPAPreSharedKey     OCTET STRING,
+                  wlsSecWPARekeyTime        INTEGER,
+			wlsRadiusServerAddr       IpAddress,
+                  wlsRadiusServerPort       INTEGER,
+                  wlsSecEncryption              INTEGER
+                 }
+
+    wlsSecCapabilities OBJECT-TYPE
+        SYNTAX      BITS { 
+                          wep64(0),
+                          wep128(1),
+                          wpaPSK(2),
+                          wpa2PSK(3),
+                          wpaEnterprise(4),
+                          wpa2Enterprise(5)
+                         }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The device capabilities for Authentication and encryption used
+                to authenticate 802.11 clients."
+        ::= { wlsSecEntry 1 }
+
+    wlsSecOperMode OBJECT-TYPE
+        SYNTAX      INTEGER { 
+                disabled(0),
+                wep64(1), 
+                wpaPSK(2), 
+                wpa2PSK(3), 
+                wpaEnterprise(4), 
+                wpa2Enterprise(5), 
+                wpaPSKWPA2PSK(7), 
+                wpaEnterpriseWPA2Enterprise(8), 
+                wep128(9), 
+                wep256(10) 
+                }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Indicates the Authentication and encryption mechanism to 
+                be enabled for the users and advertised in Beacon messages.
+                
+                Note that to enable the PSK security mechanism, the value
+                of wlsSecWPAPreSharedKey must be a non-zero
+                length string."
+        ::= { wlsSecEntry 2 }
+
+    wlsSecPassPhraseToWEPKey OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE(0|5..63))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The Password used to derive WEP encryption keys. 
+                 Reading this object could return zero string if 
+                 the WEP key was already derived."
+        ::= { wlsSecEntry 3 }
+
+    wlsSecUsePassPhraseToWEPKeyAlg OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "When this object value is true(1) the WEP Pass Phrase to
+                key mechanism described in 
+                wlsSecPassPhraseToWEPKey applies. When this
+                object is set to false(2) the Pass Phrase to WEP Key
+                mechanism is ignored"
+        DEFVAL { true }
+        ::= { wlsSecEntry 4 }
+
+    wlsSecWEPKeyId OBJECT-TYPE
+        SYNTAX      INTEGER (1..4)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The WEP key ID used."
+        ::= { wlsSecEntry 5 }
+
+    wlsSecWEPKey1Value OBJECT-TYPE
+        SYNTAX      OCTET STRING
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The WEP secret key value with key ID 1."
+        ::= { wlsSecEntry 6 }
+
+    wlsSecWEPKey2Value OBJECT-TYPE
+        SYNTAX      OCTET STRING
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The WEP secret key value with key ID 2."
+        ::= { wlsSecEntry 7 }
+
+    wlsSecWEPKey3Value OBJECT-TYPE
+        SYNTAX      OCTET STRING
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The WEP secret key value with key ID 3."
+        ::= { wlsSecEntry 8 }
+
+    wlsSecWEPKey4Value OBJECT-TYPE
+        SYNTAX      OCTET STRING
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The WEP secret key value with key ID 4."
+        ::= { wlsSecEntry 9 }
+
+    wlsSecPSKPassPhraseToKey OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE(8..63))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The Password used to derive WPA PSK encryption key.
+                The default PassPhrase should be constructed using 
+                router's WAN MAC address."
+        ::= { wlsSecEntry 10 }
+
+    wlsSecWPAPreSharedKey OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE(0|32))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The Pre-shared key used when the bit 'wpaPSK' 
+                is set to '1'. This object can be set directly or derived
+                from the password phrase set in 
+                wlsSecPSKPassPhraseToKey. This object is
+                meaningful when the bit wpaPSK is set to '1'. 
+
+                If the value of this object is the zero-length string, the
+                device must not activate the PSK security mechanism."
+        DEFVAL { ''H }
+        ::= { wlsSecEntry 11 }
+
+    wlsSecWPARekeyTime OBJECT-TYPE
+        SYNTAX      INTEGER
+        UNITS       "seconds"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Time interval to initiate WPA Group Keys (GTK) updates."
+        DEFVAL { 86400 }
+        ::= { wlsSecEntry 12 }
+
+ wlsRadiusServerAddr     OBJECT-TYPE
+        SYNTAX              IpAddress
+        MAX-ACCESS          read-write
+        STATUS              current
+        DESCRIPTION
+                  "Wireless radius server address, the object is vailded when wlsSecOperMode 
+                  is set to wpaEnterprise-TKIP or wpaEnterprise-AES or wpa2Enterprise-TKIP or 					wpa2Enterprise-AES"
+        ::= { wlsSecEntry 13 }
+                              
+    wlsRadiusServerPort     OBJECT-TYPE
+        SYNTAX              INTEGER
+        MAX-ACCESS          read-write
+        STATUS              current
+        DESCRIPTION
+        "Wireless radius server port number (default is 1812), the object is vailded when wlsSecOperMode 
+        is set to wpaEnterprise-TKIP or wpaEnterprise-AES or wpa2Enterprise-TKIP or wpa2Enterprise-AES"       
+        ::= { wlsSecEntry 14 }
+
+    wlsSecEncryption  OBJECT-TYPE
+        SYNTAX      INTEGER { 
+                               tkip(1), 
+                               aes(2), 
+                               tkip-aes(3) 
+                 }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Indicates the Encryption mechanism to 
+                be enabled for the users and advertised in Beacon messages.
+                "
+        ::= { wlsSecEntry 15 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             The LAN Device Table                            |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    wlsLanAddrTable OBJECT-TYPE 
+           SYNTAX      SEQUENCE OF WlsLanAddrEntry 
+           MAX-ACCESS  not-accessible 
+           STATUS      current 
+           DESCRIPTION 
+                   "This table is a list of wireless LAN client parameters.
+                   This table has one row entry for each allocated
+                   wireless LAN IP address.  Each row must have at least a
+                   valid wlsLanAddrMethod, a unique wlsLanAddrIp, and a unique
+                   wlsLanAddrClientId value.
+
+                   Static/Manual address assignment: To create a new DHCP
+                   address reservation, the NMS creates a row with: an
+                   index comprised of a new wlsLanAddrIp and its
+                   wlsLanAddrIpType, a new unique
+                   wlsLanAddrClientID, (an empty LeaseCreateTime and
+                   empty LeaseExpireTime,) and a
+                   wlsLanDataAddrRowStatus of createAndGo(4).  If the
+                   syntax and values of the new row - indicating a
+                   reservation - are valid, the device must set
+                   wlsLanAddrMethod to reservationInactive(1) and
+                   wlsLanDataAddrRowStatus to active(1).  When the device
+                   grants a lease for a reserved IP, it must set the
+                   wlsLanAddrMethod object for that row to
+                   reservationActive(2).  When a lease for a reserved IP
+                   expires, the device must set the corresponding row's
+                   wlsLanAddrMethod object to reservationInactive(1).
+                   For row entries that represent lease reservations - rows
+                   in which the wlsLanAddrMethod object has a value of
+                   either reservationInactive(1) or reservationActive(2) -
+                   the wlsLanAddrIpType, wlsLanAddrIp,
+                   wlsLanAddrClientID, wlsLanAddrMethod, and
+                   wlsLanAddrHostName object values must persist across
+                   device reboots.
+
+                   Dynamic address assignment:  When the device grants a lease
+                   for a non-reserved IP, it must set the
+                   wlsLanAddrMethod object for that row to
+                   dynamicActive(4).  When a lease for a non-reserved IP
+                   expires, the device must set the corresponding row's
+                   wlsLanAddrMethod object to dynamicInactive(3).  The
+                   device must create new row entries using wlsLanAddrIp
+                   values that are unique to this table.  If all
+                   wlsLanAddrIp values in the range defined by
+                   wlsLanPoolStart and wlsLanPoolEnd are in use in
+                   this table, the device may overwrite the
+                   wlsLanAddrClientId of a row that has a
+                   wlsLanAddrMethod object with a value of
+                   dynamicInactive(3) with a new wlsLanAddrClientId
+                   value and use that wlsLanAddrIp as part of a new
+                   lease.  For row entries that represent active leases -
+                   rows in which the wlsLanAddrMethod object has a
+                   value of dynamicActive(4) - the wlsLanAddrIpType,
+                   wlsLanAddrIp, wlsLanAddrClientID,
+                   wlsLanAddrMethod, and wlsLanAddrHostName object
+                   values must persist across device reboots."
+        ::= { smcWirelessN 11 } 
+    
+    wlsLanAddrEntry OBJECT-TYPE 
+        SYNTAX      WlsLanAddrEntry 
+        MAX-ACCESS  not-accessible 
+        STATUS      current 
+        DESCRIPTION 
+                "List of general parameters pertaining to LAN IP
+                address reservations and leases." 
+        INDEX { wlsBaseSsidIndex, wlsLanAddrIp } 
+        ::= { wlsLanAddrTable 1 } 
+    
+    WlsLanAddrEntry ::= SEQUENCE { 
+        wlsLanAddrIp                 IpAddress, 
+        wlsLanAddrClientID           PhysAddress, 
+        wlsLanAddrLeaseCreateTime    DateAndTime, 
+        wlsLanAddrLeaseExpireTime    DateAndTime, 
+        wlsLanAddrMethod             INTEGER, 
+        wlsLanAddrHostName           OCTET STRING, 
+        wlsLanAddrRowStatus          RowStatus, 
+        wlsLanAddrClientSsid         INTEGER
+        } 
+      
+    wlsLanAddrIp OBJECT-TYPE 
+        SYNTAX      IpAddress 
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION  
+                "The address assigned to the LAN IP Device. This parameter
+                is entered by the gateway when the DHCP server grants a lease to a
+                LAN IP Device and creates a row
+                in this table. Alternatively, this parameter can be
+                entered by the NMS through the CMP, when the NMS creates
+                a new DHCP address reservation.  Each wlsLanAddrIp
+                in the table must fall within the range of IPs defined
+                inclusively by wlsLanPoolStart and 
+                wlsLanPoolEnd.  The device must return an 
+                inconsistentValue error if the NMS attempts to
+                create a row entry with a wlsLanAddrIP value that falls
+                outside of this range or is not unique from all existing
+                wlsLanAddrIP entries in this table. The address type of
+                this object is specified by wlsLanAddrIpType."
+        ::= { wlsLanAddrEntry 2 } 
+    
+    wlsLanAddrClientID OBJECT-TYPE 
+        SYNTAX      PhysAddress 
+        MAX-ACCESS  read-create 
+        STATUS      current 
+        DESCRIPTION 
+                "The client's (i.e., LAN IP Device's) hardware address as
+                indicated in the chaddr field of its DHCP REQUEST message.
+                There is a one-to-one relationship between the hardware
+                address and the LAN IP Device. This parameter is entered
+                by the device when the DHCP server grants a lease to a LAN IP
+                Device and creates a row in this
+                table. Alternatively this parameter can be created by the
+                NMS through the MIB, when the NMS creates a new DHCP
+                address reservation by accessing the 
+                wlsLanDataAddrRowStatus object with an index 
+                comprised of a unique wlsLanAddrIp and creating
+                a row with a unique wlsLanAddrClientID."
+        ::= { wlsLanAddrEntry 3 } 
+
+    wlsLanAddrLeaseCreateTime OBJECT-TYPE 
+        SYNTAX      DateAndTime
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "This is the date and time when the LAN IP lease was
+                created (if it has not yet been renewed) or last renewed.
+                This MIB object contains a zero valued 11 byte string
+                when a reservation is created for a LAN IP address
+                and it maintains this value until the LAN IP Device
+                acquires its lease and wlsLanAddrMethod
+                becomes reservationActive(2)."
+        ::= { wlsLanAddrEntry 4 }
+    
+    wlsLanAddrLeaseExpireTime OBJECT-TYPE 
+        SYNTAX      DateAndTime
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "This is the date and time when the LAN IP address lease
+                expired or will expire. This MIB object contains a zero
+                valued 11 byte string when a reservation is created for
+                a LAN IP address and it maintains this value until the
+                LAN IP Device acquires its lease and
+                wlsLanAddrMethod becomes reservationActive(2)."
+        ::= { wlsLanAddrEntry 5 }
+    
+    wlsLanAddrMethod OBJECT-TYPE 
+        SYNTAX      INTEGER { 
+                        mgmtReservationInactive(1),
+                        mgmtReservationActive(2),
+                        dynamicInactive(3),
+                        dynamicActive(4),
+                        gwReservationInactive(5),
+                        gwReservationActive(6)  
+                    } 
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "The IP allocation method indicated by this row.
+
+                The value of mgmtReservationInactive(1)
+                indicates an externally provisioned IP address
+                reservation that has not yet been leased or that
+                has an expired lease. This indicates an IP address
+                lease reservation created either by an operator or
+                a user.
+            
+                The value of mgmtReservationActive(2)
+                indicates an externally provisioned IP address
+                reservation that has an active lease. This indicates
+                an IP address lease reservation created either
+                by an operator or a user.
+
+                The value of dynamicInactive(3) indicates an
+                IP address that was once dynamically assigned to a 
+                LAN client by the device but currently
+                has an expired lease.
+ 
+                The value of dynamicActive(4)indicates an IP 
+                Address that was dynamically assigned to a
+                LAN device by the gateway and has a current
+                active lease.
+            
+                The value of gwReservationInactive(5)
+                indicates an IP address reservation created by some
+                internal process of the gateway and has not yet been
+                leased or has an expired lease.
+            
+                The value of gwReservationActive(6)
+                indicates an IP address reservation created by some
+                internal process of the device that has an active lease." 
+        ::= { wlsLanAddrEntry 6 } 
+    
+    wlsLanAddrHostName OBJECT-TYPE 
+        SYNTAX      OCTET STRING (SIZE(0..80)) 
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "This is the Host Name of the LAN IP address, based on DCHP
+                option 12." 
+        ::= { wlsLanAddrEntry 7 } 
+    
+    wlsLanAddrRowStatus OBJECT-TYPE 
+        SYNTAX      RowStatus 
+        MAX-ACCESS  read-create 
+        STATUS      current 
+        DESCRIPTION 
+                "The RowStatus interlock for creation and deletion of row
+                entries. The device must not allow the NMS to set RowStatus
+                to notInService(2). The device must assign a RowStatus of
+                notInService(2) to any new row entry created with a
+                non-unique, wlsLanAddrClientID value. The device must
+                assign a RowStatus of notReady(3) to any new row entry
+                created without a wlsLanAddrClientID.  The device will
+                prevent modification of this table's columns and return an
+                inconsistentValue error, if the NMS attempts to make such 
+                modifications while the RowStatus is active(1)." 
+        ::= { wlsLanAddrEntry 8 } 
+
+ 
+    wlsLanAddrClientSsid OBJECT-TYPE 
+        SYNTAX INTEGER 
+        MAX-ACCESS read-only 
+        STATUS current 
+        DESCRIPTION 
+                "The SSID which the client is associated with." 
+        ::= { wlsLanAddrEntry 9 } 
+
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             Multiple SSID Managment                            |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ wlsOperatorsSsidGuiStatus  OBJECT-TYPE 
+           SYNTAX      BITS { 
+                          ssid1(0),
+                          ssid2(1),
+                          ssid3(2),
+                          ssid4(3),
+                          ssid5(4),
+                          ssid6(5),
+                          ssid7(6),
+                          ssid8(7)
+                         }
+           MAX-ACCESS  read-write
+           STATUS      current 
+           DESCRIPTION 
+                "Define if the Operators SSID data will be advertised in the status Home page. 
+                                  Default value = 0x01 (00000001) - Operators SSID are not visible in GUI.
+                                 Only SSID1 (Default subscriber SSID) is visible in the GUI.
+                                  This function will be support by TLV43-type 81"
+
+        ::= { wlsMultipleSsidManagement 1 }
+    
+ wlsOperatorsSsidAllowGuiManagementMask  OBJECT-TYPE 
+           SYNTAX      BITS { 
+                          ssid1(0),
+                          ssid2(1),
+                          ssid3(2),
+                          ssid4(3),
+                          ssid5(4),
+                          ssid6(5),
+                          ssid7(6),
+                          ssid8(7)
+                         }
+           MAX-ACCESS  read-write
+           STATUS      current 
+           DESCRIPTION 
+                "Define if the Operators SSID data will be open for admin to view and mange via the Wireless pages. 
+                                  Once specific SSID is open (1) all related management and settings sub pages will be accessable. 
+                                   Default value = 0x01 (00000001) - Operators SSID are not manageble in GUI.
+                                  Only SSID1 (Default subscriber SSID) is manageble in the GUI.
+                                  This function will be support by TLV43-type 82"
+
+        ::= { wlsMultipleSsidManagement 2 }
+    
+ wlsSubscriberSsidMask  OBJECT-TYPE 
+           SYNTAX        BITS { 
+                          ssid1(0),
+                          ssid2(1),
+                          ssid3(2),
+                          ssid4(3),
+                          ssid5(4),
+                          ssid6(5),
+                          ssid7(6),
+                          ssid8(7)
+                         } 
+           MAX-ACCESS  read-write
+           STATUS      current 
+           DESCRIPTION 
+                "Define which SSIDs are Subscriber SSID.
+                 If SSID becomes Subscriber SSID, it will automatically be advertised in the STATUS GUI page 
+                 and will be available for parameters settings via WIRELESS SETTING GUI page for both admin
+                 and cusadmin.
+                                 Default value = 0x01 (00000001) - Only SSID1 is subscriber SSID.
+                                 This function will be support by TLV43-type 83 
+                 Examples for Subscriber SSID Mask: 
+                       LSB (00000001) => as this bit represent SSID 1. Default value. 
+                       (00000011) => Will set also SSID2 to be suscriber SSID. 
+                       (00000101) => Will set also SSID3 to be suscriber SSID. 
+                       (00001001) => Will set also SSID4 to be suscriber SSID. 
+                       ...... 
+                       (10000001) => Will set also SSID8 to be suscriber SSID. 
+                       (00001101) => Will set SSID 3 + SSID4 as well in addition to SSID1.               "
+ 
+
+        ::= { wlsMultipleSsidManagement 3 }
+ 
+ wlsSubscriberSsidAllowGuiManagementMask  OBJECT-TYPE 
+           SYNTAX      BITS { 
+                          ssid1(0),
+                          ssid2(1),
+                          ssid3(2),
+                          ssid4(3),
+                          ssid5(4),
+                          ssid6(5),
+                          ssid7(6),
+                          ssid8(7)
+                         }
+           MAX-ACCESS  read-write
+           STATUS      current 
+           DESCRIPTION 
+                "Define if the Subscribers SSID data will be open for CUSADMIN to view and mange via the Wireless pages. 
+                                  Once specific SSID is open (1) all related management and settings sub pages will be accessable. 
+                                   Default value = 0x01 (00000001) - Only SSID1 is manageble in GUI.
+                                  Only SSID1 (Default subscriber SSID) is manageble in the GUI.
+                This mask is logic AND with wlsSubscriberSsidMask. which mean, SSID MUST be definde as Subscriber SSID 
+                before it can be managed by cusadmin
+                example:
+                if   wlsSubscriberSsidMask = 0x05
+                and  wlsSubscriberSsidAllowGuiManagementMask = 0x01
+                In main status page, cusadmin will see the status of both SSID1 and SSID3, 
+                but it will be able to manage only SSID1 parameters via the Wireless-Setting GUI page "
+
+        ::= { wlsMultipleSsidManagement 4 }
+
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Private Wireless Advanced setting
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+   wlsMAC OBJECT-TYPE
+      SYNTAX DisplayString
+      MAX-ACCESS  read-only
+      STATUS      current
+      DESCRIPTION
+              "Wireless MAC"
+      ::= { smcWirelessN 26 }	
+   
+  -- wlsWPSButten OBJECT-TYPE
+  --    SYNTAX TruthValue
+  --    MAX-ACCESS  read-write
+  --    STATUS      current
+  --    DESCRIPTION
+  --            "wlsWPSButten"
+  --    DEFVAL { false }
+  --    ::= { smcWirelessN 50 }	    
+ 
+
+   wlsBGProtectionMode OBJECT-TYPE
+       SYNTAX INTEGER
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+               "BG Protection Mode"
+       ::= { smcWirelessN 27 }
+
+    wlsIGMPSnooping OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "IGMP Snooping"
+        ::= { smcWirelessN 28 }
+
+    wlsOperationMode OBJECT-TYPE
+          SYNTAX INTEGER
+          MAX-ACCESS  read-write
+          STATUS      current
+          DESCRIPTION
+                  "Operation Mode"
+          ::= { smcWirelessN 29 }
+  
+     wlsChannelBW OBJECT-TYPE
+            SYNTAX INTEGER
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                    "Channel bandwidth"
+            ::= { smcWirelessN 30 }
+
+     wlsMCS OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "MCS"
+              ::= { smcWirelessN 31 }
+
+wlsRDB OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "Reverse Direction Grant"
+              ::= { smcWirelessN 32 }
+wlsExtensionChannel OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "Extension channel"
+              ::= { smcWirelessN 33 }
+wlsAMSDU OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "Aggregation MSDU"
+              ::= { smcWirelessN 34 }
+wlsAutoBlockAck OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "Auto Block Ack"
+              ::= { smcWirelessN 35 }
+wlsDeclineBAReq OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "Decline BA Request"
+              ::= { smcWirelessN 36 }
+wlsHtTxStream OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "HT TxStream"
+              ::= { smcWirelessN 37 }
+wlsHtRxStream OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "HT RxStream"
+              ::= { smcWirelessN 38 }
+wlsWMMPsr OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "WMM Power Save"
+              ::= { smcWirelessN 39 }
+wlsSTBC OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "STBC"
+              ::= { smcWirelessN 40 }
+
+wlsGI OBJECT-TYPE
+              SYNTAX INTEGER
+              MAX-ACCESS  read-write
+              STATUS      current
+              DESCRIPTION
+                      "Guard Interval time (0:800ns | 1:400ns)"
+              ::= { smcWirelessN 41 }
+
+     -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             The Mac Filter Table                            |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    wlsMacFilterTable OBJECT-TYPE 
+           SYNTAX      SEQUENCE OF WlsMacFilterEntry 
+           MAX-ACCESS  not-accessible 
+           STATUS      current 
+           DESCRIPTION 
+                "Specifics controls for configuring mac fileter 
+                 mechanisms of 802.11 wireless interfaces."
+        ::= { smcWirelessN 12 }
+    
+    wlsMacFilterEntry OBJECT-TYPE 
+        SYNTAX      WlsMacFilterEntry 
+        MAX-ACCESS  not-accessible 
+        STATUS      current 
+        DESCRIPTION 
+                "An entry in wlsMacFilterTable associated to a 
+                wireless Ssid description."
+        INDEX { wlsSsidIndex } 
+        ::= { wlsMacFilterTable 1 } 
+    
+    WlsMacFilterEntry ::= SEQUENCE { 
+        wlsSsidIndex                INTEGER,
+        wlsDesiredSsid		          DisplayString,
+        wlsFilterPolicy           	INTEGER,
+        wlsMacFilterAddr1           PhysAddress,
+        wlsMacFilterAddr2           PhysAddress,
+        wlsMacFilterAddr3           PhysAddress,
+        wlsMacFilterAddr4           PhysAddress,
+        wlsMacFilterAddr5           PhysAddress,
+        wlsMacFilterAddr6           PhysAddress,
+        wlsMacFilterAddr7           PhysAddress,
+        wlsMacFilterAddr8           PhysAddress,
+        wlsMacFilterAddr9           PhysAddress,
+        wlsMacFilterAddr10          PhysAddress,
+        wlsMacFilterAddr11          PhysAddress,
+        wlsMacFilterAddr12          PhysAddress,
+        wlsMacFilterAddr13          PhysAddress,
+        wlsMacFilterAddr14          PhysAddress,
+        wlsMacFilterAddr15          PhysAddress,
+        wlsMacFilterAddr16          PhysAddress               
+        } 
+
+    wlsSsidIndex OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The index of SSID."
+        ::= { wlsMacFilterEntry 2 }
+              
+    wlsDesiredSsid OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The SSID of wireless mac filter entry."
+        ::= { wlsMacFilterEntry 3 }
+
+    wlsFilterPolicy OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        allowAll(0),
+                        allow(1),
+                        deny(2)
+                    }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The policy of wireless mac filter."
+        DEFVAL { allowAll }
+        ::= { wlsMacFilterEntry 4 }
+
+    wlsMacFilterAddr1 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 5 }
+        
+    wlsMacFilterAddr2 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 6 }
+        
+    wlsMacFilterAddr3 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 7 }
+
+    wlsMacFilterAddr4 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 8 }
+
+    wlsMacFilterAddr5 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 9 }
+
+    wlsMacFilterAddr6 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 10 }
+
+    wlsMacFilterAddr7 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 11 }
+
+    wlsMacFilterAddr8 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 12 }
+
+    wlsMacFilterAddr9 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 13 }
+
+    wlsMacFilterAddr10 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 14 }
+
+    wlsMacFilterAddr11 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 15 }
+
+    wlsMacFilterAddr12 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 16 }
+
+    wlsMacFilterAddr13 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 17 }
+
+    wlsMacFilterAddr14 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 18 }
+
+    wlsMacFilterAddr15 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 19 }
+
+    wlsMacFilterAddr16 OBJECT-TYPE
+        SYNTAX      PhysAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless filtering control."
+        ::= { wlsMacFilterEntry 20 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             Range Extenders Table                            |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    wlsDiscoveryRangeExtenderTable OBJECT-TYPE 
+           SYNTAX      SEQUENCE OF WlsDiscoveryRangeExtenderEntry 
+           MAX-ACCESS  not-accessible 
+           STATUS      current 
+           DESCRIPTION 
+                "Discovery around the AP. Before getting around AP's, it MUST be requested wireless module
+                 site survey around AP's by setting OID wlsRangeExtenderSiteSurvey to true."
+        ::= { wlsRangeExtenderControl 1 }
+            
+    wlsDiscoveryRangeExtenderEntry OBJECT-TYPE 
+        SYNTAX      WlsDiscoveryRangeExtenderEntry 
+        MAX-ACCESS  not-accessible 
+        STATUS      current 
+        DESCRIPTION 
+                "An entry in wlsRangeExtenderTable associated to around 
+                 wireless AP description. It's need to set OID wlsRangeExtenderSiteSurvey to 
+                 get latest AP's information"
+        INDEX { wlsDiscoveryRangeExtIndex } 
+        ::= { wlsDiscoveryRangeExtenderTable 1 } 
+                
+    WlsDiscoveryRangeExtenderEntry ::= SEQUENCE { 
+        wlsDiscoveryRangeExtIndex            INTEGER,
+        wlsDiscoveryRangeExtSsid		         DisplayString,
+        wlsDiscoveryRangeExtBSsid            DisplayString,
+        wlsDiscoveryRangeExtChannel          INTEGER,
+        wlsDiscoveryRangeExtSecurityMode     DisplayString,
+        wlsDiscoveryRangeExtConnect          TruthValue
+        }
+
+    wlsDiscoveryRangeExtIndex OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "Wireless AP index."
+        ::= { wlsDiscoveryRangeExtenderEntry 1 }
+        
+    wlsDiscoveryRangeExtSsid OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "Wireless AP SSID name."
+        ::= { wlsDiscoveryRangeExtenderEntry 2 }
+              
+    wlsDiscoveryRangeExtBSsid OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The mac address of wireless AP."
+        ::= { wlsDiscoveryRangeExtenderEntry 3 }
+
+    wlsDiscoveryRangeExtChannel OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The channel of wireless AP."
+        ::= { wlsDiscoveryRangeExtenderEntry 4 }
+
+    wlsDiscoveryRangeExtSecurityMode OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The security mode of wireless AP."
+        ::= { wlsDiscoveryRangeExtenderEntry 5 }
+                
+    wlsDiscoveryRangeExtConnect OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Connected to this wireless AP. But, before connecting, it need to change modem to bridge mode,
+                 and turn LAN DHCP server off and turn all SSID VLAN DHCP server off. Reading this object always return false"
+        DEFVAL { false }
+        ::= { wlsDiscoveryRangeExtenderEntry 6 }  
+        
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --            Connect Range Extenders Table                     |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    wlsRangeExtenderSiteSurvey OBJECT-TYPE 
+           SYNTAX      TruthValue
+           MAX-ACCESS  read-write
+           STATUS      current 
+           DESCRIPTION 
+                "Requested modem site survey around AP. Reading object always return false.
+                 Set object to true, it will site survey around AP."
+           DEFVAL { false }
+        ::= { wlsRangeExtenderControl 2 }
+        
+    wlsConnectRangeExtSsid OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The SSID name of connected wireless AP."
+        ::= { wlsRangeExtenderControl 3 }
+              
+    wlsConnectRangeExtBSsid OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The mac address of connected wireless AP."
+        ::= { wlsRangeExtenderControl 4 }
+
+    wlsConnectRangeExtChannel OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The channel of connected wireless AP."
+        ::= { wlsRangeExtenderControl 5 }
+
+    wlsConnectRangeExtSecurityMode OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The security mode of connected wireless AP."
+        ::= { wlsRangeExtenderControl 6 }
+
+    wlsDeleteRangeExtend OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Delete connected range extend wireless AP. Reading this object always return false"
+        DEFVAL { false }
+        ::= { wlsRangeExtenderControl 7 }   
+  
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             WLAN Tx Power Boost                            |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	wlsTxPowerBoostFactor OBJECT-TYPE
+		SYNTAX  INTEGER {
+                        standard(0),
+                        mid(1),
+                        high(2)
+                    }
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		"WLAN Tx Power boost factor.
+		This factor will be added to the WLAN Module Max Tx Power Control register value above the Factory Calibration.
+		The factor MUST not go above the high limit value defined by the WLAN device manufacturer limits.
+		The number stored in the WLAN card register (Factory calibrated + Factor) MUST not go above the high limit value 
+		defined by the WLAN device manufacturer limits.
+		For example:
+		The max value to be stored for Ralink RT3662 is 1F. 
+
+		Operation: 
+		Setting the value of this OID must be followed by resetting the gateway!
+
+		Note: 
+			1. The use of this feature is the responsibility of operator!
+			2. This may degrade the performance of the WLAN for short distances.
+			3. The enhancement of 1 unit factor can not be defined in dB as it may be different between modules (normally between 0.4-1.0 dB). 
+
+                 Default = 2. (high)
+                 "
+        ::= { smcWirelessN 60 }
+
+
+END

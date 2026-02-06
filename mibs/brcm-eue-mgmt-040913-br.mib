@@ -1,0 +1,2192 @@
+--**************************************************************************
+-- Copyright (c) 2008-2013 Broadcom Corporation
+-- 
+-- This program  is the  proprietary software  of Broadcom  Corporation and/or  its
+-- licensors, and may only be used, duplicated, modified or distributed pursuant to
+-- the  terms and  conditions of  a separate,  written license  agreement executed
+-- between you and Broadcom (an "Authorized  License").  Except as set forth in  an
+-- Authorized License, Broadcom  grants no license  (express or implied),  right to
+-- use, or waiver of any kind with respect to the Software, and Broadcom  expressly
+-- reserves all rights in and to the Software and all intellectual property  rights
+-- therein.  IF YOU HAVE NO AUTHORIZED LICENSE, THEN YOU HAVE NO RIGHT TO USE  THIS
+-- SOFTWARE IN ANY WAY, AND SHOULD IMMEDIATELY NOTIFY BROADCOM AND DISCONTINUE  ALL
+-- USE OF THE SOFTWARE.  
+--  
+-- Except as expressly set forth in the Authorized License,
+--  
+-- 1.      This  program,  including  its  structure,  sequence  and  organization,
+-- constitutes  the valuable  trade secrets  of Broadcom,  and you  shall use  all
+-- reasonable  efforts to  protect the  confidentiality thereof,  and to  use this
+-- information only  in connection  with your  use of  Broadcom integrated  circuit
+-- products.
+--  
+-- 2.     TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED "AS  IS"
+-- AND  WITH  ALL  FAULTS  AND  BROADCOM  MAKES  NO  PROMISES,  REPRESENTATIONS  OR
+-- WARRANTIES, EITHER EXPRESS,  IMPLIED, STATUTORY, OR  OTHERWISE, WITH RESPECT  TO
+-- THE SOFTWARE.  BROADCOM SPECIFICALLY DISCLAIMS ANY AND ALL IMPLIED WARRANTIES OF
+-- TITLE, MERCHANTABILITY, NONINFRINGEMENT, FITNESS FOR A PARTICULAR PURPOSE,  LACK
+-- OF  VIRUSES,  ACCURACY OR  COMPLETENESS,  QUIET ENJOYMENT,  QUIET  POSSESSION OR
+-- CORRESPONDENCE TO DESCRIPTION. YOU ASSUME THE ENTIRE RISK ARISING OUT OF USE  OR
+-- PERFORMANCE OF THE SOFTWARE.
+-- 
+-- 3.     TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL BROADCOM OR ITS
+-- LICENSORS BE  LIABLE FOR  (i) CONSEQUENTIAL,  INCIDENTAL, SPECIAL,  INDIRECT, OR
+-- EXEMPLARY DAMAGES WHATSOEVER ARISING OUT OF  OR IN ANY WAY RELATING TO  YOUR USE
+-- OF OR INABILITY  TO USE THE  SOFTWARE EVEN IF  BROADCOM HAS BEEN  ADVISED OF THE
+-- POSSIBILITY OF SUCH DAMAGES; OR (ii) ANY AMOUNT IN EXCESS OF THE AMOUNT ACTUALLY
+-- PAID FOR THE SOFTWARE ITSELF OR U.S. $1, WHICHEVER IS GREATER. THESE LIMITATIONS
+-- SHALL APPLY  NOTWITHSTANDING ANY  FAILURE OF  ESSENTIAL PURPOSE  OF ANY  LIMITED
+-- REMEDY.
+--**************************************************************************
+--    Filename: brcm-eue-mgmt.mib
+--    Author:   
+--    Creation Date: July 25, 2008
+--
+--**************************************************************************
+--    Description:
+--
+--		private MIB for runtime (not factory) eUE management
+--
+--**************************************************************************
+--    Revision History:
+--    25/07/2008 - Creation 
+--**************************************************************************
+
+BRCM-EUE-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Unsigned32,
+	  NOTIFICATION-TYPE
+        FROM SNMPv2-SMI
+    TruthValue,
+    DisplayString,
+    RowStatus
+        FROM SNMPv2-TC    
+    OBJECT-GROUP,
+    MODULE-COMPLIANCE,
+    NOTIFICATION-GROUP
+        FROM SNMPv2-CONF
+    cableDataMgmtMIBObjects
+        FROM BRCM-CABLEDATA-MGMT-MIB
+    pktcEUEDevOpIndex,
+		pktcEUEDevPCSCFEntry,
+    pktcEUEDevPCSCFIndex
+        FROM CL-PKTC-EUE-DEV-MIB
+		pktcEUEUsrIMPUEntry,
+    pktcEUEUsrIMPUIndex
+        FROM CL-PKTC-EUE-USER-MIB
+    pktcEUERSTCallFwdIndex,
+		pktcEUERSTCallWaitEntry,
+		pktcEUERSTNfEmSvcEntry,
+		pktcEUERSTCallFwdEntry,
+		pktcEUERSTCIDDisEntry,
+		pktcEUERSTBasicCallEntry,
+    PktcEUETCRSTAppFeatIndexType
+        FROM CL-PKTC-EUE-RST-MIB
+    pktcEDVAEndPntConfigEntry
+        FROM CL-PKTC-EUE-EDVA-MIB
+    PktcEUETCCreds
+        FROM CL-PKTC-EUE-TC-MIB
+    Uri
+        FROM URI-TC-MIB
+    InetAddress,
+    InetPortNumber,
+    InetAddressType
+        FROM INET-ADDRESS-MIB
+    ifIndex
+        FROM IF-MIB
+    SnmpAdminString
+        FROM SNMP-FRAMEWORK-MIB;
+
+eueMgmt MODULE-IDENTITY
+    LAST-UPDATED "201304090000Z"
+    ORGANIZATION "Broadcom Corporation"
+    CONTACT-INFO
+        "	BANANA-CABLEDATA
+                (cableData branch of the
+                Broadcom Assigned Numbers and Naming Authority)
+                Broadcom Corporation
+        Postal: 4385 River Green Parkway
+                Duluth, GA  30096
+                USA
+           Tel: +1 770 232-0018
+        E-mail: banana-cabledata@broadcom.com"
+    DESCRIPTION
+        "Broadcom MIB for runtime management of an eUE device."
+    REVISION      "201303280000Z"
+    DESCRIPTION
+        "Added eueMgmtUsrIMPUPAUriList."        
+    REVISION      "201302080000Z"
+    DESCRIPTION
+        "Added eueMgmtUsrIMPUMWISubscribed."        
+    REVISION      "201302040000Z"
+    DESCRIPTION
+        "Updated compliance statement for emtaSignalingEndptCtrlSDPParam
+         and fixed some syntax errors."
+    REVISION      "201301140000Z"
+    DESCRIPTION
+        "Extended eueMgmtBaseSilenceSuppressionReporting to allow for reporting
+         silence suppression on with no CN parameter."
+    REVISION      "201301110000Z"
+    DESCRIPTION
+        "Added eueMgmtBaseDectMode, eueMgmtOpPCSCFPrimaryRecoveryTimerMin and 
+         eueMgmtOpPCSCFPrimaryRecoveryTimerMax"
+    REVISION      "201212060000Z"
+    DESCRIPTION
+        "Added eueMgmtDect Group."
+    REVISION      "201208280000Z"
+    DESCRIPTION
+        "Edit of eueMgmtBaseKeepAliveMaxInterval to remove zero as an
+         allowed value."
+    REVISION      "201206110000Z"
+    DESCRIPTION
+        "Added eueMgmtRSTBCallHookFlashRelayReported, eueMgmtRSTBCallHookFlashRelayMimeType,
+         eueMgmtRSTBCallHookFlashRelayInfoContent."
+    REVISION      "201204300000Z"
+    DESCRIPTION
+        "Added eueMgmtEDVAEndpointConfigSDPParam."
+    REVISION      "201204170000Z"
+    DESCRIPTION
+        "Changed support of emtaCountryCode and rename eueMgmtBaseCountryCode to
+         eueMgmtBaseCountryCallingCode"    
+    REVISION      "201204050000Z"
+    DESCRIPTION
+        "Added eueMgmtBaseOpSessionExpiry and eueMgmtBaseOpSessionMinimum.
+         Modified eueMgmtRSTNfMWIClearVMWI to eueMgmtRSTNfMWIClearMWI.
+         Removed blindMWI from BrcmRSTTCFeatID.
+         Added eueMgmtUsrIMPUAllowUnsolicitedMWI and
+         eueMgmtUsrIMPUAllowUnsolicitedUAProf."
+    REVISION      "201203280000Z"
+    DESCRIPTION
+        "Added eueMgmtOpPCSCFDiscoveryState, eueMgmtOpPCSCFTargetIPAddressList,
+         eueMgmtOpPCSCFTargetIPAddressListExpires, eueMgmtOpPCSCFDiscoveryRetryMin,
+         eueMgmtOpPCSCFDiscoveryRetryMax"
+    REVISION      "201203150000Z"
+    DESCRIPTION
+        "Added eueMgmtOpPCSCFRegRetryTimerOn403."
+    REVISION      "201203080000Z"
+    DESCRIPTION
+        "Changed MAX-ACCESS of eueMgmtOpPCSCFTimerB to Read-Write and updated its 
+         description."
+    REVISION      "201109090000Z"
+    DESCRIPTION
+        "Added eueMgmtBaseIncludeNetworkInfoHeader, eueMgmtBaseNetworkInfoToken"
+    REVISION      "201012150000Z"
+    DESCRIPTION
+        "Added eueMgmtBaseInternationalSupportEnabled and compliance statement
+         for internationalizaion support from PKTC-IETF-SIG-MIB"
+    REVISION      "201012060000Z"
+    DESCRIPTION
+            "Added eueMgmtBaseKeepAliveMaxInterval, eueMgmtBaseKeepAliveFailureThreshold"     
+     REVISION      "201003310000Z"
+    DESCRIPTION
+            "Added eueMgmtBaseCustomSipPwdGenModel"     
+    REVISION      "201005110000Z"
+    DESCRIPTION
+            "Made eueMgmtOpPCSCFSigTransport obsolete."
+    REVISION      "201004290000Z"
+    DESCRIPTION
+            "eueMgmtRSTCallWaitTable augments pktcEUERSTCallWaitTable.
+             Removed eueMgmtRSTCallWaitIndex and eueMgmtRSTCallWaitStatus.
+             Changed OID for eueMgmtRSTCallWaitTODisabled." 
+    REVISION      "201003260000Z"
+    DESCRIPTION
+            "Added eueMgmtBaseSilenceSuppressionEnabled" 
+    REVISION      "201003110000Z"
+    DESCRIPTION
+            "Added eueMgmtRSTBCallRegEvtSubscribeEnabled for controlling reg-event
+             subscription and updated operator specific feature ID range in 
+             BrcmRSTTCFeatID and added feature ID for blind MWI feature."     
+    REVISION      "200911240000Z"
+    DESCRIPTION
+            "Obsoleted hotline related objects."     
+    REVISION      "200901230000Z"
+    DESCRIPTION
+            "Added eueMgmtRSTBasicCallTable and related objects."
+    REVISION      "200811250000Z"
+    DESCRIPTION
+            "Updated eueMgmtCompliance to specify supported objects from
+             BRCM-EMTA-MGMT-MIB."
+    REVISION      "200807250000Z"
+    DESCRIPTION
+            "Initial version of this MIB module."
+    ::= { cableDataMgmtMIBObjects 12 }
+
+eueMgmtNotification     OBJECT IDENTIFIER ::= { eueMgmt 0 }
+eueMgmtBase             OBJECT IDENTIFIER ::= { eueMgmt 1 }
+eueMgmtUser             OBJECT IDENTIFIER ::= { eueMgmt 2 }
+eueMgmtOperator         OBJECT IDENTIFIER ::= { eueMgmt 3 }
+eueMgmtRST              OBJECT IDENTIFIER ::= { eueMgmt 4 }
+eueMgmtCodec            OBJECT IDENTIFIER ::= { eueMgmt 5 }
+eueMgmtObject           OBJECT IDENTIFIER ::= { eueMgmt 6 }
+eueMgmtEDVAEndpoint     OBJECT IDENTIFIER ::= { eueMgmt 7 }
+
+-- The following node must be the last one in this MIB. All new
+-- MIB Objects should be introduced in one of the above categories,
+-- e.g. - in 'eueMgmtObjects'.
+eueMgmtConformance      OBJECT IDENTIFIER ::= { eueMgmt 8 }
+-- ---------------------------------------------------------------------           
+-- Broadcom EUE RST Textual Conventions 
+-- ---------------------------------------------------------------------                     
+
+BrcmRSTTCFeatID ::= TEXTUAL-CONVENTION 
+             STATUS  current 
+             DESCRIPTION 
+                 "This TEXTUAL CONVENTION is being defined 
+                  as a way to enumerate RST features that may
+                  not be included in the CL-PKTC-EUE-RST-MIB.
+                  Items in this textual convention can be used
+                  interchangeably with PktcRSTTCFeatId, and must
+                  not overlap the enumeration of PktcRSTTCFeatId" 
+             SYNTAX   INTEGER (100..2147483647)
+                                -- Reserved Range for operators specific features
+                                -- identifiers 100 to 200
+                                -- vendor specific starting at 201
+                          
+
+--
+-- eueMgmtBase - objects for general-purpose eUE control
+--
+eueMgmtBaseCountryCallingCode  OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(0..3))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " String defining the country code identifier as specified in ITU E.164."
+    DEFVAL { "" }
+    ::= { eueMgmtBase 1 }
+
+eueMgmtBaseKeepAliveDisabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      obsolete
+    DESCRIPTION
+        " Determine whether signaling keep alive is disabled or not when supported.
+          true = disable keep alive, false = enable keep alive.
+          Note this value is persistent across reboot."
+    DEFVAL { false }
+    ::= { eueMgmtBase 2 }
+
+eueMgmtBaseCustomKey1  OBJECT-TYPE
+    SYNTAX      PktcEUETCCreds
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        " A key provided to the EUE via SNMP config file to be used for 
+          as part of custom credential generation.
+          If read this MIB Object MUST always return an empty 
+          string value for privacy reasons.
+        "    
+    ::= { eueMgmtBase 3 }
+
+eueMgmtBaseCnxInactivityTimer    OBJECT-TYPE
+    SYNTAX        Unsigned32 (0..65535)
+    UNITS         "minutes"
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object defines the time period (in minutes) before active phone 
+         calls are deleted due to the absence of RTP, RTCP, or T.38 packets.  
+         Changes to this MIB will take effect starting the next call (in process
+         calls are not affected).  A MIB value of 0 indicates that no calls will
+         be deleted in the absence of packets.
+         Note the default value may change depending on firmware build options."
+    DEFVAL {0}
+    ::=  { eueMgmtBase 4 }
+
+eueMgmtBaseSilenceSuppressionReporting    OBJECT-TYPE
+    SYNTAX        INTEGER {
+                  silenceSuppressionOn (1),
+                  silenceSuppressionOff (2),
+                  silenceSuppressionNoSdp(3),
+                  silenceSuppressionOnNoRtpMap(4)
+                  }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object is used to enable/disable the reporting of
+         silence suppression in the SDP parameters at runtime. 
+         For a device that supports silence suppression, the default value is silenceSuppressionOn,
+         and the device will behave as follows:
+         silenceSuppressionOn - silence suppression will be reported as on in the SDP parameter.
+         silenceSuppressionOff - silence suppression will be reported as off in the
+         SDP parameter.
+         silenceSuppressionNoSdp - silence suppression will not be reported in the SDP.
+         slienceSuppessionOnNoRtpMap - silence suppression will be reported as on in the SDP parameter,
+          but no rtp payload mapping will be included for CN (comfort noise). 
+
+         For a device that does not support silence suppression, the default value is
+         silenceSuppressionNoSdp, and changing this MIB will have no effect on the SDP parameters.
+         To determine if a device supports silence suppression, refer
+         to the pktcSigDevSilenceSuppression MIB."
+    ::=  { eueMgmtBase 5 }
+
+eueMgmtBaseCustomSipPwdGenModel    OBJECT-TYPE
+    SYNTAX        INTEGER {
+                  sipPwdGenOff(0),
+                  sipPwdGenSingle(1),
+                  sipPwdGenMultiple(2)
+    }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "This object is used to specify use of a custom auto generation method for the SIP password
+         and IMPI.  The following values are supported:
+         sipPwdGenOff(0) - no auto generation of SIP credentials or IMPI. This is the same
+                           as standard Packetcable behavior. 
+         sipPwdGenSingle(1) - single IMPI and SIP credential generated for the device.
+         sipPwdGenMultiple(2) - unique IMPI and SIP credential generated for each enabled port.
+             on the device. 
+         Note that the default value may change depending on firmware build options.  Also note
+         that for firmware that does not support custom credential generation the values of
+         sipPwdGenSingle and sipPwdGenMultiple will have no effect."
+    DEFVAL {sipPwdGenOff}
+    ::=  { eueMgmtBase 6 }
+
+eueMgmtBaseKeepAliveMaxInterval  OBJECT-TYPE
+    SYNTAX      Unsigned32 (29..3600)
+    UNITS "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " The maximum interval for keep-alive messages.
+          The actual interval used between each keep-alive message is chosen
+          randomly between this mib value and 5 seconds less than this mib value."
+    DEFVAL { 29 }
+    ::= { eueMgmtBase 7 }
+
+eueMgmtBaseKeepAliveFailureThreshold  OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..8)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " The number of consecutive keep-alive failures after which a flow failure is declared."
+    DEFVAL { 7 }
+    ::= { eueMgmtBase 8 }
+
+eueMgmtBaseInternationalSupportEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This value indicates whether international support is enabled on the device and cannot
+         be set via the config file or through SNMP.  If true, the device supports the subset of
+         the PKTC-IETF-SIG-MIB as described by the compliance statement of this MIB module. If false,
+         the subset of the PKTC-IETF-SIG-MIB in the compliance statement is not supported."
+    ::= { eueMgmtBase 9 }
+
+eueMgmtBaseIncludeNetworkInfoHeader  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Indicates whether to include P-Access-Network-Info header.
+         When true, the P-Access-Network-Info header is to be included in every SIP message.
+         The default value can change depending on the firmware build options."
+    DEFVAL {false}     
+    ::= { eueMgmtBase 10 }
+
+eueMgmtBaseNetworkInfoHeaderToken  OBJECT-TYPE
+    SYNTAX      SnmpAdminString
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Specifies the actual access-network token that would be included in the
+         P-Access-Network-Info header.
+         The token will not be added if the MIB is an empty string or
+         if eueMgmtBaseIncludeNetworkInfoHeader is false. "
+    DEFVAL {''H} -- empty string    
+    ::= { eueMgmtBase 11 }        
+    
+eueMgmtBaseRandomReReg  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Indicate whether re-registration timer should be randomized.  
+          When enabled, reregistration will be attempted at randomly selected value 
+          between 60% and 90% of the registration expiration time as returned in the
+          previous 200 OK.  
+          Note that enabling this would deviate from the reregistration behavior 
+          described in section 5.1.1.4 of PKT-SP-24.229."
+    DEFVAL {false}
+    ::= { eueMgmtBase 12 }
+
+eueMgmtBaseOpSessionExpiry  OBJECT-TYPE
+    SYNTAX  Unsigned32 (0|90..4294967295)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The SIP session expiry timer. See RFC-4028 for more detail."
+    ::= { eueMgmtBase 13 }
+
+eueMgmtBaseOpSessionMinimum  OBJECT-TYPE
+    SYNTAX  Unsigned32 (0|90..4294967295)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Corresponds to MIN-SE SIP header. Refer to RFC-4028."
+    ::= { eueMgmtBase 14 }        
+
+    
+--
+-- eueMgmtUser - objects for eUE User control
+--
+eueMgmtUsrIMPUTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtUsrIMPUEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This data table represents Users associated with  
+          the eUE. Specifically it provides information related
+          to the IM Public Identity (IMPU) of the User."
+    ::=  { eueMgmtUser 1 }
+
+eueMgmtUsrIMPUEntry    OBJECT-TYPE
+    SYNTAX        EueMgmtUsrIMPUEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains configuration for the IMPU corresponding to
+         the pktcEUEUsrIMPUIndex."
+    AUGMENTS{ pktcEUEUsrIMPUEntry}
+    ::=  { eueMgmtUsrIMPUTable 1 }
+
+EueMgmtUsrIMPUEntry  ::= SEQUENCE {
+       eueMgmtUsrIMPUReRegMaxTime               Unsigned32,
+       eueMgmtUsrIMPUReRegBaseTimeAllFail       Unsigned32,
+       eueMgmtUsrIMPUReRegBaseTimeNotFailed     Unsigned32,
+       eueMgmtUsrIMPURegMaxWaitTime             Unsigned32,
+       eueMgmtUsrIMPURegRetryTimerMin           Unsigned32,
+       eueMgmtUsrIMPURegRetryTimerMax           Unsigned32,
+       eueMgmtUsrIMPUAllowUnsolicitedMWI        TruthValue,
+       eueMgmtUsrIMPUAllowUnsolicitedUAProf     TruthValue,
+       eueMgmtUsrIMPUMWISubscribed              TruthValue,
+       eueMgmtUsrIMPUPAUriList                  DisplayString
+    }
+eueMgmtUsrIMPUReRegMaxTime  OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..1800)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      obsolete
+    DESCRIPTION
+        " Max time timer needed for calculating re-registration interval 
+          between keep alive (flow) failure"
+    REFERENCE 
+       "draft-ietf-sip-outbound-13.txt, section 4.5 - Flow Recovery"
+    DEFVAL {1800}
+    ::= { eueMgmtUsrIMPUEntry 1 }
+eueMgmtUsrIMPUReRegBaseTimeAllFail  OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..1800)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      obsolete
+    DESCRIPTION
+        " base-time-all-fail timer needed for calculating re-registration interval 
+          between keep alive (flow) failure"
+    REFERENCE 
+       "draft-ietf-sip-outbound-13.txt, section 4.5 - Flow Recovery"
+    DEFVAL {30}
+    ::= { eueMgmtUsrIMPUEntry 2 }
+eueMgmtUsrIMPUReRegBaseTimeNotFailed  OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..1800)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      obsolete
+    DESCRIPTION
+        " base-time-not-failed timer needed for calculating re-registration interval 
+          between keep alive (flow) failure"
+    REFERENCE 
+       "draft-ietf-sip-outbound-13.txt, section 4.5 - Flow Recovery"
+    DEFVAL {90}
+    ::= { eueMgmtUsrIMPUEntry 3 }
+
+eueMgmtUsrIMPURegMaxWaitTime  OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..3600)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Define the maximum time to wait after power up and before initiating user registration.
+          The actual time waited will be randomly chosen between [0, this timer value].
+          Note that if the user goes off hook while this timer is still running, 
+          the timer will be cancelled and registration will be attempted right away."
+    DEFVAL {0}
+    ::= { eueMgmtUsrIMPUEntry 4 }
+    
+eueMgmtUsrIMPURegRetryTimerMin  OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Defines the minimum wait time for exponential retry and backoff when E-UE fails
+          to register to a P-CSCF."
+    DEFVAL {30}
+    ::= { eueMgmtUsrIMPUEntry 5 }
+
+eueMgmtUsrIMPURegRetryTimerMax  OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Defines the maximum wait time for exponential retry and backoff when E-UE fails
+          to register to a P-CSCF."
+    DEFVAL {1800}
+    ::= { eueMgmtUsrIMPUEntry 6 }
+    
+eueMgmtUsrIMPUAllowUnsolicitedMWI  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Controls whether the unsolicited NOTIFY events for MWI will be accepted
+          by the IMPU associated with this table entry. A value of true means the unsolicited
+          event will be accepted."
+    ::= { eueMgmtUsrIMPUEntry 7 }    
+
+eueMgmtUsrIMPUAllowUnsolicitedUAProf  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Controls whether the unsolicited NOTIFY events for UA profile will be accepted
+          by the IMPU associated with this table entry. A value of true means the unsolicited
+          event will be accepted."
+    ::= { eueMgmtUsrIMPUEntry 8 }    
+
+eueMgmtUsrIMPUMWISubscribed  OBJECT-TYPE
+    SYNTAX   TruthValue   
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+       "This object reports the current subscription state for message waiting.
+        The MIB will report 'true' when subscribed and 'false' when unsubscribed. "
+    ::= { eueMgmtUsrIMPUEntry 9 }
+        
+eueMgmtUsrIMPUPAUriList  OBJECT-TYPE
+    SYNTAX   DisplayString   
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+       "This object reports the IMPUs from the P-Associated-Uri header
+         if the header is provided to the EDVA during registration."
+    ::= { eueMgmtUsrIMPUEntry 10 }
+
+--
+-- eueMgmtOperator - objects for eUE per Operator control
+--
+eueMgmtOpPCSCFTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtOpPCSCFEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table represents data configurable per PCSCF
+         within an operator domain.  It complements the 
+         pktcEUEDevPCSCFTable"
+    ::=  { eueMgmtOperator 1 }
+
+eueMgmtOpPCSCFEntry    OBJECT-TYPE
+    SYNTAX       EueMgmtOpPCSCFEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains configuration for the PCSCF according
+         the pktcEUEDevOpIndex and pktcEUEDevPCSCFIndex."
+    AUGMENTS{ pktcEUEDevPCSCFEntry}
+    ::=  { eueMgmtOpPCSCFTable 1 }
+
+EueMgmtOpPCSCFEntry  ::= SEQUENCE {
+       eueMgmtOpPCSCFTimerB       Unsigned32,
+       eueMgmtOpPCSCFTimerF       Unsigned32,
+       eueMgmtOpPCSCFTimerH       Unsigned32,
+       eueMgmtOpPCSCFSigTransport BITS,
+       eueMgmtOpPCSCFTcpFallBackEnabled  TruthValue,
+       eueMgmtOpPCSCFBackupRecoveryEnabled TruthValue,
+       eueMgmtOpPCSCFRegRetryTimerOn403    Unsigned32,
+       eueMgmtOpPCSCFDiscoveryState INTEGER,
+       eueMgmtOpPCSCFTargetIPAddressList OCTET STRING,
+       eueMgmtOpPCSCFTargetIPAddressListExpires Unsigned32,
+       eueMgmtOpPCSCFDiscoveryRetryMin Unsigned32,
+       eueMgmtOpPCSCFDiscoveryRetryMax Unsigned32,
+       eueMgmtOpPCSCFPrimaryRecoveryTimerMin Unsigned32,
+       eueMgmtOpPCSCFPrimaryRecoveryTimerMax Unsigned32 
+    }
+
+eueMgmtOpPCSCFTimerB  OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..100000)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This is the SIP Timer B.  
+         Per CL-PKTC-EUE-DEV-MIB, the Timer TB MUST be derived from the 
+         total number of SIP INVITE message attempts as follows:
+             TB = [2^(n-1)]*T1
+                   n: total number of INVITE attempts
+                   T1 = Timer T1  
+         On a SNMP GET, this MIB object will report according to the formula 
+         above based on the values of pktcEUEDevPCSCFInviteAttempts (n) and 
+         pktcEUEDevPCSCFTimerT1 (T1).  As such, changes to pktcEUEDevPCSCFInviteAttempts 
+         and pktcEUEDevPCSCFTimerT1 will always be reflected in this MIB.
+         When eueMgmtOpPCSCFTimerB is set to a non-zero value, pktcEUEDevPCSCFInviteAttempts
+         will be updated according to the above equation and the allowable range
+         for pktcEUEDevPCSCFInviteAttempts.  eueMgmtOpPCSCFTimerB will then 
+         be re-calculated based on the above equation and the updated value 
+         of pktcEUEDevPCSCFInviteAttempts.
+         Due to the limited range for pktcEUEDevPCSCFInviteAttempts, the 
+         recalculation of eueMgmtOpPCSCFTimerB may provide a different value 
+         returned in an SNMP GET than the value of eueMgmtOpPCSCFTimerB that 
+         was provided in an SNMP SET."
+    REFERENCE 
+       "PacketCable IMS Delta Session Initiation Protocol (SIP) 
+        and Session Description Protocol (SDP), Stage 3 
+        Specification 3GPP TS 24.229"
+    DEFVAL {0}
+    ::= { eueMgmtOpPCSCFEntry 1 }
+
+eueMgmtOpPCSCFTimerF  OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..100000)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " SIP Timer F"
+    REFERENCE 
+       "RFC 3261"
+    DEFVAL {0}
+    ::= { eueMgmtOpPCSCFEntry 2 }
+
+eueMgmtOpPCSCFTimerH  OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..100000)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " SIP Timer H"
+    REFERENCE 
+       "RFC 3261"
+    DEFVAL {0}
+    ::= { eueMgmtOpPCSCFEntry 3 }
+
+eueMgmtOpPCSCFSigTransport OBJECT-TYPE
+    SYNTAX      BITS {
+        udp(0),
+        tcp(1),
+        tls(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS obsolete
+    DESCRIPTION
+        "This object defines the signaling transport protocol type that is acceptable 
+         to use by the application.  When enabled, a certain transport may be used by 
+         the application, which transport is actually used is at the discretion of the 
+         application and the specific usage depending on the situation.
+
+         The default value of this object is to enable UDP and TCP, ie. with the UDP(0) 
+         and TCP(1) bits set." 
+    ::= { eueMgmtOpPCSCFEntry 4 }
+
+eueMgmtOpPCSCFTcpFallBackEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the TCP fallback on MTU threshold behavior defined in RFC 3261
+        section 18.1.1.  Note that the TCP transport must be enabled as a valid transport
+        for this to take effect."
+    DEFVAL { true }
+    ::= { eueMgmtOpPCSCFEntry 5 }
+
+eueMgmtOpPCSCFBackupRecoveryEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the failover backup and recovery mechanism.
+        When set to to true, backup and recovery will enabled.
+        The backup aspect of the feature is meant to ensure service is not discontinued 
+        in the event of a failure to reach the primary signaling proxy.  In such failure 
+        event, a secondary (or backup) proxy is to be contacted to prolong service.
+        The recovery aspect of the feature is meant to ensure that if the service has switched 
+        to using a secondary (or backup) proxy due to failure, service will be restored 
+        to the primary signaling proxy as soon as possible and as soon as the 
+        primary proxy becomes once again available to the user.
+        The default value will change depending on firmware build options."
+    DEFVAL { false }
+    ::= { eueMgmtOpPCSCFEntry 6 }
+
+eueMgmtOpPCSCFRegRetryTimerOn403  OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Defines the time to wait after receiving a 403 response to a SIP 
+          REGISTER message before attempting registration again.  
+          When set to 0, the MTA would not retry registration when 403 response
+          is received.
+          The configured retry timer would be applicable only if the MTA allows 
+          backup and recovery action on any [4-6]xx response to a REGISTER 
+          request other than 401/407 and 423.
+          Note that if the Retry-After header is included in the 403 response, 
+          the specified time will take precedence over this MIB."
+    DEFVAL {0}
+    ::= { eueMgmtOpPCSCFEntry 7 }
+eueMgmtOpPCSCFDiscoveryState  OBJECT-TYPE
+    SYNTAX      INTEGER
+    {
+      pcscfDiscoverySuccess(1),
+      pcscfDiscoveryFailed(2),
+      pcscfDiscoveryInProgress(3)
+    }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the current state of the discovery of PCSCF target ip address list."
+    ::= { eueMgmtOpPCSCFEntry 8 }
+
+eueMgmtOpPCSCFTargetIPAddressList  OBJECT-TYPE
+    SYNTAX  OCTET STRING  (SIZE(0..1024))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object contains a comma seperated list of the target ip addresses discovered
+         for this PCSCF"
+    ::= { eueMgmtOpPCSCFEntry 9 }
+
+eueMgmtOpPCSCFTargetIPAddressListExpires  OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS   "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the time until the target IP address list will expire 
+         and the E-UE will attempt to acquire a new list of target IP addresses.
+         This object can be set to a value of zero, to force the expiry of the current
+         target ip address list and the discovery of a new list.
+         Attempts to set this MIB to any value but zero will return an INCONSISTENT VALUE
+         error. When read, this MIB will return the remaining time in seconds or zero if no
+         address list has been acquired."
+    ::= { eueMgmtOpPCSCFEntry 10 }
+    
+eueMgmtOpPCSCFDiscoveryRetryMin  OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS   "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "After a failure to discover the PCSCF target address list,
+         the EDVA will perform an exponential back off and retry.
+         This MIB is the minimum time to wait before retrying discovery 
+         of a PCSCF target address list"
+    DEFVAL { 30 }
+    ::= { eueMgmtOpPCSCFEntry 11 }            
+
+eueMgmtOpPCSCFDiscoveryRetryMax  OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS   "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "After a failure to discover the PCSCF target address list,
+         the EDVA will perform an exponential back off and retry.
+         This MIB is the maximum time to wait before retrying discovery 
+         of a PCSCF target address list."
+    DEFVAL { 1800 }
+    ::= { eueMgmtOpPCSCFEntry 12 }            
+
+eueMgmtOpPCSCFPrimaryRecoveryTimerMin  OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS   "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the minimum time to wait before attempting to
+         reregister to the primary signalling proxy, if a user has failed over 
+         to a secondary proxy.  The actual timer is a random value between this
+         object and eueMgmtOpPCSCFPrimaryRecoveryTimerMax.
+         If the user is in an active call when the timer times out, the timer
+         will be recalculated and restarted.
+         Note the following needs to be true to enable the random recovery
+         timer:
+           - eueMgmtOpPCSCFPrimaryRecoveryTimerMin and 
+             eueMgmtOpPCSCFPrimaryRecoveryTimerMax must be non-zero.
+           - eueMgmtOpPCSCFBackupRecoveryEnabled must be TRUE
+           - eueMgmtOpPCSCFPrimaryRecoveryTimerMin must be less than 
+             eueMgmtOpPCSCFPrimaryRecoveryTimerMax"
+    DEFVAL { 0 }
+    ::= { eueMgmtOpPCSCFEntry 13 }
+
+eueMgmtOpPCSCFPrimaryRecoveryTimerMax  OBJECT-TYPE
+    SYNTAX  Unsigned32
+    UNITS   "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the maximum time to wait before attempting to 
+         reregister to the primary signalling proxy, if a user has failed over 
+         to a secondary proxy.  The actual timer is a random value between 
+         eueMgmtOpPCSCFPrimaryRecoveryTimerMin and this object.  
+         If the user is in an active call when the timer times out, the timer
+         will be recalculated and restarted.
+         Note the following needs to be true to enable the random recovery
+         timer:
+           - eueMgmtOpPCSCFPrimaryRecoveryTimerMin and 
+             eueMgmtOpPCSCFPrimaryRecoveryTimerMax must be non-zero.
+           - eueMgmtOpPCSCFBackupRecoveryEnabled must be TRUE
+           - eueMgmtOpPCSCFPrimaryRecoveryTimerMin must be less than 
+             eueMgmtOpPCSCFPrimaryRecoveryTimerMax"
+    DEFVAL { 0 }
+    ::= { eueMgmtOpPCSCFEntry 14 }
+
+--
+-- eueMgmtRST - objects for RST feature config
+--
+eueMgmtRSTFeatures  OBJECT IDENTIFIER ::= { eueMgmtRST 1 }
+eueMgmtRSTEmSvcFeat  OBJECT IDENTIFIER ::= { eueMgmtRSTFeatures 1 }
+ 
+eueMgmtRSTNfEmSvcTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtRSTNfEmSvcEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table represents data configurable for
+         Emergency services. "
+    ::=  { eueMgmtRSTEmSvcFeat 1 }
+
+eueMgmtRSTNfEmSvcEntry    OBJECT-TYPE
+    SYNTAX       EueMgmtRSTNfEmSvcEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains configuration for Emergency services feature"
+    AUGMENTS{ pktcEUERSTNfEmSvcEntry}
+    ::=  { eueMgmtRSTNfEmSvcTable 1 }
+
+EueMgmtRSTNfEmSvcEntry  ::= SEQUENCE {
+       eueMgmtRSTNfEmSvcPIDFLODisabled     TruthValue,
+       eueMgmtRSTNfEmSvc3wayOutEnabled    TruthValue,
+       eueMgmtRSTNfEmSvcNwHoldDisabled    TruthValue,
+       eueMgmtRSTNfEmSvcNwHoldBypassCheckEnabled TruthValue
+    }
+
+eueMgmtRSTNfEmSvcPIDFLODisabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Determines whether to disable inclusion of the location 
+        information as PIDF-LO document when originating an emergency call."
+    DEFVAL {false}
+    ::= { eueMgmtRSTNfEmSvcEntry 1 }
+
+eueMgmtRSTNfEmSvc3wayOutEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Determines whether a 3-way call can be created out of an emergency call 
+        when there is already an existing third party call associated with the user."
+    DEFVAL {false}
+    ::= { eueMgmtRSTNfEmSvcEntry 2 }
+
+eueMgmtRSTNfEmSvcNwHoldDisabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " When set to TRUE, the network hold feature for emergency call is disabled,
+an emergency call will never be put on network hold, instead it will be
+treated as a normal call.  When set to FALSE, the network hold feature for
+emergency call is enabled and will apply as specified in the PacketCable RSTF."
+    DEFVAL {false}
+    ::= { eueMgmtRSTNfEmSvcEntry 3 }
+
+eueMgmtRSTNfEmSvcNwHoldBypassCheckEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Controls the application of emergency hold even in the absence of a valid response. 
+          Normally, in the case of no valid response, PC 2.0 and legacy mode on-hold will fail.
+          If this mib is set to true, these failures will be ignored such that hold 
+          will be considered valid despite the failures.  A mib value of false means that the failure
+          will not be ignored and hold would be invalid in the absence of a valid response."
+    DEFVAL {false}
+    ::= { eueMgmtRSTNfEmSvcEntry 4 }
+
+eueMgmtRSTCallFwdFeat  OBJECT IDENTIFIER ::= { eueMgmtRSTFeatures 2 }
+eueMgmtRSTCallFwdTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtRSTCallFwdEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table represents data configurable for
+         Call forwarding."
+    ::=  { eueMgmtRSTCallFwdFeat 1 }
+
+eueMgmtRSTCallFwdEntry    OBJECT-TYPE
+    SYNTAX       EueMgmtRSTCallFwdEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains configuration for call forward feature"
+    AUGMENTS{ pktcEUERSTCallFwdEntry}
+    ::=  { eueMgmtRSTCallFwdTable 1 }
+
+EueMgmtRSTCallFwdEntry  ::= SEQUENCE {
+       eueMgmtRSTCallFwdCtrChkEnabled     TruthValue
+    }
+
+eueMgmtRSTCallFwdCtrChkEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Determines whether to ignore counter checking when receiving call forward information.
+          Counter checking is used to determine whether one may ring splash the user or not 
+          if the counter checking determines there has been some new forwarded calls 
+          associated with the user."
+    DEFVAL {false}
+    ::= { eueMgmtRSTCallFwdEntry 1 }
+
+eueMgmtRSTCallWaitFeat  OBJECT IDENTIFIER ::= { eueMgmtRSTFeatures 3 }
+eueMgmtRSTCallWaitTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtRSTCallWaitEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table represents data configurable for
+         Call Waiting."
+    ::=  { eueMgmtRSTCallWaitFeat 1 }
+
+eueMgmtRSTCallWaitEntry    OBJECT-TYPE
+    SYNTAX       EueMgmtRSTCallWaitEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains configuration for call waiting feature"
+    AUGMENTS{ pktcEUERSTCallWaitEntry}
+    ::=  { eueMgmtRSTCallWaitTable 1 }
+
+EueMgmtRSTCallWaitEntry  ::= SEQUENCE {
+       eueMgmtRSTCallWaitTODisabled        TruthValue
+    }
+
+eueMgmtRSTCallWaitTODisabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " When TRUE and in a call waiting scenario there is no keeping
+          track of the time spent for the call waiter to be offered to the local
+          user.  When FALSE and in a call waiting scenario, the call waiting is only
+          offered for a period of time after which it is rejected automatically if
+          the local user did not answer it, that is PacketCable 2.0 RSTF specification."
+    DEFVAL {false}
+    ::= { eueMgmtRSTCallWaitEntry 1 }
+    
+
+eueMgmtRSTCIDDisFeat  OBJECT IDENTIFIER ::= { eueMgmtRSTFeatures 4 }
+eueMgmtRSTCIDDisTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtRSTCIDDisEntry
+    MAX-ACCESS    not-accessible
+    STATUS        obsolete
+    DESCRIPTION
+        "This table represents data configurable for
+         Call Display."
+    ::=  { eueMgmtRSTCIDDisFeat 1 }
+
+eueMgmtRSTCIDDisEntry    OBJECT-TYPE
+    SYNTAX       EueMgmtRSTCIDDisEntry
+    MAX-ACCESS    not-accessible
+    STATUS        obsolete
+    DESCRIPTION
+        "Each entry contains configuration for call display feature"
+    AUGMENTS{ pktcEUERSTCIDDisEntry}
+    ::=  { eueMgmtRSTCIDDisTable 1 }
+
+EueMgmtRSTCIDDisEntry  ::= SEQUENCE {
+       eueMgmtRSTCIDDisBlockOnCallWait        TruthValue
+    }
+
+eueMgmtRSTCIDDisBlockOnCallWait  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      obsolete
+    DESCRIPTION
+        " When set to TRUE, the CLID information for a call waiting
+    would be blocked even if the CLID feature is enabled on the device.  When
+    set to FALSE (default PacketCable 2.0 behavior), the CLID information
+    associated with a call waiting will be passed to the phone unless CLID
+    feature has been disabled.  This allows to control CLID functionality for
+    call waiting independently of the CLID functionality which applies to all
+    incoming calls (whether call waiting or not)."
+    DEFVAL {false}
+    ::= { eueMgmtRSTCIDDisEntry 1 }
+
+eueMgmtRSTBasicCallFeat  OBJECT IDENTIFIER ::= { eueMgmtRSTFeatures 5 }
+eueMgmtRSTBasicCallTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtRSTBasicCallEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table represents data configurable for Basic Call feature."
+    ::=  { eueMgmtRSTBasicCallFeat 1 }
+
+eueMgmtRSTBasicCallEntry    OBJECT-TYPE
+    SYNTAX       EueMgmtRSTBasicCallEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains configuration for basic call feature"
+    AUGMENTS{ pktcEUERSTBasicCallEntry}
+    ::=  { eueMgmtRSTBasicCallTable 1 }
+
+EueMgmtRSTBasicCallEntry  ::= SEQUENCE {
+       eueMgmtRSTBCallRingBackTimer             Unsigned32,
+       eueMgmtRSTBCallOnHoldRingRem             Uri,
+       eueMgmtRSTBCallHookFlashDisabled         TruthValue,
+       eueMgmtRSTBCallRegEvtSubscribeEnabled    TruthValue,
+       eueMgmtRSTBCallMaintainCallsOnOosEnabled TruthValue,
+       eueMgmtRSTBCallHookFlashRelayReported    TruthValue,
+       eueMgmtRSTBCallHookFlashRelayMimeType    SnmpAdminString,
+       eueMgmtRSTBCallHookFlashRelayInfoContent SnmpAdminString
+    }
+
+eueMgmtRSTBCallRingBackTimer  OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object contains the duration of time that a caller will stay in 
+        ringback state after being informed that the callee has been alerted.  
+        If the timer times out while waiting for the far end answer, the call 
+        will be automatically terminated.  
+        Setting this value to 0 will prevent any ringback timer from being 
+        active on the caller.
+        Note that this timer only applies to local ringback.  If an early 
+        session is established such that the ringback is played remotely, this 
+        timer will stop and the RTP received will be played out."
+    DEFVAL {0}
+    ::= { eueMgmtRSTBasicCallEntry 1 }
+
+eueMgmtRSTBCallOnHoldRingRem  OBJECT-TYPE
+    SYNTAX      Uri
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Distinctive ring pattern the EDVA will use to locally ring the user 
+         if the conferencing party goes on-hook and attempts to make a new call 
+         while the second call to indicate a call on hold. "
+    DEFVAL {""}
+    ::= { eueMgmtRSTBasicCallEntry 2 }
+
+eueMgmtRSTBCallHookFlashDisabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Flag for proactive hook-flash processing, if hook-flash override is supported.  
+         When set to true(1), proactive hook-flash processing is disabled - 
+         hook-flash is ignored for any proactive hold scenario such as three way 
+         calling, call hold, and call forward.  Hook-flash on call waiting would 
+         still be processed.
+         When set to false(2), proactive hook-flash processing is enabled.  
+         This object is persistent across EDVA reset and power cycles.
+         Note the default value may change depending on firmware build options."
+    DEFVAL { false }
+    ::= { eueMgmtRSTBasicCallEntry 3 }
+
+eueMgmtRSTBCallRegEvtSubscribeEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Flag for reg-event subscription.  
+         When set to true(1), the user will subscribe to the reg-event package.
+         When set to false(2), the user will not subscribe to the reg-event package.  
+         Note the default value may change depending on firmware build options."
+    DEFVAL { true }
+    ::= { eueMgmtRSTBasicCallEntry 4 }
+    
+eueMgmtRSTBCallMaintainCallsOnOosEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Flag for maintaining calls on out-of-service.  
+         When set to true(1), the user will maintain any established calls when the
+         user goes out of service.
+         When set to false(2), the user will terminate established calls even if the
+         user goes out of service."
+    DEFVAL { TRUE }
+    ::= { eueMgmtRSTBasicCallEntry 5 }
+
+eueMgmtRSTBCallHookFlashRelayReported  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Flag for reporting hook flash relay via SIP INFO method.  
+         When set to true(1), hook flash is not processed, but reported via SIP INFO.  
+         When set to false(2), hook flash is processed but not notified via SIP INFO.
+         Note, if eueMgmtRSTBCallHookFlashDisabled is set to true, then proactive hook
+         flash will be ignored.
+         Also note that when set to true, the SIP INFO will be sent out only when both
+         eueMgmtRSTBCallHookFlashRelayMimeType and eueMgmtRSTBCallHookFlashRelayInfoContent
+         are set to non-empty strings."
+    DEFVAL { false }
+    ::= { eueMgmtRSTBasicCallEntry 6 }
+
+eueMgmtRSTBCallHookFlashRelayMimeType OBJECT-TYPE
+    SYNTAX  SnmpAdminString (SIZE(0..63))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Hook Flash Relay Content-Type:  This MIB controls how the Content-Type of the 
+         hook flash relay event is reported.
+         Note that this MIB must be configured to a non-empty string for the SIP INFO to
+         be sent out."
+    DEFVAL {""}
+    ::= { eueMgmtRSTBasicCallEntry 7 }
+
+eueMgmtRSTBCallHookFlashRelayInfoContent OBJECT-TYPE
+    SYNTAX  SnmpAdminString (SIZE(0..63))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Hook Flash Relay Content in the INFO:  This MIB controls how the content of 
+         the hook flash relay event is reported in the INFO message.
+         Note that this MIB must be configured to a non-empty string for the SIP INFO to
+         be sent out."
+    DEFVAL {""}
+    ::= { eueMgmtRSTBasicCallEntry 8 }
+
+
+--
+-- MWI Feature extension MIBs
+--
+
+eueMgmtRSTMWIFeat  OBJECT IDENTIFIER ::= { eueMgmtRSTFeatures 6 }
+eueMgmtRSTNfMWITable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtRSTNfMWIEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table represents data configurable for the Message Waiting Indicator
+         (MWI) feature.  It
+         complements the pktcEUERSTNfMWITable. A row is created in this
+         table whenever a row is created in the pktcEUERSTNfMWITable"
+    ::=  { eueMgmtRSTMWIFeat 1 }
+
+eueMgmtRSTNfMWIEntry    OBJECT-TYPE
+    SYNTAX       EueMgmtRSTNfMWIEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains configuration for basic call feature"
+    INDEX { pktcEUEDevOpIndex }
+    ::=  { eueMgmtRSTNfMWITable 1 }
+
+EueMgmtRSTNfMWIEntry  ::= SEQUENCE {
+       eueMgmtRSTNfMWIEnableVMWI TruthValue,
+       eueMgmtRSTNfMWIStutterToneEnabled TruthValue,
+       eueMgmtRSTNfMWIAddrType  InetAddressType,
+       eueMgmtRSTNfMWIAddr   InetAddress,
+       eueMgmtRSTNfMWIAddrPort InetPortNumber,
+       eueMgmtRSTNfMWIClearMWI TruthValue
+    }
+
+eueMgmtRSTNfMWIEnableVMWI  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+       "Flag for controlling whether visual message waiting indication is 
+        provided to the local user interface.  When flag is true, visual 
+        message waiting indication is provided to the local user interface. 
+        When the flag is false, visual message waiting indication is not 
+        provided to the local user interface even when new messages 
+        indication is received from the network."
+    DEFVAL { true }
+    ::= { eueMgmtRSTNfMWIEntry 1 }
+
+eueMgmtRSTNfMWIStutterToneEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+       "Flag for controlling the application of stutter tone when a 
+        message waiting indication condition has been indicated through network
+        signaling.  If true, stutter tone is applied when a message waiting 
+        indication has been indicated through network signaling.  The default
+        value can change for some devices depending on firmware build options."
+    DEFVAL { true }
+    ::= { eueMgmtRSTNfMWIEntry 2 }
+
+eueMgmtRSTNfMWIAddrType  OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        " This data element contains the type of the data 
+ 	       element contained in ' eueMgmtRSTNfMWIAddr '."
+    
+    DEFVAL   { unknown }
+    ::= { eueMgmtRSTNfMWIEntry 3 }     
+
+eueMgmtRSTNfMWIAddr  OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        " The IP address of a MWI server associated with
+ 	       the domain name indicated by the primary index 
+ 	       'pktcEUEDevOpIndex'. The default value is a 
+          zero length buffer."
+    ::= { eueMgmtRSTNfMWIEntry 4 }     
+
+eueMgmtRSTNfMWIAddrPort  OBJECT-TYPE
+    SYNTAX      InetPortNumber
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        " This data element contains the port for 'eueMgmtRSTNfMWIAddr'."
+    DEFVAL  { 5060 }
+    ::= { eueMgmtRSTNfMWIEntry 5 }     
+
+eueMgmtRSTNfMWIClearMWI  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+       "This object clears the current message waiting
+        indication and also reports the current indication.
+        When set to 'true', the EDVA will turn the message waiting indication off.
+        When set to 'false', the EDVA will turn the message waiting indication on.
+        When read, this object will return the current state of message waiting indiction,
+        false = on, true = off."
+    ::= { eueMgmtRSTNfMWIEntry 6 }
+
+
+--
+-- Hotline Feature MIBs
+--
+
+eueMgmtRSTHotlineFeat  OBJECT IDENTIFIER ::= { eueMgmtRSTFeatures 7 }
+eueMgmtRSTHotlineTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtRSTHotlineEntry
+    MAX-ACCESS    not-accessible
+    STATUS        obsolete
+    DESCRIPTION
+        "This table represents data configurable for the Hotline feature."
+    ::=  { eueMgmtRSTHotlineFeat 1 }
+
+eueMgmtRSTHotlineEntry    OBJECT-TYPE
+    SYNTAX       EueMgmtRSTHotlineEntry
+    MAX-ACCESS    not-accessible
+    STATUS        obsolete
+    DESCRIPTION
+        "Each entry contains configuration for hotline feature"
+    INDEX { eueMgmtRSTHotlineIndex }
+    ::=  { eueMgmtRSTHotlineTable 1 }
+
+EueMgmtRSTHotlineEntry  ::= SEQUENCE {
+       eueMgmtRSTHotlineIndex      PktcEUETCRSTAppFeatIndexType,
+       eueMgmtRSTHotlineLocation   Uri,
+       eueMgmtRSTHotlineStatus     RowStatus   
+    }
+
+eueMgmtRSTHotlineIndex  OBJECT-TYPE
+    SYNTAX      PktcEUETCRSTAppFeatIndexType
+    MAX-ACCESS  not-accessible
+    STATUS      obsolete
+    DESCRIPTION
+        " This data element provides an index for the table.
+          Values used for this index must be greater than zero
+          and are not required to be sequential. This index 
+          value may be provided as data in other objects that 
+          reference this table."
+    ::= { eueMgmtRSTHotlineEntry 1 }
+
+eueMgmtRSTHotlineLocation  OBJECT-TYPE
+    SYNTAX      Uri
+    MAX-ACCESS  read-create
+    STATUS      obsolete
+    DESCRIPTION
+       "When hotline feature is enabled,  any 
+       off-hook is directly connected to the URI provided in this
+       MIB object."
+    ::= { eueMgmtRSTHotlineEntry 2 }
+
+eueMgmtRSTHotlineStatus  OBJECT-TYPE 
+    SYNTAX      RowStatus 
+    MAX-ACCESS  read-create 
+    STATUS      obsolete 
+    DESCRIPTION 
+        " The status of this conceptual row.
+          There is no restriction on the ability to change values in this 
+          row while the row is active.
+          A created row can be set to active only after all corresponding
+          instances of objects in the row have been set to valid values." 
+    ::= { eueMgmtRSTHotlineEntry 3 } 
+
+--
+-- eueMgmtCodec - objects for Codec config
+--
+
+eueMgmtCodecEptTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtCodecEptEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table represents codec data configurable on an endpoint."
+    ::=  { eueMgmtCodec 1 }
+
+eueMgmtCodecEptEntry    OBJECT-TYPE
+    SYNTAX       EueMgmtCodecEptEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry contains Codec related configuration for an endpoint"
+    INDEX { ifIndex}
+    ::=  { eueMgmtCodecEptTable 1 }
+
+EueMgmtCodecEptEntry  ::= SEQUENCE {
+       eueMgmtCodecEptRTCPPortCtlEnabled         TruthValue,
+       eueMgmtCodecEptRTPTelEvtPayload    Unsigned32
+    }
+
+eueMgmtCodecEptRTCPPortCtlEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " This object determines whether or not the RTCP port negotiation 
+         procedure is used. 
+         The symmetrical port for RTCP may be negotiated between two E-DVAs 
+         participating in the call. The E-DVA MUST implement the following 
+         behavior depending on the value of this object:
+ 
+         'true' - E-DVA MUST use the negotiation procedure to determine the 
+         symmetrical RTCP port. The initial value of the RTCP port for the 
+         negotiation procedure MUST be randomly chosen from a pool of available 
+         ports that can be used by the E-DVA for this purpose.
+ 
+         'false' - the negotiating procedure is not used, and E-DVA MUST use the 
+         following value for the symmetrical RTCP port: (RTP-port + 1)."
+
+    DEFVAL {false}
+    ::= { eueMgmtCodecEptEntry 1 }
+
+eueMgmtCodecEptRTPTelEvtPayload  OBJECT-TYPE
+    SYNTAX      Unsigned32 (96..127)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Configures the dynamic RTP paylod number for  telephone events (e.g. 
+         DTMF Relay events). "
+    DEFVAL {101}
+    ::= { eueMgmtCodecEptEntry 2 }
+
+
+--
+-- eueMgmtObject - 
+--
+-- 
+-- DECT extension MIBs
+-- 
+
+eueMgmtDect             OBJECT IDENTIFIER ::= { eueMgmtObject 1 }
+eueMgmtDectFP           OBJECT IDENTIFIER ::= { eueMgmtDect 1 }
+
+eueMgmtDectReset OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the Dect reset.
+         Reading this object always returns 'false'.  Setting this
+         object to 'true' causes the Dect module to reset immediately
+         and the following actions to occur:
+             1.  All dect connections (if present) are flushed locally.
+             2.  All current handset actions such as ringing immediately
+                 terminate."
+    ::= { eueMgmtDectFP 1 }
+
+eueMgmtDectEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object is used to enable or disable the power of DECT.
+         Setting this object to 'true' causes the Dect module to be powered 
+         on if it was previously disabled (ie. powered off).
+         Setting this object to 'false' causes the power of DECT to be disabled
+         and the following actions to occur:
+             1.  All dect connections (if present) are flushed locally.
+             2.  All current handset actions such as ringing immediately
+                 terminate.
+             3.  All dect handsets are disabled.
+         Note adding this MIB in the EDVA configuration file will override any
+         build specific behavior related to the automatic shutdown/enabling of DECT."
+    DEFVAL {true}
+    ::= { eueMgmtDectFP 2 }
+
+eueMgmtDectRegMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                unknown(0),
+                register (1),
+                deregister (2)
+                }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object is used to configure the base to the registration mode.  
+         Setting this object to 'register' enables Dect registration.
+         Setting this object to 'deregister' causes all Dect handsets to be 
+         deregistered.
+         Note that reading this object always returns unknown(0), as this object 
+         is used to send a command to the DECT and is not meant to reflect the 
+         current registration mode of Dect.
+         Note also that when the maximum number of Dect handsets have been
+         registered, Dect registration cannot be enabled."
+    ::= { eueMgmtDectFP 3 }
+
+eueMgmtDectNumRegPP OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "PPs"
+    MAX-ACCESS  read-only
+    STATUS current
+    DESCRIPTION
+        "This attribute represents the number of PPs that are registered."
+    ::= { eueMgmtDectFP 4 }
+
+eueMgmtDectNumActivePP OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "PPs"
+    MAX-ACCESS  read-only
+    STATUS current
+    DESCRIPTION
+        "This attribute represents the number of PPs that are active."
+    ::= { eueMgmtDectFP 5 }
+
+eueMgmtDectMode  OBJECT-TYPE
+    SYNTAX  INTEGER {
+                  dectModeEuro(0),
+                  dectModeUS(1),
+                  dectModeSA(2),
+                  dectModeTw(3),
+                  dectModeMl(4),
+                  dectModeCn(5),
+                  dectModeTh(6),
+                  dectModeBr(7),
+                  dectModeExtUS(8),
+                  dectModeUnknown(255)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The DECT mode (RF frequency) setting of the eUE:
+            dectModeEuro(0) - Europe DECT mode
+            dectModeUS(1) - United States DECT mode
+            dectModeSA(2) - South America DECT mode
+            dectModeTw(3) - Taiwan DECT mode
+            dectModeMl(4) - Malaysia DECT mode
+            dectModeCn(5) - China DECT mode
+            dectModeTh(6) - Thailand DECT mode
+            dectModeBr(7) - Brazil DECT mode
+            dectModeExtUS(8) - United States DECT mode with extended freq band
+            dectModeUnknown(255) - Unknown DECT mode        
+          
+         Note that this setting will take effect on the next eUE reset.
+         The value dectModeUnknown is reported when the eUE does not yet know the operating
+         mode of the DECT module. Any attempt to set this MIB to dectModeUnknown will result
+         in an inconsistent value error."
+     ::= { eueMgmtDectFP 6 }
+
+eueMgmtDectPPTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF EueMgmtDectPPEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "This object represents the list of PPs and related
+            identifiers.
+            For debugging purposes this object lists more PPs than
+            the maximum number of PPs."
+    ::= {eueMgmtDect 2 }
+
+eueMgmtDectPPEntry OBJECT-TYPE
+    SYNTAX      EueMgmtDectPPEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "The Conceptual row of eueMgmtDectPPTable."
+    INDEX { pktcDectPPId }
+    ::= {eueMgmtDectPPTable 1 }
+
+EueMgmtDectPPEntry ::= SEQUENCE {
+    eueMgmtDectPPStatus  INTEGER
+    }
+    
+pktcDectPPId OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Was undefined index"
+    ::= { eueMgmtDectPPEntry 9999 }
+
+eueMgmtDectPPStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                inRange(1),
+                outOfRange(2),
+                onHook(3),
+                offHook(4),
+                dataServiceInUse(5)
+                }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This attribute represents the state of a PP."
+    ::= {eueMgmtDectPPEntry 1 }
+
+
+--
+-- eueMgmtEDVAEndpoint - objects for EDVA endpoint config
+--
+
+eueMgmtEDVAEndpointConfigTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF EueMgmtEDVAEndpointConfigEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This table describes configuration data pertaining   
+ 	      for each end point (telephnony line). 
+ 	      The number of entries in this table represents the   
+ 	      number of provisioned end points.
+         This table augments the pktcEDVAEndpointConfigTable."
+    ::=  { eueMgmtEDVAEndpoint 1 }
+
+eueMgmtEDVAEndpointConfigEntry    OBJECT-TYPE
+    SYNTAX       EueMgmtEDVAEndpointConfigEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "This Object represents the conceptual row in  
+ 	      the eueMgmtEDVAEndpointConfigTable.  
+ 	
+ 	      Each entry describes the configuration data for 
+ 	      the associated line. "
+    AUGMENTS{ pktcEDVAEndPntConfigEntry }
+    ::=  { eueMgmtEDVAEndpointConfigTable 1 }
+
+EueMgmtEDVAEndpointConfigEntry  ::= SEQUENCE {
+       eueMgmtEDVAEndpointConfigFaxOnly         TruthValue,
+       eueMgmtEDVAEndpointConfigFaxWaitTime     Unsigned32,
+       eueMgmtEDVAEndpointConfigSDPParam        SnmpAdminString
+    }
+
+eueMgmtEDVAEndpointConfigFaxOnly  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls whether this endpoint is a Fax-only line.
+         When true, the line is Fax-only which means it is a line of lower rate 
+         and does not support regular voice application.  When a fax-only line goes 
+         off-hook and no modem or fax tones are detected within a specified period
+         of time, the line is dropped to prevent the line from being used for regular voice."
+    DEFVAL {false}
+    ::= { eueMgmtEDVAEndpointConfigEntry 1 }
+
+eueMgmtEDVAEndpointConfigFaxWaitTime  OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current    
+    DESCRIPTION
+        " The period of time for the EDVA to detect modem and fax tones when the line is 
+          configured for fax-only.  If no modem or fax tones are detected within this period
+          of time, the line is dropped to prevent the fax-only line from being used for
+          regular voice"
+    DEFVAL {20}
+    ::= { eueMgmtEDVAEndpointConfigEntry 2 }
+
+eueMgmtEDVAEndpointConfigSDPParam  OBJECT-TYPE
+    SYNTAX  SnmpAdminString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object reports the current negotiated SDP parameters of an active call.  This
+         includes the codec, tel-event, silence suppression, and rtcp-xr mode in the following
+         format:  'Codec: [codec family] Opts [codec options], Tel-Event: [yes/no], 
+                   Silence Suppression: [yes/no], RTCP-XR Negotiated: [yes/no]'
+         If a call is not in progress on the endpoint, then 'call not in progress' will be 
+         returned."
+    ::= { eueMgmtEDVAEndpointConfigEntry 3 }
+
+
+--
+-- Compliance Statements
+--
+eueMgmtCompliances  OBJECT IDENTIFIER ::= { eueMgmtConformance 1 }
+eueMgmtGroups       OBJECT IDENTIFIER ::= { eueMgmtConformance 2 }
+
+eueMgmtCompliance  MODULE-COMPLIANCE
+    STATUS      current
+    DESCRIPTION
+        "This compliance statement applies to EUE implementations
+        that support Broadcom EUE Proprietary MIB requirements.
+        It is left to manufacturers to determine whether to support
+        this MIB and/or its subset depending on the particular
+        requirements in the field.
+        
+        This compliance statement specifies the supported objects from
+        BRCM-EMTA-MGMT-MIB and PKTC-IETF-SIG-MIB.
+        
+        Some objects have been enhanced for 
+        applicability to eUEs.  Similarly, inapplicable objects are
+        indicated.
+        
+        The support of objects from the PKTC-IETF-SIG-MIB is contingent on
+        the value of eueMgmtBaseInternationalSupportEnabled.
+        If eueMgmtBaseInternationalSupportEnabled is true, the objects from
+        PKTC-IETF-SIG-MIB are supported as indicated, if eueMgmtBaseInternationalSupportEnabled
+        is false, the PKTC-IETF-SIG-MIB objects listed in this compliance are not supported.        
+        "
+    
+    MODULE   BRCM-EMTA-MGMT-MIB
+        MANDATORY-GROUPS {
+               emtaMgmtGroup,
+               cmEmtaMgmtGroup
+        }
+
+-- The following describes the  emtaMgmtBase objects
+
+  --  OBJECT  emtaInhibitSwDownloadDuringCall       - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaFirewallEnable                    - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaRingWithDCOffset                  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaIncludedInCmMaxCpe                - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaDhcpOption                        - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaUseAlternateTelephonyRootCert     - Same as BRCM-EMTA-MGMT-MIB
+
+  OBJECT  emtaEnableDQoSLite
+  DESCRIPTION
+      "This object specifies whether DQoS Lite is enabled.
+       When DQoS-Lite is Enabled, the E-DVA will attempt to establish service 
+       flows locally.
+       When DQoS-Lite is Disabled, the E-DVA will not attempt to establish service
+       flows locally.  Any service flows must be established by the network.  This
+       is the standard method in PacketCable 2.0."
+
+  OBJECT  emtaInhibitNcsSyslog
+  MIN-ACCESS  not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  --  OBJECT  emtaVoiceThreadState                  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaPhsConfiguration                  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaMaxResetDelay                     - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaDhcpRebindRule                    - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaDhcpIgnoreNaks                    - Same as BRCM-EMTA-MGMT-MIB
+
+  -- OBJECT  emtaCountryCode                        - Same as BRCM-EMTA-MGMT-MIB
+
+  --  OBJECT  emtaPhsUpstreamMask                   - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaPhsDownstreamMask                 - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaPhsDownstreamVerification         - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaDnsBaseTimeout                    - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaDnsMaxRetry                       - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaDnsNegativeCacheTTL               - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaDevHDAudioEnabled                 - Same as BRCM-EMTA-MGMT-MIB  
+  OBJECT  emtaDevG72264PayloadType  
+  MIN-ACCESS  not-accessible
+  DESCRIPTION
+      "Object not applicable for the eUE."
+
+-- The following describes the  emtaMgmtMaintenance objects
+
+  --  OBJECT  emtaMaintenanceWindowBegin            - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaMaintenanceWindowDuration         - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaMaintenanceControlMask            - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaMaintenanceQuarantineTimeout      - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaMaintenanceDisconnectedTimeout    - Same as BRCM-EMTA-MGMT-MIB
+
+
+-- The following describes the  emtaMgmtSignalingControl objects
+
+  --  OBJECT  emtaSignalingEndptCtrlAnalogLoopback  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlLineReset       - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlDiagTestsStart  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlDiagTestsStop   - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlDiagTestValid   - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlDiagTestResult  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlDiagTestValue   - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlBoostedLoopCurrent  - Same as BRCM-EMTA-MGMT-MIB
+
+  OBJECT  emtaSignalingEndptCtrlTxGain 
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptCtrlRxGain
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptCtrlDialToneMsecTO
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptCtrlToneDetectionControl
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  --  OBJECT  emtaSignalingEndptCtrlRingWaveform    - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlPowerMgmtDelay  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlToneDetectionControlExt  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlPulseDialEnable - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlVBDTxGain       - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlVBDRxGain       - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlPulseToDtmfConvert       - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlCustomCWCIDCfgEnable     - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlCASLevelCfg     - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlOffhookCIDFSKLevelCfg    - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlOnhookCIDFSKLevelCfg     - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingEndptCtrlVMWIOSIDuration - Same as BRCM-EMTA-MGMT-MIB
+  
+  OBJECT  emtaSignalingEndptCtrlMgcpQuarantineMode
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptCtrlOSIDuration
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptCtrlPulseDialMinMakeTime
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptCtrlPulseDialMaxMakeTime
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptCtrlPulseDialMinBreakTime
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptCtrlPulseDialMaxBreakTime
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptCtrlRtpTelEvtPayload
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptCtrlPrefCodecList
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT emtaSignalingEndptCtrlHDAudioEnabled
+  DESCRIPTION
+      " This MIB object will enable or disable the inclusion of HD Audio
+        during codec negotiation. If HD Audio is supported by the device
+        a value of true will cause HD Audio to be advertised during codec
+        negotiation. A value of false will prevent HD audio from being
+        advertised during codec negotiation. This MIB has the following interaction
+        with other MIB objects when it comes to reporting HD Audio during codec
+        negotiation:
+
+        emtaDevHDAudioEnabled  emtaSignalingEndptCtrl    G722 in         HD Audio
+                                 HDAudioEnabled       pktcRSTEUEBCall    Reported
+                                                       PrefCodecList
+        ----------------------------------------------------------------------------
+                  true                true                 yes             yes
+                  true                true                 no              yes
+                  true                false                yes             no
+                  false            true or false        yes or no          no
+
+        Note this object is persistent across EDVA reset and power cycles."
+
+  OBJECT emtaSignalingEndptCtrlHDAudioStatus
+  DESCRIPTION
+        "This MIB object reflects the status of the corresponding HD Audio codec
+         for each line.  
+         When the HD Audio codec is provided and available on that line, the 
+         corresponding bit will be set.  When the HD Audio codec is not provided
+         or available for that line, the corresponding bit will be cleared.
+         Note this MIB derives the availability of the HD Audio codec based on 
+         the MIBs emtaDevHDAudioEnabled, emtaSignalingEndptCtrlHDAudioEnabled, 
+         and pktcEUERSTBCallPrefCodecList, as well as whether the codec
+         is supported by the DSP image.
+         The corresponding bit will be set if the following are true:
+         - emtaDevHDAudioEnabled is set to true, and
+         - emtaSignalingEndptCtrlHDAudioEnabled is set to true, and
+         - pktcEUERSTBCallPrefCodecList includes the HD Audio codec (with
+           the exception when pktcEUERSTBCallPrefCodecList is set to a 
+           zero-length string then G722 is assumed to be included), and
+         - DSP image supports the codec
+
+         For example:
+         If emtaDevHDAudioEnabled and emtaSignalingEndptCtrlHDAudioEnabled are
+         set to true, pktcEUERSTBCallPrefCodecList includes G722 and the
+         DSP image supports G722, then the G722(0) bit will be set and the MIB
+         will be 0x80.
+
+         If emtaDevHDAudioEnabled and emtaSignalingEndptCtrlHDAudioEnabled are
+         set to true, pktcEUERSTBCallPrefCodecList includes G722 and BV32,
+         and the DSP image supports G722 and BV32, then the G722(0) and BV32(2)
+         bits will be set and the MIB will be 0xA0."
+
+  OBJECT emtaSignalingEndptCtrlSDPParam
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+         " Object not applicable for the eUE. Functionality is covered by
+           eueMgmtEDVAEndpointConfigSDPParam."
+
+  --  OBJECT  emtaSignalingAnnouncementCtrl         - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingVoiceJitterBufferType    - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingVoiceJitterNomValue      - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingVoiceJitterMinValue      - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingVoiceJitterMaxValue      - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingDataJitterNomValue       - Same as BRCM-EMTA-MGMT-MIB
+
+ OBJECT  emtaSignalingDtmfToneRelayRFC2833Support  
+ MIN-ACCESS   not-accessible
+ DESCRIPTION
+      " Object not applicable for the eUE."
+
+  --  OBJECT  emtaSignalingNumOfCallsTotal          - Same as BRCM-EMTA-MGMT-MIB
+
+  OBJECT  emtaSignalingMaxNumberQueuedNcsEvents
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingRtpBaseReceiveUdpPort
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEndptConnectionCleanupTimeout
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEmtaResetCleanupTimeout
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingT38FaxRelaySupport
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingEcanTailLength
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingDQoSActivationModel
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  --  OBJECT  emtaSignalingGR303Support             - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingPowerRingFrequency       - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingDataJitterMaxValue       - Same as BRCM-EMTA-MGMT-MIB
+
+  OBJECT  emtaSignalingRingWaveform
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  --  OBJECT  emtaSignalingDefRtcpDSCP              - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingDevToneWholeToneRepeatCount
+  --                                                - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingDevToneSteady            - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingDevToneFirstFreqValue    - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingDevToneSecondFreqValue   - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingDevToneDbLevel           - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingDevToneFreqOnDuration    - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingDevToneFreqOffDuration   - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingDevToneFreqRepeatCount   - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingChatterLineMonitorInterval           - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingChatterLinePulseDialRejectThreshold  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingChatterLineDigitMapMismatchThreshold - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingChatterLineLoopOpenCloseThreshold    - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingChatterLineROHEnable      - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingMaxNumberCallStatsStored  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaSignalingAdjustedFskTransmissionLevel         - Same as BRCM-EMTA-MGMT-MIB
+
+  OBJECT  emtaSignalingSdpSuppression
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaSignalingRSIPResponseTimer
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+
+-- The following describes the  emtaMgmtStatistics objects
+
+  OBJECT  emtaStatsEndptHookState
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaStatsEndptQuarantineState
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  --  OBJECT  emtaStatsEndptSlicOverTempStatus      - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsEndptOverCurrentStatus       - Same as BRCM-EMTA-MGMT-MIB
+
+--  TO BE DONE:   WE SHOULD CONSIDER SUPPORTING THE FOLLOWING
+  --  OBJECT  emtaStatsRTPPktTxTotal                - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsRTPPktRxTotal                - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsRTPPktLostTotal              - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsRTPPktTxRecent               - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsRTPPktRxRecent               - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsRTPPktLostRecent             - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsAvgJitterMeasurement         - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsMaxJitterMeasurement         - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsRTPAvgLatency                - Same as BRCM-EMTA-MGMT-MIB
+
+  OBJECT  emtaStatsMGCPResponseAvgLatency
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaStatsSuccessfulMsgCount
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaStatsNegAckCount
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaStatsNoNTFYAckCount
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaStatsLastNCSMsgTx
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  OBJECT  emtaStatsLastNCSMsgRx
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  --  OBJECT  emtaStatsRTPPktLostRatio              - Same as BRCM-EMTA-MGMT-MIB
+
+  --  OBJECT  emtaStatsCallMOSCQScore               - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallRFSignalToNoiseLevel     - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallResidualEchoRetLoss      - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallDestEndpntInfo           - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallTotalPktSent             - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallTotalOctSent             - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallTotalPktRecvd            - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallTotalOctRecvd            - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallTotalPktLost             - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallIntervalJitter           - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallAvgTxDelay               - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallJBDiscardRate            - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallJBAdjRate                - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallJBMaxSize                - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallNetRdTripDelay           - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallSignalLevel              - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallNoiseLevel               - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallRfTxLevel                - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallRfRxLevel                - Same as BRCM-EMTA-MGMT-MIB
+
+  OBJECT  emtaStatsCallCallTrace
+  MIN-ACCESS   not-accessible
+  DESCRIPTION
+      " Object not applicable for the eUE."
+
+  --  OBJECT  emtaStatsCallStartTime                - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallEndTime                  - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallPhoneNumber              - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallLine                     - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallDirection                - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallMOSLQScore               - Same as BRCM-EMTA-MGMT-MIB
+  --  OBJECT  emtaStatsCallDialMode                 - Same as BRCM-EMTA-MGMT-MIB
+
+   OBJECT  emtaEmSvcTrafficPriority
+     MIN-ACCESS   not-accessible
+     DESCRIPTION
+         " Object not applicable for the eUE."
+
+   OBJECT  emtaSignalingEndptCtrlRtpTelEvtPayload
+     MIN-ACCESS   not-accessible
+     DESCRIPTION
+         " Object not applicable for the eUE."
+      
+   OBJECT  emtaSignalingEndptCtrlPrefCodecList
+     MIN-ACCESS   not-accessible
+     DESCRIPTION
+         " Object not applicable for the eUE."
+      
+   OBJECT emtaSignalingDlcxOsiDelay
+     DESCRIPTION
+         " This object configures the delay in seconds between a call being cleared
+         and the automatic application of an  OSI signal to the analog line associated 
+         with the deleted connection.  
+         Setting a value of 0 disables this feature.
+         Note that the default value of the object may change based on 
+         build specific options. "
+
+   OBJECT  emtaSignalingPlayZeroDurationPkt
+     MIN-ACCESS   not-accessible
+     DESCRIPTION
+         " This object configures whether an endpoint should transmit a DTMF 
+         telephone-event packet containing a duration field of value zero.  
+         If this object is set to false, MTA will ignore the DTMF packet which
+         has a duration coded to zero.
+         If this object is set to true, MTA shall not ignore the packet and 
+         shall continue playing the tone until an explicit end of tone conditions
+         occurs.  End of Tone conditions occur when Tone has been been played
+         for at least 50 milliseconds and when either of the following conditions 
+         occurs:  an explicit end of tone packet has been received, tone has 
+         exceeded 100 milliseconds, or the packet for start of another tone 
+         has arrived.
+         Note that the default value of the object may change based on 
+         build specific options. "
+
+   OBJECT  emtaSignalingEndptCtrlPulseDialMinMakeTime
+     MIN-ACCESS   not-accessible
+     DESCRIPTION
+         " Object not applicable for the eUE."
+
+   OBJECT  emtaSignalingEndptCtrlPulseDialMaxMakeTime
+     MIN-ACCESS   not-accessible
+     DESCRIPTION
+         " Object not applicable for the eUE."
+
+   OBJECT  emtaSignalingEndptCtrlPulseDialMaxBreakTime
+     MIN-ACCESS   not-accessible
+     DESCRIPTION
+         " Object not applicable for the eUE."
+
+   OBJECT  emtaSignalingEndptCtrlPulseDialMinBreakTime
+     MIN-ACCESS   not-accessible
+     DESCRIPTION
+         " Object not applicable for the eUE."
+
+   OBJECT  emtaSignalingEndptCtrlPulseDialMinBreakTime
+     MIN-ACCESS   not-accessible
+     DESCRIPTION
+         " Object not applicable for the eUE."
+
+   OBJECT  emtaSignalingEndptCtrlOSIDuration
+     MIN-ACCESS   not-accessible
+     DESCRIPTION
+         " Object not applicable for the eUE."
+                     
+    MODULE
+    MANDATORY-GROUPS {
+               eueMgmtGroup
+    }
+    ::= { eueMgmtCompliances 1 }
+
+
+eueMgmtGroup OBJECT-GROUP
+    OBJECTS {
+      eueMgmtBaseCountryCallingCode,
+      eueMgmtBaseCnxInactivityTimer,
+      eueMgmtBaseCustomSipPwdGenModel,
+      eueMgmtBaseKeepAliveMaxInterval,
+      eueMgmtBaseKeepAliveFailureThreshold,
+      eueMgmtBaseSilenceSuppressionReporting,
+      eueMgmtBaseInternationalSupportEnabled,
+      eueMgmtBaseIncludeNetworkInfoHeader,
+      eueMgmtBaseNetworkInfoHeaderToken,
+      eueMgmtBaseRandomReReg,
+      eueMgmtUsrIMPURegMaxWaitTime,
+      eueMgmtUsrIMPURegRetryTimerMin,
+      eueMgmtUsrIMPURegRetryTimerMax,
+      eueMgmtUsrIMPUAllowUnsolicitedMWI,
+      eueMgmtUsrIMPUAllowUnsolicitedUAProf,
+      eueMgmtUsrIMPUMWISubscribed,
+      eueMgmtUsrIMPUPAUriList,
+      eueMgmtOpPCSCFTimerB,
+      eueMgmtOpPCSCFTimerF,
+      eueMgmtOpPCSCFTimerH,
+      eueMgmtOpPCSCFSigTransport,
+      eueMgmtOpPCSCFTcpFallBackEnabled,
+      eueMgmtOpPCSCFRegRetryTimerOn403,
+      eueMgmtOpPCSCFDiscoveryState,
+      eueMgmtOpPCSCFTargetIPAddressList,
+      eueMgmtOpPCSCFTargetIPAddressListExpires,
+      eueMgmtOpPCSCFDiscoveryRetryMin,
+      eueMgmtOpPCSCFDiscoveryRetryMax,
+      eueMgmtOpPCSCFPrimaryRecoveryTimerMin,
+      eueMgmtOpPCSCFPrimaryRecoveryTimerMax,
+      eueMgmtRSTNfEmSvcPIDFLODisabled,
+      eueMgmtRSTNfEmSvc3wayOutEnabled,
+      eueMgmtRSTNfEmSvcNwHoldDisabled,
+      eueMgmtRSTNfEmSvcNwHoldBypassCheckEnabled,
+      eueMgmtRSTCallFwdCtrChkEnabled,
+      eueMgmtRSTBCallRingBackTimer,
+      eueMgmtRSTBCallOnHoldRingRem,
+      eueMgmtRSTBCallHookFlashDisabled,
+      eueMgmtRSTBCallRegEvtSubscribeEnabled,
+      eueMgmtRSTBCallMaintainCallsOnOosEnabled,
+      eueMgmtRSTBCallHookFlashRelayReported,
+      eueMgmtRSTBCallHookFlashRelayMimeType,
+      eueMgmtRSTBCallHookFlashRelayInfoContent,
+      eueMgmtRSTNfMWIEnableVMWI,
+      eueMgmtRSTNfMWIStutterToneEnabled,
+      eueMgmtRSTNfMWIAddrType,
+      eueMgmtRSTNfMWIAddr,
+      eueMgmtRSTNfMWIAddrPort,
+      eueMgmtRSTNfMWIClearMWI,      
+      eueMgmtCodecEptRTCPPortCtlEnabled,
+      eueMgmtCodecEptRTPTelEvtPayload,
+      eueMgmtDectReset,
+      eueMgmtDectEnable,
+      eueMgmtDectRegMode,
+      eueMgmtDectNumRegPP,
+      eueMgmtDectNumActivePP,
+      eueMgmtDectPPStatus,
+      eueMgmtDectMode,
+      eueMgmtEDVAEndpointConfigFaxOnly,
+      eueMgmtEDVAEndpointConfigFaxWaitTime,
+      eueMgmtEDVAEndpointConfigSDPParam 
+    }
+    STATUS      current
+    DESCRIPTION
+        "This group defines a collection of the MIB objects to meet the customers
+        requirements in EUE functionlity which is complementary to the 'standard'
+        PacketCable features."
+    ::= { eueMgmtGroups 1 }
+
+END

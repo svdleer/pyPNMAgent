@@ -1,0 +1,68 @@
+M5T-APP-COMMON-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE                         FROM SNMPv2-SMI
+    m5tApplications                     FROM M5T-MIB
+    TruthValue                          FROM SNMPv2-TC;
+
+m5tCommon MODULE-IDENTITY
+    LAST-UPDATED "201102070000Z" -- February 07, 2011
+    ORGANIZATION "Media5 Corporation"
+    CONTACT-INFO "Media5 Corporation
+                  4229 Garlock Street
+                  Sherbrooke, Quebec
+                  J1L 2C8, Canada
+                  Tel: 1-819-829-8749
+                  Fax: 1-819-829-5100"
+    DESCRIPTION
+            "This MIB module defines the namespace organization for the
+             m5t common application OID registry."
+    ::=  { m5tApplications 1 }
+
+notificationMIB                         OBJECT IDENTIFIER ::=  { m5tCommon 1 }
+loggingMIB                              OBJECT IDENTIFIER ::=  { m5tCommon 50 }
+
+loggingMIBObjects                       OBJECT IDENTIFIER ::=  { loggingMIB 1 }
+
+syslogGroup                             OBJECT IDENTIFIER ::=  { loggingMIBObjects 1 }
+tracingGroup                            OBJECT IDENTIFIER ::=  { loggingMIBObjects 50 }
+sipPacketGroup                          OBJECT IDENTIFIER ::=  { loggingMIBObjects 100 }
+
+syslogRemoteHost   OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..22))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This variable allows to specify to which ip:port to send the traces using syslog."
+    ::= { syslogGroup 50 }
+
+traceNodeConfigCommand   OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..1024))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This variable allows to enable/disable trace node level. The format is <tracenode>
+         <enable(0:1) default 1> <recursive (0:1) default 1> <maxtracelevel(0:9) empty or other values enable all.>
+         Multiple commands can be separated by ;"
+    ::= { tracingGroup 1 }
+
+traceToSyslog   OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This variable allows to enable/disable syslog tracing."
+    DEFVAL { false }
+    ::= { tracingGroup 50 }
+
+sipPacketToSyslog OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This variable allows to enable/disable tracing of sent and received SIP packet to the syslogRemoteHost."
+    DEFVAL { false }
+    ::= { sipPacketGroup 100 }
+
+END

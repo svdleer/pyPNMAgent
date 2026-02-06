@@ -1,0 +1,19 @@
+--**************************************************************************
+--    Description:
+--
+--		SMI MIB which defines the Ubee enterprises root node.
+--		
+--**************************************************************************
+--    Revision History: 
+--
+--**************************************************************************
+
+UBEE-SMI DEFINITIONS ::= BEGIN
+
+IMPORTS
+    enterprises
+        FROM SNMPv2-SMI;
+
+ubee OBJECT IDENTIFIER ::= { enterprises 4684 } -- assigned by IANA
+
+END

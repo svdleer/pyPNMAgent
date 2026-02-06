@@ -1,0 +1,293 @@
+-- vim: set ts=4, set expandtab, match Todo /\%>79v/
+-- ***********************************************************************
+-- ***********************************************************************
+--                             ROUTER
+--                      SNMP/MIB : MIB Files
+--
+--            Copyright (C) 2014 Hitron Technologies Inc.
+--                       All Rights Reserved.
+-- ***********************************************************************
+--  Filename    : HITRON-RG-LAN.mib
+--  Description : User Interface MIB
+-- ***********************************************************************
+--
+
+HITRON-RG-LAN-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+    , OBJECT-TYPE
+    , NOTIFICATION-TYPE
+    , enterprises
+    , Integer32
+    , IpAddress
+    , Unsigned32
+    , Counter32
+        FROM SNMPv2-SMI -- RFC2578
+
+    DisplayString
+    , MacAddress
+    , TruthValue
+    , RowStatus
+    , TimeStamp
+    , DateAndTime
+        FROM SNMPv2-TC  -- RFC2579
+    
+    InetAddressType
+    , InetAddress
+    , InetAddressPrefixLength
+    , InetPortNumber
+    , InetVersion
+        FROM INET-ADDRESS-MIB -- RFC4001
+
+	hitronRg
+    , LanIfType
+    , LanAddrTitle
+    , WanAddrTitle
+        FROM HITRON-RG-MIB
+
+	hitronRgNi
+	    FROM HITRON-RG-NI-MIB
+    
+    ;  --End of IMPORTS
+
+	
+hitronRgLan  MODULE-IDENTITY
+    LAST-UPDATED    "201403181012Z" -- Mar. 18, 2014
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "Liangfeng Wu
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8112
+        E-mail: caojun@sz.hitrontech.com"
+
+		DESCRIPTION
+            "MIB module for display the lan cpe info"
+
+    ::= { hitronRgNi 3 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --             The LAN Device Table                            |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    routerLanAddrTable OBJECT-TYPE 
+           SYNTAX      SEQUENCE OF RouterLanAddrEntry 
+           MAX-ACCESS  not-accessible 
+           STATUS      current 
+           DESCRIPTION 
+                   "This table is a list of LAN client parameters.
+                   This table has one row entry for each allocated
+                   LAN IP address.  Each row must have at least a
+                   valid routerLanAddrMethod, a unique routerLanAddrIp, and a unique
+                   routerLanAddrClientId value.
+
+                   Static/Manual address assignment: To create a new DHCP
+                   address reservation, the NMS creates a row with: an
+                   index comprised of a new routerLanAddrIp and its
+                   routerLanAddrIpType, a new unique
+                   routerLanAddrClientID, (an empty LeaseCreateTime and
+                   empty LeaseExpireTime,) and a
+                   routerLanDataAddrRowStatus of createAndGo(4).  If the
+                   syntax and values of the new row - indicating a
+                   reservation - are valid, the device must set
+                   routerLanAddrMethod to reservationInactive(1) and
+                   routerLanDataAddrRowStatus to active(1).  When the device
+                   grants a lease for a reserved IP, it must set the
+                   routerLanAddrMethod object for that row to
+                   reservationActive(2).  When a lease for a reserved IP
+                   expires, the device must set the corresponding row's
+                   routerLanAddrMethod object to reservationInactive(1).
+                   For row entries that represent lease reservations - rows
+                   in which the routerLanAddrMethod object has a value of
+                   either reservationInactive(1) or reservationActive(2) -
+                   the routerLanAddrIpType, routerLanAddrIp,
+                   routerLanAddrClientID, routerLanAddrMethod, and
+                   routerLanAddrHostName object values must persist across
+                   device reboots.
+
+                   Dynamic address assignment:  When the device grants a lease
+                   for a non-reserved IP, it must set the
+                   routerLanAddrMethod object for that row to
+                   dynamicActive(4).  When a lease for a non-reserved IP
+                   expires, the device must set the corresponding row's
+                   routerLanAddrMethod object to dynamicInactive(3).  The
+                   device must create new row entries using routerLanAddrIp
+                   values that are unique to this table.  If all
+                   routerLanAddrIp values in the range defined by
+                   routerLanPoolStart and routerLanPoolEnd are in use in
+                   this table, the device may overwrite the
+                   routerLanAddrClientId of a row that has a
+                   routerLanAddrMethod object with a value of
+                   dynamicInactive(3) with a new routerLanAddrClientId
+                   value and use that routerLanAddrIp as part of a new
+                   lease.  For row entries that represent active leases -
+                   rows in which the routerLanAddrMethod object has a
+                   value of dynamicActive(4) - the routerLanAddrIpType,
+                   routerLanAddrIp, routerLanAddrClientID,
+                   routerLanAddrMethod, and routerLanAddrHostName object
+                   values must persist across device reboots."
+        ::= { hitronRgLan 1 } 
+    
+    routerLanAddrEntry OBJECT-TYPE 
+        SYNTAX      RouterLanAddrEntry 
+        MAX-ACCESS  not-accessible 
+        STATUS      current 
+        DESCRIPTION 
+                "List of general parameters pertaining to LAN IP
+                address reservations and leases." 
+        INDEX { routerLanAddrIp } 
+        ::= { routerLanAddrTable 1 } 
+    
+    RouterLanAddrEntry ::= SEQUENCE { 
+        routerLanAddrIp                 IpAddress, 
+        routerLanAddrClientID           MacAddress, 
+        routerLanAddrLeaseCreateTime    DateAndTime, 
+        routerLanAddrLeaseExpireTime    DateAndTime, 
+        routerLanAddrMethod             INTEGER, 
+        routerLanAddrHostName           OCTET STRING, 
+        routerLanAddrRowStatus          RowStatus 
+        } 
+      
+    routerLanAddrIp OBJECT-TYPE 
+        SYNTAX      IpAddress 
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION  
+                "The address assigned to the LAN IP Device. This parameter
+                is entered by the gateway when the DHCP server grants a lease to a
+                LAN IP Device and creates a row
+                in this table. Alternatively, this parameter can be
+                entered by the NMS through the CMP, when the NMS creates
+                a new DHCP address reservation.  Each routerLanAddrIp
+                in the table must fall within the range of IPs defined
+                inclusively by routerLanPoolStart and 
+                routerLanPoolEnd.  The device must return an 
+                inconsistentValue error if the NMS attempts to
+                create a row entry with a routerLanAddrIP value that falls
+                outside of this range or is not unique from all existing
+                routerLanAddrIP entries in this table. The address type of
+                this object is specified by routerLanAddrIpType."
+        ::= { routerLanAddrEntry 2 } 
+    
+    routerLanAddrClientID OBJECT-TYPE 
+        SYNTAX      MacAddress 
+        MAX-ACCESS  read-create 
+        STATUS      current 
+        DESCRIPTION 
+                "The client's (i.e., LAN IP Device's) hardware address as
+                indicated in the chaddr field of its DHCP REQUEST message.
+                There is a one-to-one relationship between the hardware
+                address and the LAN IP Device. This parameter is entered
+                by the device when the DHCP server grants a lease to a LAN IP
+                Device and creates a row in this
+                table. Alternatively this parameter can be created by the
+                NMS through the MIB, when the NMS creates a new DHCP
+                address reservation by accessing the 
+                routerLanDataAddrRowStatus object with an index 
+                comprised of a unique routerLanAddrIp and creating
+                a row with a unique routerLanAddrClientID."
+        ::= { routerLanAddrEntry 3 } 
+
+    routerLanAddrLeaseCreateTime OBJECT-TYPE 
+        SYNTAX      DateAndTime
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "This is the date and time when the LAN IP lease was
+                created (if it has not yet been renewed) or last renewed.
+                This MIB object contains a zero valued 11 byte string
+                when a reservation is created for a LAN IP address
+                and it maintains this value until the LAN IP Device
+                acquires its lease and routerLanAddrMethod
+                becomes reservationActive(2)."
+        ::= { routerLanAddrEntry 4 }
+    
+    routerLanAddrLeaseExpireTime OBJECT-TYPE 
+        SYNTAX      DateAndTime
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "This is the date and time when the LAN IP address lease
+                expired or will expire. This MIB object contains a zero
+                valued 11 byte string when a reservation is created for
+                a LAN IP address and it maintains this value until the
+                LAN IP Device acquires its lease and
+                routerLanAddrMethod becomes reservationActive(2)."
+        ::= { routerLanAddrEntry 5 }
+    
+    routerLanAddrMethod OBJECT-TYPE 
+        SYNTAX      INTEGER { 
+                        mgmtReservationInactive(1),
+                        mgmtReservationActive(2),
+                        dynamicInactive(3),
+                        dynamicActive(4),
+                        gwReservationInactive(5),
+                        gwReservationActive(6)  
+                    } 
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "The IP allocation method indicated by this row.
+
+                The value of mgmtReservationInactive(1)
+                indicates an externally provisioned IP address
+                reservation that has not yet been leased or that
+                has an expired lease. This indicates an IP address
+                lease reservation created either by an operator or
+                a user.
+            
+                The value of mgmtReservationActive(2)
+                indicates an externally provisioned IP address
+                reservation that has an active lease. This indicates
+                an IP address lease reservation created either
+                by an operator or a user.
+
+                The value of dynamicInactive(3) indicates an
+                IP address that was once dynamically assigned to a 
+                LAN client by the device but currently
+                has an expired lease.
+ 
+                The value of dynamicActive(4)indicates an IP 
+                Address that was dynamically assigned to a
+                LAN device by the gateway and has a current
+                active lease.
+            
+                The value of gwReservationInactive(5)
+                indicates an IP address reservation created by some
+                internal process of the gateway and has not yet been
+                leased or has an expired lease.
+            
+                The value of gwReservationActive(6)
+                indicates an IP address reservation created by some
+                internal process of the device that has an active lease." 
+        ::= { routerLanAddrEntry 6 } 
+    
+    routerLanAddrHostName OBJECT-TYPE 
+        SYNTAX      OCTET STRING (SIZE(0..80)) 
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+                "This is the Host Name of the LAN IP address, based on DHCP
+                option 12." 
+        ::= { routerLanAddrEntry 7 } 
+    
+    routerLanAddrRowStatus OBJECT-TYPE 
+        SYNTAX      RowStatus 
+        MAX-ACCESS  read-create 
+        STATUS      current 
+        DESCRIPTION 
+                "The RowStatus interlock for creation and deletion of row
+                entries. The device must not allow the NMS to set RowStatus
+                to notInService(2). The device must assign a RowStatus of
+                notInService(2) to any new row entry created with a
+                non-unique, routerLanAddrClientID value. The device must
+                assign a RowStatus of notReady(3) to any new row entry
+                created without a routerLanAddrClientID.  The device will
+                prevent modification of this table's columns and return an
+                inconsistentValue error, if the NMS attempts to make such 
+                modifications while the RowStatus is active(1)." 
+        ::= { routerLanAddrEntry 8 } 
+		
+END

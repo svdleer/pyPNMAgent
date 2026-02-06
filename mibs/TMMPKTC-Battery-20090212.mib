@@ -1,0 +1,210 @@
+TMMPKTC-BATTERY-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+        MODULE-IDENTITY, 
+        OBJECT-TYPE,enterprises, 
+        Integer32,IpAddress
+                FROM SNMPv2-SMI;
+                
+thomson      OBJECT IDENTIFIER ::= { enterprises 2863 }
+tmmVoip      OBJECT IDENTIFIER ::= { thomson 78 }
+
+tmmBattery MODULE-IDENTITY
+           LAST-UPDATED    "0902090000Z"  -- 2009/02/09
+           ORGANIZATION    "Thomson, Inc."
+           CONTACT-INFO    "larry.brown@thomson.net"
+           DESCRIPTION
+               "MTA Battery status."
+           ::= { tmmVoip 2 }            
+
+tmmBattTempControlState OBJECT-TYPE
+    SYNTAX INTEGER {
+          battNormal(1),
+          battDisconnect(2),
+          battDisconnectLowPower(3),
+          battSuspendCharge(4),
+          lowPowerNormal(5),
+          lowPowerSuspendCharge(6),
+          lowPowerDisconnect(7)        
+          }
+    MAX-ACCESS 	  read-only
+    STATUS        current
+    DESCRIPTION	   
+    "This MIB shows states of the battery control based on temperatures measured on the battery:
+     DHG535:
+     1: battNormal (state when normal operation at e.g. room temperature)
+     2: battDisconnect (state when 60 - 65 C if temp rising or 57 - 62 C if temp falling)
+     3: battDisconnect and low power (state when >= 65 C if temp rising or >= 62 C if temp falling)
+     
+     DHG536:
+     1: battNormal (state when normal operation at e.g. room temperature)
+     2: battDisconnect (state when >= 60 C if temp rising or > 57 C if temp falling)
+     4: battSuspendCharge (state when >= 56 C if temp rising or > 53 C if temp falling)
+     5: lowPowerNormal (state when thermistor on board >= 70 C if temp rising or > 67 C if temp falling 
+                        And in battNormal mode)
+     6: lowPowerSuspendCharge (state when thermistor on board >= 70 C if temp rising or > 67 C if temp falling 
+                               And in battSuspendCharge mode)
+     7: lowPowerDisconnect (state when thermistor on board >= 70 C if temp rising or > 67 C if temp falling 
+                            And in battDisconnect mode) 
+     
+    "
+    ::= { tmmBattery 7 }   
+
+tmmBattStatus OBJECT-TYPE
+    SYNTAX INTEGER {
+          battNormal(1),
+          battLow(2),
+          battDepleted(3),
+          battBad(4),
+          battMissing(5)       
+          }
+    MAX-ACCESS 	  read-only
+    STATUS        current
+    DESCRIPTION	   
+    "This MIB shows the capacity status of the batteries installed on the eMTA.
+    
+     1: battNormal   - indicates that the remaining run-time is greater than upsConfigLowBattTime.
+     2: battLow      - indicates that the remaining run-time is less than or equal to upsConfigLowBattTime.
+     3: battDepleted - indicates that the remaining run-time will be unable to sustain the present load
+                       when and if the utility power is lost.
+     4: battBad      - batteries installed have been determined to require replacement.
+     5: battMissing  - batteries not installed.
+ 
+     "
+    ::= { tmmBattery 8 }   
+
+
+tmmBattOnBatteryStats   OBJECT IDENTIFIER ::=  { tmmBattery 9 }
+
+
+tmmBattOnBatteryDuration OBJECT-TYPE
+    SYNTAX Unsigned32 
+    UNITS  "seconds"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " Accumulative duration of on-battery scenario.
+          The value is persistent across reboot and cleared
+          by factory reset or tmmBattOnBatteryStatReset."
+    DEFVAL { 0 }
+    ::= { tmmBattOnBatteryStats 1 }
+
+tmmBattOnBatteryOccurance OBJECT-TYPE
+    SYNTAX Unsigned32 
+    UNITS  "times"
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        " Number of on-battery occurances.
+          The value is persistent across reboot and cleared
+          by factory reset or tmmBattOnBatteryStatReset."
+    DEFVAL { 0 }    
+    ::= { tmmBattOnBatteryStats 2 }
+
+tmmBattOnBatteryStatsReset OBJECT-TYPE
+    SYNTAX INTEGER {
+        false(0),
+        true(1)
+    }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        " When set to true(1) reset on battery stats."
+    DEFVAL { 0 }         
+    ::= { tmmBattOnBatteryStats 9 } 
+
+-- tmmBatteryAcFail OBJECT-TYPE
+--     SYNTAX INTEGER {
+--           false(0),
+--           true(1)
+--         }
+--     MAX-ACCESS 	  read-only
+--     STATUS        current
+--     DESCRIPTION	
+--     
+--         "- OBSOLETE - 
+--          Show the Battery AC status(AC_STATUS):
+--          0: AC Restored,
+--          1: AC Fail "
+--     ::= { tmmBattery 1 }
+-- 
+-- tmmBatteryReplace OBJECT-TYPE
+--     SYNTAX INTEGER {
+--           false(0),
+--           true(1)
+--         }
+--     MAX-ACCESS 	  read-only
+--     STATUS        current
+--     DESCRIPTION	
+--    
+--          "- OBSOLETE - 
+--          Show the Battery life status(BATTERY_STATUS):
+--          0: Battery Good,
+--          1: Replace Battery"          
+--     ::= { tmmBattery 2 }
+-- 
+-- tmmBatteryMissing OBJECT-TYPE
+--     SYNTAX INTEGER {
+--           false(0),
+--           true(1)
+--         }
+--     MAX-ACCESS 	  read-only
+--     STATUS        current
+--     DESCRIPTION
+--          "- OBSOLETE - 
+--          Show the Battery presence status(BATTERY_EXIST):
+--          0: Battery Present,
+--          1: Battery Missing"   
+--     ::= { tmmBattery 3 }
+-- 
+-- tmmBatteryLow OBJECT-TYPE
+--     SYNTAX INTEGER {
+--           false(0),
+-- 	  true(1)
+--         }
+--     MAX-ACCESS 	  read-only
+--     STATUS        current
+--     DESCRIPTION	
+--          "- OBSOLETE - 
+--          Show the Battery charge status(BATTERY_ENERGY):
+--          0: Battery Not Low,
+--          1: Battery Low"  
+--     ::= { tmmBattery 4 }
+-- 
+-- tmmBatteryTrapServer OBJECT-TYPE
+--     SYNTAX  IpAddress
+--     MAX-ACCESS 	  read-write
+--     STATUS        current
+--     DESCRIPTION	     
+--     
+--         "- OBSOLETE - 
+--         The IP address of the host receiving SNMP traps. "  
+--         
+--     ::= { tmmBattery 5 }
+-- 
+-- tmmBatteryTrapControl OBJECT-TYPE
+--     SYNTAX BITS {
+--           acFailTrue (0),
+--           acFailFalse(1),
+--           replaceBatteryTrue (2),
+--           replaceBatteryFalse (3),
+--           batteryMissingTrue (4),
+--           batteryMissingFalse (5),
+--           batteryLowTrue (6),
+--           batteryLowFalse (7)
+--         }
+--     MAX-ACCESS 	  read-write
+--     STATUS        current
+--     DESCRIPTION	
+--          "- OBSOLETE - 
+--          Controls sending battery event change traps:
+--          bit 0 set: send trap if tmmBatteryAcFail changes from false(0) to true(1)
+--          bit 1 set: send trap if tmmBatteryAcFail changes from true(1) to false(0)
+--          bit 2 set: send trap if tmmBatteryReplace changes from false(0) to true(1)
+--          bit 3 set: send trap if tmmBatteryReplace changes from true(1) to false(0)
+--          bit 4 set: send trap if tmmBatteryMissing changes from false(0) to true(1)
+--          bit 5 set: send trap if tmmBatteryMissing changes from true(1) to false(0)
+--          bit 6 set: send trap if tmmBatteryLow changes from false(0) to true(1)
+--          bit 7 set: send trap if tmmBatteryLow changes from true(1) to false(0)"  
+--     ::= { tmmBattery 6 }      
+                   
+END

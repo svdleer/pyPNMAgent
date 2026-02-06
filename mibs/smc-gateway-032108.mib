@@ -1,0 +1,1493 @@
+    SMC-GATEWAY-MIB  DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Counter32,
+        Integer32,
+        IpAddress,
+        experimental,
+        private,
+        enterprises,
+        transmission            FROM SNMPv2-SMI
+        
+        InetAddressType, 
+        InetAddress			   	FROM INET-ADDRESS-MIB
+               
+    	MODULE-COMPLIANCE,
+    	OBJECT-GROUP            FROM SNMPv2-CONF
+    	
+    	TEXTUAL-CONVENTION,
+    	MacAddress,
+	    PhysAddress,
+    	RowStatus,
+    	TruthValue,
+        DateAndTime,
+	    TimeStamp,
+    	DisplayString           FROM SNMPv2-TC
+    	
+    	docsIfCmStatusTxPower, 
+    	docsIfDownChannelPower, 
+    	docsIfSigQSignalNoise	FROM DOCS-IF-MIB
+    	
+        ifIndex		            FROM IF-MIB;
+            
+-- Textual Conventions
+	smcNetworks		OBJECT IDENTIFIER ::= { enterprises 202 }
+	smcCableModem	OBJECT IDENTIFIER ::= { smcNetworks 80 }
+
+    smcGatewayMib MODULE-IDENTITY
+    LAST-UPDATED "200803211338Z" -- March 21st, 2008
+    ORGANIZATION "SMC Networks, Inc."
+    CONTACT-INFO
+        " Linmei Shu
+        	SMC Networks Inc
+            11940 Jollyville Road STE-220N
+            Austin, TX 78759
+            USA
+            Phone: +1 512 249 9515 ext. 101
+            E-mail: linmei.shu@smc.com"
+    DESCRIPTION
+        "The MIB module to describe the SMC Networks gateway devices functions."
+
+    REVISION "200803211338Z"
+    DESCRIPTION
+        "Moved smcWirelessConfig out to form a seperate smcWirlessConfig MIB."
+        ::= { smcCableModem 1 }
+
+SnmpAdminString ::= TEXTUAL-CONVENTION
+    DISPLAY-HINT "255a"
+    STATUS       current
+    DESCRIPTION "An octet string containing administrative
+                 information, preferably in human-readable form.
+
+                 To facilitate internationalization, this
+                 information is represented using the ISO/IEC
+                 IS 10646-1 character set, encoded as an octet
+                 string using the UTF-8 transformation format
+                 described in [RFC2044].
+
+                 Since additional code points are added by
+                 amendments to the 10646 standard from time
+                 to time, implementations must be prepared to
+                 encounter any code point from 0x00000000 to
+                 0x7fffffff.
+
+                 The use of control codes should be avoided.
+
+                 When it is necessary to represent a newline,
+                 the control code sequence CR LF should be used.
+
+                 The use of leading or trailing white space should
+                 be avoided.
+
+                 For code points not directly supported by user
+                 interface hardware or software, an alternative
+                 means of entry and display, such as hexadecimal,
+                 may be provided.
+
+                 For information encoded in 7-bit US-ASCII,
+                 the UTF-8 encoding is identical to the
+                 US-ASCII encoding.
+
+                 Note that when this TC is used for an object that
+                 is used or envisioned to be used as an index, then
+                 a SIZE restriction must be specified so that the
+                 number of sub-identifiers for any object instance
+                 does not exceed the limit of 128, as defined by
+                 [RFC1905].
+                "
+    SYNTAX       OCTET STRING (SIZE (0..20))
+
+    -- Generic information
+
+    smcGateway          	OBJECT IDENTIFIER ::= {  smcGatewayMib 1  }
+    smcCmControl    		OBJECT IDENTIFIER ::= {  smcGateway 1  }
+    smcDslControl    		OBJECT IDENTIFIER ::= {  smcGateway 2  }
+    smcGwSystemControl	 	OBJECT IDENTIFIER ::= {  smcGateway 10 }
+    smcGwRemoteMgmtControl 	OBJECT IDENTIFIER ::= {  smcGateway 11 }
+    smcGwLocalMgmtControl  	OBJECT IDENTIFIER ::= {  smcGateway 12 }
+    smcGwLoginControl   	OBJECT IDENTIFIER ::= {  smcGateway 13 }
+    smcGwAdminControl   	OBJECT IDENTIFIER ::= {  smcGwLoginControl 1 }
+    smcGwCusAdminControl   	OBJECT IDENTIFIER ::= {  smcGwLoginControl 2 }
+    smcGwComAdminControl   	OBJECT IDENTIFIER ::= {  smcGwLoginControl 3 }
+    smcGwPrivateLanConfig  	OBJECT IDENTIFIER ::= {  smcGateway 14 }
+    smcGwVpnConfig			OBJECT IDENTIFIER ::= {  smcGateway 15 }
+    smcSwitchControl  		OBJECT IDENTIFIER ::= {  smcGateway 16 }
+    smcUsbControl     		OBJECT IDENTIFIER ::= {  smcGateway 17 }
+    smcWirelessConfig  		OBJECT IDENTIFIER ::= {  smcGateway 18 }
+
+	smcSystemMonitor		OBJECT IDENTIFIER ::= {  smcGateway 100 }
+	smcSystemAlarm			OBJECT IDENTIFIER ::= {  smcGateway 101 }
+	
+	-- CabelLabs defined CTP and CDP MIBs that SMC Networks gateway device supports
+	cableLabs				OBJECT IDENTIFIER ::= { enterprises 4491 }
+	clabFunction			OBJECT IDENTIFIER ::= { cableLabs 1 }
+	clabFuncMib2			OBJECT IDENTIFIER ::= { clabFunction 1 }
+	clabFuncProprietary 	OBJECT IDENTIFIER ::= { clabFunction 2 }
+	clabProject				OBJECT IDENTIFIER ::= { cableLabs 2 }
+	clabProjDocsis			OBJECT IDENTIFIER ::= { clabProject 1 }
+	clabProjPacketCable		OBJECT IDENTIFIER ::= { clabProject 2 }
+	clabProjCableHome		OBJECT IDENTIFIER ::= { clabProject 4 } 
+    cabhCdpMib				OBJECT IDENTIFIER::=  { clabProjCableHome 4 }
+    cabhCdpObjects			OBJECT IDENTIFIER ::= { cabhCdpMib 1 }
+    cabhCdpBase				OBJECT IDENTIFIER ::= { cabhCdpObjects 1 }
+    cabhCdpAddr				OBJECT IDENTIFIER ::= { cabhCdpObjects 2 }
+    cabhCdpServer			OBJECT IDENTIFIER ::= { cabhCdpObjects 3 }
+	cabhCtpMib				OBJECT IDENTIFIER ::= { clabProjCableHome 5 }
+	cabhCtpObjects			OBJECT IDENTIFIER ::= { cabhCtpMib 1 }
+	cabhCtpBase				OBJECT IDENTIFIER ::= { cabhCtpObjects 1 }
+	cabhCtpConnSpeed		OBJECT IDENTIFIER ::= { cabhCtpObjects 2 }
+	cabhCtpPing				OBJECT IDENTIFIER ::= { cabhCtpObjects 3 }
+	cabhPsDevMib        	OBJECT IDENTIFIER ::= { clabProjCableHome 1 }
+	cabhPsDevMibObjects 	OBJECT IDENTIFIER ::= { cabhPsDevMib 1 }
+	cabhPsDevBase       	OBJECT IDENTIFIER ::= { cabhPsDevMibObjects 1 }
+	cabhPsDevProv       	OBJECT IDENTIFIER ::= { cabhPsDevMibObjects 2 }
+	cabhPsDevAccessControl  OBJECT IDENTIFIER ::= { cabhPsDevMibObjects 5 }
+	cabhPsDevMisc			OBJECT IDENTIFIER ::= { cabhPsDevMibObjects 6 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Cable Modem Control
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    cmOperMode OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        bridge(1),
+                        gateway(2)
+                    }
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "This object indicates the gateway operation mode in which the
+            CM is operating. Set to (1) for bridge mode. Set to (2) for 
+            RG or EG mode."
+        ::= { smcCmControl 1 }
+
+    cmGwResetToDefault OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Setting this object to true(1) causes the device to do a factory reset.
+             Reading this object always returns false(2)."
+        ::= { smcCmControl 2 }
+
+    cmMTACountAsCPE OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Setting this object to true(1) causes the device to count the eMTA 
+            as a Customer Premise Equipment (CPE) in its count of the maximum 
+            number of CPEs supported by the cable modem."
+        DEFVAL { false }
+        ::= { smcCmControl 3 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- DSL Modem Control
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    dslOperMode OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        bridge(1),
+                        gateway(2)
+                    }
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "This object indicates the gateway operation mode in which the
+            DSL modem is operating. Set to (1) for bridge mode. Set to (2) for 
+            RG or EG mode."
+        ::= { smcDslControl 1 }
+
+    dslGwResetToDefault OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Setting this object to true(1) causes the device to do a factory reset.
+             Reading this object always returns false(2)."
+        ::= { smcDslControl 2 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Gateway System Control
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    gwFirewallEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether firewall is enabled/disabled."
+	    ::= { smcGwSystemControl 1 }
+
+    gwFirewallEnableSetOnce OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        disable(0),
+                        enable(1)
+                    }
+	    MAX-ACCESS	read-write
+	    STATUS		current
+        DESCRIPTION
+            "This object identifies whether this CM is provisioned to run Firewall."
+        ::= { smcGwSystemControl 2 }
+
+    gwIdsEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether Intrusion Detection Service 
+		        is enabled/disabled."
+	    ::= { smcGwSystemControl 3 }
+
+    gwQosEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether Quality Of Service is enabled/disabled."
+	    ::= { smcGwSystemControl 4 }
+
+    gwUpnpIgdEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether UPnP IGD service is enabled/disabled."
+	    ::= { smcGwSystemControl 5 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Gateway Remote Management
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    gwRemoteMgmtHttpEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether HTTP server is enabled/disabled for 
+		        the WAN side remote management."
+	    ::= { smcGwRemoteMgmtControl 1 }
+
+    gwRemoteMgmtHttpPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The HTTP server port for WAN side remote management."
+	    ::= { smcGwRemoteMgmtControl 2 }
+
+    gwRemoteMgmtTelnetEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether telnet server is enabled/disabled for 
+		        the WAN side remote management."
+	    ::= { smcGwRemoteMgmtControl 3 }
+
+    gwRemoteMgmtTelnetPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The telnet server port for WAN side remote management."
+	    ::= { smcGwRemoteMgmtControl 4 }
+
+    gwRemoteMgmtAllowCustomerLogin OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "Allow/Deny the HTTP server WAN side access for the customer login 
+                account. If set to FALSE, only service operator login account is 
+                allowed to access HTTP server from WAN side."
+        DEFVAL { false }
+        ::= { smcGwRemoteMgmtControl 5 }
+
+    gwRemoteMgmtAccess OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        everyone(1),
+                        ipAddressRange(2),
+                        onlyThisIp(3)
+                    }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The Access control for the users who want to remotely manage the gateway."
+        DEFVAL { everyone }
+        ::= { smcGwRemoteMgmtControl 6 }
+
+    gwRemoteMgmtStartIp OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "If setting gwRemoteMgmtAccess to everyone(1). This mib object
+                 is not applicable.
+                 
+                 If setting gwRemoteMgmtAccess to ipAddressRange(2). This mib
+                 object indicates the start IP address of access range.
+                 
+                 If setting gwRemoteMgmtAccess to onlyThisIp(3). This mib
+                 object indicates the only IP address that can access CM."
+        DEFVAL { '0'h }    -- 0.0.0.0 
+        ::= { smcGwRemoteMgmtControl 7 }
+
+    gwRemoteMgmtEndIp OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "If setting gwRemoteMgmtAccess to everyone(1). This mib object
+                 is not applicable.
+                 
+                 If setting gwRemoteMgmtAccess to ipAddressRange(2). This mib
+                 object indicates the end IP address of access range.
+                 
+                 If setting gwRemoteMgmtAccess to onlyThisIp(3). This mib object
+                 is not applicable."
+        DEFVAL { '0'h }    -- 0.0.0.0 
+        ::= { smcGwRemoteMgmtControl 8 }
+
+    gwRemoteMgmtControl OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        restoreConfig(0),
+                        commitConfig(1)
+                    }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+                "The control for the RG Remote Management configuration. 
+                All changes to the smcGwRemoteMgmtControl mib objects are reflected
+                when reading the value of the mib objects; however, those
+                changes are NOT applied to the running configuration of 
+                the CM until they are successfully committed via use 
+                of the gwRemoteMgmtControl object. 
+    
+                If changes are made to the smcGwRemoteMgmtControl mib objects which 
+                are not yet successfully committed to the CM, the 
+                gwRemoteMgmtControl object can be used to rollback all 
+                changes to the last valid CM configuration and discard 
+                all intermediate changes.
+    
+                restoreConfig - Setting gwRemoteMgmtControl to this value 
+                will cause any changes to the smcGwRemoteMgmtControl objects not yet
+                committed be reset to the values from the current running 
+                configuration of the CM.
+    
+                commitConfig - Setting gwRemoteMgmtControl to this value 
+                will cause the CM to validate and apply the valid 
+                smcGwRemoteMgmtControl mib settings to its running configuration. 
+                The gwRemoteMgmtStatus object will detail the 
+                status of this operation."
+        DEFVAL { restoreConfig }
+        ::= { smcGwRemoteMgmtControl 9 }
+    
+    gwRemoteMgmtStatus OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        commitSucceeded(1),
+                        commitNeeded(2),
+                        commitFailed(3)
+                    }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "Indicates the status of committing the current 
+                smcGwRemoteMgmtControl mib object values to the running
+                configuration of the CM.
+     
+                commitSucceeded - indicates the current smcGwRemoteMgmtControl 
+                mib object values are valid and have been successfully 
+                committed to the running configuration of the CM.
+    
+                commitNeeded - indicates that the value of one or more
+                objects in smcGwRemoteMgmtControl mib group have been changed
+                but not yet committed to the running configuration
+                of the CM. 
+    
+                commitFailed - indicates it was unable to commit the 
+                smcGwRemoteMgmtControl mib object values to the running
+                configuration of the CM due to conflicts in those
+                values."
+        DEFVAL { commitSucceeded }
+        ::= { smcGwRemoteMgmtControl 10 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Local Management Port Control
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    gwLocalMgmtHttpPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The HTTP server port for LAN side local management."
+	    ::= { smcGwLocalMgmtControl 1 }
+
+    gwLocalMgmtTelnetPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "The telnet server port for LAN side local management."
+	    ::= { smcGwLocalMgmtControl 2 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Password Management
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    gwAdminUsername OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (1..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Username for Admin login"
+	    ::= { smcGwAdminControl 1 }
+
+    gwAdminPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Password for service provider Admin login"
+	    ::= { smcGwAdminControl 2 }
+
+    gwAdminPasswordSetOnce OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Password for Admin(MSO) login."
+	    ::= { smcGwAdminControl 4 }
+
+    gwCusAdminPasswordSetOnce OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Password for CusAdmin login."
+	    ::= { smcGwAdminControl 5 }
+
+    gwComAdminPasswordSetOnce OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Password for ComAdmin login."
+	    ::= { smcGwAdminControl 6 }
+
+    gwCusAdminPWDCtrl OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        disable(0),
+                        enable(1)
+                    }
+      MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Enable/Disable password configuration for CusAdmin user."
+	    ::= { smcGwAdminControl 7 }
+
+    gwCusAdminEnable OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        disable(0),
+                        enable(1)
+                    }
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Enable/Disable CusAdmin login."
+	    ::= { smcGwAdminControl 8 }
+
+    gwComAdminEnable OBJECT-TYPE
+        SYNTAX      INTEGER {
+                        disable(0),
+                        enable(1)
+                    }
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Enable/Disable ComAdmin login."
+	    ::= { smcGwAdminControl 9 }
+
+    gwCusAdminUsername OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (1..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Username for CusAdmin login."
+	    ::= { smcGwCusAdminControl 1 }
+
+    gwCusAdminPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Password for CusAdmin login."
+	    ::= { smcGwCusAdminControl 2 }
+
+    gwComAdminUsername OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (1..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Username for ComAdmin login."
+	    ::= { smcGwComAdminControl 1 }
+
+    gwComAdminPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..32))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "Password for ComAdmin login."
+	    ::= { smcGwComAdminControl 2 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Private Lan Management
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    gwSetPrivateLanIP OBJECT-TYPE
+        SYNTAX      IpAddress
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure Private LAN gateway IP address. MUST reboot CM to take effect."
+	    ::= { smcGwPrivateLanConfig 1 }
+
+    gwSetPrivateLanIPMask OBJECT-TYPE
+        SYNTAX      IpAddress
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure Private LAN subnet mask. MUST reboot CM to take effect."
+	    ::= { smcGwPrivateLanConfig 2 }
+
+    gwSetDhcpsPoolSize OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure DHCP server IP address pool. MUST reboot CM to take effect."
+	    ::= { smcGwPrivateLanConfig 3 }
+
+    gwSetPrivateLanIPSetOnce OBJECT-TYPE
+        SYNTAX      IpAddress
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure Private LAN gateway IP address. MUST reboot CM to take effect."
+	    ::= { smcGwPrivateLanConfig 4 }
+
+    gwSetPrivateLanIPMaskSetOnce OBJECT-TYPE
+        SYNTAX      IpAddress
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		    "Configure Private LAN subnet mask. MUST reboot CM to take effect."
+	    ::= { smcGwPrivateLanConfig 5 }	    
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    --                                                              |
+    --             The Switch Port Table                            |
+    --                                                              |
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    
+    switchPortTable OBJECT-TYPE
+            SYNTAX     SEQUENCE OF SwitchPortEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "A list of configuration entries for individually
+                     switched ports."
+            ::= { smcSwitchControl 1 }
+    
+    switchPortEntry OBJECT-TYPE
+            SYNTAX     SwitchPortEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "Configuration parameters for an individually
+                     switched port."
+            INDEX   { switchPortIndex }
+            ::= { switchPortTable 1 }
+    
+    SwitchPortEntry ::=
+            SEQUENCE {
+                    switchPortIndex
+                            INTEGER,
+                    switchPortLinkAdmin
+                            INTEGER,
+                    switchPortLinkStatus
+                            INTEGER,
+                    switchPortAutoNegotiation
+                            INTEGER,
+                    switchPortDuplexAdmin
+                            INTEGER,
+                    switchPortDuplexStatus
+                            INTEGER,
+                    switchPortSpeedAdmin
+                            INTEGER,
+                    switchPortSpeedStatus
+                            INTEGER,
+                    switchPortTxRateControl
+                            INTEGER,
+                    switchPortTxRate
+                            INTEGER,
+                    switchPortRxRateControl
+                            INTEGER,
+                    switchPortRxRate
+                            INTEGER
+            }
+    
+    switchPortIndex OBJECT-TYPE
+            SYNTAX     INTEGER
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                    "The current port number."
+            ::= { switchPortEntry 1 }
+    
+    switchPortLinkAdmin OBJECT-TYPE
+            SYNTAX     INTEGER { down(0), up(1) }
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                    "The link setting of the port."
+            ::= { switchPortEntry 2 }
+
+    switchPortLinkStatus OBJECT-TYPE
+            SYNTAX     INTEGER { noLink(0), link(1) }
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                    "The link status of the port."
+            ::= { switchPortEntry 3 }
+    
+    switchPortAutoNegotiation OBJECT-TYPE
+            SYNTAX     INTEGER { off(0), on(1) }
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                    "The Auto-Negotiation setting of the port."
+            ::= { switchPortEntry 4 }
+    
+    switchPortDuplexAdmin OBJECT-TYPE
+            SYNTAX     INTEGER {
+                                halfDuplex(0),
+                                fullDuplex(1)
+                               }
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                   "Set to fullDuplex(1) to operate in full duplex mode:
+                    port will allow simultaneous transmit and receive
+                    which can double its bandwidth. Set to halfDuplex(2)
+                    to operate in normal mode."
+            DEFVAL { fullDuplex }
+            ::= { switchPortEntry 5 }
+    
+    switchPortDuplexStatus OBJECT-TYPE
+            SYNTAX     INTEGER {
+                                halfDuplex(0),
+                                fullDuplex(1)
+                               }
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                   "The operating duplex mode of the port."
+            ::= { switchPortEntry 6 }
+    
+    switchPortSpeedAdmin OBJECT-TYPE
+            SYNTAX     INTEGER {
+                                tenMbps(0),
+                                oneHundredMbps(1)
+                               }
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                   "Set to tenMbps(1) to operate in 10Mbps speed mode.
+                    Set to oneHundredMbps(2) to operate in 100Mbps speed
+                    mode."
+            DEFVAL { oneHundredMbps }
+            ::= { switchPortEntry 7 }
+    
+    switchPortSpeedStatus OBJECT-TYPE
+            SYNTAX     INTEGER {
+                                tenMbps(0),
+                                oneHundredMbps(1)
+                               }
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                   "The operating speed of the port."
+            ::= { switchPortEntry 8 }
+
+    switchPortTxRateControl OBJECT-TYPE
+            SYNTAX     INTEGER {
+                                off(0),
+                                on(1)
+                               }
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                   "The transmit rate control setting of the port."
+            ::= { switchPortEntry 9 }
+
+    switchPortTxRate OBJECT-TYPE
+            SYNTAX     INTEGER
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                   "The transmit rate of the port. (unit: 32K bps)"
+            ::= { switchPortEntry 10 }
+
+    switchPortRxRateControl OBJECT-TYPE
+            SYNTAX     INTEGER {
+                                off(0),
+                                on(1)
+                               }
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                   "The receive rate control setting of the port."
+            ::= { switchPortEntry 11 }
+
+    switchPortRxRate OBJECT-TYPE
+            SYNTAX     INTEGER
+            MAX-ACCESS read-write
+            STATUS     current
+            DESCRIPTION
+                   "The receive rate of the port. (unit: 32K bps)"
+            ::= { switchPortEntry 12 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- USB Port Control
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    usbState OBJECT-TYPE
+        SYNTAX INTEGER
+        {
+            on(1),
+            off(2)
+        }        
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "This object indicates the USB mode of the
+            CM is operating. Sets this object to on(1) to enable the USB port on the CM, or
+            off(2) to turn it off."
+        ::= { smcUsbControl 1 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Gateway VPN Configuration
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    gwIpsecEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether IPSec VPN is enabled/disabled."
+	    ::= { smcGwVpnConfig 1 }
+
+    gwPptpEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether PPTP server is enabled/disabled."
+	    ::= { smcGwVpnConfig 2 }
+
+    gwL2tpEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether L2TP server is enabled/disabled."
+	    ::= { smcGwVpnConfig 3 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- System Monitor
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    enableRxTrap OBJECT-TYPE
+        SYNTAX INTEGER
+        				{
+                    disabled (0),
+                    enabled (1)
+                 }
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "Enable trap for receiving power above or below limit"
+				DEFVAL { disabled }  
+        ::= { smcSystemMonitor 1 }
+
+    enableTxTrap OBJECT-TYPE
+        SYNTAX INTEGER
+        				{
+                    disabled (0),
+                    enabled (1)
+                 }
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "Enable trap for transmitting power above or below limit"
+				DEFVAL { disabled }  
+        ::= { smcSystemMonitor 2 }            
+
+    enableSNRTrap OBJECT-TYPE
+        SYNTAX INTEGER
+        				{
+                    disabled (0),
+                    enabled (1)
+                 }
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "Enable trap for SNR below limit"
+				DEFVAL { disabled }  
+        ::= { smcSystemMonitor 3 }   
+        
+    enableCpuTrap OBJECT-TYPE
+        SYNTAX INTEGER
+        				{
+                    disabled (0),
+                    enabled (1)
+                 }
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "Enable trap for CPU utilization above limit"
+				DEFVAL { disabled }  
+        ::= { smcSystemMonitor 4 }   
+
+    rxTxSnrPollingPeriod OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The polling period for rx/tx power and SNR check, in seconds"
+				DEFVAL { 60 }  
+        ::= { smcSystemMonitor 5 }
+    
+    cpuUtilizationPollingPeriod OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The polling period for cpu utilization, in seconds"
+				DEFVAL { 60 }  
+        ::= { smcSystemMonitor 6 }
+                                
+    rxUpperLimit OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The upper limit for receiving power. unit in dBmV"
+				DEFVAL { 15 }  
+        ::= { smcSystemMonitor 7 }
+
+    rxLowerLimit OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The lower limit for receiving power. unit in dBmV"
+				DEFVAL { -15 }  
+        ::= { smcSystemMonitor 8 }
+
+    txUpperLimitQPSK OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The upper limit for transmitting power (QPSK). unit in dBmV"
+				DEFVAL { 58 }  
+        ::= { smcSystemMonitor 9 }        
+
+    txLowerLimitQPSK OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The lower limit for transmitting power (QPSK). unit in dBmV"
+				DEFVAL { 4 }  
+        ::= { smcSystemMonitor 10 }   
+
+    txUpperLimit16QAM OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The upper limit for transmitting power (16QAM). unit in dBmV"
+				DEFVAL { 55 }  
+        ::= { smcSystemMonitor 11 }        
+
+    txLowerLimit16QAM OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The lower limit for transmitting power (16QAM). unit in dBmV"
+				DEFVAL { 4 }  
+        ::= { smcSystemMonitor 12 }           
+
+    snrLowerLimit OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The lower limit for SNR. unit in dB"
+				DEFVAL { 28 }  
+        ::= { smcSystemMonitor 13 }   
+        
+    cpuUtilizationLimit OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The limit for cpu utilization"
+				DEFVAL { 90 }  
+        ::= { smcSystemMonitor 14 }   
+
+    cpuUtilization OBJECT-TYPE
+        SYNTAX INTEGER
+        MAX-ACCESS read-write
+        STATUS current 
+        DESCRIPTION
+            "The current cpu utilization"
+        ::= { smcSystemMonitor 15 }
+
+	-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- System Alarm v1 trap
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  
+                               
+  rxAboveUpperLimit TRAP-TYPE
+      ENTERPRISE  smcSystemAlarm
+      VARIABLES   { docsIfDownChannelPower, rxUpperLimit }
+      DESCRIPTION
+		  "A rxAboveUpperLimit trap is sent when rx spike above specified value, default is +15dBmv."
+      ::= 0
+
+  rxBelowLowerLimit TRAP-TYPE
+      ENTERPRISE  smcSystemAlarm
+      VARIABLES   { docsIfDownChannelPower, rxLowerLimit }
+      DESCRIPTION
+		  "A rxBelowLowerLimit trap is sent when rx spike below specified value, default is -15dBmv."
+      ::= 1 
+
+  txAboveUpperLimitQPSK TRAP-TYPE
+      ENTERPRISE  smcSystemAlarm
+      VARIABLES   { docsIfCmStatusTxPower, txUpperLimitQPSK }
+      DESCRIPTION
+		  "A txAboveUpperLimitQPSK trap is sent when tx spike above specified value, default is +58dBmv."
+      ::= 2
+
+  txBelowLowerLimitQPSK TRAP-TYPE
+      ENTERPRISE  smcSystemAlarm
+      VARIABLES   { docsIfCmStatusTxPower, txLowerLimitQPSK }
+      DESCRIPTION
+		  "A txBelowLowerLimitQPSK trap is sent when tx spike below specified value, default is 4dBmv."
+      ::= 3       
+
+  txAboveUpperLimit16QAM TRAP-TYPE
+      ENTERPRISE  smcSystemAlarm
+      VARIABLES   { docsIfCmStatusTxPower, txUpperLimit16QAM }
+      DESCRIPTION
+		  "A txAboveUpperLimit16QAM trap is sent when tx spike above specified value, default is +55dBmv."
+      ::= 4
+
+  txBelowLowerLimit16QAM TRAP-TYPE
+      ENTERPRISE  smcSystemAlarm
+      VARIABLES   { docsIfCmStatusTxPower, txLowerLimit16QAM }
+      DESCRIPTION
+		  "A txBelowLowerLimit16QAM trap is sent when tx spike below specified value, default is 4dBmv."
+      ::= 5      
+      
+  snrBelowLowerLimit TRAP-TYPE
+      ENTERPRISE  smcSystemAlarm
+      VARIABLES   { docsIfSigQSignalNoise, snrLowerLimit }
+      DESCRIPTION
+		  "A snrBelowLowerLimit trap is sent when SNR below specified value, default is 28dB."
+      ::= 6   
+            
+  cpuUtilizationAboveLimit TRAP-TYPE
+      ENTERPRISE  smcSystemAlarm
+      VARIABLES   { cpuUtilization, cpuUtilizationLimit }
+      DESCRIPTION
+		  "A cpuUtilizationAboveLimit trap is sent when cpu utilization is above specified value, default is 70%."
+      ::= 7            
+
+	-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- System Alarm v2 inform
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  
+                               
+  rxAboveUpperLimitV2 NOTIFICATION-TYPE
+    OBJECTS   { docsIfDownChannelPower, rxUpperLimit }
+    STATUS  current
+    DESCRIPTION
+	  "A rxAboveUpperLimit trap is sent when rx spike above specified value, default is +15dBmv."
+    ::= { smcSystemAlarm 0 }
+
+  rxBelowLowerLimitV2 NOTIFICATION-TYPE
+    OBJECTS   { docsIfDownChannelPower, rxLowerLimit }
+    STATUS  current
+    DESCRIPTION
+	  "A rxBelowLowerLimit trap is sent when rx spike below specified value, default is -15dBmv."
+    ::= { smcSystemAlarm 1 }
+
+  txAboveUpperLimitQPSKV2 NOTIFICATION-TYPE
+    OBJECTS   { docsIfCmStatusTxPower, txUpperLimitQPSK }
+    STATUS  current
+    DESCRIPTION
+	  "A txAboveUpperLimitQPSK trap is sent when tx spike above specified value, default is +58dBmv."
+    ::= { smcSystemAlarm 2 }
+
+  txBelowLowerLimitQPSKV2 NOTIFICATION-TYPE
+    OBJECTS   { docsIfCmStatusTxPower, txLowerLimitQPSK }
+    STATUS  current
+    DESCRIPTION
+	  "A txBelowLowerLimitQPSK trap is sent when tx spike below specified value, default is 4dBmv."
+    ::= { smcSystemAlarm 3 }       
+
+  txAboveUpperLimit16QAMV2 NOTIFICATION-TYPE
+    OBJECTS   { docsIfCmStatusTxPower, txUpperLimit16QAM }
+    STATUS  current 
+    DESCRIPTION
+	  "A txAboveUpperLimit16QAM trap is sent when tx spike above specified value, default is +55dBmv."
+    ::= { smcSystemAlarm 4 }
+
+  txBelowLowerLimit16QAMV2 NOTIFICATION-TYPE
+    OBJECTS   { docsIfCmStatusTxPower, txLowerLimit16QAM }
+    STATUS  current
+    DESCRIPTION
+	  "A txBelowLowerLimit16QAM trap is sent when tx spike below specified value, default is 4dBmv."
+    ::= { smcSystemAlarm 5 }      
+      
+  snrBelowLowerLimitV2 NOTIFICATION-TYPE
+    OBJECTS   { docsIfSigQSignalNoise, snrLowerLimit }
+    STATUS  current
+    DESCRIPTION
+	  "A snrBelowLowerLimit trap is sent when SNR below specified value, default is 28dB."
+    ::= { smcSystemAlarm 6 }   
+            
+  cpuUtilizationAboveLimitV2 NOTIFICATION-TYPE
+    OBJECTS   { cpuUtilization, cpuUtilizationLimit }
+    STATUS  current
+    DESCRIPTION
+	  "A cpuUtilizationAboveLimit trap is sent when cpu utilization is above specified value, default is 70%."
+    ::= { smcSystemAlarm 7 }   
+
+	-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- CableLabs defined MIB objects
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  
+  cabhCdpLanPoolStart OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+       "The start of range LAN Trans IP Addresses."
+    DEFVAL { 'c0a8000a'h }
+    -- 192.168.0.10 
+    ::= { cabhCdpServer 2 }
+
+  cabhCdpLanPoolEnd OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+       "The end of range for LAN-Trans IP Addresses."
+    DEFVAL { 'c0a800fe'h }
+    -- 192.168.0.254
+    ::= { cabhCdpServer 4 }
+
+  cabhCdpServerSubnetMask	OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+         "Option value 1 - Value of LAN-Trans Subnet Mask."
+    DEFVAL { 'ffffff00'h }
+    -- 255.255.255.0
+    ::= { cabhCdpServer 8 }
+
+  cabhCdpServerRouter OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "Option value 3 - Router for the LAN-Trans 
+            address realm."
+    DEFVAL { 'c0a80001'h }
+    ::= { cabhCdpServer 11 }
+
+  cabhCdpServerInterfaceMTU       OBJECT-TYPE
+    SYNTAX      Integer32 (0 | 68..4096)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Option value 26 - LAN-Trans Interface MTU.  If the value
+         of this object is 0, the PS must not include this option in
+         its DHCP Offer or DHCP Ack messages to LAN IP Devices."
+    DEFVAL { 0 }
+    ::= { cabhCdpServer 18 }
+
+  cabhCdpServerLeaseTime  OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Option value 51 -Lease Time for LAN IP Devices in the LAN-Trans realm 
+    (seconds)."
+    DEFVAL  { 3600 }
+	::= { cabhCdpServer 20 }
+
+  cabhCdpServerControl OBJECT-TYPE
+    SYNTAX      INTEGER {
+    restoreConfig(1),
+    commitConfig (2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+		"The control for the CDS (DHCP Server) configuration. All changes to 
+	the cabhCdpServer mib objects are reflected when reading the value of 
+	the mib objects; however, those changes are NOT applied to the running 
+	configuration of the CDS until they are successfully committed via use 
+	of the cabhCdpServerControl object. 
+
+	If changes are made to the cabhCdpServer mib objects which are not 
+	yet successfully committed to the CDS, the cabhCdpServerControl object 
+	can be used to rollback all changes to the last valid CDS configuration
+	and discard all intermediate changes.
+
+	restoreConfig - Setting cabhCdpServerControl to this value will cause 
+	any changes to the cabhCdpServer objects not yet committed be reset to 
+	the values from the current running configuration of the CDS.
+
+	commitConfig - Setting cabhCdpServerControl to this value will cause 
+	the CDS to validate and apply the valid cabhCdpServer mib settings to 
+	its running configuration. The cabhCdpServerCommitStatus object will 
+	detail the status of this operation."
+    DEFVAL { restoreConfig }
+    ::= { cabhCdpServer 23 }
+
+  cabhPsDevResetNow		OBJECT-TYPE
+    SYNTAX			TruthValue
+    MAX-ACCESS		read-write
+    STATUS			current
+    DESCRIPTION
+        "Setting this object to true(1) causes the stand-alone or embedded 
+        PS device to reboot. Device code initializes as if starting from a 
+        power-on reset. The CMP ensures that MIB object values persist as 
+        specified in Appendix I of the CableHome 1.0 specification. Reading 
+        this object always returns false(2)."
+        ::= { cabhPsDevBase 2 }
+
+  cabhPsDevHardwareVersion OBJECT-TYPE
+    SYNTAX      SnmpAdminString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The manufacturer's hardware version for this PS.  This
+        parameter is manufacturer provided and is stored in non-volatile
+        memory."
+    ::= { cabhPsDevBase 4 }
+
+  cabhPsDevWanManMacAddress  OBJECT-TYPE
+    SYNTAX      PhysAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    	"The PS WAN-MAN MAC address. This is the PS hardware address to be 
+    used by the CDC to uniquely identify the PS to the cable data network 
+    DHCP server for the acquisition of an IP address to be used for
+    management messaging between the cable network NMS and the CMP"
+    ::= { cabhPsDevBase 5 }
+
+  cabhPsDevWanDataMacAddress  OBJECT-TYPE
+	SYNTAX      PhysAddress
+	MAX-ACCESS  read-only
+	STATUS      current
+	DESCRIPTION
+    	"The PS WAN-Data MAC address. The PS could have multiple WAN-Data
+    Interfaces, which share the same hardware address.  The client 
+    identifiers will be unique so that each may be assigned
+    a different, unique IP address."
+        ::= { cabhPsDevBase 6 }
+
+  cabhPsDevTypeIdentifier    OBJECT-TYPE
+	SYNTAX      SnmpAdminString 
+	MAX-ACCESS  read-only
+	STATUS      current
+	DESCRIPTION
+    	"This is a copy of the device type identifier used in the 
+    DHCP option 60 exchanged between the PS and the 
+    DHCP server."
+    ::= { cabhPsDevBase 7 }
+
+  cabhPsDevProvConfigFile OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(1..128))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+		"The URL of the TFTP host for downloading provisioning
+	and configuration parameters to this device. Returns NULL if the
+	server address is unknown."
+    ::= { cabhPsDevProv 2 }
+
+  cabhPsDevProvState    OBJECT-TYPE
+    SYNTAX      INTEGER
+    {
+        pass		(1),
+        inProgress	(2),
+        fail		(3)
+    }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    	"This object indicates the completion state of the
+     initialization process. Pass or Fail states occur after 
+     completion of the initialization flow. InProgress occurs 
+     from PS initialization start to PS initialization end."
+    ::= { cabhPsDevProv 9 }
+
+  cabhCtpPingDestIp	OBJECT-TYPE
+	SYNTAX		InetAddress
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"The Destination IP Address used as the destination address for 
+    the Ping Test."
+	::= { cabhCtpPing 4 }
+
+  cabhCtpPingNumPkts	OBJECT-TYPE
+	SYNTAX		INTEGER (1..4)
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "The number of packets to send to each host."
+	DEFVAL {1}
+	::= { cabhCtpPing 5 }
+
+  cabhCtpPingPktSize	OBJECT-TYPE
+	SYNTAX		INTEGER (64..1518)
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "The size of the test frames."
+	DEFVAL {64}
+	::= { cabhCtpPing 6 }
+
+  cabhCtpPingTimeBetween	OBJECT-TYPE
+	SYNTAX		INTEGER (0..600000)
+	UNITS		"milliseconds"
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "The time between sending one ping and the next."
+	DEFVAL { 1000 }
+    ::= { cabhCtpPing 7 }
+
+  cabhCtpPingTimeOut		OBJECT-TYPE
+	SYNTAX		INTEGER (1..600000)
+	UNITS		"milliseconds"
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The time out for ping response (ICMP reply) for a single transmitted
+	ping message (ICMP request)."
+	DEFVAL  { 1000 } -- 1 second
+	::={ cabhCtpPing 8 }
+
+  cabhCtpPingControl	OBJECT-TYPE
+	SYNTAX		INTEGER {
+		start(1),
+		abort(2)
+		}
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The control for the Ping Tool. Setting this object to start(1) causes
+	the Ping Tool to execute. Setting this object to abort(2) causes the 
+	Ping Tool to stop running. This parameter should only be set via SNMP."
+	DEFVAL  {abort }
+	::={ cabhCtpPing 9 }
+
+
+  cabhCtpPingStatus	OBJECT-TYPE
+	SYNTAX		INTEGER {
+		notRun(1),
+		running(2),	
+		complete(3),
+		aborted(4),
+		timedOut(5)
+		}
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+   		"The status of the Ping Tool."
+	DEFVAL   { notRun }
+	::={ cabhCtpPing 10 }
+
+
+  cabhCtpPingNumSent 	OBJECT-TYPE
+	SYNTAX 		INTEGER (0..4)
+	MAX-ACCESS 	read-only
+	STATUS 		current
+	DESCRIPTION
+		"The number of Pings sent"
+	::={ cabhCtpPing 11 }
+
+  cabhCtpPingNumRecv	OBJECT-TYPE
+	SYNTAX		INTEGER (0..255)
+	MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    	"The number of pings received."
+	::= { cabhCtpPing 12 }
+
+  cabhCtpPingAvgRTT	OBJECT-TYPE
+	SYNTAX		INTEGER (0..600000)
+	UNITS			"millisec"
+	MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    	"The resulting average of round trip times for acknowledged 
+    packets."
+	::= { cabhCtpPing 13 }
+
+  cabhCtpPingMaxRTT	OBJECT-TYPE
+	SYNTAX		INTEGER (0..600000)
+	UNITS			"millisec"
+	MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    	"The resulting maximum of round trip times for acknowledged 
+    packets."
+	::= { cabhCtpPing 14 }
+
+  cabhCtpPingMinRTT	OBJECT-TYPE
+	SYNTAX		INTEGER (0..600000)
+	UNITS			"millisec"
+	MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    	"The resulting minimum of round trip times for acknowledged 
+    packets."
+	::= { cabhCtpPing 15 }
+
+--=====================================================================
+--
+--    CableHome Interface Access Control Table
+--
+--  The cabhPsDevAccessControlTable lists the physical addresses
+--  of all LAN IP Devices for which the PS will forward traffic to
+--  or from an interface type for which the Table is enabled. 
+--  If an interface type is enabled, the PS will not forward traffic
+--  to or from any device on that interface whose physical address
+--  is not listed in the Access Control Table. If an interface type
+--  is disabled, the PS does apply forwarding restrictions based on
+--  entires of the Access Control Table.
+--
+--=====================================================================
+
+cabhPsDevAccessControlEnable OBJECT-TYPE
+    SYNTAX      BITS {
+        hpna(0),
+        ieee80211(1),
+        ieee8023(2),
+        homeplug(3),
+        usb(4),
+        ieee1394(5),
+        scsi(6),
+        other(7)
+        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This object specifies the interface type(s) for which the
+            PSDev Access Control Table access rules are enabled. If a
+            bit field is set to 1, the PS MUST only forward traffic
+            received through that interface type if the source physical
+            address is an entry in the cabhPsDevAccessControlTable. If
+            a bit field is set to 1, the PS MUST only forward traffic
+            destined to a device on that interface type if the
+            destination physical address is an entry in the
+            cabhPsDevAccessControlTable. If the bit field for an
+            interface type is not set, i.e., if it is equal to 0, the
+            PS MUST NOT apply forwarding restrictions for that
+            interface type based on the Access Control Table. 
+
+            If bit 0 (ieee80211) is set, the PS MUST apply PSDev Access
+            Control Table access rules to any PS interface of
+            IANAifType 71 (radio spread spectrum).
+
+            If bit 1 (homeplug) is set, the PS MUST apply PSDev Access
+            Control Table access rules to any PS HomePlug Powerline
+            Alliance (HomePlug) interface as defined by HomePlug
+            Powerline Alliance (www.homeplug.org)."
+    DEFVAL { '00'h }  -- null, all interface types disabled
+    ::= { cabhPsDevAccessControl 1 }
+
+cabhPsDevAccessControlTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CabhPsDevAccessControlEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "This table contains a list of the physical addresses of
+            LAN IP Devices to and from which the PS will forward
+            traffic through a LAN interface if
+            cabhPsDevAccessControlEnable is enabled(1) for that
+            interface type."
+    REFERENCE
+            "CableHome specification, Packet Handling & Address
+            Translation section."
+    ::= { cabhPsDevAccessControl 2 }
+
+cabhPsDevAccessControlEntry OBJECT-TYPE
+    SYNTAX      CabhPsDevAccessControlEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "List of the physical addresses for LAN IP Devices 
+            to and from which the PS will forward traffic when
+            the PSDev Access Control Table is enabled."
+    INDEX { cabhPsDevAccessControlIndex }
+    ::= { cabhPsDevAccessControlTable 1 }
+
+CabhPsDevAccessControlEntry ::= SEQUENCE {
+    cabhPsDevAccessControlIndex     INTEGER,
+    cabhPsDevAccessControlPhysAddr  PhysAddress,
+    cabhPsDevAccessControlRowStatus RowStatus
+    }
+
+cabhPsDevAccessControlIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..65535)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Integer index into the CableHome PSDev Access Control
+            Table."
+    ::= { cabhPsDevAccessControlEntry 1 }
+
+cabhPsDevAccessControlPhysAddr OBJECT-TYPE
+    SYNTAX      PhysAddress (SIZE (1..16))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+            "The physical address of the LAN IP Device for which the PS
+            will forward traffic when the PSDev Access Control
+            Table is enabled. The PS will not forward traffic
+            from any LAN IP Device whose physical address is
+            not an entry of the PSDev Access Control Table when the 
+            PSDev Access Control Table is enabled for the 
+            corresponding interface."
+    ::= { cabhPsDevAccessControlEntry 2 }
+
+cabhPsDevAccessControlRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+            "The RowStatus interlock for the creation and deletion
+            of a cabhPsDevAccessControlTable entry. Any writable
+            object in each row of the cabhPsDevAccessControlTable
+            can be modified at any time while the row is active(1)."
+    ::= { cabhPsDevAccessControlEntry 3 }
+           
+END

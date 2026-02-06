@@ -1,0 +1,27 @@
+M5T-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    enterprises                         FROM SNMPv2-SMI;
+
+m5t MODULE-IDENTITY
+    LAST-UPDATED "201103290000Z" -- March 29, 2011
+    ORGANIZATION "Media5 Corporation"
+    CONTACT-INFO "Media5 Corporation
+                  4229 Garlock Street
+                  Sherbrooke, Quebec
+                  J1L 2C8, Canada
+                  Tel: 1-819-829-8749
+                  Fax: 1-819-829-5100"
+    DESCRIPTION
+            "This MIB module defines the namespace organization for the
+             m5t enterprise OID registry."
+    ::= { enterprises 17318 }
+
+m5tApplications                     OBJECT IDENTIFIER ::=  { m5t 1 }
+
+m5tCommon                           OBJECT IDENTIFIER ::=  { m5tApplications 1 }
+m5tVoipGatewayMIB                   OBJECT IDENTIFIER ::=  { m5tApplications 25 }
+m5tPc20VoipGatewayMIB               OBJECT IDENTIFIER ::=  { m5tApplications 50 }
+
+END

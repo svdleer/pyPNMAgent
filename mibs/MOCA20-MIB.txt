@@ -1,0 +1,3720 @@
+--
+-- *****************************************************************
+-- MOCA20-MIB.my: MoCA 2.0 Device MIB.
+--
+-- Copyright (c) 2015 by Multimedia over Coax Alliance
+-- All rights reserved.
+-- 
+-- *****************************************************************
+--
+
+MOCA20-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY,
+  OBJECT-TYPE,
+  NOTIFICATION-TYPE,
+  Integer32,
+  Unsigned32,
+  Counter32,
+  Counter64
+    FROM SNMPv2-SMI
+  MODULE-COMPLIANCE,
+  OBJECT-GROUP,
+  NOTIFICATION-GROUP
+    FROM SNMPv2-CONF
+  TEXTUAL-CONVENTION,
+  DisplayString,
+  MacAddress,
+  RowStatus,
+  DateAndTime
+    FROM SNMPv2-TC
+  TruthValue
+    FROM SNMPv2-TC
+  ifIndex
+    FROM IF-MIB
+  mocaMIBs
+    FROM MOCA-SMI;
+
+moca20 MODULE-IDENTITY
+  LAST-UPDATED  "201512300000Z" -- Dec 30, 2015 00:00 AM
+  ORGANIZATION  "Multimedia over Coax Alliance (MoCA) Technical
+          Working Group."
+  CONTACT-INFO  "www.mocalliance.org
+
+    Postal:   Multimedia over Coax Alliance
+          2400 Camino Ramon
+          Suite 375
+          San Ramon, CA 94583
+          USA
+    Tel:    +1 925 275-6606
+    Email:   help@mocalliance.org"
+  DESCRIPTION
+    "Initial version of this MIB module. It defines the objects
+    used to remote configure, monitor, and diagnose the
+    Multimedia over Coax Alliance (MoCA) network. The following
+    Specifications are referenced in this MIB definition,
+    1. MoCA MAC/PHY Specification v2.0, November 21, 2013.
+    2. MoCA MAC/PHY Specification v1.1, June 27, 2011.
+    3. MoCA MAC/PHY Specification v1.0, July 1, 2009.
+    The key changes from the MoCA 1.1 MIB in this revision are,
+    a. Updated the mocaConfigTable and associated objects.
+    b. Added the mocaRlapmTable and associated objects.
+    c. Added the mocaSapmTable and associated objects.
+    d. Added the mocaAcaTable and associated objects.
+    e. Added the mocaMrTable and associated objects.
+    f. Updated the mocaStatusTable and associated objects.
+    g. Updated the mocaStatsTable and associated objects.
+    h. Updated the mocaFlowStatsTable and associated objects.
+    i. Updated the mocaLinkStatsTable and associated objects.
+    j. Updated the mocaNodeTable and associated objects.
+    k. Added mocaMeshTxRateNper and mocaMeshTxRateVlper objects
+       in mocaMeshTable.
+    l. Updated mocaMeshScModTable and associated objects.
+    m. Updated mocaNotifications and associated objects."
+  REVISION   "201512300000Z"
+  DESCRIPTION  "Original"
+    ::= { mocaMIBs 2 }
+
+--
+-- Textual Conventions
+--
+
+MocaVersion ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Represents the MoCA Specification version.
+    moca10 represents MoCA Specification 1.0.
+    moca11 represents MoCA Specification 1.1.
+    moca20 represents MoCA Specification 2.0."
+  SYNTAX   INTEGER {
+        moca1dot0 (10),
+        moca1dot1 (11),
+        moca1dot1ProTem (12),
+        moca2dot0 (20)}
+
+MocaNodeID ::= TEXTUAL-CONVENTION
+  DISPLAY-HINT "d"
+  STATUS   current
+  DESCRIPTION
+    "Represents a MoCA node ID. MoCA 1.0 network can have a maximum
+    of 8 nodes, so node ID is 0 to 7. MoCA 1.1 or 2.0 network can have a
+    maximum of 16 nodes, so node ID is 0 to 15. MoCA 2.0 network can have a
+    maximum of 16 nodes, so node ID is 0 to 15."
+  SYNTAX   Unsigned32 (0..15)
+
+MocaNodeMask ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Bit mask which identifies the Node IDs of a set of nodes"
+  REFERENCE ""
+  SYNTAX   BITS {
+        mocaNodeID0    (0),
+        mocaNodeID1    (1),
+        mocaNodeID2    (2),
+        mocaNodeID3    (3),
+        mocaNodeID4    (4),
+        mocaNodeID5    (5),
+        mocaNodeID6    (6),
+        mocaNodeID7    (7),
+        mocaNodeID8    (8),
+        mocaNodeID9    (9),
+        mocaNodeID10  (10),
+        mocaNodeID11  (11),
+        mocaNodeID12  (12),
+        mocaNodeID13  (13),
+        mocaNodeID14  (14),
+        mocaNodeID15  (15)
+  } 
+MocaBand ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Represents the MoCA Bands and Subbands the device is configured to operate
+     in or that the device supports."
+  REFERENCE "MoCA MAC/PHY Specification 2.0, section 15"
+  SYNTAX   BITS {
+        noBand         (0),
+        mocaBandDL     (1),
+        mocaBandDH     (2),
+        mocaBandExD    (3),
+        mocaBandE      (4),
+        mocaBandFSAT   (5),
+        mocaBandFCBL   (6),
+        mocareserved7  (7)
+  }
+
+MocaChannel ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Represents the RF center frequency of a MoCA channel in MHz.
+    EE1   center frequency at 450 MHz
+    EE2   center frequency at 475 MHz
+    E1   center frequency at 500 MHz
+    E2   center frequency at 525 MHz
+    E3   center frequency at 550 MHz
+    E4   center frequency at 575 MHz
+    E5   center frequency at 600 MHz
+    EE3   center frequency at 625 MHz
+    EE4   center frequency at 650 MHz
+    F1   center frequency at 675 MHz
+    F2   center frequency at 700 MHz
+    F3   center frequency at 725 MHz
+    F4   center frequency at 750 MHz
+    F5   center frequency at 775 MHz
+    F6   center frequency at 800 MHz
+    F7   center frequency at 825 MHz
+    F8   center frequency at 850 MHz
+    D1   center frequency at 1150 MHz
+    D1a   center frequency at 1175 MHz
+    D2   center frequency at 1200 MHz
+    D2a   center frequency at 1225 MHz
+    D3   center frequency at 1250 MHz
+    D3a   center frequency at 1275 MHz
+    D4   center frequency at 1300 MHz
+    D4a   center frequency at 1325 MHz 
+    D5   center frequency at 1350 MHz 
+    D5a   center frequency at 1375 MHz
+    D6   center frequency at 1400 MHz
+    D6a   center frequency at 1425 MHz
+    D7   center frequency at 1450 MHz
+    D7a   center frequency at 1475 MHz
+    D8   center frequency at 1500 MHz
+    D8a   center frequency at 1525 MHz
+    D9   center frequency at 1550 MHz
+    D9a   center frequency at 1575 MHz
+    D10   center frequency at 1600 MHz
+    D10a   center frequency at 1625 MHz"
+  REFERENCE  "MoCA MAC/PHY Specification 2.0, section 15."
+  SYNTAX   INTEGER {
+        unknown(0),
+        chanEE1 (450),
+        chanEE2 (475),
+        chanE1  (500),
+        chanE2  (525),
+        chanE3  (550),
+        chanE4  (575),
+        chanE5  (600),
+        chanEE3 (625),
+        chanEE4 (650),
+        chanF1  (675),
+        chanF2  (700),
+        chanF3  (725),
+        chanF4  (750),
+        chanF5  (775),
+        chanF6  (800),
+        chanF7  (825),
+        chanF8  (850),
+        chanD1  (1150),
+        chanD1a (1175),
+        chanD2  (1200),
+        chanD2a (1225),
+        chanD3  (1250),
+        chanD3a (1275),
+        chanD4  (1300),
+        chanD4a (1325),
+        chanD5  (1350),
+        chanD5a (1375),
+        chanD6  (1400),
+        chanD6a (1425),
+        chanD7  (1450),
+        chanD7a (1475),
+        chanD8  (1500),
+        chanD8a (1525),
+        chanD9  (1550),
+        chanD9a (1575),
+        chanD10 (1600),
+        chanD10a(1625)}
+
+MocaChannelMask ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Represents one or more RF center frequency of MoCA channels
+    using a bitmask. Bit 63 is the most significant bit, and bit 0
+    is the least significant bit. Not all bits are valid MoCA
+    channels.
+    
+    bit 0  center frequency at 400 MHz
+    bit 1  center frequency at 425 MHz
+    bit 2  center frequency at 450 MHz
+    bit 3  center frequency at 475 MHz
+    bit 4  center frequency at 500 MHz
+    bit 5  center frequency at 525 MHz
+    bit 6  center frequency at 550 MHz
+    bit 7  center frequency at 575 MHz
+    bit 8  center frequency at 600 MHz
+    bit 9  center frequency at 625 MHz
+    bit 10 center frequency at 650 MHz
+    bit 11 center frequency at 675 MHz
+    bit 12 center frequency at 700 MHz
+    bit 13 center frequency at 725 MHz
+    bit 14 center frequency at 750 MHz
+    bit 15 center frequency at 775 MHz
+    bit 16 center frequency at 800 MHz
+    bit 17 center frequency at 825 MHz
+    bit 18 center frequency at 850 MHz
+    bit 19 center frequency at 875 MHz
+    bit 20 center frequency at 900 MHz
+    bit 21 center frequency at 925 MHz
+    bit 22 center frequency at 950 MHz
+    bit 23 center frequency at 975 MHz
+    bit 24 center frequency at 1000 MHz
+    bit 25 center frequency at 1025 MHz
+    bit 26 center frequency at 1050 MHz
+    bit 27 center frequency at 1075 MHz
+    bit 28 center frequency at 1100 MHz
+    bit 29 center frequency at 1125 MHz
+    bit 30 center frequency at 1150 MHz
+    bit 31 center frequency at 1175 MHz
+    bit 32 center frequency at 1200 MHz
+    bit 33 center frequency at 1225 MHz
+    bit 34 center frequency at 1250 MHz
+    bit 35 center frequency at 1275 MHz
+    bit 36 center frequency at 1300 MHz
+    bit 37 center frequency at 1325 MHz
+    bit 38 center frequency at 1350 MHz
+    bit 39 center frequency at 1375 MHz
+    bit 40 center frequency at 1400 MHz
+    bit 41 center frequency at 1425 MHz
+    bit 42 center frequency at 1450 MHz
+    bit 43 center frequency at 1475 MHz
+    bit 44 center frequency at 1500 MHz
+    bit 45 center frequency at 1525 MHz
+    bit 46 center frequency at 1550 MHz
+    bit 47 center frequency at 1575 MHz
+    bit 48 center frequency at 1600 MHz
+    bit 49 center frequency at 1625 MHz
+    bit 50 center frequency at 1650 MHz
+    bit 51 center frequency at 1675 MHz
+    bit 52 center frequency at 1700 MHz
+    bit 53 center frequency at 1725 MHz
+    bit 54 center frequency at 1750 MHz
+    bit 55 center frequency at 1775 MHz
+    bit 56 center frequency at 1800 MHz
+    bit 57 center frequency at 1825 MHz
+    bit 58 center frequency at 1850 MHz
+    bit 59 center frequency at 1875 MHz
+    bit 60 center frequency at 1900 MHz
+    bit 61 center frequency at 1925 MHz
+    bit 62 center frequency at 1950 MHz
+    bit 63 center frequency at 1975 MHz"
+  SYNTAX   BITS {
+    freq400MHz  (0),
+    freq425MHz  (1),
+    freq450MHz  (2),
+    freq475MHz  (3),
+    freq500MHz  (4),
+    freq525MHz  (5),
+    freq550MHz  (6),
+    freq575MHz  (7),
+    freq600MHz  (8),
+    freq625MHz  (9),
+    freq650MHz  (10),
+    freq675MHz  (11),
+    freq700MHz  (12),
+    freq725MHz  (13),
+    freq750MHz  (14),
+    freq775MHz  (15),
+    freq800MHz  (16),
+    freq825MHz  (17),
+    freq850MHz  (18),
+    freq875MHz  (19),
+    freq900MHz  (20),
+    freq925MHz  (21),
+    freq950MHz  (22),
+    freq975MHz  (23),
+    freq1000MHz  (24),
+    freq1025MHz  (25),
+    freq1050MHz  (26),
+    freq1075MHz  (27),
+    freq1100MHz  (28),
+    freq1125MHz  (29),
+    freq1150MHz  (30),
+    freq1175MHz  (31),
+    freq1200MHz  (32),
+    freq1225MHz  (33),
+    freq1250MHz  (34),
+    freq1275MHz  (35),
+    freq1300MHz  (36),
+    freq1325MHz  (37),
+    freq1350MHz  (38),
+    freq1375MHz  (39),
+    freq1400MHz  (40),
+    freq1425MHz  (41),
+    freq1450MHz  (42),
+    freq1475MHz  (43),
+    freq1500MHz  (44),
+    freq1525MHz  (45),
+    freq1550MHz  (46),
+    freq1575MHz  (47),
+    freq1600MHz  (48),
+    freq1625MHz  (49),
+    freq1650MHz  (50),
+    freq1675MHz  (51),
+    freq1700MHz  (52),
+    freq1725MHz  (53),
+    freq1750MHz  (54),
+    freq1775MHz  (55),
+    freq1800MHz  (56),
+    freq1825MHz  (57),
+    freq1850MHz  (58),
+    freq1875MHz  (59),
+    freq1900MHz  (60),
+    freq1925MHz  (61),
+    freq1950MHz  (62),
+    freq1975MHz  (63)
+    }  
+
+MocaPhyRate ::= TEXTUAL-CONVENTION
+  DISPLAY-HINT "d"
+  STATUS   current
+  DESCRIPTION
+    "Represents the transmit PHY rate in Mbps."
+  SYNTAX   Unsigned32 (0..2048)
+
+MocaMacRate ::= TEXTUAL-CONVENTION
+  DISPLAY-HINT "d"
+  STATUS   current
+  DESCRIPTION
+    "Represents the MAC throughput in Kbps."
+  SYNTAX   Unsigned32
+
+MocaDB ::= TEXTUAL-CONVENTION
+  DISPLAY-HINT "d"
+  STATUS   current
+  DESCRIPTION
+    "Represents one decibel or 1 dB."
+  SYNTAX   Unsigned32
+
+MocaDBm ::= TEXTUAL-CONVENTION
+  DISPLAY-HINT "d"
+  STATUS   current
+  DESCRIPTION
+    "Represents a measure of power in mW expressed in decibels, and
+    calculated as follows:
+      power = 10*log10( Vrms^2 / R * 1000 )
+    where Vrms is the root-mean-square Voltage of the received
+    waveform and R is 75 ohms."
+  SYNTAX   Integer32
+
+
+MocaScMod ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Represents the sub-carrier modulation"
+  REFERENCE  "MoCA MAC/PHY Specification 2.0, section 14.3.6.3 "
+  SYNTAX   INTEGER {
+        unused (0),
+        bsk  (1),
+        qpsk (2),
+        qam8 (3),
+        qam16 (4),
+        qam32 (5),
+        qam64 (6),
+        qam128 (7),
+        qam256 (8),
+        qam512 (9),
+        qam1024 (10)
+  }
+ 
+MocaPerMode ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Represents the packet error rate mode in use by the node. The value used 
+defines either NPER or VLPER"
+  REFERENCE  "MoCA MAC/PHY Specification 2.0, Section 7.2.5, Table 17.2."
+  SYNTAX   INTEGER {
+        nper (0),
+        vlper(1) }
+
+
+MocaPowerState ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Represents the power state defined by the MoCA2.0 specification the different power states are:
+Power state M0: Active
+Power state M1: Low Power Idle
+Power State M2: Standby 
+Power State M3: Sleep"
+  REFERENCE  "MoCA MAC/PHY Specification 2.0, section 12 "
+  SYNTAX   INTEGER {
+        m0-Active        (0),
+        m1-LowPowerIdle  (1),
+        m2-Standby       (2),
+        m3-Sleep         (3)
+  }
+
+MocaAcaStatus ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Represents the status of the last Aca probe"
+  SYNTAX   INTEGER {
+        success   (0),
+        fail-BADCHANNEL  (1),
+        fail-NOEVMPROBE  (2),
+        fail             (3),
+        in-PROGRESS      (4)
+  }
+
+MocaFlowIngrClassRule ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Represents the MoCA 2.0 PQOS Ingress Classification
+     Rule."
+  SYNTAX   INTEGER {
+        ruleDAVLANtag4or5       (0),
+        ruleDAonly              (4),
+        ruleDAandDSCPnoVLAN     (5),
+        ruleDAandVLANignoreDSCP (6),
+        ruleDAandVLANorDSCP     (7)
+  }
+
+MocaChannelIndex ::= TEXTUAL-CONVENTION
+  STATUS   current
+  DESCRIPTION
+    "Represents the MoCA 2.0 primary or secondary channel."
+  SYNTAX   INTEGER {
+        primary   (1),
+        secondary (2)
+  }
+
+ 
+mocaNotifications  OBJECT IDENTIFIER ::= { moca20 0 }
+mocaObjects     OBJECT IDENTIFIER ::= { moca20 1 }
+mocaConformance   OBJECT IDENTIFIER ::= { moca20 2 }
+
+--
+-- MoCA Objects
+--
+
+mocaIfConfigTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaIfConfigEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA interface configuration table. This table supports the
+    configuration of RF frequency, transmit power, link privacy, and
+    traps related parameters.
+
+    This table is indexed by ifIndex. 
+
+    Entries in this table cannot be created or deleted by the 
+    network management system. All entries are created or deleted 
+    by the device software."
+  ::= { mocaObjects 1 }
+
+mocaIfConfigEntry OBJECT-TYPE
+  SYNTAX   MocaIfConfigEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA interface configuration table. Each
+    device can have one or more MoCA interfaces. Each interface has
+    a unique MAC address. 
+
+    There is a one to one relationship between a MoCA interface and
+    an interface defined in other IETF MIB. The same 'ifIndex' can
+    be used to identify MoCA objects as well as other IETF MIB
+    objects."
+  INDEX    { ifIndex }
+  ::= { mocaIfConfigTable 1 }
+
+MocaIfConfigEntry ::= SEQUENCE {
+  mocaIfEnable          TruthValue,
+  mocaIfChannelMask        MocaChannelMask,
+  mocaIfTpcEnable       TruthValue,
+  mocaIfTxPowerLimit       MocaDB,
+  mocaIfBeaconPowerBackoff     MocaDB,
+  mocaIfPowerControlTargetRate  MocaPhyRate,
+  mocaIfPrivacyEnable       TruthValue,
+  mocaIfPassword         DisplayString,
+  mocaIfPreferredNC        TruthValue,
+  mocaIfAccessEnable       TruthValue,
+  mocaIfPhyThreshold       MocaPhyRate,
+  mocaIfPhyThresholdEnable    TruthValue,
+  mocaIfStatusChangeEnable    TruthValue,
+  mocaIfNumNodesChangeEnable   TruthValue,
+  mocaIfTpcTargetRateNper      MocaPhyRate,
+  mocaIfBand                   MocaBand,
+  mocaIfLofUpdateEnable        TruthValue,
+  mocaIfLof                    Unsigned32,
+  mocaIfUpfRetransMode         TruthValue,
+  mocaIfPerMode                MocaPerMode,
+  mocaIfTurboModeEnable        TruthValue,
+  mocaIfPolicingEnable         TruthValue,
+  mocaIfTlpMin                 Unsigned32,
+  mocaIfTlpMax                 Unsigned32,
+  mocaIfRlapmEnable            TruthValue,
+  mocaIfRlapmProfileSelect     Unsigned32,
+  mocaIfSapmEnable             TruthValue,
+  mocaIfSapmProfileSelect      Unsigned32,
+  mocaIfPowerStateRequest      MocaPowerState,
+  mocaIfSeqNumMr               Unsigned32,
+  mocaIfPowerStateTrapEnable   TruthValue,
+  mocaIfLmoTrapEnable		 TruthValue
+}
+
+mocaIfEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Enable the MoCA interface if this value is 'true'. Disable the
+    MoCA interface if this value is 'false'.
+
+    If this managed object is disabled, it may not be possible to
+    enable this object via the SNMP protocol. The mechanism to
+    re-enable this object is out of the scope of this MIB definition
+    draft."
+  DEFVAL   { true }
+  ::= { mocaIfConfigEntry 1 }
+
+mocaIfChannelMask OBJECT-TYPE
+  SYNTAX   MocaChannelMask
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Specify a list of RF center frequencies represented by a
+    bitmask which this MoCA node is allowed to form or join a MoCA
+    network. If the new list of frequencies does not contain the frequency
+    this MoCA node is tuned to, this node must drop from the
+    network.
+
+    If this managed object is changed, it may not be possible to
+    change this object again via the SNMP protocol. The mechanism
+    to change this object again is out of the scope of this MIB
+    definition draft."
+  REFERENCE  "MoCA MAC/PHY Specification 2.0, section 7.1.4."
+  DEFVAL   { {  freq1150MHz,
+                freq1200MHz,
+                freq1250MHz,
+                freq1300MHz,
+                freq1350MHz,
+                freq1400MHz,
+                freq1450MHz,
+                freq1500MHz,
+                freq1550MHz,
+                freq1600MHz  } }
+  ::= { mocaIfConfigEntry 2 }
+
+mocaIfTpcEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Enable automatic power control if this value is true. Use a fixed transmit power level if this value is false."
+  DEFVAL   { true }
+  ::= { mocaIfConfigEntry 3 }
+
+mocaIfTxPowerLimit OBJECT-TYPE
+  SYNTAX   MocaDB
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Specify the transmit power BACKOFF in dB. The transmit power
+    SHALL only be changed when the device mocaIfStatus object is
+    not linkUp, which means the interface is not part of a MoCA
+    network.  If changed, the parameter may not take effect until 
+    the MoCA interface is restarted."
+    DEFVAL   { 0 }
+  ::= { mocaIfConfigEntry 4 }
+
+mocaIfBeaconPowerBackoff OBJECT-TYPE
+  SYNTAX   MocaDB
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Specify the beacon transmit power BACKOFF in dB. The beacon
+    transmit power SHALL only be changed when the device
+    mocaIfStatus object is not linkUp, which means the
+    interface is not part of a MoCA network. If changed, the 
+    parameter may not take effect until the MoCA interface is 
+    restarted."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, Sections 7.1.1 and 17,
+        Table 17-1."
+  DEFVAL   { 0 }
+  ::= { mocaIfConfigEntry 5 }
+
+mocaIfPowerControlTargetRate OBJECT-TYPE
+  SYNTAX   MocaPhyRate
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Specify the target transmit PHY rate in Mbps for the power
+    control algorithm. This change should be used in the next
+    maintenance cycle in the MoCA network."
+  REFERENCE  "MoCA MAC/PHY Specification 2.0, section 16.3.10."
+  DEFVAL   { 630 }
+  ::= { mocaIfConfigEntry 6 }
+
+mocaIfPrivacyEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Enable link privacy if this value is true, and use the
+    mocaIfPassword to generate the MAC management key and initial
+    privacy management key. Disable link privacy and do not perform
+    link encryption if this value is false.
+
+    This node will drop from the network if this value changes.
+
+    If this managed object is disabled, it may not be possible to
+    enable this object via the SNMP protocol. The mechanism to
+    re-enable this object is out of the scope of this MIB definition
+    draft."
+  REFERENCE  "MoCA MAC/PHY Specification 2.0, section 14.3.2."
+  DEFVAL   { false }
+  ::= { mocaIfConfigEntry 7 }
+
+mocaIfPassword OBJECT-TYPE
+  SYNTAX   DisplayString (SIZE (0..17))
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Specify the MoCA password using an ASCII numeric string.
+
+    This value must be 12 to 17 decimal digits long. Access is only
+    allowed when used with SNMPv3 protocol, but not allowed when
+    used with SNMPv1 or SNMPv2c protocol.
+
+    If this value changes, this node will drop from the network if
+    mocaIfPrivacyEnable is true. If this managed object is
+    changed, it may not be possible to change this object again via
+    the SNMP protocol. The mechanism to change this object again is 
+    out of the scope of this MIB definition."
+  REFERENCE  "MoCA MAC/PHY Specification 1.1, section 6.3."
+  DEFVAL   { "" }
+  ::= { mocaIfConfigEntry 8 }
+
+mocaIfPreferredNC OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Set this node as preferred NC if this value is true. Do not
+    set this node as preferred NC if this value is false.
+    This value can be ignored by this MoCA interface when operating
+    in a MoCA 1.0 network."
+  DEFVAL   { false }
+  ::= { mocaIfConfigEntry 9 }
+
+mocaIfAccessEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Enable MAC address access control on the MoCA interface if this
+    value is true. Disable MAC address access control on the MoCA
+    interface if this value is false.
+        
+    Access control applies to subsequent MoCA node admission."
+  DEFVAL   { false }
+  ::= { mocaIfConfigEntry 10 }
+
+mocaIfPhyThreshold OBJECT-TYPE
+  SYNTAX   MocaPhyRate
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Specify a minimum PHY rate.
+
+    If transmit PHY rate between all pairs of MoCA nodes are greater
+    than or equal to this value, and subsequently the transmit PHY 
+    rate of one pair of MoCA nodes is less than this value, send
+    mocaTrapBelowPhyThreshold if mocaIfPhyThresholdEnable is
+    true.
+        
+    If transmit PHY rate between one or more pairs of MoCA nodes are
+    less than this value, and subsequently the transmit PHY rate 
+    between all pairs of MoCA nodes are greater than or equal to 
+    this value, send mocaTrapAbovePhyThreshold if mocaIfPhyThresholdEnable 
+    is true."
+  REFERENCE  "MoCA MAC/PHY Specification 2.0, Section 3, see Unusable Link definition."
+  DEFVAL   { 123 }
+  ::= { mocaIfConfigEntry 11 }
+
+mocaIfPhyThresholdEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "If transmit PHY rate between all pairs of MoCA nodes are
+    greater than or equal to mocaIfPhyThreshold, and subsequently the 
+    transmit PHY rate of one pair of MoCA node is less than 
+    mocaIfPhyThreshold, send mocaTrapBelowPhyThreshold if this 
+    value is true, do not send mocaTrapBelowPhyThreshold if this 
+    value is false.
+        
+    If transmit PHY rate between one or more pairs of MoCA nodes are
+    less than mocaIfPhyThreshold, and subsequently the transmit 
+    PHY rate between all pairs of MoCA nodes are greater than or equal to
+    mocaIfPhyThreshold, send mocaTrapAbovePhyThreshold if this
+    value is true, do not send mocaTrapAbovePhyThreshold if this
+    value is false.
+        
+    Only one node in the MoCA network should set
+    'mocaIfPhyThresholdEnable' to 'true'."
+  DEFVAL   { false }
+  ::= { mocaIfConfigEntry 12 }
+
+mocaIfStatusChangeEnable  OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "If 'mocaIfStatusChangeEnable' is 'true' and 'mocaIfStatus'
+    changes, then the trap 'mocaTrapIfStatusChange' is sent."
+  DEFVAL   { false }
+::= { mocaIfConfigEntry 13 }
+
+mocaIfNumNodesChangeEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "If 'mocaIfNumNodesChangeEnable' is 'true' and 'mocaIfNumNodes'
+    changes, then the trap 'mocaTrapIfNumNodesChange' is sent.
+
+    Only one node in the MoCA network should set 'mocaIfNumNodesChangeEnable'
+    to 'true'."
+  DEFVAL   { false }
+::= { mocaIfConfigEntry 14 }
+
+mocaIfTpcTargetRateNper OBJECT-TYPE
+  SYNTAX   MocaPhyRate
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "The Target PHY Rate of the receiving MoCA 2.0 Node in order to optimize the long-term PHY rate and transmit power level between the transmitting and receiving MoCA nodes when TPC is enabled and PERMODE = NPER"
+  ::= { mocaIfConfigEntry 15 }
+
+mocaIfBand OBJECT-TYPE
+  SYNTAX   MocaBand 
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Configure the band or sub-band for the Node to operate in."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 15."
+  ::= { mocaIfConfigEntry 16 }
+
+mocaIfLofUpdateEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Controls whether the LOF is updated when joining a network"
+  REFERENCE   "MoCA MAC/PHY Specification v2.0, section 8.1.1, and Table 17-1."
+  ::= { mocaIfConfigEntry 17 }
+
+
+mocaIfLof OBJECT-TYPE
+    SYNTAX       Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Indicate the MoCA channel in MHz this interface is tuned to
+        when it was last in the 'linkUp' state.
+                
+        If this interface is never part of a MoCA network, report the
+        factory default Last Operational Frequency (LOF)."
+    REFERENCE   "MoCA MAC/PHY Specification v2.0, section 8.1.1, and Table 17-1."
+    ::= { mocaIfConfigEntry 18 }
+mocaIfUpfRetransMode OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"Controls whether retransmission is enabled for Unicast Prioritized Flows and  whether for all the Unicast Prioritized Flows or only a list of Unicast Prioritized Flows."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 7.6.2 and Table 17-1."
+  ::= { mocaIfConfigEntry 19 }
+
+mocaIfPerMode OBJECT-TYPE
+  SYNTAX   MocaPerMode
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"Controls which transmission PER mode the Node uses for MPDUs not belonging to  PQoS Flows. By default PER mode is set to VLPER in band E, while it is set to NPER for all other bands."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 8.2 and Table 17-2."
+  ::= { mocaIfConfigEntry 20 }
+
+
+mocaIfTurboModeEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"Controls whether the Node operates in point-to-point Turbo Mode or not.
+ When set to true the turbo mode is enabled; when set to false the turbo 
+ mode is disabled."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 10 and Table 17-1."
+  DEFVAL   { false }
+  ::= { mocaIfConfigEntry 21 }
+
+mocaIfPolicingEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"Controls whether policing of PQoS Flows is enabled or disabled when false the policy is disabled when true the policy is enabled."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 8.8 and Table 17-1."
+  DEFVAL   { false }
+  ::= { mocaIfConfigEntry 22 }
+
+mocaIfTlpMin OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"The minimum time (in milliseconds) a Node is required to stay in the Listening Phase of the Network Search."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, Table 17.2."
+  DEFVAL   { 0 }
+  ::= { mocaIfConfigEntry 23 }
+
+mocaIfTlpMax OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"The maximum time (in milliseconds) a Node is required to stay in the Listening Phase of the Network Search. Default value of 'mocaIfTlpMax' depends from the band configuration as follows:
+20 seconds for band E  
+35 seconds for band F
+95 seconds for Band ExD
+10 seconds for Band D-Low
+55 seconds for Band D-High"
+  REFERENCE ""
+  ::= { mocaIfConfigEntry 24 }
+
+mocaIfRlapmEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"Controls whether the RLAPM function is enabled and the Node needs to apply it, or disabled and the Node needs to ignore it. RLAPM function is enabled when set to true. RLAPM function is disabled when set to false."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 7.16 and Table 17-1."
+  ::= { mocaIfConfigEntry 25 }
+
+mocaIfRlapmProfileSelect OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"Controls which RLAPM profile is active."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 7.16.2 and Table 17-1."
+  ::= { mocaIfConfigEntry 26 }
+
+
+mocaIfSapmEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"Controls whether the SAPM function is enabled and the Node needs to apply it, or disabled and the Node needs to ignore it
+When set to true the SAPM function is enabled.
+When set to false the SAPM function is disabled."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 7.16.1 and Table 17-1."
+  ::= { mocaIfConfigEntry 27 }
+
+mocaIfSapmProfileSelect OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+" Controls which SAPM profile is active."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 7.16.1 and Table 17-1."
+  ::= { mocaIfConfigEntry 28 }
+
+mocaIfPowerStateRequest OBJECT-TYPE
+  SYNTAX   MocaPowerState
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"Carries a request to the Node to transition into a specified Power State"
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 12."
+  DEFVAL   { m0-Active }
+  ::= { mocaIfConfigEntry 29 }
+
+mocaIfSeqNumMr OBJECT-TYPE
+  SYNTAX   Unsigned32 (0..65535)
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+" Sequence Number used by the MR Transaction 
+Integer value between 0 and 65535; 
+default value is 0."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 7.15 and Table 17-1."
+  DEFVAL   { 0 }
+  ::= { mocaIfConfigEntry 30 }
+
+mocaIfPowerStateTrapEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"Used for power state message trap
+- When Set to true it allows the MoCA node to report a trap on each power state transition 
+- When set to false no trap report is generated when the node power state changes
+- Default value is false."
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 12."
+  DEFVAL   { false }
+  ::= { mocaIfConfigEntry 31 }
+
+
+mocaIfLmoTrapEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+"Used for LMO message trap
+- When set to true it allows the MoCA node to report a trap on transitioning to LMO
+- When set to false no trap report the MoCA node is not transitioning to LMO
+- Default value is false"
+  REFERENCE "MoCA MAC/PHY Specification v2.0, section 12."
+  DEFVAL   { false }
+  ::= { mocaIfConfigEntry 32 }
+
+
+
+mocaIfAccessTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaIfAccessEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA interface MAC access control table. This table contains a
+    list of MAC addresses that are allowed to connect to the MoCA
+    network. In addition to being in this access control list, a
+    MoCA node must have the proper 'mocaIfChannelMask',
+    'mocaIfPrivacyEnable', and 'mocaIfPassword' before the node can
+    form or join a MoCA network.
+
+    This table is indexed by 'ifIndex' and 'mocaIfAccessIndex'."
+  ::= { mocaObjects 2 }
+
+mocaIfAccessEntry OBJECT-TYPE
+  SYNTAX   MocaIfAccessEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA interface MAC access control table."
+  INDEX    {ifIndex, 
+            mocaIfAccessIndex }
+  ::= { mocaIfAccessTable 1 }
+
+MocaIfAccessEntry ::= SEQUENCE {
+  mocaIfAccessIndex    Unsigned32,
+  mocaIfAccessMacAddress MacAddress,
+  mocaIfAccessStatus   RowStatus
+}
+
+mocaIfAccessIndex OBJECT-TYPE
+  SYNTAX   Unsigned32 (1..2147483647)
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "This index is used to reference the MoCA interface MAC access
+    control table."
+  ::= { mocaIfAccessEntry 1 }
+
+mocaIfAccessMacAddress OBJECT-TYPE
+  SYNTAX   MacAddress
+  MAX-ACCESS read-create
+  STATUS   current
+  DESCRIPTION
+    "If 'mocaIfAccessEnable' is set to 'true', MoCA node with this
+    MAC address is allowed to join the MoCA network. It is not
+    guaranteed that the MoCA node with this MAC address can form or
+    join a network."
+  ::= { mocaIfAccessEntry 2 }
+
+mocaIfAccessStatus OBJECT-TYPE
+  SYNTAX   RowStatus
+  MAX-ACCESS read-create
+  STATUS   current
+  DESCRIPTION
+    "Control and reflect the status of a row in this table.
+    Creation of a row can either be done with 'CreateAndWait' or
+    'CreateAndGo'."
+  ::= { mocaIfAccessEntry 3 }
+
+mocaIfRlapmTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaIfRlapmEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "Sequence of Rlapm entry"
+  ::= { mocaObjects 3 }
+
+mocaIfRlapmEntry OBJECT-TYPE
+  SYNTAX   MocaIfRlapmEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "Rlapm entry table"
+  INDEX    { ifIndex,
+             mocaIfRlapmProfile,
+             mocaIfRlapmFrequency
+           }
+  ::= { mocaIfRlapmTable 1 }
+
+MocaIfRlapmEntry ::= SEQUENCE {
+  mocaIfRlapmProfile        Unsigned32,
+  mocaIfRlapmFrequency      Unsigned32,
+  mocaIfRlapmGarpl          Unsigned32,
+  mocaIfRlapmPhyMargin      Unsigned32,
+  mocaIfRlapmStatus         TruthValue
+}
+mocaIfRlapmProfile OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "RLAPM profile index used for the RLAPM table."
+  ::= { mocaIfRlapmEntry 1 }
+
+
+mocaIfRlapmFrequency OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA frequency (band) index used for the RLAPM table."
+  ::= { mocaIfRlapmEntry 2 }
+
+
+mocaIfRlapmGarpl OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    " Global Aggregated Receive Power Level (GARPL). GARPLi = -Ni dBm where Ni = Unsigned32 in the range of 0 to 65 and 'i' spans 61 values."
+  ::= { mocaIfRlapmEntry 3 }
+
+mocaIfRlapmPhyMargin OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Receive Level Added Phy Margin(RLAPM). RLAPMi = 0.5ni dB where 'ni' = Unsigned32 in the range of 0 to 60 and 'i' spans 61 values."
+  ::= { mocaIfRlapmEntry 4 }
+
+mocaIfRlapmStatus OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+"True if all of the following are 'true': 'mocaIfRlapmEnable' is enabled, 'mocaIfRlampProfileSelect' is equal to 'mocaIfRlapmProfile', and 'mocaIfRlapmFrequency' corresponds to either the primary or secondary frequency of operation."
+  ::= { mocaIfRlapmEntry 5 }
+
+mocaIfSapmTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaIfSapmEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "Sequence of Sapm entry"
+  ::= { mocaObjects 4 }
+
+mocaIfSapmEntry OBJECT-TYPE
+  SYNTAX   MocaIfSapmEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "Sapm table entry"
+  INDEX    {
+        ifIndex,
+        mocaIfSapmProfile,
+        mocaIfSapmFrequency,
+        mocaIfSapmSubcarrier
+        }
+  ::= { mocaIfSapmTable 1 }
+
+MocaIfSapmEntry ::= SEQUENCE {
+  mocaIfSapmProfile      Unsigned32,
+  mocaIfSapmFrequency    Unsigned32,
+  mocaIfSapmSubcarrier   Unsigned32,
+  mocaIfSapmPhyMargin    Unsigned32,
+  mocaIfSapmARPLTHLD     Unsigned32,
+  mocaIfSapmStatus       TruthValue
+}
+mocaIfSapmProfile OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "profile index used for the SAPM table."
+  ::= { mocaIfSapmEntry 1 }
+
+mocaIfSapmFrequency OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "frequency (band) index used for the SAPM table."
+  ::= { mocaIfSapmEntry 2 }
+
+mocaIfSapmSubcarrier OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "subcarrier index used for the SAPM table."
+  ::= { mocaIfSapmEntry 3 }
+
+mocaIfSapmPhyMargin OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "A SAPM value (in dB) for each OFDM subcarrier in the range 0 dB to 60.0 dB in 0.5 dB steps.  For each available subcarrier 'ni', a value of 0.5ni dB where 'ni' = Unsigned32 in the range of 0 to 120."
+  ::= { mocaIfSapmEntry 4 }
+
+mocaIfSapmARPLTHLD OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "An Aggregate Received Power Level Threshold (ARPL_THLD) from 0 to 65 (representing dBm) in steps of 1 dB."
+  ::= { mocaIfSapmEntry 5 }
+
+mocaIfSapmStatus OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "True if all of the following are 'true': 'mocaIfSapmEnable' is enabled, 'mocaIfSapmProfileSelect' is equal to 'mocaIfSapmProfile', and 'mocaIfSapmFrequency' corresponds to either the primary or secondary frequency of operation."
+  ::= { mocaIfSapmEntry 6 }
+
+mocaIfAcaTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaIfAcaEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "The Interface mocaIfAcaTable, 
+    is used by the managed node to initiate On Demand LMO. 
+    The managed node is identified by the interface index (ifIndex)."
+  ::= { mocaObjects 5 }
+  
+mocaIfAcaEntry OBJECT-TYPE
+  SYNTAX   MocaIfAcaEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA Aca table."
+  INDEX    { 
+        ifIndex
+        }
+  ::= { mocaIfAcaTable 1 }
+
+MocaIfAcaEntry ::= SEQUENCE {
+  mocaIfAcaNodeID           MocaNodeID,
+  mocaIfAcaType             INTEGER,
+  mocaIfAcaChannel          Unsigned32,
+  mocaIfAcaReportNodeMask    MocaNodeMask,
+  mocaIfAcaInitiate         TruthValue,
+  mocaIfAcaStatus           MocaAcaStatus,
+  mocaIfAcaTotalRxPower     MocaDBm,
+  mocaIfAcaPowerProfile     OCTET STRING,
+  mocaIfAcaStatusTrapCompleted TruthValue
+}
+
+mocaIfAcaNodeID OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "The Source Node id."
+  ::= { mocaIfAcaEntry 1 }
+
+mocaIfAcaType OBJECT-TYPE
+  SYNTAX   INTEGER {
+       quiet (0),
+       evm   (1)
+}
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "The ACA type is either 'EVM' or 'QUIET'"
+  ::= { mocaIfAcaEntry 2 }
+
+mocaIfAcaChannel OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "The channel number under assessment, starting from 0 in increments of 25 MHz"
+  ::= { mocaIfAcaEntry 3 }
+  
+mocaIfAcaReportNodeMask OBJECT-TYPE
+  SYNTAX    MocaNodeMask
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Specifies the Nodes that are requested to be part of the channel assessment: 
+    Setting bits corresponding to Node IDs of these Nodes to 1 
+    (LSB corresponds to Node ID 0x0)"
+  ::= { mocaIfAcaEntry 4 }
+  
+mocaIfAcaInitiate OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "An ACA request is initiated when this parameter is written"
+  ::= { mocaIfAcaEntry 5 }
+  
+mocaIfAcaStatus OBJECT-TYPE
+  SYNTAX   MocaAcaStatus
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Status of the previous AVA probe"
+  ::= { mocaIfAcaEntry 6 }
+  
+mocaIfAcaTotalRxPower OBJECT-TYPE
+  SYNTAX   MocaDBm
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "dBm (-128 to +127 dBm)"
+  ::= { mocaIfAcaEntry 7 }
+
+mocaIfAcaPowerProfile OBJECT-TYPE
+  SYNTAX    OCTET STRING
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Binary string array with 1 byte for each subcarrier.
+    See Appendix A for the encoding of this object."
+  ::= { mocaIfAcaEntry 8 }
+
+mocaIfAcaStatusTrapCompleted OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicated when Power Profile is ready."
+  ::= { mocaIfAcaEntry 9 }
+  
+mocaIfMrTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaIfMrEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "mocaIfMrTable is used by the managed node to initiate MoCA Reset Transaction."
+  ::= { mocaObjects 6 }
+  
+mocaIfMrEntry OBJECT-TYPE
+  SYNTAX   MocaIfMrEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA Reset table."
+  INDEX    {
+        ifIndex
+        }
+  ::= { mocaIfMrTable 1 }
+
+MocaIfMrEntry ::= SEQUENCE {
+  mocaIfMrNodeMask     MocaNodeMask,
+  mocaIfMrStartTime    Unsigned32,
+  mocaIfMrStatusTrapEnable TruthValue,
+  mocaIfMrNetworkTrapEnable TruthValue
+}
+
+mocaIfMrNodeMask OBJECT-TYPE
+  SYNTAX   MocaNodeMask
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Specifies the nodes that must respond to the MR transaction L2ME request sent by the NC except for the MR Entry Node."
+  ::= { mocaIfMrEntry 1 }
+  
+mocaIfMrStartTime OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Time in seconds after this parameter is written that a node 
+     must initiate a MoCA Reset (MR).  This parameter does not count 
+     down the time till the MoCA Reset."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 7.15."
+  ::= { mocaIfMrEntry 2 }
+
+mocaIfMrStatusTrapEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Used to enable mocaTrapMrRstSuccess and mocaTrapMrRstFail that the network reset was completed successfully or failed for MR transaction status trap."
+  ::= { mocaIfMrEntry 3 }
+
+mocaIfMrNetworkTrapEnable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-write
+  STATUS   current
+  DESCRIPTION
+    "Used to enable mocaTrapMrNetworkSuccess and mocaTrapMrNetworkFail that the network was reformed or not reformed successfully following the MR transaction."
+  ::= { mocaIfMrEntry 4 }
+
+
+
+mocaIfStatusTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaIfStatusEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA interface status information table. This table provides
+    features supported and operation parameters of the MoCA
+    interface.
+
+    This table is indexed by ifIndex.
+
+    Entries in this table cannot be created or deleted by the
+    network management system. All entries are created or deleted by
+    the device software."
+  ::= { mocaObjects 7 }
+
+mocaIfStatusEntry OBJECT-TYPE
+  SYNTAX   MocaIfStatusEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA interface status information table."
+  INDEX    { ifIndex }
+  ::= { mocaIfStatusTable 1 }
+
+MocaIfStatusEntry ::= SEQUENCE {
+  mocaIfStatus        INTEGER,
+  mocaIfLinkUpTime      Unsigned32,
+  mocaIfSoftwareVersion    DisplayString,
+  mocaIfMocaVersion      MocaVersion,
+  mocaIfNetworkVersion    MocaVersion,
+  mocaIfMacAddress      MacAddress,
+  mocaIfNodeID        MocaNodeID,
+  mocaIfName         DisplayString,
+  mocaIfNumNodes       Unsigned32,
+  mocaIfNC          MocaNodeID,
+  mocaIfBackupNC       MocaNodeID,
+  mocaIfRFChannel       MocaChannel,
+  
+  mocaIfTabooChannelMask   MocaChannelMask,
+  mocaIfNodeTabooChannelMask MocaChannelMask,
+  mocaIfSupportedBands    MocaBand,
+  mocaIfTxGcdPowerReduction  MocaDB,
+  mocaIfPduNumber            Unsigned32,
+  
+  
+  mocaIfMaxIngressNodeThroughput   MocaMacRate,
+  mocaIfMaxEgressNodeThroughput    MocaMacRate,
+  mocaIfTxGcdRate       MocaPhyRate,
+  mocaIfPasswordHash     DisplayString,
+  mocaIfChannelSupport    MocaChannelMask,
+  mocaIfAggregationSize              Unsigned32,
+  mocaIfAeNumber                     Unsigned32,
+  mocaIfSupportedIngressPqosFlows    Unsigned32,
+  mocaIfSupportedEgressPqosFlows     Unsigned32,
+  mocaIfPowerStateCap                MocaPowerState,
+  mocaIfAvbSupport                   TruthValue,
+  mocaIfResetCount                   Counter32,
+  mocaIfLinkDownCount                Counter32,
+  mocaIfLmoNodeID                    MocaNodeID,
+  mocaIfNetworkState                 INTEGER,
+  mocaIfPrimaryChannelOffset         Integer32,
+  mocaIfSecondaryChannelOffset       Integer32,
+  mocaIfResetReason                  DisplayString
+}
+
+
+mocaIfStatus OBJECT-TYPE
+  SYNTAX   INTEGER {
+        disabled (1),
+        noLink   (2),
+        linkUp   (3) }
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the current status of the MoCA interface.
+
+    'disabled' indicates interface is disabled. It will not be
+    possible to read the 'disabled' status of the MoCA interface if
+    this managed node does not have another local port
+    (e.g. Ethernet) where SNMP objects can be accessed.
+    'noLink' indicates interface is enabled but not part of a
+    network.
+    'linkUp' indicates interface is enabled and in a network."
+  ::= { mocaIfStatusEntry 1 }
+
+mocaIfLinkUpTime OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the total number of seconds that this interface has been
+    a part of a MoCA network.
+        
+    This may be used with 'sysUpTime' to determine the link
+    availability in the MoCA interface. Note that 'sysUpTime' is in
+    10 milliseconds and 'mocaIfLinkUpTime' is in seconds."
+  ::= { mocaIfStatusEntry 2 }
+
+mocaIfSoftwareVersion OBJECT-TYPE
+  SYNTAX   DisplayString (SIZE (0..80))
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the software version of the MoCA device. This should
+    be the same as the product software version in the MoCA
+    certificate."
+  ::= { mocaIfStatusEntry 3 }
+
+mocaIfMocaVersion OBJECT-TYPE
+  SYNTAX   MocaVersion
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the MoCA version supported by this MoCA interface."
+  ::= { mocaIfStatusEntry 4 }
+
+mocaIfNetworkVersion OBJECT-TYPE
+  SYNTAX   MocaVersion
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the MoCA version used in this MoCA network. If this
+    interface is not part of a MoCA network, report 'mocaIfMocaVersion'.
+
+This value uses the MOCA_VERSION obtained from the Beacon Frame which can be 0x10, 0x11, or 0x20 which respectively represent a MoCA 1.0, MoCA 1.1, or MoCA 2.0 network version.  However, a network version reported by a MOCA_VERSION of 0x11 can include nodes which are MoCA 1.1 Pro Tem devices which requires further distinguishing from a MoCA 1.1 network or moca1dot1.  A MOCA_VERSION of 0x11 requires determining if a MoCA 1.1 Pro Tem device is included in the network and subsequently reporting it as a MoCA 1.1 Pro Tem network or moca1dot1ProTem."
+  REFERENCE  "MoCA MAC/PHY Specification v1.1, section 3.3.6."
+  ::= { mocaIfStatusEntry 5 }
+
+mocaIfMacAddress OBJECT-TYPE
+  SYNTAX   MacAddress
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the MAC address of this MoCA interface. This MAC
+    address is encoded in the first six bytes of the Globally Unique
+    Identifier (GUID).
+        
+    For example, MoCA interface with MAC address aa:bb:cc:dd:ee:ff
+    will have a GUID of aa:bb:cc:dd:ee:ff:00:00."
+  ::= { mocaIfStatusEntry 6 }
+
+mocaIfNodeID OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the node ID of this MoCA interface. If this interface
+    is not part of a MoCA network, report a value of '0'."
+  ::= { mocaIfStatusEntry 7 }
+
+mocaIfName OBJECT-TYPE
+  SYNTAX   DisplayString (SIZE (0..64))
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the textual name of this MoCA interface. The value of
+    this object should be the name of the interface as assigned by
+    the MoCA device.
+        
+    Since MoCA has an Ethernet convergence layer, this name may be
+    'ethN' where 'N' is the port number."
+  ::= { mocaIfStatusEntry 8 }
+
+mocaIfNumNodes OBJECT-TYPE
+  SYNTAX   Unsigned32 (0..16)
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the numbers of 1's in the GCD_BITMASK field reported
+    in Type I Probe Reports. This value corresponds to the number
+    of nodes that this node communicates to in the MoCA network.
+
+    This value may be smaller than the number of nodes reported by
+    the NC node."
+  REFERENCE  "MoCA MAC/PHY Specification v1.1, section 3.6.3.2."
+  ::= { mocaIfStatusEntry 9 }
+
+mocaIfNC OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the node ID of the network coordinator. If this
+    interface is not part of a MoCA network, report a value of '0'."
+  ::= { mocaIfStatusEntry 10 }
+
+mocaIfBackupNC OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the node ID of the backup network coordinator. If
+    this interface is not part of a MoCA network, report a value of
+    '0'."
+  ::= { mocaIfStatusEntry 11 }
+
+mocaIfRFChannel OBJECT-TYPE
+  SYNTAX   MocaChannel
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the MoCA channel this interface is tuned to
+    when part of a MoCA network. When not part of a MoCA network
+    this value may not reflect the actual tuned channel. If
+    'mocaIfEnable' is 'false', report a value of 'unknown'."
+  ::= { mocaIfStatusEntry 12 }
+
+
+mocaIfTabooChannelMask OBJECT-TYPE
+  SYNTAX   MocaChannelMask
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the list of taboo channels in this MoCA network
+    represented as a bitmask.
+        
+    This value is derived from TABOO_MASK_START and
+    TABOO_CHANNEL_MASK in the beacon, but has a different data
+    representation. E.g. If taboo channels consists of 1300, 1350
+    and 1400 MHz, TABOO_MASK_START is 52, TABOO_CHANNEL_MASK is
+    'A8000000'h, and 'mocaIfTabooChannelMask' is '015000000000'h.
+
+    Note that in 'mocaIfTabooChannelMask', the lowest represented
+    frequency of 400 MHz is represented in bit 0, and increasing bit
+    position represents increasingly higher frequency. While in
+    TABOO_CHANNEL_MASK, the taboo channel with the lowest frequency
+    is represented in bit 31, and decreasing bit position represents
+    increasingly higher frequency.
+
+    If this interface is not sending or receiving beacon, or there
+    is no taboo channel in this MoCA network, report a value of
+    '0'."
+  REFERENCE  "MoCA MAC/PHY Specification v1.1, section 3.3.4."
+  ::= { mocaIfStatusEntry 13 }
+
+mocaIfNodeTabooChannelMask OBJECT-TYPE
+  SYNTAX   MocaChannelMask
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the list of taboo channels for this MoCA node as
+    reported in the TABOO_MASK_START and TABOO_CHANNEL_MASK fields
+    in this node's Admission Request frame."
+  REFERENCE  "MoCA MAC/PHY Specification v1.1, section 3.6.1.1."
+  ::= { mocaIfStatusEntry 14 }
+
+mocaIfSupportedBands OBJECT-TYPE
+  SYNTAX   MocaBand
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Lists all the supported bands and sub-bands by this device. MoCA reserve the assignment of the first 8 bits positions (left to right) as follows: 
+Bit 0: No Band
+Bit 1: Band DL
+Bit 2: Band DH
+Bit 3: Band ExD
+Bit 4: Band E
+Bit 5: Band FSAT
+Bit 6: Band FCBL
+Bit 7 position is reserved"
+  ::= { mocaIfStatusEntry 15 }
+
+mocaIfTxGcdPowerReduction OBJECT-TYPE
+  SYNTAX   MocaDB
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "The Transmit Power Control back-off used for broadcast
+    transmissions from this node. 'mocaIfTxGcdPowerReduction' is
+    identical to the TPC back-off utilized for transmission and
+    determined from the TPC backoff parameters TPC_BACKOFF_MAJOR and
+    TPC_BACKOFF_MINOR as follows:
+
+    mocaIfTxGcdPowerReduction = TPC_BACKOFF_MAJOR * 3 +
+                  TPC_BACKOFF_MINOR"
+  ::= { mocaIfStatusEntry 16 }
+
+
+mocaIfPduNumber OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Represents the maximum number of Ethernet packets aggregated in 
+    a MoCA frame that can be received by this MoCA interface."
+  ::= { mocaIfStatusEntry 17 }
+
+
+mocaIfMaxIngressNodeThroughput OBJECT-TYPE
+  SYNTAX   MocaMacRate
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the maximum throughput available on this MoCA interface 
+     in Kbps for admission of flows if this node is an ingress node. 
+     This value may be obtained from the REM_NODE_CAPACITY field in the
+     Response L2ME Frame. For example, when the node is trying to 
+     Create an extremely large flow, resulting in a failed 
+     flow creation."
+  REFERENCE  "MoCA MAC/PHY Specification v1.1, section 3.17.2.2.2."
+  ::= { mocaIfStatusEntry 18 }
+
+mocaIfMaxEgressNodeThroughput OBJECT-TYPE
+  SYNTAX   MocaMacRate
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the maximum throughput available on this MoCA interface
+     in Kbps for admission of flows if this node is an egress node. 
+     This value may be obtained from the REM_NODE_CAPACITY field in the
+     Response L2ME Frame. For example, when the node is trying to 
+     Create an extremely large flow, resulting in a failed 
+     flow creation."
+  REFERENCE  "MoCA MAC/PHY Specification v1.1, section 3.17.2.2.2."
+  ::= { mocaIfStatusEntry 19 }
+
+mocaIfTxGcdRate OBJECT-TYPE
+  SYNTAX   MocaPhyRate
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the PHY rate in Mbps for the transmit traffic
+    broadcast from this node. In a MoCA 2.0 or mixed mode network,
+    this object reports the PHY rate of the profile (NPER 
+    or VLPER) determined by the PERmode parameter."
+  ::= { mocaIfStatusEntry 20 }
+
+mocaIfPasswordHash OBJECT-TYPE
+  SYNTAX   DisplayString (SIZE (4))
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Specify the MoCA password HASH using an ASCII 
+    String. The Hash is the two LSBs of a SHA1.
+    This value must be 4 hexadecimal digits long. Access
+    is optional when used with SNMP v1 of SNMP v2c protocol."
+  ::= { mocaIfStatusEntry 21 }
+
+mocaIfChannelSupport OBJECT-TYPE
+  SYNTAX   MocaChannelMask
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Specify a list of RF center frequencies represented by a
+    bitmask which this MoCA node can support to form or join a MoCA
+    network."
+  ::= { mocaIfStatusEntry 22 }
+
+mocaIfAggregationSize OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Specifies the maximum number of bytes in one aggregate which can 
+     be received by the node."
+  ::= { mocaIfStatusEntry 23 }
+
+mocaIfAeNumber OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Maximum number of allocation elements, excluding the TAUs and the 
+     Dummy DAUs, in one MAP the node can process."
+  ::= { mocaIfStatusEntry 24 }
+
+mocaIfSupportedIngressPqosFlows OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Maximum number of Ingress PQoS Flows supported by the node."
+  ::= { mocaIfStatusEntry 25 }
+
+mocaIfSupportedEgressPqosFlows OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Maximum number of Egress PQoS Flows supported by the node."
+  ::= { mocaIfStatusEntry 26 }
+
+mocaIfPowerStateCap OBJECT-TYPE
+  SYNTAX   MocaPowerState
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Reports the Power State capabilities of the Node (e.g., which Power States it can transition to). This value can change over time (e.g. when a MoCA 1 node joins the network)."
+  ::= { mocaIfStatusEntry 27 }
+
+mocaIfAvbSupport OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Specifies the support of the node for the IEEE 802.1 
+     Audio Video Bridge specification.  AVB is supported if this value is
+    'true'. AVB is not supported if this value is 'false'"
+  ::= { mocaIfStatusEntry 28 }
+
+mocaIfResetCount OBJECT-TYPE
+  SYNTAX   Counter32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Count of MoCA resets since the interface was enabled for this node."
+  ::= { mocaIfStatusEntry 29 }
+
+mocaIfLinkDownCount OBJECT-TYPE
+  SYNTAX   Counter32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "The number of times that this node has lost link with the MoCA network
+     since the interface was enabled."
+  ::= { mocaIfStatusEntry 30 }
+
+mocaIfLmoNodeID OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Specifies the ID of the node currently undergoing LMO."
+  ::= { mocaIfStatusEntry 31 }
+
+mocaIfNetworkState OBJECT-TYPE
+  SYNTAX   INTEGER  {    
+              beginNodeAdmissionState         (1),
+              newNodeTypeOneProbeTxState      (2),
+              newNodeTypeOneProbeRxState      (3),
+              newGcdDistributionState         (4),
+              beginPhyProfileState            (5),
+              steadyState                     (6),
+              typeThreeProbeState             (7),
+              lmoTypeOneProbeState            (8),
+              lmoNodeGcdDistributionState     (9),
+              beginLmoPhyProfileState         (10),
+              lmoGcdTypeOneProbeLinkState     (11),
+              alternateChannelQuietLineState  (12),
+              alternateChannelEvmProbeState   (13),
+              unsolicitedProbeReportState     (14),
+              beginUnsolicitedPhyProfileState (15),
+              rxDeterminedProbeState          (16),
+              calibrationState                (17)
+      }
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Specifies the current MoCA network state of the node."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 8.3.1."
+  ::= { mocaIfStatusEntry 32 }
+
+mocaIfPrimaryChannelOffset OBJECT-TYPE
+  SYNTAX   Integer32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Specifies the offset in MHz of the primary channel 
+     relative to the beacon channel. This value is typically
+     -25, 0, or +25."
+  ::= { mocaIfStatusEntry 33 }
+
+mocaIfSecondaryChannelOffset OBJECT-TYPE
+  SYNTAX   Integer32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Specifies the offset in MHz of the secondary channel 
+     relative to the beacon channel. This value is typically
+     -125 or +125. A value of 0 indicates that there is no
+     secondary channel."
+  ::= { mocaIfStatusEntry 34 }
+
+mocaIfResetReason OBJECT-TYPE
+  SYNTAX   DisplayString (SIZE (0..80))
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Describes the reason for a MoCA link reset or failure to join a network."
+  ::= { mocaIfStatusEntry 35 }
+  
+mocaIfStatsTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaIfStatsEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA interface statistics table. This table provides statistics of the MoCA interface. This table is indexed by 'ifIndex'. Entries in this table cannot be created or deleted by the network management system. All entries are created or deleted by the device software."
+  ::= { mocaObjects 8 }
+
+mocaIfStatsEntry OBJECT-TYPE
+  SYNTAX   MocaIfStatsEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA interface statistics table."
+  INDEX    { ifIndex }
+  ::= { mocaIfStatsTable 1 }
+
+MocaIfStatsEntry ::= SEQUENCE {
+  mocaIfTxPackets           Counter64,
+  mocaIfTxDrops             Counter32,
+  mocaIfRxPackets           Counter64,
+  mocaIfRxCorrectedErrors   Counter64,
+  mocaIfRxDrops             Counter32,
+  mocaIfEgressNodeNumFlows  Unsigned32,
+  mocaIfIngressNodeNumFlows Unsigned32,
+  mocaIfTxBytes             Counter64,
+  mocaIfRxBytes             Counter64,
+  mocaIfTxUnicast           Counter64,
+  mocaIfRxUnicast           Counter64,
+  mocaIfTxMulticast         Counter64,
+  mocaIfRxMulticast         Counter64,
+  mocaIfTxBroadcast         Counter64,
+  mocaIfRxBroadcast         Counter64
+}
+
+mocaIfTxPackets OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Ethernet packets transmitted by this
+    MoCA interface."
+  ::= { mocaIfStatsEntry 1 }
+
+mocaIfTxDrops OBJECT-TYPE
+  SYNTAX    Counter32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of EPDUs received at the ECL and not transmitted by this MoCA interface, including drops due to required throttling as required by the specification (see REFERENCE)."
+  REFERENCE  "MoCA MAC/PHY Specification v1.1, section 5.1.1."
+  ::= { mocaIfStatsEntry 2 }
+
+mocaIfRxPackets OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of good Ethernet packets received by this
+    MoCA interface."
+  ::= { mocaIfStatsEntry 3 }
+
+mocaIfRxCorrectedErrors OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of received Ethernet packets that have errors and are corrected by this MoCA interface."
+  ::= { mocaIfStatsEntry 4 }
+
+mocaIfRxDrops OBJECT-TYPE
+  SYNTAX    Counter32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of scheduled MoCA frames that are not
+detected or have uncorrectable errors and are dropped by this
+    MoCA interface."
+  ::= { mocaIfStatsEntry 5 }
+
+mocaIfEgressNodeNumFlows OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of PQoS flows in which this MoCA interface is an egress node for these PQoS flows."
+  ::= { mocaIfStatsEntry 6 }
+
+mocaIfIngressNodeNumFlows OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of PQoS flows in which this MoCA interface is an ingress node for these PQoS flows."
+  ::= { mocaIfStatsEntry 7 }
+
+mocaIfTxBytes OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of bytes transmitted by this MoCA interface in EPDUs."
+  ::= { mocaIfStatsEntry 8 }
+
+mocaIfRxBytes OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of bytes received by this MoCA interface in EPDUs."
+  ::= { mocaIfStatsEntry 9 }
+
+mocaIfTxUnicast OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Unicast packets transmitted by this MoCA interface."
+  ::= { mocaIfStatsEntry 10 }
+
+mocaIfRxUnicast OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Unicast Ethernet packets received by this MoCA interface."
+  ::= { mocaIfStatsEntry 11 }
+
+mocaIfTxMulticast OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Multicast Ethernet packets transmitted by this MoCA interface."
+  ::= { mocaIfStatsEntry 12 }
+
+mocaIfRxMulticast OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Multicast Ethernet packets received by this MoCA interface."
+  ::= { mocaIfStatsEntry 13 }
+
+mocaIfTxBroadcast OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Broadcast Ethernet packets transmitted by this MoCA interface."
+  ::= { mocaIfStatsEntry 14 }
+
+mocaIfRxBroadcast OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Broadcast Ethernet packets received by this MoCA interface."
+  ::= { mocaIfStatsEntry 15 }
+
+
+mocaIfFlowStatsTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaIfFlowStatsEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA interface flow statistics table. This table provides statistics of ingress PQoS flow in the MoCA interface. This table is indexed by 'ifIndex' and 'mocaIfFlowIndex'. Entries in this table cannot be created or deleted by the network management system. All entries are created or deleted by the device software."
+  ::= { mocaObjects 9 }
+
+mocaIfFlowStatsEntry OBJECT-TYPE
+  SYNTAX   MocaIfFlowStatsEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA interface flow statistics table. These counters do not wrap in less than an hour with only 32 bits. Therefore 32 instead of 64 bits counters are used."
+  INDEX    {
+        ifIndex,
+        mocaIfFlowIndex
+        }
+  ::= { mocaIfFlowStatsTable 1 }
+
+MocaIfFlowStatsEntry ::= SEQUENCE {
+  mocaIfFlowIndex           Integer32,
+  mocaIfFlowID             MacAddress,
+  mocaIfPacketDA           MacAddress,
+  mocaIfPeakDataRate       Unsigned32,
+  mocaIfBurstSize          Unsigned32,
+  mocaIfLeaseTime          Unsigned32,
+  mocaIfFlowTag            Unsigned32,
+  mocaIfLeaseTimeLeft              Unsigned32,
+  mocaIfTxPacketsFlow              Unsigned32,
+  mocaIfFlowStatsIngressGuid       MacAddress,
+  mocaIfFlowStatsEgressGuid        MacAddress,
+  mocaIfFlowStatsMaximumLatency    Unsigned32,
+  mocaIfFlowStatsShortTermAvgRatio Unsigned32,
+  mocaIfFlowStatsMaxNumberRetry    Unsigned32,
+  mocaIfFlowStatsFlowPer           Unsigned32,
+  mocaIfFlowStatsIngressClassify   INTEGER,
+  mocaIfFlowStatsVlanTag           Unsigned32,
+  mocaIfFlowStatsDscpMoca          Unsigned32,
+  mocaIfFlowStatsDfid              Unsigned32
+  
+}
+
+
+mocaIfFlowIndex OBJECT-TYPE
+  SYNTAX   Integer32 (0..2147483647)
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "This index is used to order the MoCA interface flow statistics
+    table."
+  ::= { mocaIfFlowStatsEntry 1 }
+
+mocaIfFlowID OBJECT-TYPE
+  SYNTAX   MacAddress
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the flow ID of a PQoS flow. The flow ID is a valid multicast Ethernet MAC address that uniquely identifies a PQoS flow in a MoCA Network.
+The recommended rules for generation of the flow ID are specified in MoCA Spec v2.0."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 7.8."
+  ::= { mocaIfFlowStatsEntry 2 }
+
+mocaIfPacketDA OBJECT-TYPE
+  SYNTAX   MacAddress
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the Destination Address (DA) of Ethernet packets of the PQoS Flow for which this node is the ingress node as specified in Section 4.2.1 of MoCA specification v1.1
+    extensions."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.4."
+  ::= { mocaIfFlowStatsEntry 3 }
+
+mocaIfPeakDataRate OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the T_PEAK_DATA_RATE of the PQoS flow identified by
+    'mocaIfFlowID' in which this MoCA interface is an ingress node
+    for the PQoS flow."
+  REFERENCE  "MoCA MAC/PHY Specification 1.1, section 3.17.2.1."
+  ::= { mocaIfFlowStatsEntry 4 }
+
+mocaIfBurstSize OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the T_BURST_SIZE of the PQoS flow identified by
+    'mocaIfFlowID' in which this MoCA interface is an ingress node
+    for this PQoS flow."
+  REFERENCE  "MoCA MAC/PHY Specification 1.1, section 3.17.2.1."
+  ::= { mocaIfFlowStatsEntry 5 }
+
+mocaIfLeaseTime OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the T_LEASE_TIME of the PQoS flow identified by
+    'mocaIfFlowID' in which this MoCA interface is an ingress node
+    for this PQoS flow."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 6 }
+
+mocaIfFlowTag OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the FLOW_TAG of the PQoS flow identified by
+    'mocaIfFlowID' in which this MoCA interface is an ingress node
+    for this PQoS flow. The FLOW_TAG carries application specific
+    content of this PQoS flow."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 7 }
+
+mocaIfLeaseTimeLeft OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the LEASE_TIME_LEFT of the PQoS flow identified by
+    'mocaIfFlowID' in which this MoCA interface is an ingress node
+    for this PQoS flow."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.4."
+  ::= { mocaIfFlowStatsEntry 8 }
+
+
+mocaIfTxPacketsFlow OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the total number of Ethernet packets transmitted by
+    this MoCA interface on the PQoS flow identified by
+    'mocaIfFlowID'."
+REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1." 
+  ::= { mocaIfFlowStatsEntry 9 }
+
+mocaIfFlowStatsIngressGuid OBJECT-TYPE
+  SYNTAX   MacAddress
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the MAC address of the node specified by the 
+     INGRESS_NODE_ID parameter of the flow."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 10 }
+
+mocaIfFlowStatsEgressGuid OBJECT-TYPE
+  SYNTAX   MacAddress
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the MAC address of the node specified by the 
+     EGRESS_NODE_ID parameter of the flow."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 11 }
+
+mocaIfFlowStatsMaximumLatency OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the MAXIMUM_LATENCY parameter of the flow in units
+     of milliseconds. A value of 0 indicates no value available."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 12 }
+
+mocaIfFlowStatsShortTermAvgRatio OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the SHORT_TERM_AVERAGE_RATIO parameter of the flow."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 13 }
+
+mocaIfFlowStatsMaxNumberRetry OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the maximum number of retransmission attempts for 
+     each MSDU of the PQoS Flow. The range is 0-3."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 14 }
+
+mocaIfFlowStatsFlowPer OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the FLOW_PER parameter of this flow, where a 
+     value of 0 indicates NPER and 1 indicates VLPER."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 15 }
+
+mocaIfFlowStatsIngressClassify OBJECT-TYPE
+  SYNTAX   MocaFlowIngrClassRule
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the INGRESS_CLASSIFICATION_RULE parameter of the
+     flow."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 16 }
+
+mocaIfFlowStatsVlanTag OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the VLAN_TAG parameter of the flow."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 17 }
+
+mocaIfFlowStatsDscpMoca OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicates the DSCP_MOCA parameter of the flow."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 6.3.13.1."
+  ::= { mocaIfFlowStatsEntry 18 }
+
+mocaIfFlowStatsDfid OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "The destination flow ID of the flow assigned by the ingress
+     node."
+  REFERENCE  "MoCA MAC/PHY Specification v2.0, section 7.8.1.2."
+  ::= { mocaIfFlowStatsEntry 19 }
+
+
+mocaLinkStatsTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaLinkStatsEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA Link Statistics table. This table contains an
+    entry for every node in the MoCA network, excluding this MoCA
+    interface.
+
+    This table is indexed by 'ifIndex' and 'mocaLinkNodeIndex'.
+
+    Entries in this table cannot be created or deleted by the
+    network management system. All entries are created or deleted by
+    the device software."
+  ::= { mocaObjects 10 }
+  
+mocaLinkStatsEntry OBJECT-TYPE
+  SYNTAX   MocaLinkStatsEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA link statistics table."
+  INDEX    { 
+        ifIndex,
+        mocaLinkNodeIndex
+        }
+  ::= { mocaLinkStatsTable 1 }
+
+MocaLinkStatsEntry ::= SEQUENCE {
+  mocaLinkNodeIndex            MocaNodeID,
+  mocaLinkTxPackets             Counter64,
+  mocaLinkTxDrops               Counter64,
+  mocaLinkEgressNodeNumFlows   Unsigned32,
+  mocaLinkIngressNodeNumFlows  Unsigned32,
+  mocaLinkStatsRetxFrames       Counter32,
+  mocaLinkStatsRetxTimeouts     Counter32
+}
+
+mocaLinkNodeIndex OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "The node ID is used as an index to the MoCA node Link Statistics table."
+  ::= { mocaLinkStatsEntry 1 }
+
+mocaLinkTxPackets OBJECT-TYPE
+  SYNTAX   Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Unicast Ethernet packets transmitted by
+    this MoCA interface to the associated node."
+  ::= { mocaLinkStatsEntry 2 }
+
+mocaLinkTxDrops OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Unicast EPDUs received at the ECL, 
+    destined to the associated node, and not transmitted by this
+    MoCA interface."
+  ::= { mocaLinkStatsEntry 3 }
+
+mocaLinkEgressNodeNumFlows OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of PQoS flows in which this MoCA interface
+    is an egress node for these PQoS flows."
+  ::= { mocaLinkStatsEntry 4 }
+
+mocaLinkIngressNodeNumFlows OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of PQoS flows in which this MoCA interface
+    is an ingress node for these PQoS flows."
+  ::= { mocaLinkStatsEntry 5 }
+
+
+mocaLinkStatsRetxFrames OBJECT-TYPE
+  SYNTAX    Counter32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Number of Retransmission frames by the Node"
+  ::= { mocaLinkStatsEntry 6 }
+  
+mocaLinkStatsRetxTimeouts OBJECT-TYPE
+  SYNTAX    Counter32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Number of Retransmission timeouts by the Node"
+  ::= { mocaLinkStatsEntry 7 }
+  
+mocaNodeTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaNodeEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA node status information table. This table contains an
+    entry for every node in the MoCA network, excluding this MoCA
+    interface.
+
+    This table is indexed by 'ifIndex' and 'mocaNodeIndex'.
+
+    Entries in this table cannot be created or deleted by the
+    network management system. All entries are created or deleted by
+    the device software.
+
+    Since this table is indexed by the MoCA Node ID, parameters in 
+    this table are only valid when the MoCA link is up.  
+    Values will be reset when the MoCA link is down."
+  ::= { mocaObjects 11 }
+
+mocaNodeEntry OBJECT-TYPE
+  SYNTAX   MocaNodeEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA node status information table."
+  INDEX    {
+        ifIndex,
+        mocaNodeIndex
+        }
+  ::= { mocaNodeTable 1 }
+
+MocaNodeEntry ::= SEQUENCE {
+  mocaNodeIndex          MocaNodeID,
+  mocaNodeMocaVersion       MocaVersion,
+  mocaNodeMacAddress       MacAddress,
+  mocaNodeTxGcdRate        MocaPhyRate,
+  mocaNodeRxGcdPower       MocaDBm,
+  mocaNodeTxPowerReduction    MocaDB,
+  mocaNodeRxPower         MocaDBm,
+  mocaNodePreferredNC       TruthValue,
+  mocaNodeBondingCapable    TruthValue,
+  mocaNodePduNumber   Unsigned32,
+  mocaNodeRxPackets         Counter64,
+  mocaNodeRxCorrected        Counter64,
+  mocaNodeRxDrops          Counter32,
+  mocaNodeSNR           MocaDB,  
+  mocaNodeSupportedIngressPqosFlows Unsigned32,
+  mocaNodeSupportedEgressPqosFlows  Unsigned32,
+  mocaNodeAggregationSize Unsigned32,
+  mocaNodeAeNumber  Unsigned32,
+  mocaNodePowerState MocaPowerState,
+  mocaNodePowerStateCapability MocaPowerState
+}
+
+mocaNodeIndex OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "The node ID is used as an index to reference the MoCA node status
+    information table."
+  ::= { mocaNodeEntry 1 }
+
+mocaNodeMocaVersion OBJECT-TYPE
+  SYNTAX   MocaVersion
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the MoCA version supported by the MoCA node identified
+    by 'mocaNodeIndex'."
+  ::= { mocaNodeEntry 2 }
+
+mocaNodeMacAddress OBJECT-TYPE
+  SYNTAX   MacAddress
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the MAC address of the MoCA node identified by
+    'mocaNodeIndex'. This MAC address is encoded in the first six
+    bytes of the Globally Unique Identifier (GUID).
+        
+    For example, MoCA node with MAC address aa:bb:cc:dd:ee:ff will
+    have a GUID of aa:bb:cc:dd:ee:ff:00:00."
+  ::= { mocaNodeEntry 3 }
+
+mocaNodeTxGcdRate OBJECT-TYPE
+  SYNTAX   MocaPhyRate
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the PHY rate in Mbps for the transmit traffic
+    broadcasted from this MoCA interface.
+
+    This value is the broadcast PHY rate from this MoCA interface to
+    the node identified by 'mocaNodeIndex'."
+  ::= { mocaNodeEntry 4 }
+
+mocaNodeRxGcdPower OBJECT-TYPE
+  SYNTAX   MocaDBm
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "The received power for broadcast transmission by this MoCA Node. The power measurement should cover the preamble and/or at least a symbol time. The averaging method employed for this measurement is implementation specific and not specified. It is recommended but not required to utilize the LMO power control probes for this measurement."
+  ::= { mocaNodeEntry 5 }
+
+mocaNodeTxPowerReduction OBJECT-TYPE
+  SYNTAX   MocaDB
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "The Transmit Power Control back-off in dB used for unicast
+    transmissions from the managed node to a node identified by
+    'mocaNodeIndex'. 'mocaNodeTxPowerReduction' is identical to the
+    TPC back-off utilized for transmission and determined from the
+    TPC backoff parameters TPC_BACKOFF_MAJOR and TPC_BACKOFF_MINOR
+    as follows:
+
+    mocaNodeTxPowerReduction = TPC_BACKOFF_MAJOR * 3 +
+                  TPC_BACKOFF_MINOR"
+  ::= { mocaNodeEntry 6 }
+
+mocaNodeRxPower OBJECT-TYPE
+  SYNTAX   MocaDBm
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "The received power by this MoCA Node. The power measurement should cover the preamble and/or at least a symbol time. The averaging method employed for this measurement is implementation specific and not specified. It is recommended but not required to utilize the LMO power control probes for this measurement."
+  ::= { mocaNodeEntry 7 }
+
+mocaNodePreferredNC OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the MoCA node identified by 'mocaNodeIndex' is set as
+    preferred NC if this value is 'true'. Indicate the MoCA node
+    identified by 'mocaNodeIndex' is not set as preferred NC if this
+    value is 'false'."
+  ::= { mocaNodeEntry 8 }
+
+mocaNodeBondingCapable OBJECT-TYPE
+  SYNTAX   TruthValue
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the MoCA node identified by 'mocaNodeIndex' supports
+    Bonding if the value is 'true'. Indicate the MoCA node
+    identified by 'mocaNodeIndex' does not support Bonding if this
+    value is 'false'."
+  ::= { mocaNodeEntry 9 }
+
+mocaNodePduNumber OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Represents the maximum number of Ethernet packets aggregated in
+    a MoCA frame that this MoCA node supports."
+  ::= { mocaNodeEntry 10 }
+
+mocaNodeRxPackets  OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of good Ethernet packets received by this
+    MoCA interface from the MoCA node identified by
+    'mocaNodeIndex'."
+  ::= { mocaNodeEntry 11 }
+
+mocaNodeRxCorrected OBJECT-TYPE
+  SYNTAX    Counter64
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Ethernet packets received by this MoCA
+    interface that have errors and are corrected from the MoCA node
+    identified by 'mocaNodeIndex'."
+  ::= { mocaNodeEntry 12 }
+
+mocaNodeRxDrops OBJECT-TYPE
+  SYNTAX    Counter32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of scheduled MoCA frames that are not
+    detected or have uncorrectable errors and are dropped by this
+    MoCA interface from the MoCA node identified by
+    'mocaNodeIndex'."
+  ::= { mocaNodeEntry 13 }
+
+mocaNodeSNR OBJECT-TYPE
+  SYNTAX   MocaDB
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "A dB measure of the Signal to Noise Ratio (SNR) based on the
+    Type 1 (EVM) probe from a node identified by 'mocaNodeIndex'."
+  REFERENCE  "MoCA MAC/PHY Specification 2.0, section 5.2."
+  ::= { mocaNodeEntry 14 }
+
+mocaNodeSupportedIngressPqosFlows OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Ingress PQoS Flows supported by this
+    MoCA interface from the MoCA node identified by
+    'mocaNodeIndex'."
+  ::= { mocaNodeEntry 15 } 
+  
+mocaNodeSupportedEgressPqosFlows OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the number of Egress PQoS Flows supported by this
+    MoCA interface from the MoCA node identified by
+    'mocaNodeIndex'."
+  ::= { mocaNodeEntry 16 } 
+  
+mocaNodeAggregationSize OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Represents the maximum number of bytes that can be aggregated in
+    a MoCA frame that this MoCA node supports."
+  ::= { mocaNodeEntry 17 } 
+
+mocaNodeAeNumber OBJECT-TYPE
+  SYNTAX   Unsigned32
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Represents the maximum number of allocation elements, excluding the TAUs and the Dummy DAUs, in one MAP 
+    that this MoCA node supports."
+  ::= { mocaNodeEntry 18 } 
+   
+
+mocaNodePowerState OBJECT-TYPE
+  SYNTAX   MocaPowerState
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+  "Power State of the Node identified by the 'mocaNodeIndex'"
+  ::= { mocaNodeEntry 19 }
+
+
+mocaNodePowerStateCapability OBJECT-TYPE
+  SYNTAX   MocaPowerState
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+  "Power State capability of the Node identified by the 'mocaNodeIndex'"
+  ::= { mocaNodeEntry 20 }
+  
+
+mocaMeshTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaMeshEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA mesh PHY rate table. This table contains the unicast
+    transmit PHY rate between all pair of nodes in the MoCA Network.
+
+    This table is indexed by 'ifIndex', 'mocaMeshTableTxNodeIndex', and
+    'mocaMeshTableRxNodeIndex'.
+
+    Since 'mocaMeshTxRate' is the transmit PHY rate from
+    'mocaMeshTableTxNodeIndex' to 'mocaMeshTableRxNodeIndex', this table does
+    not contain any entries with 'mocaMeshTableTxNodeIndex' equals
+    'mocaMeshTableRxNodeIndex'. In addition, a MoCA network can have
+    less than 16 nodes, hence some values of 'mocaMeshTableTxNodeIndex'
+    and 'mocaMeshTableRxNodeIndex' in the range of 0 to 15 may not exist.
+
+    For example, in a three-node MoCA 1.1 network with node ID 2, 4
+    and 6, the 'mocaMeshTable' for MoCA interface with 'ifIndex' 1
+    contains only six entries,
+      mocaMeshTxRate.1.2.4 in which
+        'ifIndex' = 1
+        'mocaMeshTableTxNodeIndex' = 2
+        'mocaMeshTableRxNodeIndex' = 4
+      mocaMeshTxRate.1.2.6
+      mocaMeshTxRate.1.4.2
+      mocaMeshTxRate.1.4.6
+      mocaMeshTxRate.1.6.2
+      mocaMeshTxRate.1.6.4
+
+    In a three-node MoCA 1.0 network with node ID 2, 4 and 6, the
+    'mocaMeshTable' for MoCA interface with 'ifIndex' 1 and node ID
+    2 contains only four entries,
+      mocaMeshTxRate.1.2.4
+      mocaMeshTxRate.1.2.6
+      mocaMeshTxRate.1.4.2
+      mocaMeshTxRate.1.6.2
+
+    Entries in this table cannot be created or deleted by the
+    network management system. All entries are created or deleted by
+    the device software."
+  ::= { mocaObjects 12 }
+
+mocaMeshEntry OBJECT-TYPE
+  SYNTAX   MocaMeshEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA mesh PHY rate table."
+  INDEX    {
+        ifIndex,
+        mocaMeshTableTxNodeIndex,
+        mocaMeshTableRxNodeIndex
+        }
+  ::= { mocaMeshTable 1 }
+
+MocaMeshEntry ::= SEQUENCE {
+  mocaMeshTableTxNodeIndex     MocaNodeID,
+  mocaMeshTableRxNodeIndex     MocaNodeID,
+  mocaMeshTxRate       MocaPhyRate,
+  mocaMeshTxRateNper   MocaPhyRate,
+  mocaMeshTxRateVlper   MocaPhyRate
+}
+
+mocaMeshTableTxNodeIndex OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "The node ID of the transmit MoCA node is used as one of the
+    index to order the mesh PHY rate table."
+  ::= { mocaMeshEntry 1 }
+
+mocaMeshTableRxNodeIndex OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "The node ID of the receive MoCA node is used as one of the
+    index to order the mesh PHY rate table."
+  ::= { mocaMeshEntry 2 }
+
+mocaMeshTxRate OBJECT-TYPE
+  SYNTAX   MocaPhyRate
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the transmit MoCA 1 PHY rate in Mbps from the MoCA node
+    identified by 'mocaMeshTableTxNodeIndex' to the MoCA node identified
+    by 'mocaMeshTableRxNodeIndex'."
+  ::= { mocaMeshEntry 3 }
+  
+mocaMeshTxRateNper OBJECT-TYPE
+  SYNTAX   MocaPhyRate
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the transmit normal packet error PHY Rate from the MoCA node
+    identified by 'mocaMeshTableTxNodeIndex' to the MoCA node identified
+    by 'mocaMeshTableRxNodeIndex'."
+  ::= { mocaMeshEntry 4 }
+
+mocaMeshTxRateVlper OBJECT-TYPE
+  SYNTAX   MocaPhyRate
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the transmit very low packet error PHY Rate from the MoCA node
+    identified by 'mocaMeshTableTxNodeIndex'to the MoCA node identified
+    by 'mocaMeshTableRxNodeIndex'."
+  ::= { mocaMeshEntry 5 }
+  
+mocaBridgeTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaBridgeEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA bridge Ethernet MAC address table. This table contains
+    an entry for every node in the MoCA network.
+
+    This table is indexed by 'ifIndex', 'mocaBridgeNodeIndex' and
+    'mocaBridgeMacIndex'.
+
+    Entries in this table cannot be created or deleted by the
+    network management system. All entries are created or deleted
+    by the device software."
+::= { mocaObjects 13 }
+
+mocaBridgeEntry OBJECT-TYPE
+  SYNTAX   MocaBridgeEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA bridge table."
+  INDEX    {
+        ifIndex,
+        mocaBridgeNodeIndex,
+        mocaBridgeMacIndex
+        }
+::= { mocaBridgeTable 1 }
+
+MocaBridgeEntry ::= SEQUENCE {
+  mocaBridgeNodeIndex   MocaNodeID,
+  mocaBridgeMacIndex   Integer32,
+  mocaBridgeMacAddress  MacAddress
+}
+
+mocaBridgeNodeIndex OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "The node ID is used as an index to order the MAC entries 
+    in the MoCA bridge table."
+  ::= { mocaBridgeEntry 1 }
+
+mocaBridgeMacIndex OBJECT-TYPE
+  SYNTAX   Integer32 (1..2147483647)
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "This index is used to reference the MAC entries for each node in
+    the MoCA bridge table."
+  ::= { mocaBridgeEntry 2 }
+
+mocaBridgeMacAddress  OBJECT-TYPE
+  SYNTAX   MacAddress
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "The Ethernet MAC address identified by the node ID and MAC
+    index."
+  ::= { mocaBridgeEntry 3 }
+
+mocaMeshScModTable OBJECT-TYPE
+  SYNTAX   SEQUENCE OF MocaMeshScModEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "MoCA mesh Sub-Carrier Modulation table. This table contains the
+    Unicast transmit sub-carrier modulation between all pair of nodes
+    in the MoCA Network. This table is indexed by 'ifIndex', 
+    'mocaMeshTxNodeIndex', 'mocaMeshRxNodeIndex', and 'mocaMeshScIndex',
+    and 'mocaMeshChannelIndex'.
+
+    Since 'mocaMeshScMod' is the sub-carrier modulation from
+    'mocaMeshTxNodeIndex' to 'mocaMeshRxNodeIndex', this table does
+    not contain any entries with 'mocaMeshTxNodeIndex' equals
+    'mocaMeshRxNodeIndex'. In addition, a MoCA network can have
+    less than 16 nodes, hence some values of 'mocaMeshTxNodeIndex'
+    and 'mocaMeshRxNodeIndex' in the range of 0 to 15 may not exist.
+    The 'mocaMeshChannelIndex' index is used to differentiate between
+    the primary and secondary channels in a bonded channel network. The 
+    primary channel index is always present, the secondary channel index
+    may not always be present.
+
+    Entries in this table cannot be created or deleted by the
+    network management system. All entries are created or deleted by
+    the device software."
+  ::= { mocaObjects 14 }
+
+mocaMeshScModEntry OBJECT-TYPE
+  SYNTAX   MocaMeshScModEntry
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "An entry in the MoCA mesh sub-carrier modulation table."
+  INDEX    {
+        ifIndex,
+        mocaMeshTxNodeIndex,
+        mocaMeshRxNodeIndex,
+        mocaMeshScIndex,
+        mocaMeshChannelIndex
+        }
+  ::= { mocaMeshScModTable 1 }
+
+MocaMeshScModEntry ::= SEQUENCE {
+  mocaMeshTxNodeIndex     MocaNodeID,
+  mocaMeshRxNodeIndex     MocaNodeID,
+  mocaMeshScIndex         Unsigned32,
+  mocaMeshChannelIndex    MocaChannelIndex,
+  mocaMeshScMod           MocaScMod,
+  mocaMeshScModNper       MocaScMod,
+  mocaMeshScModVlper      MocaScMod}
+
+mocaMeshTxNodeIndex OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "The node ID of the transmit MoCA node is used as one of the
+    index to order the mesh PHY rate table."
+  ::= { mocaMeshScModEntry 1 }
+
+mocaMeshRxNodeIndex OBJECT-TYPE
+  SYNTAX   MocaNodeID
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "The node ID of the receive MoCA node is used as one of the
+    index to order the mesh sub-carrier modulation."
+  ::= { mocaMeshScModEntry 2 }
+
+mocaMeshScIndex OBJECT-TYPE
+  SYNTAX   Unsigned32 (0..255)
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "The sub-carrier index of the receive MoCA node is used as one of the
+    index to order the mesh sub-carrier modulation."
+  ::= { mocaMeshScModEntry 3 }
+
+mocaMeshChannelIndex OBJECT-TYPE
+  SYNTAX   MocaChannelIndex
+  MAX-ACCESS not-accessible
+  STATUS   current
+  DESCRIPTION
+    "Indicate the Primary or Secondary channel for MoCA 2.0 node associated with 'mocaMeshScModNper' and 'mocaMeshScModVlper'. For MoCA 1 node, the same as the Primary channel associated with 'mocaMeshScMod'. In a bonded MoCA 2.0 network, the primary and secondary channels each have their own sub-carrier modulation data."
+  ::= { mocaMeshScModEntry 4 }
+
+mocaMeshScMod OBJECT-TYPE
+  SYNTAX   MocaScMod
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the sub-carrier modulation from the MoCA node
+    identified by 'mocaMeshTxNodeIndex' to the MoCA node identified
+    by 'mocaMeshRxNodeIndex' for the associated 'mocaMeshScIndex' and
+    'mocaMeshChannelIndex' for the MoCA 1 unicast transmission PHY 
+    profile."
+  ::= { mocaMeshScModEntry 5 }
+
+mocaMeshScModNper OBJECT-TYPE
+  SYNTAX   MocaScMod
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the sub-carrier modulation from the MoCA node
+    identified by 'mocaMeshTxNodeIndex' to the MoCA node identified
+    by 'mocaMeshRxNodeIndex' for the associated 'mocaMeshScIndex' and
+    'mocaMeshChannelIndex' for the MoCA 2.0 unicast NPER transmission
+    PHY profile."
+  ::= { mocaMeshScModEntry 6 }
+
+mocaMeshScModVlper OBJECT-TYPE
+  SYNTAX   MocaScMod
+  MAX-ACCESS read-only
+  STATUS   current
+  DESCRIPTION
+    "Indicate the sub-carrier modulation from the MoCA node
+    identified by 'mocaMeshTxNodeIndex' to the MoCA node identified
+    by 'mocaMeshRxNodeIndex' for the associated 'mocaMeshScIndex' and
+    'mocaMeshChannelIndex' for the MoCA 2.0 unicast VLPER transmission 
+    PHY profile."
+  ::= { mocaMeshScModEntry 7 }
+
+
+
+--
+-- MoCA Notifications
+--
+
+mocaTrapBelowPhyThreshold NOTIFICATION-TYPE
+  OBJECTS   { mocaMeshTxRate }
+  STATUS   current
+  DESCRIPTION
+    "If transmit PHY rate between all pairs of MoCA nodes are
+    greater than or equal to 'mocaIfPhyThreshold', and subsequently 
+    the transmit PHY rate of one pair of MoCA nodes drops below 
+    'mocaIfPhyThreshold', send this notification if 
+    'mocaIfPhyThresholdEnable' is 'true'.
+
+    This notification sends the lowest PHY rate in the MoCA network,
+    of 'mocaMeshTxRate', which is the transmit PHY rate from the
+    node specified with 'mocaMeshTableTxNodeIndex', to the node specified
+    with 'mocaMeshTableRxNodeIndex'.
+
+    If multiple links have the same lowest PHY rate, sends the PHY
+    rate for the link with the lowest 'mocaMeshTableTxNodeIndex'. If
+    multiple links with the same 'mocaMeshTableTxNodeIndex' have the same
+    lowest PHY rate, sends the PHY rate for the link with the lowest
+    'mocaMeshTableRxNodeIndex'.
+        
+    Network management system should access 'mocaMeshTable' to find
+    if there are additional links below the threshold bandwidth.
+
+    For example, MoCA 2.0 interface with 'ifIndex' 1 detects transmit
+    PHY rate from 'mocaMeshTableTxNodeIndex' 2 to 'mocaMeshTableRxNodeIndex' 4
+    is 300 Mbps, and this link is the first link to drop below the
+    'mocaIfPhyThreshold', then this trap contains one variable
+    binding of mocaMeshTxRate.1.2.4 = 300"
+  ::= { mocaNotifications 1 }
+
+mocaTrapAbovePhyThreshold NOTIFICATION-TYPE
+  OBJECTS   { ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "If transmit PHY rate between one or more pairs of MoCA nodes
+    are less than 'mocaIfPhyThreshold', and subsequently the 
+    transmit PHY rate between all pairs of MoCA nodes goes above 
+    or is equal to 'mocaIfPhyThreshold', send this notification if
+    'mocaIfPhyThresholdEnable' is 'true'."
+  ::= { mocaNotifications 2 }
+
+mocaTrapIfStatusChange NOTIFICATION-TYPE
+  OBJECTS   { mocaIfStatus }
+  STATUS   current
+  DESCRIPTION
+    "This trap is sent when mocaIfStatusChangeEnable is true
+    and mocaIfStatus changes value."
+  ::= { mocaNotifications 3 }
+
+mocaTrapIfNumNodesChange NOTIFICATION-TYPE
+  OBJECTS   { mocaIfNumNodes }
+  STATUS   current
+  DESCRIPTION
+    "This trap is sent when mocaIfNumNodesChangeEnable is true
+    and mocaIfNumNodes changes value."
+  ::= { mocaNotifications 4 }
+
+mocaTrapMrRstSuccess NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "An MR Entry Node reports that the network got reset successfully."
+  ::= { mocaNotifications 5 }
+
+mocaTrapMrRstFail NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "An MR Entry Node reports that the network reset did not complete successfully."
+  ::= { mocaNotifications 6 }
+  
+mocaTrapMrNetworkSuccess NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "An MR Entry Node reports that the network got reformed successfully following the MR transaction."
+  ::= { mocaNotifications 7 }
+  
+mocaTrapMrNetworkFail NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "An MR Entry Node reports that the MR transaction failed, and the network did not get reformed."
+  ::= { mocaNotifications 8 }
+  
+mocaTrapPowerStateBcstRec NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "When the Node is in Power State M1 or M2, reports that the Node has received a Broadcast data MSDU, which is available at the data interface."
+  ::= { mocaNotifications 9 }  
+
+mocaTrapPowerStateM0Nc NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "When a Node is in Power State M1 reports that it is going to move to Power State M0 due to the NCs instruction."
+  ::= { mocaNotifications 10 }  
+  
+mocaTrapPowerStateNc1x NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "When the Node is in Power State M1/M2/M3, reports that MoCA 1 node is the NC."
+  ::= { mocaNotifications 11 }  
+ 
+mocaTrapPowerStateNetVer NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "When the Node is in Power State M2 or M3, reports that the network MoCA version is changed."
+  ::= { mocaNotifications 12 }  
+ 
+mocaTrapPowerStateResp NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "Carries the response of the Node to a request (through POWER_STATEREQ) to transition into a desired Power State."
+  ::= { mocaNotifications 13 }  
+ 
+mocaTrapPowerStateUcstPen NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "When the Node is in Power State M2, reports that a Unicast data MSDU destined to the Node is pending."
+  ::= { mocaNotifications 14 } 
+  
+mocaTrapPowerStateTrnsReq NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "When a Node is in Power State M1 or M2, requests to transition to Power State M0"
+  ::= { mocaNotifications 15 } 
+
+mocaTrapPowerStateWupUr NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "When the Node is in Power State M2, this reports a wakeup request from NC due to unspecified reasons."
+  ::= { mocaNotifications 16 } 
+  
+mocaTrapLmoStatus NOTIFICATION-TYPE
+  OBJECTS   {  ifIndex }
+  STATUS   current
+  DESCRIPTION
+    "When mocaIfLmoTrapEnable is enabled, reports that the Node is starting LMO"
+  ::= { mocaNotifications 17 } 
+  
+--
+-- Maxlinear MoCA Notifications
+--
+
+mocaTrapSpectrumAnalyzerCapture NOTIFICATION-TYPE
+    OBJECTS     { mocaMeshTxRate }
+    STATUS      current
+    DESCRIPTION
+        "This trap is sent when 'mocaIfSpectrumAnalyzerTrapEnable' is 'true'
+        and a specture analyer capture is complete."
+    ::= { mocaNotifications 1 }
+
+--
+-- Maxlinear MoCA Objects
+--
+
+mocaIfSpectrumAnalyzerTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF MocaIfSpectrumAnalyzerEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "MoCA interface spectrum analyzer table.  This table supports the
+        configuration of the spectrum analyzer parameters.
+
+        This table is indexed by 'ifIndex'.
+
+        Entries in this table cannot be created or deleted by the network
+        management system.  All entries are created or deleted by the device
+        software."
+    ::= { mocaObjects 15 }
+
+mocaIfSpectrumAnalyzerEntry OBJECT-TYPE
+    SYNTAX      MocaIfSpectrumAnalyzerEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry in the MoCA interface spectrum analyzer table.  Each device
+        can have one or more MoCA interfaces.  Each interface has a unique MAC
+        address.
+
+        There is a one to one relationship between a MoCA interface and an
+        interface defined in other IETF MIB.  The same 'ifIndex' can be used
+        to identify MoCA objects as well as other IETF MIB objects."
+    INDEX       { ifIndex }
+    ::= { mocaIfSpectrumAnalyzerTable 1 }
+
+MocaIfSpectrumAnalyzerEntry ::= SEQUENCE {
+    mocaIfSpectrumAnalyzerStartFrequency  Unsigned32,
+    mocaIfSpectrumAnalyzerEndFrequency    Unsigned32,
+    mocaIfSpectrumAnalyzerMaximumHold     TruthValue,
+    mocaIfSpectrumAnalyzerTxEnable        TruthValue,
+    mocaIfSpectrumAnalyzerTxMacAddress    MacAddress,
+    mocaIfSpectrumAnalyzerNumOfCaptures   Integer32,
+    mocaIfSpectrumAnalyzerPeriodInSecs    Unsigned32,
+    mocaIfSpectrumAnalyzerInitiate        TruthValue,
+    mocaIfSpectrumAnalyzerTrapEnable      TruthValue,
+    mocaIfSpectrumAnalyzerLastStatus      INTEGER,
+    mocaIfSpectrumAnalyzerLastData        OCTET STRING,
+    mocaIfSpectrumAnalyzerLastStartTime   DateAndTime,
+    mocaIfSpectrumAnalyzerLastEndTime     DateAndTime
+}
+
+mocaIfSpectrumAnalyzerStartFrequency OBJECT-TYPE
+    SYNTAX      Unsigned32 (400..1750)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Set this value to the start frequency for the spectrum analyzer
+        capture."
+    DEFVAL      { 400 }
+::= { mocaIfSpectrumAnalyzerEntry 1 }
+
+mocaIfSpectrumAnalyzerEndFrequency OBJECT-TYPE
+    SYNTAX      Unsigned32 (400..1750)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Set this value to the end frequency for the spectrum analyzer
+        capture."
+    DEFVAL      { 1750 }
+::= { mocaIfSpectrumAnalyzerEntry 2 }
+
+mocaIfSpectrumAnalyzerMaximumHold OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enable maximum hold if this value is 'true'.  Disable maximum hold if
+        this value is 'false'.
+
+        When maximum hold is enabled, the maximum spectral profile between
+        the current and last capture is returned in mocaIfSpectrumAnalyzerData.
+        When maximum hold is disabled, the current capture is returned."
+    DEFVAL      { false }
+::= { mocaIfSpectrumAnalyzerEntry 3 }
+
+mocaIfSpectrumAnalyzerTxEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enable transmit of an EVM probe by the MoCA node with MAC address
+        mocaIfSpectrumAnalyzerTxMacAddress during the spectrum analyzer
+        capture if this value is 'true'.  Disable transmit of EVM probe
+        if this value is 'false'."
+    DEFVAL      { false }
+::= { mocaIfSpectrumAnalyzerEntry 4 }
+
+mocaIfSpectrumAnalyzerTxMacAddress OBJECT-TYPE
+    SYNTAX      MacAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The MAC address of the MoCA node to transmit an EVM probe during the
+        spectrum analyzer capture.  The EVM probe is transmitted only if
+        mocaIfSpectrumAnalyzerTxEnable is set to 'true'."
+    DEFVAL      { '000000000000'h }
+::= { mocaIfSpectrumAnalyzerEntry 5 }
+
+mocaIfSpectrumAnalyzerNumOfCaptures OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Number of times to capture the spectrum.  The time between captures is
+        specified by mocaIfSpectrumAnalyzerPeriod.  If this value is set to -1,
+        the spectrum is captured forever."
+    DEFVAL      { 1 }
+::= { mocaIfSpectrumAnalyzerEntry 6 }
+
+mocaIfSpectrumAnalyzerPeriodInSecs OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The time in seconds between spectrum captures."
+    DEFVAL      { 1 }
+::= { mocaIfSpectrumAnalyzerEntry 7 }
+
+mocaIfSpectrumAnalyzerInitiate OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Starts the spectrum capture operation if this value is set to 'true'.
+        If this object returns 'true', a spectrum capture operation is already
+        in progress and setting this value to 'true' again will have no
+        effect.  This object will return 'false' when a spectrum capture
+        operation is not in progress or the previous operation is complete."
+    DEFVAL      { false }
+::= { mocaIfSpectrumAnalyzerEntry 8 }
+
+mocaIfSpectrumAnalyzerTrapEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Set this value to 'true' to trap the completion of a spectrum capture."
+    DEFVAL      { false }
+::= { mocaIfSpectrumAnalyzerEntry 9 }
+
+mocaIfSpectrumAnalyzerLastStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                none (0),
+                success (1),
+                failed (2) }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the status of the last spectrum capture operation.  'none'
+        indicates that there was no previous operation.  'success' indicates
+        that the last operation was successful.  'failed' indicates that last
+        operation failed."
+    DEFVAL      { none }
+::= { mocaIfSpectrumAnalyzerEntry 10 }
+
+mocaIfSpectrumAnalyzerLastData OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The data from the last spectrum analyzer capture for the
+        frequencies from mocaIfSpectrumAnalyzerStartFrequency to
+        mocaIfSpectrumAnalyzerEndFrequency in 195.3125kHz steps.  Each octet
+        represents the power in dBm measured at each 195.31256KHz step."
+    DEFVAL      { ''h }
+::= { mocaIfSpectrumAnalyzerEntry 11 }
+
+mocaIfSpectrumAnalyzerLastStartTime OBJECT-TYPE
+    SYNTAX      DateAndTime
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The date and time that the last spectrum analyzer capture started."
+    DEFVAL      { ''h }
+::= { mocaIfSpectrumAnalyzerEntry 12 }
+
+mocaIfSpectrumAnalyzerLastEndTime OBJECT-TYPE
+    SYNTAX      DateAndTime
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The date and time that the last spectrum analyzer operation ended."
+    DEFVAL      { ''h }
+::= { mocaIfSpectrumAnalyzerEntry 13 }
+
+---
+--- MoCA Conformance
+---
+
+mocaMIBCompliances OBJECT IDENTIFIER ::= { mocaConformance 1 }
+mocaMIBGroups    OBJECT IDENTIFIER ::= { mocaConformance 2 }
+
+---
+--- Compliance Statements
+---
+
+mocaMIBCompliance MODULE-COMPLIANCE
+  STATUS     current
+  DESCRIPTION
+          "The compliance statement for the mandatory and
+          optional groups."
+  MODULE
+    MANDATORY-GROUPS {
+          mocaIfStatusGroup,
+          mocaIfStatsGroup,
+          mocaIfFlowStatsGroup,
+          mocaNodeGroup,
+          mocaMeshGroup
+          }
+
+    GROUP    mocaIfConfigOptionalGroup
+    DESCRIPTION
+          "Implementation of remote configuration of the MoCA
+          interface is optional. MoCA interface should be
+          operational using vendor specified default
+          parameters."
+
+    OBJECT   mocaIfPrivacyEnable
+    MIN-ACCESS read-only
+    DESCRIPTION
+          "Write access is not required for SNMPv1 and
+          SNMPv2c."
+
+    OBJECT   mocaIfPassword
+    MIN-ACCESS read-only
+    DESCRIPTION
+          "Access is not required for SNMPv1 and SNMPv2c."
+
+    GROUP    mocaIfAccessOptionalGroup
+    DESCRIPTION
+          "Implementation of MAC address access control
+          is optional."
+
+    GROUP    mocaIfRlapmOptionalGroup
+    DESCRIPTION
+          "Implementation of RLAPM control is optional."
+
+    GROUP    mocaIfSapmOptionalGroup
+    DESCRIPTION
+          "Implementation of SAPM control is optional."
+
+    GROUP    mocaIfAcaOptionalGroup
+    DESCRIPTION
+          "Implementation of ACA control is optional."
+
+    GROUP    mocaIfMrOptionalGroup
+    DESCRIPTION
+          "Implementation of MoCA Reset control is optional."
+
+    GROUP    mocaIfStatusOptionalGroup
+    DESCRIPTION
+          "Implementation of node Bandwidth is optional."
+
+    GROUP    mocaIfStatsOptionalGroup
+    DESCRIPTION
+          "Implementation of drop counters is optional."
+
+    GROUP    mocaIfFlowStatsOptionalGroup
+    DESCRIPTION
+          "Implementation of aggregation counters is 
+          optional."
+
+    GROUP    mocaLinkStatsOptionalGroup
+    DESCRIPTION
+          "Implementation of the link status table is optional."
+
+    GROUP    mocaNodeOptionalGroup
+    DESCRIPTION
+          "Implementation of power level is optional."
+
+    GROUP    mocaBridgeOptionalGroup
+    DESCRIPTION
+          "Implementation of the bridge table is optional."
+
+    GROUP    mocaMeshOptionalGroup
+    DESCRIPTION
+          "Implementation of the mesh sub-carrier table is optional."
+
+    GROUP    mocaTrapOptionalGroup
+    DESCRIPTION
+          "Implementation of bandwidth alarm for link that
+          drops below a specified PHY rate threshold is
+          optional."
+		  
+	GROUP   mocaIfSpectrumAnalyzerOptionalGroup
+	DESCRIPTION
+			"Implementation of spectrum analyzer is optional."
+
+  ::= { mocaMIBCompliances 1 }
+
+---
+--- Units of Conformance
+---
+mocaIfConfigOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfEnable,
+        mocaIfChannelMask,
+        mocaIfTpcEnable,
+        mocaIfTxPowerLimit,
+        mocaIfBeaconPowerBackoff,
+        mocaIfPowerControlTargetRate,
+        mocaIfPrivacyEnable,
+        mocaIfPassword,
+        mocaIfPreferredNC,
+        mocaIfAccessEnable,
+        mocaIfPhyThreshold,
+        mocaIfPhyThresholdEnable,
+        mocaIfStatusChangeEnable,
+        mocaIfNumNodesChangeEnable,
+        mocaIfTpcTargetRateNper,
+        mocaIfBand,
+        mocaIfLofUpdateEnable,
+        mocaIfLof,
+        mocaIfUpfRetransMode,
+        mocaIfPerMode,
+        mocaIfTurboModeEnable,
+        mocaIfPolicingEnable,
+        mocaIfTlpMin,
+        mocaIfTlpMax,
+        mocaIfRlapmEnable,
+        mocaIfRlapmProfileSelect,
+        mocaIfSapmEnable,
+        mocaIfSapmProfileSelect,
+        mocaIfPowerStateRequest,
+        mocaIfSeqNumMr,
+        mocaIfPowerStateTrapEnable,
+        mocaIfLmoTrapEnable
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to configure the MoCA interface."
+  ::= { mocaMIBGroups 1 }
+
+mocaIfAccessOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfAccessMacAddress,
+        mocaIfAccessStatus
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to configure the MAC address access control
+        list for the MoCA interface."
+  ::= { mocaMIBGroups 2 }
+
+mocaIfRlapmOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfRlapmGarpl,
+        mocaIfRlapmPhyMargin,
+        mocaIfRlapmStatus        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to configure RLAPM for the MoCA interface."
+  ::= { mocaMIBGroups 3 }
+
+mocaIfSapmOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfSapmPhyMargin,
+        mocaIfSapmARPLTHLD,
+        mocaIfSapmStatus         }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to configure SAPM for the MoCA interface."
+  ::= { mocaMIBGroups 4 }
+
+mocaIfAcaOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfAcaNodeID,
+        mocaIfAcaType,
+        mocaIfAcaChannel,
+        mocaIfAcaReportNodeMask,
+        mocaIfAcaInitiate,
+        mocaIfAcaStatus,
+        mocaIfAcaTotalRxPower,
+        mocaIfAcaPowerProfile,
+        mocaIfAcaStatusTrapCompleted     }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to control ACA for the MoCA interface."
+  ::= { mocaMIBGroups 5 }
+
+
+mocaIfMrOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfMrNodeMask,
+        mocaIfMrStartTime,
+        mocaIfMrStatusTrapEnable,
+        mocaIfMrNetworkTrapEnable    }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to control Moca Reset for the MoCA interface."
+  ::= { mocaMIBGroups 6 }
+
+mocaIfStatusGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfStatus,
+        mocaIfLinkUpTime,
+        mocaIfSoftwareVersion,
+        mocaIfMocaVersion,
+        mocaIfNetworkVersion,
+        mocaIfMacAddress,
+        mocaIfNodeID,
+        mocaIfName,
+        mocaIfNumNodes,
+        mocaIfNC,
+        mocaIfBackupNC,
+        mocaIfRFChannel,
+        mocaIfTabooChannelMask,
+        mocaIfNodeTabooChannelMask,
+        mocaIfSupportedBands,
+        mocaIfPduNumber,
+        mocaIfTxGcdRate        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor the status of the MoCA
+        interface."
+  ::= { mocaMIBGroups 7 }
+
+mocaIfStatusOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfTxGcdPowerReduction,
+        mocaIfMaxIngressNodeThroughput,
+        mocaIfMaxEgressNodeThroughput,
+        mocaIfPasswordHash,
+        mocaIfChannelSupport,
+        mocaIfAggregationSize,
+        mocaIfAeNumber,
+        mocaIfSupportedIngressPqosFlows,
+        mocaIfSupportedEgressPqosFlows,
+        mocaIfPowerStateCap,
+        mocaIfAvbSupport,
+        mocaIfResetCount,
+        mocaIfLinkDownCount,
+        mocaIfLmoNodeID,
+        mocaIfNetworkState,
+        mocaIfPrimaryChannelOffset,
+        mocaIfSecondaryChannelOffset
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor the bandwidth of the MoCA
+        interface."
+  ::= { mocaMIBGroups 8 }
+
+mocaIfStatsGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfTxPackets,
+        mocaIfRxPackets,
+        mocaIfEgressNodeNumFlows,
+        mocaIfIngressNodeNumFlows        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor the packet statistics and the
+        number of flows in the MoCA interface."
+  ::= { mocaMIBGroups 9 }
+
+mocaIfStatsOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfTxDrops,
+        mocaIfRxCorrectedErrors,
+        mocaIfRxDrops,
+        mocaIfTxBytes,
+        mocaIfRxBytes,
+        mocaIfTxUnicast,
+        mocaIfRxUnicast,
+        mocaIfTxMulticast,
+        mocaIfRxMulticast,
+        mocaIfTxBroadcast,
+        mocaIfRxBroadcast
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor the packet drop statistics of
+        the MoCA interface."
+  ::= { mocaMIBGroups 10 }
+
+mocaIfFlowStatsGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfFlowID,
+        mocaIfPacketDA,
+        mocaIfPeakDataRate,
+        mocaIfBurstSize,
+        mocaIfLeaseTime,
+        mocaIfFlowTag
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor the PQoS flow information of
+        the MoCA interface."
+  ::= { mocaMIBGroups 11 }
+
+mocaIfFlowStatsOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaIfLeaseTimeLeft,
+        mocaIfTxPacketsFlow,
+        mocaIfFlowStatsIngressGuid,
+        mocaIfFlowStatsEgressGuid,
+        mocaIfFlowStatsMaximumLatency,
+        mocaIfFlowStatsShortTermAvgRatio,
+        mocaIfFlowStatsMaxNumberRetry,
+        mocaIfFlowStatsFlowPer,
+        mocaIfFlowStatsIngressClassify,
+        mocaIfFlowStatsVlanTag,
+        mocaIfFlowStatsDscpMoca,
+        mocaIfFlowStatsDfid
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor the PQoS flow statistics of
+        the MoCA interface."
+  ::= { mocaMIBGroups 12 }
+
+mocaLinkStatsOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaLinkTxPackets,
+        mocaLinkTxDrops,
+        mocaLinkEgressNodeNumFlows,
+        mocaLinkIngressNodeNumFlows,
+        mocaLinkStatsRetxFrames,
+        mocaLinkStatsRetxTimeouts
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameter to monitor the packet drop statistics per link of
+        the MoCA interface."
+  ::= { mocaMIBGroups 13 }
+
+mocaNodeGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaNodeMocaVersion,
+        mocaNodeMacAddress,
+        mocaNodeTxGcdRate,
+        mocaNodePreferredNC,
+        mocaNodeBondingCapable,
+        mocaNodePduNumber
+        
+        
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor the status of other nodes
+        in the MoCA network."
+  ::= { mocaMIBGroups 14 }
+
+mocaNodeOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaNodeRxGcdPower,
+        mocaNodeTxPowerReduction,
+        mocaNodeRxPower,
+        mocaNodeRxPackets,
+        mocaNodeRxCorrected,
+        mocaNodeRxDrops,
+        mocaNodeSNR,
+        mocaNodeSupportedIngressPqosFlows,
+        mocaNodeSupportedEgressPqosFlows,
+        mocaNodeAggregationSize,
+        mocaNodeAeNumber,
+        mocaNodePowerState,
+        mocaNodePowerStateCapability
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor power level to or from nodes
+        in the MoCA network."
+  ::= { mocaMIBGroups 15 }
+
+mocaMeshGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaMeshTxRate,
+        mocaMeshTxRateNper,
+        mocaMeshTxRateVlper
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor the PHY rate of each link in the 
+        MoCA network."
+  ::= { mocaMIBGroups 16 }
+
+mocaBridgeOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaBridgeMacAddress
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor the bridge table of each node
+        in the MoCA network."
+  ::= { mocaMIBGroups 17 }
+
+mocaMeshOptionalGroup OBJECT-GROUP
+  OBJECTS   {
+        mocaMeshScMod,
+        mocaMeshScModNper,
+        mocaMeshScModVlper
+        }
+  STATUS   current
+  DESCRIPTION
+        "Parameters to monitor the modulation of every sub-carrier
+        for each link in the MoCA network."
+  ::= { mocaMIBGroups 18 }
+
+mocaTrapOptionalGroup NOTIFICATION-GROUP
+  NOTIFICATIONS {
+        mocaTrapBelowPhyThreshold,
+        mocaTrapAbovePhyThreshold,
+        mocaTrapIfStatusChange,
+        mocaTrapIfNumNodesChange,
+        mocaTrapMrRstSuccess,
+        mocaTrapMrRstFail,
+        mocaTrapMrNetworkSuccess,
+        mocaTrapMrNetworkFail,
+        mocaTrapPowerStateBcstRec,
+        mocaTrapPowerStateM0Nc,
+        mocaTrapPowerStateNc1x,
+        mocaTrapPowerStateNetVer,
+        mocaTrapPowerStateResp,
+        mocaTrapPowerStateUcstPen,
+        mocaTrapPowerStateTrnsReq,
+        mocaTrapPowerStateWupUr,
+        mocaTrapLmoStatus
+        }
+  STATUS   current
+  DESCRIPTION
+        "Notifications for bandwidth threshold in the MoCA
+        network."
+  ::= { mocaMIBGroups 19 }
+
+mocaIfSpectrumAnalyzerOptionalGroup OBJECT-GROUP
+    OBJECTS     {
+                mocaIfSpectrumAnalyzerStartFrequency,
+                mocaIfSpectrumAnalyzerEndFrequency,
+                mocaIfSpectrumAnalyzerMaximumHold,
+                mocaIfSpectrumAnalyzerTxEnable,
+                mocaIfSpectrumAnalyzerTxMacAddress,
+                mocaIfSpectrumAnalyzerNumOfCaptures,
+                mocaIfSpectrumAnalyzerPeriodInSecs,
+                mocaIfSpectrumAnalyzerInitiate,
+                mocaIfSpectrumAnalyzerTrapEnable,
+                mocaIfSpectrumAnalyzerLastStatus,
+                mocaIfSpectrumAnalyzerLastData,
+                mocaIfSpectrumAnalyzerLastStartTime,
+                mocaIfSpectrumAnalyzerLastEndTime
+                }
+    STATUS      current
+    DESCRIPTION
+                "Parameters to configure the spectrum analyzer."
+    ::= { mocaMIBGroups 20 }  
+  
+  
+END

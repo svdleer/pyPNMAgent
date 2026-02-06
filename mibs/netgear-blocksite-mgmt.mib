@@ -1,0 +1,212 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-blocksite-mgmt.mib
+--    Creation Date: June 1, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--		private MIB for block site management.
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-BLOCKSITE-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,
+	Integer32,
+	NOTIFICATION-TYPE       FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION      FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP      FROM SNMPv2-CONF
+	SnmpAdminString         FROM SNMP-FRAMEWORK-MIB
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6         FROM INET-ADDRESS-MIB
+    ifIndex                 FROM IF-MIB
+    PositiveInteger         FROM UPS-MIB
+    cableMgmt               FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- Netgear Group
+-- 
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrBlocksiteMgnt MODULE-IDENTITY
+	LAST-UPDATED "201205100000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"Initial version of this MIB module."
+::= { cableMgmt 10 }
+
+
+blocksiteEnable  OBJECT-TYPE
+	SYNTAX     INTEGER {
+             disable(0),
+             alwaysEnable(1),
+             enableBySchedule(2)                
+    }
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrBlocksiteMgnt 1 }
+
+blocksiteScheduleIndex  OBJECT-TYPE
+	SYNTAX     Integer32 (0..29)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrBlocksiteMgnt 2 }
+
+blocksiteTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF BlocksiteEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrBlocksiteMgnt 3 }
+
+blocksiteEntry  OBJECT-TYPE
+	SYNTAX 	BlocksiteEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { ifIndex }
+	::= { blocksiteTable 1 }
+
+BlocksiteEntry ::= SEQUENCE {
+	blocksiteDoman
+		SnmpAdminString,
+	blocksiteRowStatus
+		RowStatus
+}
+
+blocksiteDoman  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { blocksiteEntry 1 }
+
+blocksiteRowStatus  OBJECT-TYPE
+	SYNTAX     RowStatus
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { blocksiteEntry 2 }
+
+blocksiteTrustIpEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrBlocksiteMgnt 4 }
+  
+blocksiteTrustIpTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF BlocksiteTrustIpEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrBlocksiteMgnt 5 }  
+
+blocksiteTrustIpEntry  OBJECT-TYPE
+	SYNTAX 	BlocksiteTrustIpEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { ifIndex }
+	::= { blocksiteTrustIpTable 1 }
+
+BlocksiteTrustIpEntry ::= SEQUENCE {
+	blocksiteTrustIpAddress
+		InetAddress
+}
+
+blocksiteTrustIpAddress  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { blocksiteTrustIpEntry 1 }
+
+blocksiteTrustMacEnable  OBJECT-TYPE
+	SYNTAX TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrBlocksiteMgnt 6 }
+
+blocksiteTrustMacTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF BlocksiteTrustMacEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrBlocksiteMgnt 7 }
+
+blocksiteTrustMacEntry  OBJECT-TYPE
+	SYNTAX 	BlocksiteTrustMacEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { ifIndex }
+	::= { blocksiteTrustMacTable 1 }
+
+BlocksiteTrustMacEntry ::= SEQUENCE {
+	blocksiteTrustMacAddress
+		MacAddress
+}
+
+blocksiteTrustMacAddress  OBJECT-TYPE
+	SYNTAX     MacAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { blocksiteTrustMacEntry 1 }
+END
+

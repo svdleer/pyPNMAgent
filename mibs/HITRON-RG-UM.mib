@@ -1,0 +1,181 @@
+-- vim: set ts=4, set expandtab, match Todo /\%>79v/
+-- ***********************************************************************
+-- ***********************************************************************
+--                             ROUTER
+--                      SNMP/MIB : MIB Files
+--
+--            Copyright (C) 2012 Hitron Technologies Inc.
+--                       All Rights Reserved.
+-- ***********************************************************************
+--  Filename    : HITRON-RG-UM.mib
+--  Description : User Management MIB
+-- ***********************************************************************
+--
+
+HITRON-RG-UM-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+    , OBJECT-TYPE
+    , enterprises
+    , Integer32
+    , Unsigned32
+    , Counter32
+        FROM SNMPv2-SMI -- RFC2578
+
+    DisplayString
+    , TruthValue
+    , DateAndTime
+        FROM SNMPv2-TC  -- RFC2579
+
+    hitronRg
+        FROM HITRON-RG-MIB
+
+    ; -- End of IMPORTS
+
+hitronRgUm  MODULE-IDENTITY
+    LAST-UPDATED    "201209051436Z" -- Sep. 05, 2012
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "Liangfeng Wu
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8120
+        E-mail: wuliangfeng@sz.hitrontech.com"
+    DESCRIPTION
+        "MIB module for User Management(UM), The UM consists of 2 aspects: User
+        Authentication and Login Access Control. User Authentication includes
+        the local authentication via account information save local, and the
+        remote authentication through AAA protocols, such Radius, TACACS and
+        etc.. 'Login Access Control' limits when , from where and via what
+        protocol(HTTP/TELNET/SSH) a particular account is allowed to login."
+
+    REVISION    "201209051436Z" -- Sep. 05, 2012
+    DESCRIPTION
+        "Initial Version"
+
+    ::= { hitronRg 16 }
+
+    -- User Authentication
+    umAuth OBJECT IDENTIFIER ::= { hitronRgUm 1 }
+
+        -- Local Authentication information
+        umAuthLocal OBJECT IDENTIFIER ::= { umAuth 1 }
+
+            -- Local Account Table
+            umAuthLocalAccountTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF UmAuthLocalAccountEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Local account table used to authentication."
+                ::= { umAuthLocal 1 }
+
+                umAuthLocalAccountEntry OBJECT-TYPE
+                    SYNTAX      UmAuthLocalAccountEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of table umAuthLocalAccountTable"
+                    INDEX       { umAuthLocalAccountIndex }
+                    ::= { umAuthLocalAccountTable 1 }
+
+                UmAuthLocalAccountEntry ::=
+                    SEQUENCE {
+                        umAuthLocalAccountIndex         INTEGER,
+                        umAuthLocalAccountEnable        TruthValue,
+                        umAuthLocalAccountName          DisplayString,
+                        umAuthLocalAccountPassword      DisplayString
+                    }
+
+                umAuthLocalAccountIndex OBJECT-TYPE
+                    SYNTAX INTEGER {
+                                    mso(1),
+                                    user1(2),
+                                    user2(3),
+                                    user3(4)
+                    }
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Local Account Table index. Index 1 is reserved for
+                         mso(admin) user."
+                    ::= { umAuthLocalAccountEntry 1 }
+
+                umAuthLocalAccountEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-write
+                    STATUS      current
+                    DESCRIPTION
+                        "Indicates whether this acount is available for use
+                        ."
+                    ::= { umAuthLocalAccountEntry 2 }
+
+                umAuthLocalAccountName OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-write
+                    STATUS      current
+                    DESCRIPTION
+                        "The account user name."
+                    ::= { umAuthLocalAccountEntry 3 }
+
+                umAuthLocalAccountPassword OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-write
+                    STATUS      current
+                    DESCRIPTION
+                        "The account password."
+                    ::= { umAuthLocalAccountEntry 4 }
+
+            -- Password Of the Day(POD)
+            umAuthLocalPod OBJECT IDENTIFIER ::= { umAuthLocal 2 }
+
+                umAuthLocalPodEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-write
+                    STATUS      current
+                    DESCRIPTION
+                        "Enable Password Of the Day(POD) for the mso login
+                        via SSH and GUI. Telnet login is always
+                        authenticated by the local auth information."
+                    ::= { umAuthLocalPod 1 }
+
+                umAuthLocalPodSeed  OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-write
+                    STATUS      current
+                    DESCRIPTION
+                        "This value is used as a seed to generate the POD
+                         string."
+                    ::= { umAuthLocalPod 2 }
+
+                umAuthLocalPodSeedEncrypted OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-write
+                    STATUS      current
+                    DESCRIPTION
+                        "Indicates whether the seed is encrypted or not. If
+                        the seed set in the above OID is encrypted, then
+                        this value must be set to true."
+                    ::= { umAuthLocalPod 3 }
+
+        -- Remote Authentication settings
+        umAuthRemote OBJECT IDENTIFIER ::= { umAuth 2 }
+
+            -- Radius
+            umAuthRemoteRadius  OBJECT IDENTIFIER ::= { umAuthRemote 1 }
+
+                -- TODO
+				
+	umCommit OBJECT IDENTIFIER  ::= { hitronRgUm 2 }
+        umCommitAll OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Commit all UM settings. "
+        ::= { umCommit 1 } 
+
+END

@@ -1,0 +1,164 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-log-mgmt.mib
+--    Creation Date: November 23, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--		private MIB for log management.
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-LOG-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,
+	Integer32,
+	NOTIFICATION-TYPE       FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION      FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP      FROM SNMPv2-CONF
+	SnmpAdminString         FROM SNMP-FRAMEWORK-MIB
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6         FROM INET-ADDRESS-MIB
+    ifIndex                 FROM IF-MIB
+    PositiveInteger         FROM UPS-MIB
+    cableMgmt               FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- Netgear Group
+-- 
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ ntgrLogMgmt MODULE-IDENTITY
+	LAST-UPDATED "201211230000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"Initial version of this MIB module."
+::= { cableMgmt 14 }
+
+
+logEventEnableBitmask  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Set to display log type.This OID use bit mask to represent display log type.
+		 For example, if bit 5 are 1, it will display log about portForwarding/Port Triggering.
+		 bit 0 : Attempted access to allowed sites
+		 bit 1 : Attempted access to blocked sites and services
+		 bit 2 : Connections to the Web-based interface of this Gateway
+		 bit 3 : Gateway operation (startup, get time etc)
+		 bit 4 : Known DoS attacks and Port Scans
+		 bit 5 : Port Forwarding / Port Triggering
+		 bit 6 : Wireless access
+		 bit 7 : Automatic Internet connection reset"
+	::= {  ntgrLogMgmt 1 }
+
+logEventTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF logEventEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= {  ntgrLogMgmt 2 }
+
+logEventEntry  OBJECT-TYPE
+	SYNTAX 	logEventEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { logEventTime }
+	::= { logEventTable 1 }
+
+logEventEntry ::= SEQUENCE {
+	logEventTime
+		SnmpAdminString,
+	logEventText
+		SnmpAdminString,
+	logEventTarget
+		SnmpAdminString,
+	logEventSource
+		SnmpAdminString,
+	logEventCount
+		SnmpAdminString
+}
+
+logEventTime  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"Display occurrence time of the log."
+	::= { logEventEntry 1 }
+
+logEventText  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"Display log content."
+	::= { logEventEntry 2 }
+
+logEventTarget  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The Destination address of the logged traffic"
+	::= { logEventEntry 3 }
+
+logEventSource  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The source address of the logged traffic"
+	::= { logEventEntry 4 }
+
+logEventCount  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"Display the same log count."
+	::= { logEventEntry 5 }
+
+END
+

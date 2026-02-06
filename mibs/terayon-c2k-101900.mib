@@ -1,0 +1,856 @@
+TERAYON-C2K-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE,
+        IpAddress, Unsigned32, enterprises
+                FROM SNMPv2-SMI
+
+        ifIndex, DisplayString
+                FROM RFC1213-MIB
+
+        RowStatus, TruthValue, TAddress
+                FROM SNMPv2-TC
+
+        usmUserEntry
+                FROM SNMP-USER-BASED-SM-MIB
+
+        snmpTargetAddrEntry, SnmpTagValue
+                FROM SNMP-TARGET-MIB
+
+        OBJECT-GROUP, MODULE-COMPLIANCE
+                FROM SNMPv2-CONF;
+
+
+-- The root of Terayon's subtree under the enterprises branch of the OID tree.
+terayon     MODULE-IDENTITY 
+            LAST-UPDATED    "0010190000Z" -- October 19, 2000
+            ORGANIZATION    "Terayon Communication Systems"
+            CONTACT-INFO
+                "Address: Terayon Communication Systems
+                          2952 Bunker Hill Lane
+                          Santa Clara, CA. 95054
+                 Phone:   (408) 727-4400"
+            DESCRIPTION
+                "This is the MIB module for vendor specific SNMP objects
+                for the Terayon C2K Cable Modem." 
+            ::= { enterprises 1456 }
+
+
+c2k                 OBJECT IDENTIFIER ::= { terayon 11 }
+c2kUcm              OBJECT IDENTIFIER ::= { c2k 1 }
+c2kUcmMibObjects    OBJECT IDENTIFIER ::= { c2kUcm 1 }
+c2kUcmBase          OBJECT IDENTIFIER ::= { c2kUcmMibObjects 1 }
+c2kUcmStats         OBJECT IDENTIFIER ::= { c2kUcmMibObjects 2 }
+c2kUcmSnmp          OBJECT IDENTIFIER ::= { c2kUcmMibObjects 3 }
+c2kUcmFilter        OBJECT IDENTIFIER ::= { c2kUcmMibObjects 4 }
+c2kUcmTelnet        OBJECT IDENTIFIER ::= { c2kUcmMibObjects 5 }
+c2kUcmWebServer     OBJECT IDENTIFIER ::= { c2kUcmMibObjects 6 }
+
+
+--
+-- BASE GROUP
+--
+
+c2kUcmEthChipVeNetMAC110 OBJECT-TYPE
+        SYNTAX      OBJECT IDENTIFIER
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object identifies the Ethernet chipset used by the Terayon
+             cable modem. It appears here because the chipset does not appear
+             as one of the options in RFC1643, the Ethernet-Like MIB definition,
+             or RFC2666, Definitions of Object Identifiers for Identifying
+             Ethernet Chip Sets.
+             Instructions in RFC1643 state that the chipset identity must appear
+             in the enterprise specific section of the registration tree if not
+             present in RFC1643."
+        ::= { c2kUcmBase 1 }
+
+
+c2kUcmConfigFileBadTLV OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object provides visibility into configuration file accuracy 
+             by indicating the progress of TLV processing. A value of zero indicates 
+             the configuration file contained no errors and was processed correctly.
+             Any other value signifies the ordinal TLV at which processing halted due
+             to error."
+        DEFVAL {0}
+        ::= { c2kUcmBase 2 }
+
+
+c2kUcmRegistrationAttempted OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Number of times the modem attempted to register."
+        ::= { c2kUcmBase 3 }
+
+
+c2kUcmRegistrationSuccessed OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Number of times the modem completed registration."
+        ::= { c2kUcmBase 4 }
+
+
+c2kUcmRegistrationLastSuccessTime OBJECT-TYPE
+        SYNTAX      TimeTicks
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The value of sysUpTime at the time of the last successful 
+             registration."
+        ::= { c2kUcmBase 5 }
+
+
+c2kUcmRangingAttempted OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Number of times ranging ID was transmitted by the modem.  
+             Smaller the number, faster modem ranged successfully.  
+             When this counter is zero and modem seem to have been ranging
+             for awhile, downstream link maybe down."
+        ::= { c2kUcmBase 6 }
+
+
+c2kUcmIgmpMode OBJECT-TYPE
+        SYNTAX      INTEGER {
+                                non-provision(1),
+                                provision(2)
+                            }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object identifies the behavior of IP multicast groups learned
+             from IGMP message.  non-prevision(1) causes cable modem forwarding
+             traffic for the appropriated IP multicast group once this group 
+             had been learned.  prevision(2) causes cable modem forwarding
+             traffic for the appropriated IP multicast group if and only if 
+             one NMS allowed modem to do so (by setting igmpCacheStatus value 
+             to 'active')."
+        DEFVAL { non-prevision }
+        ::= { c2kUcmBase 7 }
+
+
+c2kUcmMsgLED OBJECT-TYPE
+        SYNTAX      INTEGER {
+                                off(0),
+                                on(1),
+                                blink(2)
+                            }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object provides the ability to turn on or off the MSG LED on
+             the UCM board.  This can be used to signal the user of the arrival
+             of a new email message.  off(0) turns off the LED.  on(1) turns on
+             the LED, and blink(2) blinks the MSG LED."
+        DEFVAL { off }
+        ::= { c2kUcmBase 8 }
+
+
+c2kUcmFlash OBJECT IDENTIFIER ::= { c2kUcmBase 9 }
+
+
+c2kUcmFlashLoadTable OBJECT-TYPE
+       SYNTAX      SEQUENCE OF C2kUcmFlashLoadEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               " A list of Flash Load entries."
+       ::= { c2kUcmFlash 1 }
+
+
+c2kUcmFlashLoadEntry OBJECT-TYPE
+       SYNTAX      C2kUcmFlashLoadEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "An entry containing management information applicable
+               to a particular Flash Load."
+       INDEX   { c2kUcmFlashLoadIndex }
+       ::= { c2kUcmFlashLoadTable 1 }
+
+
+C2kUcmFlashLoadEntry ::= SEQUENCE {
+            c2kUcmFlashLoadIndex          Integer32,
+            c2kUcmFlashLoadNumber         Integer32,
+            c2kUcmFlashLoadActive         TruthValue,
+            c2kUcmFlashLoadLen            Integer32,
+            c2kUcmFlashLoadUncompressLen  Integer32,
+            c2kUcmFlashLoadCRC            OCTET STRING,
+            c2kUcmFlashLoadName           DisplayString,
+            c2kUcmFlashLoadVersion        DisplayString,
+            c2kUcmFlashLoadTime           DisplayString
+         }
+
+
+c2kUcmFlashLoadIndex OBJECT-TYPE
+      SYNTAX      Integer32  (1..2147483647)
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION
+              "Index value for this row."
+    ::= { c2kUcmFlashLoadEntry 1 }
+
+
+c2kUcmFlashLoadNumber OBJECT-TYPE
+      SYNTAX      Integer32  (0..1)
+      MAX-ACCESS  read-only
+      STATUS      current
+      DESCRIPTION
+              "Flash Load number."
+      ::= { c2kUcmFlashLoadEntry 2 }
+
+
+c2kUcmFlashLoadActive OBJECT-TYPE
+      SYNTAX      TruthValue
+      MAX-ACCESS  read-only
+      STATUS      current
+      DESCRIPTION
+              "This object indicates the load is running or not."
+      ::= { c2kUcmFlashLoadEntry 3 }
+
+c2kUcmFlashLoadLen OBJECT-TYPE
+      SYNTAX      Integer32
+      MAX-ACCESS  read-only
+      STATUS      current
+      DESCRIPTION
+              "This object indicates the compress length of the flash image."
+      ::= { c2kUcmFlashLoadEntry 4}
+
+
+c2kUcmFlashLoadUncompressLen OBJECT-TYPE
+      SYNTAX      Integer32
+      MAX-ACCESS  read-only
+      STATUS      current
+      DESCRIPTION
+              "This object indicates the uncompress length of the flash image."
+      ::= { c2kUcmFlashLoadEntry 5}
+
+
+c2kUcmFlashLoadCRC OBJECT-TYPE
+      SYNTAX      OCTET STRING ( SIZE(4) )
+      MAX-ACCESS  read-only
+      STATUS      current
+      DESCRIPTION
+              "This object indicates the CRC value of the flash image."
+      ::= { c2kUcmFlashLoadEntry 6}
+
+
+c2kUcmFlashLoadName  OBJECT-TYPE
+      SYNTAX      DisplayString
+      MAX-ACCESS  read-only
+      STATUS      current
+      DESCRIPTION
+              "This object indicates the name of the flash image."
+      ::= { c2kUcmFlashLoadEntry 7}
+
+
+c2kUcmFlashLoadVersion OBJECT-TYPE
+      SYNTAX      DisplayString
+      MAX-ACCESS  read-only
+      STATUS      current
+      DESCRIPTION
+              "This object indicates the version number of the flash image."
+      ::= { c2kUcmFlashLoadEntry 8}
+
+
+c2kUcmFlashLoadTime OBJECT-TYPE
+      SYNTAX      DisplayString
+      MAX-ACCESS  read-only
+      STATUS      current
+      DESCRIPTION
+              "This object indicates the build time of the flash image."
+      ::= { c2kUcmFlashLoadEntry 9}
+
+
+c2kUcmNvram OBJECT IDENTIFIER ::= { c2kUcmBase 10 }
+
+
+c2kUcmNvramParamTable OBJECT-TYPE
+       SYNTAX      SEQUENCE OF C2kUcmNvramParamEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               " A list of NVRAM Parameter entries."
+       ::= { c2kUcmNvram 1 }
+
+
+c2kUcmNvramParamEntry OBJECT-TYPE
+       SYNTAX      C2kUcmNvramParamEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "An entry containing information applicable 
+                to a particular NVRAM parameter entry."
+       INDEX   { c2kUcmNvramParamIndex }
+       ::= { c2kUcmNvramParamTable 1 }
+
+
+C2kUcmNvramParamEntry ::= SEQUENCE {
+            c2kUcmNvramParamIndex         INTEGER,
+            c2kUcmNvramParamDescr         DisplayString,
+            c2kUcmNvramParamValue         DisplayString
+         }
+
+
+c2kUcmNvramParamIndex OBJECT-TYPE
+      SYNTAX      INTEGER  {
+                     nvramVersion(1),           -- NVRAM Version                              
+                     activeFlashNumber (2),     -- Active Flash Load                          
+                     activeloadName(3),         -- Active Flash Load Name                     
+                     operSuccess(4),            -- Flash Load Operation Success               
+                     utcOffset(5),              -- UTC Offset (uint:sec)                      
+                     tftpServerIp(6),           -- TFTP Server IP Address                     
+                     swServerIp(7),             -- S/W Image Server IP Address                
+                     swFilename(8),             -- S/W Image Filename                         
+                     adminStatus(9),            -- S/W Image Download Administration Status   
+                     operStatus(10),            -- S/W Image Download Operation Status        
+                     resetsNumber(11),          -- CM Reset Counts                            
+                     lostSyncsNumber(12),       -- CM Lost Synchronization Counts             
+                     t2TimeoutsNumber(13),      -- T2 Timeout Counts                          
+                     t4TimeoutsNumber(14),      -- T4 Timeout Counts                          
+                     initRngRspTout(15),        -- Ranging Response Timeout (unit:10ms)       
+                     initDsFrequency(16),       -- DS Frequency (unit:Hz)                     
+                     initDsQamMode(17),         -- DS QAM Mode                                
+                     initUsChannelId(18),       -- US Channel ID                              
+                     initUsChnlIdOver(19),      -- US Channel ID Override                     
+                     initUsPower(20),           -- US Power                                   
+                     initDsCrcEnable(21),       -- DS CRC Enable                              
+                     initDsChnlScan(22),        -- DS Channel Scan (unit:Hz)                  
+                     initUsIqEnable(23),        -- US SWAP_IQ Enable                          
+                     initTestByte(24),          -- Test Byte                                  
+                     sysContact(25),            -- System Contact                             
+                     sysName(26),               -- System Name                                
+                     sysLocation(27),           -- System Location                            
+                     hwVersion(28),             -- HW Version Number                          
+                     serialNumber(29),          -- Serial Number                              
+                     modelNumber(30),           -- Model Name                                 
+                     chnlLockWait(31),          -- Channel Lock Wait (uint:ms)                
+                     mpegSyncWait(32),          -- Mpeg Synchronization Wait (uint:ms)        
+                     cTaskDeadResets(33),       -- CM Reset Counts (due to a task being dead) 
+                     cpeRoutersList-0(34),      -- CPE Routers List - 0                       
+                     cpeRoutersList-1(35),      -- CPE Routers List - 1                       
+                     cpeRoutersList-2(36),      -- CPE Routers List - 2                       
+                     cpeRoutersList-3(37),      -- CPE Routers List - 3                       
+                     cpeRoutersList-4(38),      -- CPE Routers List - 4                       
+                     cpeRoutersList-5(39),      -- CPE Routers List - 5                       
+                     cpeRoutersList-6(40),      -- CPE Routers List - 6                       
+                     cpeRoutersList-7(41),      -- CPE Routers List - 7                       
+                     mfgOrgName(42),            -- Manufacture Organization Name              
+                     mfgCodeAccessStar(43),     -- Manufacture Code Access Start              
+                     mfgCvcAccessStart(44),     -- Manufacture CVC Access Start               
+                     companyNameShort(45),      -- Company Name (Short Version)
+                     companyNameSysDescr(46),   -- Company Name (sysDescr version)
+                     mfgCountryName(47),        -- Manufacturer Country Name
+                     mfgOrgUnitName(48),        -- Manufacturer Organizational Unit Name
+                     usbPid(49),                -- USB Product ID
+                     usbVid(50),                -- USB Vendor ID
+                     companyNameSyslog(51),     -- Company Name (Syslog Version)
+                     writeCount(52)             -- NVRAM Write Count                          
+                           }
+      MAX-ACCESS  not-accessible
+      STATUS      current
+      DESCRIPTION
+              "Index value for this row."
+    ::= { c2kUcmNvramParamEntry 1 }
+
+
+c2kUcmNvramParamDescr OBJECT-TYPE
+       SYNTAX      DisplayString (SIZE (0..255))
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "Provides a human-readable description of the NVRAM parameter."
+       ::= { c2kUcmNvramParamEntry 2 }
+
+
+c2kUcmNvramParamValue OBJECT-TYPE
+       SYNTAX      DisplayString (SIZE (0..255))
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+               "When GET, provides a human-readable value of the NVRAM parameter.
+                When SET, only few NVRAM paramenters can be modified via SNMP.
+                return notWritable error when try to update read only enrty,
+                return wrongValue error if the data format is incorrect for updating.
+                The c2kUcmNvramParamIndex of writable entries are:
+
+                     initRngRspTout(15),        -- Ranging Response Timeout (unit:10ms)       
+                     initDsFrequency(16),       -- DS Frequency (unit:Hz)                     
+                     initDsQamMode(17),         -- DS QAM Mode                                
+                     initUsChannelId(18),       -- US Channel ID                              
+                     initUsPower(20),           -- US Power                                   
+                     initDsCrcEnable(21),       -- DS CRC Enable                              
+                     initDsChnlScan(22),        -- DS Channel Scan (unit:Hz)                  
+                     initUsIqEnable(23),        -- US SWAP_IQ Enable                          
+                     initTestByte(24),          -- Test Byte                                  
+                     hwVersion(28),             -- HW Version Number                          
+                     modelNumber(30),           -- Model Name                                 
+                     chnlLockWait(31),          -- Channel Lock Wait (uint:ms)                
+                     mpegSyncWait(32),          -- Mpeg Synchronization Wait (uint:ms)        
+                "
+       ::= { c2kUcmNvramParamEntry 3 }
+
+
+c2kUcmNvramDsScanTable OBJECT-TYPE
+       SYNTAX      SEQUENCE OF C2kUcmNvramDsScanEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "Table of NVRAM DsScan entries."
+       ::= { c2kUcmNvram 2 }
+
+c2kUcmNvramDsScanEntry OBJECT-TYPE
+       SYNTAX      C2kUcmNvramDsScanEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "Frequency entry in the DsScan Table."
+       INDEX   { c2kUcmNvramDsScanIndex }
+       ::= { c2kUcmNvramDsScanTable 1 }
+
+
+C2kUcmNvramDsScanEntry ::= SEQUENCE {
+            c2kUcmNvramDsScanIndex        Unsigned32,
+            c2kUcmNvramDsScanFreq         Unsigned32
+         }
+
+c2kUcmNvramDsScanIndex OBJECT-TYPE
+         SYNTAX      Unsigned32 (1..200)
+         MAX-ACCESS  not-accessible
+         STATUS      current
+         DESCRIPTION
+                 "Indexes DsScan table."
+       ::= { c2kUcmNvramDsScanEntry 1 }
+
+c2kUcmNvramDsScanFreq OBJECT-TYPE
+         SYNTAX      Unsigned32 (0..870000000)
+         MAX-ACCESS  read-create
+         STATUS      current
+         DESCRIPTION
+                 "DsScan Frequency in Hz value for index.  If the frequency is 0,
+                  the entry at the given index is removed, and the table is shifted
+                  down."
+       ::= { c2kUcmNvramDsScanEntry 2 }
+
+c2kUcmCertificateType OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The object indicates the Certificate type."
+        ::= { c2kUcmBase 11 }
+
+--
+-- STATISTIC GROUP
+--
+
+
+c2kUcmStatsResetDataCounters OBJECT-TYPE
+        SYNTAX      INTEGER {
+                                not-applicable(1),
+                                reset(2)
+                            }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Setting this object to reset(2) causes all the CDM counters defined
+             in ifTable, ifXTable, and dot3StatsTable to be reset back to 0."
+        ::= { c2kUcmStats 1 }
+
+
+c2kUcmStatsDownstreamTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF C2kUcmStatsDownstreamEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table describes the statistic information of downstream 
+             channel.
+             An entry in this table exists for each ifEntry with an
+             ifType of docsCableDownstream(128)."
+        ::= { c2kUcmStats 2 }
+
+
+c2kUcmStatsDownstreamEntry OBJECT-TYPE
+        SYNTAX      C2kUcmStatsDownstreamEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An entry provides a list of extra statistic information for 
+             downstream channel."
+        INDEX { ifIndex }
+        ::= { c2kUcmStatsDownstreamTable 1 }
+
+
+C2kUcmStatsDownstreamEntry ::= SEQUENCE {
+            c2kUcmStatsDSTotalEthernetPkts      Counter32,
+            c2kUcmStatsDSConnection             Counter32
+        }
+
+
+c2kUcmStatsDSTotalEthernetPkts OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The total number of Ethernet packets that are transmitted 
+             by the modem in the downstream direction."
+        ::= { c2kUcmStatsDownstreamEntry 1 }
+
+
+c2kUcmStatsDSConnection OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Number of times the modem completed downstream sync. 
+             It shows how many times the modem attempted downstream sync
+              since power up."
+        ::= {c2kUcmStatsDownstreamEntry 2 }
+
+
+c2kUcmStatsUpstreamTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF C2kUcmStatsUpstreamEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table describes the statistic information of upstream 
+             channel.
+             An entry in this table exists for each ifEntry with an
+             ifType of docsCableUpstream(129)."
+        ::= { c2kUcmStats 3 }
+
+
+c2kUcmStatsUpstreamEntry OBJECT-TYPE
+        SYNTAX      C2kUcmStatsUpstreamEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An entry provides a list of extra statistic information for 
+             downstream channel."
+        INDEX { ifIndex }
+        ::= { c2kUcmStatsUpstreamTable 1 }
+
+
+C2kUcmStatsUpstreamEntry ::= SEQUENCE {
+            c2kUcmStatsUSTotalEthernetPkts      Counter32,
+            c2kUcmStatsUSConnection             Counter32,
+            c2kUcmStatsUSConnectionError        Counter32,
+            c2kUcmStatsUSAllocatedBandwidth     Integer32,
+            c2kUcmStatsUSTransmitPowerMargine   Integer32
+}
+
+
+c2kUcmStatsUSTotalEthernetPkts OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The total number of Ethernet packets that are transmitted 
+             by the modem in the upstream direction."
+        ::= { c2kUcmStatsUpstreamEntry 1 }
+
+
+c2kUcmStatsUSConnection OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Number of times the modem completed upstream sync. 
+             It shows how many times the modem attempted upstream sync 
+             since power up."
+        ::= { c2kUcmStatsUpstreamEntry 2 }
+
+
+c2kUcmStatsUSConnectionError OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Number of times modem detected upstream link failure."
+        ::= { c2kUcmStatsUpstreamEntry 3 }
+
+
+c2kUcmStatsUSAllocatedBandwidth OBJECT-TYPE
+        SYNTAX      Integer32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The bandwidth that is allocated to the modems in the upstream.
+             The units are in Kbps."
+        ::= { c2kUcmStatsUpstreamEntry 4 }
+
+
+c2kUcmStatsUSTransmitPowerMargine OBJECT-TYPE
+        SYNTAX      Integer32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object returns the transmit power margin of the modem.
+             The units are in tenth of dBmV."
+        ::= { c2kUcmStatsUpstreamEntry 5 }
+
+c2kUcmStatsIdleCurrent OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Number of milliseconds in the last 1 second interval spent in the Idle Task"
+        ::= { c2kUcmStats 4 }
+
+c2kUcmStatsIdleMin OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Minimum number of milliseconds in a 1 second interval spent in the Idle Task"
+        ::= { c2kUcmStats 5 }
+
+c2kUcmStatsIdleMax OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Maximum number of milliseconds in a 1 second interval spent in the Idle Task"
+        ::= { c2kUcmStats 6 }
+
+c2kUcmStatsIdleAverage OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Average number of milliseconds in a 1 second interval spent in the Idle Task"
+        ::= { c2kUcmStats 7 }
+
+c2kUcmStatsResetIdleInfo OBJECT-TYPE
+        SYNTAX      INTEGER {
+                                not-applicable(1),
+                                reset(2)
+                            }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Setting this object to reset(2) causes the Idle Info to be reset to its starting values."
+        ::= { c2kUcmStats 8 }
+
+
+
+--
+-- SNMP GROUP
+--
+
+
+c2kUcmSnmpMode OBJECT-TYPE
+        SYNTAX      INTEGER {
+                                preRegistration(1),
+                                docsDevNmAccess(2),
+                                coexistence(3)
+                            }
+     -- MAX-ACCESS  read-write
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object controls operation of the SNMP protocol version "
+        ::= { c2kUcmSnmp 1}
+
+
+c2kUcmSnmpPort OBJECT-TYPE
+        SYNTAX      Integer32 (1..65535)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object controls the UDP port for SNMP"
+        ::= { c2kUcmSnmp 2}
+
+
+c2kUcmSnmpTrapPort OBJECT-TYPE
+        SYNTAX      Integer32 (1..65535)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object controls the UDP port for SNMP TRAPs"
+        ::= { c2kUcmSnmp 3}
+
+
+
+--
+-- FILTER GROUP
+--
+
+
+c2kUcmFilterTotalMcastNumbers OBJECT-TYPE
+        SYNTAX       Integer32 (1..256) -- range is not sure
+        MAX-ACCESS   read-only
+        STATUS       current
+        DESCRIPTION
+            "The current number of entries Multicast Filter Table."
+        ::= { c2kUcmFilter 1 }
+
+
+c2kUcmFilterMcastEntryInHardware OBJECT-TYPE
+        SYNTAX       Integer32 (1..64) -- range is not sure
+        MAX-ACCESS   read-write
+        STATUS       current
+        DESCRIPTION
+            "This object indicates the number of multicast filter entry 
+             supported by hardware filter table. If total multicast entries
+             is greater than this object, means C2K works on software filtering
+             scheme now.  The C2K cable modem hardware only supports a limited 
+             number of entries for filtering, and shares with all different 
+             type of filter (such as LLC filer, IP filter). Setting this object 
+             higher will lower the entry of other filter tables; but get 
+             better performance on multicast packet filtering. NMS should aware
+             of this objects' setting."
+        DEFVAL { 16 }
+        ::= { c2kUcmFilter 2 }
+
+
+--
+-- Multicast Filter Table
+-- 
+
+
+--
+-- TELNET GROUP
+--
+-- Telnet group is designed for debugging purpose.
+-- It is restricted from SNMP V1/V2C packets, 
+-- and accessible by a specific USM user in SNMPv3 only.
+--
+
+c2kUcmTelnetEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object controls enable of Telnet Service. Setting this object 
+            to true(1) enables telnet service and will remain enabling if 
+            c2kUcmTelnetExpiryTime is not zero. Setting it to false(2) causes 
+            telnet service disabled, all of the connected telnet section will be
+            discontinue immediately."
+        ::= { c2kUcmTelnet 1 }
+
+
+c2kUcmTelnetPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE(1..32))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The password string to be matched for Telnet Service." 
+        ::= { c2kUcmTelnet 2 }
+
+
+c2kUcmTelnetLifeTime OBJECT-TYPE
+        SYNTAX      TimeTicks
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The timeout period for disabling the enabled telnet service."
+        DEFVAL { 8640000 }  -- 24 hours
+        ::= { c2kUcmTelnet 3 }
+
+
+c2kUcmTelnetExpiryTime OBJECT-TYPE
+        SYNTAX      TimeTicks
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The minimum amount of time remaining before Telnet service becomes
+             disable. This object will be reset when updates c2kUcmTelnetLifeTime
+             or set c2kUcmTelnetEnable to true(1)."
+        ::= { c2kUcmTelnet 4 }
+
+
+c2kUcmTelnetMaxAttempts OBJECT-TYPE
+        SYNTAX      Integer32 (1..10)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object controls the maximum number of attempts of established a 
+             telnet section."
+        DEFVAL { 3 }
+        ::= { c2kUcmTelnet 5 }
+
+
+c2kUcmTelnetAttempted OBJECT-TYPE
+        SYNTAX      Integer32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Number of times telnet client attempt to establish a connection.
+             This object will be reset when updates c2kUcmTelnetMaxAttempts or 
+             c2kUcmTelnetEnable."
+        ::= { c2kUcmTelnet 6 }
+
+
+--
+-- WEB SERVER GROUP
+--
+--
+
+c2kUcmWebServerPassword OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE(1..32))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The password string to be matched for the Web Server to be enabled
+             on the CPE." 
+        ::= { c2kUcmWebServer 1 }
+
+--
+-- Place holder for notifications/traps.
+--
+
+c2kUcmNotification  OBJECT IDENTIFIER   ::= { c2kUcm 2 }
+
+
+mcastFilterNumberRisingTrap     NOTIFICATION-TYPE
+        OBJECTS     {
+                        c2kUcmFilterMcastEntryInHardware
+                    }
+        STATUS      current
+        DESCRIPTION
+            "The SNMP trap that is generated when multicast filter entry
+             over its threshold (c2kUcmFilterMcastEntryInHardware). Which is:
+
+                previous c2kUcmFilterTotalMcastNumbers + 1 = 
+                                c2kUcmFilterMcastEntryInHardware + 1
+
+             And C2K starts software filter scheme to filter the multicast 
+             packet.
+
+             The default c2kUcmSnmpTrapConfigSeverity for this trap is 2."
+            ::= { c2kUcmNotification 1 }
+
+
+mcastFilterNumberFallingTrap     NOTIFICATION-TYPE
+        OBJECTS     {
+                        c2kUcmFilterMcastEntryInHardware           
+                    }
+        STATUS      current
+        DESCRIPTION
+            "The SNMP trap that is generated when a multicast filter entry
+             back to its threshold (c2kUcmFilterMcastEntryInHardware). 
+             which is:
+
+                previous c2kUcmFilterTotalMcastNumbers - 1 = 
+                                c2kUcmFilterMcastEntryInHardware 
+
+             And C2K starts hardware filter scheme again to filter the multicast
+             packet. 
+
+             The default c2kUcmSnmpTrapConfigSeverity for this trap is 2."
+            ::= { c2kUcmNotification 2 }
+
+
+END

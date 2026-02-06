@@ -1,0 +1,203 @@
+-- vim: set ts=4, set expandtab, match Todo /\%>79v/
+-- ***********************************************************************
+-- ***********************************************************************
+--                             ROUTER
+--                      SNMP/MIB : MIB Files
+--
+--            Copyright (C) 2012 Hitron Technologies Inc.
+--                       All Rights Reserved.
+-- ***********************************************************************
+--  Filename    : HITRON-RG-APP-DDNS.mib
+--  Description : DDNS MIB
+-- ***********************************************************************
+--
+
+HITRON-RG-APP-DDNS-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+    , OBJECT-TYPE
+    , enterprises
+    , Integer32
+    , Unsigned32
+    , Counter32
+        FROM SNMPv2-SMI -- RFC2578
+
+    DisplayString
+    , TruthValue
+    , RowStatus
+    , DateAndTime
+        FROM SNMPv2-TC  -- RFC2579
+
+    hitronRgApp
+        FROM HITRON-RG-APP-MIB
+
+    ; -- END of IMPORTS
+
+appDdns  MODULE-IDENTITY
+    LAST-UPDATED    "201209191604Z" -- Sep. 19, 2012
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "Liangfeng Wu
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8120
+        E-mail: wuliangfeng@sz.hitrontech.com
+
+        Haibo Xi
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8148
+        E-mail: xihaibo@sz.hitrontech.com"
+
+    DESCRIPTION
+        "MIB module for DDNS configuration. "
+
+    REVISION    "201209191604Z" -- Sep. 19, 2012
+    DESCRIPTION
+        "Add all oid"
+
+    REVISION    "201209051604Z" -- Sep. 05, 2012
+    DESCRIPTION
+        "Initial Version"
+
+    ::= { hitronRgApp 10 }
+
+    appDdnsEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            " Enable/Disable the DDNS Service. "
+        ::= { appDdns 1 }
+    appDdnsPredindex  OBJECT-TYPE
+        SYNTAX      Integer32
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This value is used as index of preestablished server list.preestablished
+            server list has defined appDdnsSystem appDdnsServiceName appDdnsServerUrl and appDdnsIpServer
+             0: not pred, >0: index"
+        ::= { appDdns 2 }
+
+    appDdnsSystem  OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "ddns system."
+        ::= { appDdns 3 }
+
+    appDdnsServiceName  OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "ddns Service Name."
+        ::= { appDdns 4 }
+
+    appDdnsServerUrl  OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "ddns Service Url."
+        ::= { appDdns 5 }
+
+    appDdnsPeriod  OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "ddns Update Period."
+        ::= { appDdns 6 }
+
+    appDdnsUserName  OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "ddns User Name."
+        ::= { appDdns 7 }
+
+    appDdnsPassword  OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "ddns password."
+        ::= { appDdns 8 }
+
+    appDdnsIpServer  OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "ddns ip server."
+        ::= { appDdns 9 }
+
+    appDdnsHostNameTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF AppDdnsHostNameEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Host Name table used to be Ddns alias."
+        ::= { appDdns 10 }
+
+        appDdnsHostNameEntry OBJECT-TYPE
+            SYNTAX      AppDdnsHostNameEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "Entry of table appDdnsHostNameTable"
+            INDEX       { appDdnsHostNameIndex }
+            ::= { appDdnsHostNameTable 1 }
+
+            AppDdnsHostNameEntry ::=
+                SEQUENCE {
+                    appDdnsHostNameIndex          Integer32,
+                    appDdnsHostNameRowStatus      RowStatus,
+                    appDdnsHostNameValue          DisplayString
+                }
+
+            appDdnsHostNameIndex OBJECT-TYPE
+                SYNTAX      Integer32
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Host Name Table index."
+                ::= { appDdnsHostNameEntry 1 }
+
+            appDdnsHostNameRowStatus OBJECT-TYPE
+                SYNTAX      RowStatus
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "RowStatus used to manage the creation and deletion of
+                    conceptual row. "
+                ::= { appDdnsHostNameEntry 2 }
+
+            appDdnsHostNameValue OBJECT-TYPE
+                SYNTAX      DisplayString
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "Host Name Value used to be Ddns alias."
+                DEFVAL      { "hitronrg" }
+                ::= { appDdnsHostNameEntry 3 }
+	
+    ddnsCommit OBJECT IDENTIFIER  ::= { appDdns 11 }
+        ddnsCommitAll OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Commit all UI settings. "
+        ::= { ddnsCommit 1 } 
+            
+    -- Add more...
+END

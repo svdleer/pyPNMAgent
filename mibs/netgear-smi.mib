@@ -1,0 +1,34 @@
+-- **************************************************************************
+--
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--    No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+--
+-- **************************************************************************
+--    Filename: netgear-smi.mib
+--    Creation Date: May 14, 2012
+--
+-- **************************************************************************
+--    Description:
+--
+--		private MIB for runtime management of diag thread.
+--
+-- **************************************************************************
+--    Revision History:
+--
+-- **************************************************************************
+
+NETGEAR-SMI DEFINITIONS ::= BEGIN
+
+IMPORTS
+    enterprises
+        FROM SNMPv2-SMI;
+
+netgear OBJECT IDENTIFIER ::= { enterprises 4526 } -- assigned by IANA
+
+END

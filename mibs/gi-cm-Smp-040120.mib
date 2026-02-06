@@ -1,0 +1,294 @@
+--
+-- (c) 2003 Motorola, Inc.
+--
+--
+-- cmSmp MIB
+--
+
+CM-SMP-MIB DEFINITIONS ::= BEGIN
+
+   IMPORTS
+      enterprises, OBJECT-TYPE, MODULE-IDENTITY, Integer32
+         FROM SNMPv2-SMI
+      DateAndTime, TruthValue
+         FROM SNMPv2-TC
+      SnmpAdminString
+         FROM SNMP-FRAMEWORK-MIB
+	  InetAddressType, InetAddress 
+         FROM INET-ADDRESS-MIB; 
+      
+   cmSmp MODULE-IDENTITY
+      LAST-UPDATED "200401200000Z"  -- January 20, 2004
+      ORGANIZATION
+         "Motorola BCS"
+      CONTACT-INFO
+         "Author: Greg Nakanishi
+          Org:    Motorola BCS
+          postal: 6450 Sequence Drive
+                  San Diego, CA 92121
+          email:  gnakanishi@motorola.com
+          phone:  858-404-2366"
+      DESCRIPTION
+          "This MIB defines management objects for the configuration
+           and status monitoring of the Session Manager Protocol.  
+           
+           Refer to: Session Manager Protocol, Hewlett-Packard 
+           Internet Infrastructure Division, Version 2.0, 
+           April 16, 1999"    
+       
+      REVISION "200401200000Z"
+      DESCRIPTION
+      "Edited by Kaitlyn Chau.
+      - Telstra specification document changed the
+        (cmSmpClientReqTimeout) timeout value on a
+        re-authentication failure from 9 minutes to 14 minutes."
+        
+      REVISION "200310230000Z"
+      DESCRIPTION
+      "Edited by Kaitlyn Chau.
+      - Clarified cmSmpAuthServerAddress description 
+        to reflect the maximum length changes from
+        255 to 64."
+        
+      REVISION "200309230000Z"
+      DESCRIPTION
+      "Edited by Kaitlyn Chau.
+      - Clarified cmSmpLogin and cmSmpLogout description
+      - Display the available settings in the
+        cmSmpAuthServerAddressType MIB object"
+        
+      REVISION "200309050000Z"
+      DESCRIPTION
+      "Edited by Kaitlyn Chau.
+      - Renamed cmSmp-4.mib to cmSmp.mib
+      - Changed cmSmpAuthServerAddress default value
+        from dce-server to login-server."
+         
+      REVISION "200309020000Z"
+      DESCRIPTION
+      "Edited by Kaitlyn Chau.
+      - Initial Revision"
+                            
+   ::= {cm 58}
+
+--
+-- Path to root
+--
+
+   gi OBJECT IDENTIFIER ::= {enterprises 1166}
+   giproducts OBJECT IDENTIFIER ::= {gi 1}
+   cm OBJECT IDENTIFIER ::= {giproducts 19}
+
+-- Administrative assignments ----------------------
+
+   cmSmpObjects OBJECT IDENTIFIER ::= { cmSmp 1 }
+   cmSmpConformance OBJECT IDENTIFIER ::= { cmSmp 2 }
+
+   cmSmpConfig OBJECT IDENTIFIER ::= {cmSmpObjects 1}    
+   cmSmpLog OBJECT IDENTIFIER ::= {cmSmpObjects 2}
+   
+-- Object definitions ------------------------------
+
+--
+-- SMP Configuration Objects
+--
+
+cmSmpSessionUserId OBJECT-TYPE 
+      SYNTAX      SnmpAdminString (SIZE(0..255))
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "User id.
+         This object must be maintained in non-volatile memory."
+      ::= { cmSmpConfig 1 }
+
+     
+cmSmpPassword OBJECT-TYPE 
+      SYNTAX      SnmpAdminString( SIZE(0..20))
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "Password for this user.  
+         When read, this object MUST return a zero length string.
+         This object must be maintained in non-volatile memory."
+      ::= { cmSmpConfig 2 } 
+
+cmSmpLogin OBJECT-TYPE 
+      SYNTAX      TruthValue
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "Setting this object to 'true(1)' causes the SMP Login
+          transaction to be initiated.  Reading this object
+          always returns 'false(2)'."
+      ::= { cmSmpConfig 3 } 
+
+cmSmpLogout OBJECT-TYPE 
+      SYNTAX      TruthValue
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "Setting this object to 'true(1)' causes the SMP Logout
+          transaction to be initiated.  Reading this object
+          always returns 'false(2)'."
+      ::= { cmSmpConfig 4 } 
+      
+cmSmpAuthServerAddressType OBJECT-TYPE 
+      SYNTAX      InetAddressType { ipv4(1), dns(16) }
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "The address type contained in cmSmpAuthServerAddress.
+         This object must be maintained in non-volatile memory."
+      DEFVAL { dns }
+      ::= { cmSmpConfig 5 }
+      
+cmSmpAuthServerAddress OBJECT-TYPE 
+      SYNTAX      OCTET STRING (SIZE (0..64))
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "The address of the SMP authentication server.  This object 
+          may contain an IPv4 address or a host name.  If this object
+          contains a host name, the device appends the host name with
+          the local domain name and resolves the resulting FQDN to 
+          an IP address. This address is used when initiating an SMP
+          Login and Logout transaction.
+          
+          This object must be maintained in non-volatile memory."
+      DEFVAL { "login-server" }
+      ::= { cmSmpConfig 6 }
+      
+cmSmpClientReqTimeout OBJECT-TYPE 
+      SYNTAX      INTEGER
+      UNITS	"seconds"
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "The time interval that the device waits since the device
+          authenticated with the Login server or since the last 
+          reception of a Client Status Request message before 
+          initiating a Login transaction.
+          
+          This object must be maintained in non-volatile memory."
+      DEFVAL { 840 } -- 14 minutes
+      ::= { cmSmpConfig 7 }     
+
+--
+-- SMP Event Log
+--
+
+cmSmpLogControl OBJECT-TYPE
+        SYNTAX INTEGER {
+            resetLog(1)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Setting this object to resetLog(1) empties the event log.
+             All data is deleted. Reading this object always returns
+             resetLog(1)."
+        ::= { cmSmpLog 1 }
+
+cmSmpLogEventTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF CmSmpLogEventEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Contains a log of SMP events."
+        ::= {  cmSmpLog 2 }
+
+cmSmpLogEventEntry OBJECT-TYPE
+        SYNTAX      CmSmpLogEventEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Contains an SMP-related event.
+
+             Entries are created with the first occurrance of an event.
+             cmSmpLogControl can be used to clear the table.
+             Individual events can not be deleted."
+        INDEX { cmSmpLogIndex }
+
+        ::= { cmSmpLogEventTable 1 }
+
+CmSmpLogEventEntry ::= SEQUENCE {
+            cmSmpLogIndex           Integer32,
+            cmSmpLogTime            DateAndTime,
+            cmSmpLogText            SnmpAdminString
+        }
+
+cmSmpLogIndex OBJECT-TYPE
+        SYNTAX      Integer32 (1..2147483647)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Provides relative ordering of the objects in the event
+             log."
+        ::= { cmSmpLogEventEntry 1 }
+
+cmSmpLogTime OBJECT-TYPE
+        SYNTAX      DateAndTime
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The time that this entry was created."
+        ::= { cmSmpLogEventEntry 2 }
+
+cmSmpLogText OBJECT-TYPE
+        SYNTAX      SnmpAdminString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Provides a human-readable description of the event"
+        ::= { cmSmpLogEventEntry 3 }
+ 
+      
+--  Conformance --------------------------------------------------
+
+   cmSmpCompliances OBJECT IDENTIFIER ::= { cmSmpConformance 1 }
+   cmSmpGroups      OBJECT IDENTIFIER ::= { cmSmpConformance 2 }
+   
+  -- Compliance statements
+
+   cmSmpCompliance MODULE-COMPLIANCE
+      STATUS       current
+      DESCRIPTION 
+        "The compliance statement for devices that implement the 
+         SMP MIB"
+
+    MODULE       -- this module
+        MANDATORY-GROUPS { cmSmpBaseGroup }            
+
+    OBJECT  cmSmpAuthServerAddressType
+       SYNTAX INTEGER { ipv4(1), dns(16) } 
+       MIN-ACCESS  read-write 
+       DESCRIPTION 
+         "Only IPv4 and DNS address types are required to be 
+          supported."
+    
+    ::= { cmSmpCompliances 1 }    
+    
+-- Units of compliance
+cmSmpBaseGroup OBJECT-GROUP
+    OBJECTS     {
+    			 cmSmpSessionUserId,
+    			 cmSmpPassword,
+    			 cmSmpLogin,
+    			 cmSmpLogout,
+    			 cmSmpAuthServerAddressType,
+    			 cmSmpAuthServerAddress,
+    			 cmSmpClientReqTimeout,
+    			 cmSmpLogControl,
+    			 cmSmpLogTime,
+    			 cmSmpLogText
+    			 }    
+    STATUS       current
+    DESCRIPTION "A collection of objects for configuring and
+                 monitoring SMP."
+    ::= { cmSmpGroups 1 }
+               
+END   
+
+
+

@@ -1,0 +1,173 @@
+----------------------------------------------------------------------------
+--
+--  Copyright (c) 2011  NETGEAR, Inc.
+--  All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--  written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+--
+----------------------------------------------------------------------------
+--
+--    Filename: NETGEAR-CM-MIB.mib
+--    Author:   
+--    Creation Date: Jan 15, 2009
+--
+----------------------------------------------------------------------------
+--    Description:
+--
+--    private MIB for cable modem management
+--
+----------------------------------------------------------------------------
+--    Revision History:
+--       v1.0.0    Inital version.
+--       v1.0.1    Change group name.
+--       v1.0.2    Change cmRgEnable type from Unsigned32 to INTEGER.
+--       v1.0.3    Modify cmLastKnownFreq into table format and Add cmClearLastKnownFreqTable.
+--       v1.0.4    Add cmGotoFrequency into cableModemRFGroup
+----------------------------------------------------------------------------
+NETGEAR-CM-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	Unsigned32
+							FROM SNMPv2-SMI
+	TruthValue,
+	MacAddress,
+    RowStatus
+							FROM SNMPv2-TC
+    ifIndex                 FROM IF-MIB;
+
+
+--
+-- Netgear Group
+--
+
+netgear			OBJECT IDENTIFIER ::= { enterprises 4526 }
+carrierProducts		OBJECT IDENTIFIER ::= { netgear 3 }
+
+
+cableModemDev MODULE-IDENTITY
+	LAST-UPDATED    "0901150000Z" -- Jan 15, 2009
+        	ORGANIZATION    "Netgear, Inc"
+        	CONTACT-INFO
+		    "Toby Schwartz
+             	E-mail: tschwartz@netgear.com"
+        	DESCRIPTION
+            	"This is the MIB Module for Netgear Cable Modem device."
+        	REVISION "0901150000Z"
+        DESCRIPTION
+            "First Version: Jan 15, 2009"
+        ::= { carrierProducts 2 }
+
+cableModemDeviceGroup           OBJECT IDENTIFIER ::= { cableModemDev 1 }
+cableModemRFGroup               OBJECT IDENTIFIER ::= { cableModemDev 2 }
+cableModemGatewayGroup          OBJECT IDENTIFIER ::= { cableModemDev 3 }
+
+cmSetToFactoryDefault	 OBJECT-TYPE
+    SYNTAX      TruthValue
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Setting this object to true(1) will set device to the factory default values. 
+		 Reading this object always returns false(2)."
+	::= { cableModemDeviceGroup 1 }
+
+cmDownstreamLossReinitMac	 OBJECT-TYPE
+    SYNTAX      TruthValue
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"When the device has multiple down streams, setting this object to enabled(1) will let the device fall in DOCSIS 2.0 mode when any downstream is lost. 
+         Setting this object to disabled(2) will not do re-initialize MAC when loosing a downstream. The default value is enabled(1)."
+	::= { cableModemDeviceGroup 2 }
+
+cmClearLastKnownFreqTable	 OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Setting this object to enable(1) will clear the four LKF."
+
+	::= { cableModemRFGroup 1 }
+
+-- 
+--     cmLastKnownFreq  TABLE
+-- 
+cmLastKnownFreqTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF CmLastKnownFreqEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "Conceptual table for Last Known Freqs.  This table shall
+             contain the four Last Known Freq values."
+    ::= { cableModemRFGroup 2 }
+
+cmLastKnownFreqEntry OBJECT-TYPE
+        SYNTAX CmLastKnownFreqEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An Entry (conceptual row) in the Last Known Freq Table."
+	    INDEX	{ ifIndex,cmLastKnownFreqIndex}
+    ::= {  cmLastKnownFreqTable  1 }
+
+CmLastKnownFreqEntry ::= SEQUENCE {
+            cmLastKnownFreqIndex     INTEGER,
+            cmLastKnownFreq          Unsigned32}
+
+cmLastKnownFreqIndex OBJECT-TYPE
+        SYNTAX INTEGER (1..4)
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "The auxiliary variable used to identify instances
+            of the columnar objects in the Last Known Freq Table."
+    ::= {  cmLastKnownFreqEntry 1 }
+
+cmLastKnownFreq	 OBJECT-TYPE
+    SYNTAX      Unsigned32
+	MAX-ACCESS  read-write
+	STATUS	current
+	DESCRIPTION
+		"Setting this object will configure the four recent downstream Last Known Frequency (LKF) in Hz.
+		Getting this object will return the four recent LKF in Hz"
+	::= { cmLastKnownFreqEntry 2 }
+
+cmGotoFrequency OBJECT-TYPE
+    SYNTAX      Unsigned32
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION	
+        "Setting this object will force the downstream of the device go to the input frequency."
+	::= { cableModemRFGroup 3 }
+
+cmExtendUsPower OBJECT-TYPE
+    SYNTAX      Unsigned32
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION	
+        "To support Extended US power. To set value 5125 will interpret to 51.25dbm"
+	::= { cableModemRFGroup 4 }
+
+cmRgEnable	 OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Setting this object to enabled(1) will enable RG mode.
+		 Setting this object to disabled(2) will disable RG mode."
+
+	::= { cableModemGatewayGroup 1 }
+
+END

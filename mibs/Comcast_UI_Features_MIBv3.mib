@@ -1,0 +1,916 @@
+-- ===========================================================================                                                                       
+--		Copyright 2002 & 2003 Comcast Online Communications
+--      Confidential and Proprietary                                                                                                 
+-- ===========================================================================   
+--		Filename:	Comcast_UI_Features_MIBv3.mib
+--		Author:		Nirmal Mody
+--					Comcast Online Communications
+--					New Product Deployments
+--					(E) NMody@Comcastpc.com
+--					(A) 1500 Market Street
+--						9th Floor West Tower
+--						Philadelphia, PA 19102
+--					(T)	215-981-8530
+-- =========================================================================== 
+				
+
+COMCAST-UI-FEATURES-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,	
+	Integer32,
+	NOTIFICATION-TYPE
+							FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION              
+							FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP
+							FROM SNMPv2-CONF
+	
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6
+							FROM INET-ADDRESS-MIB;
+
+cableLabs							OBJECT IDENTIFIER ::= { enterprises 4491 }
+clabProject							OBJECT IDENTIFIER ::= { cableLabs 2 }
+clabProjCableHome					OBJECT IDENTIFIER ::= { clabProject 4 }
+cabhPsDevMib						OBJECT IDENTIFIER ::= { clabProjCableHome 1 }
+cabhSecMib							OBJECT IDENTIFIER ::= { clabProjCableHome 2 }
+cabhCapMib							OBJECT IDENTIFIER ::= { clabProjCableHome 3 }
+cabhCdpMib							OBJECT IDENTIFIER ::= { clabProjCableHome 4 }
+cabhCtpMib							OBJECT IDENTIFIER ::= { clabProjCableHome 5 }
+-- comcastUiFeaturesMib				OBJECT IDENTIFIER ::= { clabProjCableHome 1000 }
+
+	comcastUiFeaturesMib MODULE-IDENTITY
+       LAST-UPDATED "200212191000Z"
+       ORGANIZATION "Comcast Online Communications, New Product Deployments"
+       CONTACT-INFO
+				"
+				Nirmal Mody
+				(E) NMody@comcastpc.com
+				(A) 1500 Market Street
+					9th Floor West Tower
+ 					Philadelphia, PA 19102
+				(T)	215-981-8530
+				"
+
+       DESCRIPTION
+				"This MIB is for the Comcast User Interface.  Proprietary and Confidential"
+       
+       
+       REVISION	"200212190200Z"
+       DESCRIPTION	
+				" Last Update: December 19, 2002
+				 - Added default values for connectedDevicesRefresh, keyWordBlockingEnabled and portBlockingEndRangeIpType
+				 - dhcpIpDeviceOctetsIn, dhcpIpDeviceOctetsOut, dhcpIpDeviceResetCounters spelling corrected
+				 - timeLimitsDaySelected updated, 'everyday(7)' removed due to ambiguity
+				 - timeLimitsDaySelected Description updated
+				 - spelling fixed in the descriptions of dhcpIpDeviceIpAddr
+				 - The setUiPassword DEFVAL updated with Double Quotes around 1234 as it is a Display String 
+				 "
+       
+       
+       REVISION	"200212180200Z"
+       DESCRIPTION	
+				" PreviousUpdate: December 18, 2002
+				 - Added connectedDevicesBaseTable and connectedDevicesRefresh MIB Object
+				"
+       REVISION	"200212040200Z"
+       DESCRIPTION	
+				" Previous Update: December 6, 2002
+					- MIB Object 'resetUiPassword' changed to 'setUiPassword'
+					- dmzDeviceName changed from Read-Write to Read-Only
+					- dmzDeviceName SYNTAX changed from DisplayString (Size(0..255)) to DisplayString
+					- Clarified description for DMZ MAC Address when DMZ is not enabled
+					- timeLimitsDeviceName changed from Read-Create to Read-Only
+					- timeLimitsDeviceName SYNTAX changed from DisplayString (Size(0..255)) to DisplayString
+					- timeLimitsDaySelected SYNTAX changed from INTERGER to BITS
+					- timeLimitsEnabed Default Value disabled (2) defined
+					- Added default Start Time (0000) & End Time (0000) values for Internet Time Access Limits
+					- trustedComputersDeviceName changed to Read-Only
+					- trustedComputersDeviceName SYNTAX changed to DisplayString
+					- Starting Port Values for Port Forwarding and Port Blocking are now 1
+					- Added Module Identity
+					- DHCP IP Traffic Table simplified
+					- Added MIB Object to enable/disable DHCP LAN IP Traffic counters
+					- Clarified DHCP LAN IP Traffic Comments
+				"
+	
+       ::= { clabProjCableHome 1000 }
+	
+-- ========================================================================================================
+-- ========================================================================================================
+
+comcastUiFeaturesObjects			OBJECT IDENTIFIER ::= { comcastUiFeaturesMib 1 }
+comcastUiFeaturesObjectsBase		OBJECT IDENTIFIER ::= { comcastUiFeaturesObjects 1 }
+connectedDevicesBaseTable		    OBJECT IDENTIFIER ::= { comcastUiFeaturesObjectsBase 1 }
+dmz									OBJECT IDENTIFIER ::= { comcastUiFeaturesObjectsBase 2 } 
+lanIpDeviceTrafficTable				OBJECT IDENTIFIER ::= { comcastUiFeaturesObjectsBase 3 }
+parentalControlTable				OBJECT IDENTIFIER ::= { comcastUiFeaturesObjectsBase 4 }
+portConfigurationTable				OBJECT IDENTIFIER ::= { comcastUiFeaturesObjectsBase 5 }
+userInterfacePassword				OBJECT IDENTIFIER ::= { comcastUiFeaturesObjectsBase 6 }
+wirelessAccessFilterList			OBJECT IDENTIFIER ::= { comcastUiFeaturesObjectsBase 7 }
+
+-- ========================================================================================================
+-- ========================================================================================================
+-- Connected Computers Table
+
+connectedDevicesRefresh OBJECT-TYPE
+    SYNTAX	INTEGER	{
+		done(1),
+		inProgress(2),
+		start(3)
+		}
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    	"Setting this Object to start(3) will cause the device to start the connected devices Table refresh.
+		The refresh will cause an update of the entries in the connectedDevicesTable.  Non-connected devices 
+		entries present in the connectedDevicesTable will be removed.  Only a value of start(3) can be written.  
+		Reading this value will either return done(1) if the refresh is complete, or inProgress(2) if the refresh 
+		is still in progress."
+	DEFVAL { 1 }
+    ::= { connectedDevicesBaseTable 1 }
+    
+connectedDevicesTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF ConnectedDevicesEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Connected Devices Table."
+	::= { connectedDevicesBaseTable 2 }
+
+connectedDevicesEntry OBJECT-TYPE
+	SYNTAX		ConnectedDevicesEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"DHCP LAN IP Traffic Table Object entry"
+	INDEX { connectedDevicesIndex }
+	::= { connectedDevicesTable 1 }
+
+ConnectedDevicesEntry ::= SEQUENCE {
+	connectedDevicesIndex			INTEGER,
+	connectedDevicesMacAddr			PhysAddress,	
+	connectedDevicesName			DisplayString,
+	connectedDevicesIpAddr			InetAddress,
+	connectedDevicesInterfaceType	INTEGER
+	}
+
+		connectedDevicesIndex	OBJECT-TYPE
+			SYNTAX		INTEGER
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"Index for Connected Devices"
+			::= { connectedDevicesEntry 1 }
+			
+		connectedDevicesMacAddr	OBJECT-TYPE
+			SYNTAX		PhysAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"MAC Address of the IP Device"
+			::= { connectedDevicesEntry 2 }
+
+		connectedDevicesName OBJECT-TYPE
+			SYNTAX		DisplayString
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"Name associated to the IP Device, same as Computer Name"
+			::= { connectedDevicesEntry 3 }
+
+		connectedDevicesIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION	
+				"IP Address assiged by the PS."
+			::= { connectedDevicesEntry 4 }	
+
+		connectedDevicesInterfaceType OBJECT-TYPE
+			SYNTAX		INTEGER {
+						wired (1),
+						wireless (2)
+						}
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION	
+				"The interface type of the device Wired (1), Wireless (2)."
+			::= { connectedDevicesEntry 5 }	
+
+-- ========================================================================================================
+-- ========================================================================================================
+-- DMZ (Static Port Mapping, open Ports 1 to 65535)
+-- The UI should display the IP Device Name (Host/Computer Name) but bind to MAC Address
+
+dmzDeviceName OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"Name of the IP Device, same as the Computer Name to be added to the DMZ section.
+		The UI should display the name of the IP Device, however bind to the MAC Address."
+	::= { dmz 1 }
+
+dmzDeviceMacAddr OBJECT-TYPE
+	SYNTAX		PhysAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"MAC Address of the IP device.  If no device has been added to the DMZ section return 00:00:00:00:00:00
+		as the MAC Address."
+	::= { dmz 2 }
+	
+dmzRemoveDevice OBJECT-TYPE
+	SYNTAX		TruthValue
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Setting this object to True(1) will remove the IP Device Name and
+		MAC Address from the DMZ section."
+	::= { dmz 3 }
+
+-- ========================================================================================================
+-- ========================================================================================================
+-- LAN IP Device Traffic
+-- DHCP IP Devices
+
+-- When the "dhcpIpDeviceCountersStatus" MIB Object is enabled, keep track of all traffic generated by 
+-- IP devices that have a DHCP lease.  Create a new entry (MAC Address/IP/Interface Type/Octets In and Out) 
+-- based on the IP device's DHCP lease,  if a device is already on the list, append the traffic counter 
+-- values and display the device's current IP Address.  The entry for a device should get cleared from the 
+-- list only when the gateway is power-cycled.  The traffic information for the entry should be stored from 
+-- entry creation until the gateway is power-cycled, or counters are reset via SNMP.  The counters should not 
+-- get cleared when the DHCP IP Device does not have a DHCP lease .  When the "enableDhcpIpDeviceCounters" MIB 
+-- Object is set to disable, the entries should not be purged and the counters should not reset to 0.  If the 
+-- device is not active, report the IP Address as "0.0.0.0".  If the gateway is power-cycled when the 
+-- "dhcpIpDeviceCountersStatus" is set to enabled, upon restart the MIB Object should remain enabled.
+
+-- Track the aggregated traffic for both LAN Side and WAN Side, including broadcast packets and ARPs 
+--	* Passthrough Addresses - Out of Scope
+--	* LAN Side Static IP addresses - Out of Scope
+--	* Only accessible through SNMP v1/2c/3 from the HFC (not accessible via UI or LAN Side SNMP Requests)
+
+dhcpIpDeviceCountersStatus OBJECT-TYPE
+	SYNTAX		INTEGER {
+				enabled(1),
+				disabled(2)
+				}
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Setting the Object value to (1) will enable the traffic counters. Set Object to (2) to disable.
+		The Default value is (2) disabled."
+	DEFVAL { 2 }
+	::= { lanIpDeviceTrafficTable 1 }
+	
+dhcpIpDeviceTrafficTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF DhcpIpDeviceTrafficEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"DHCP LAN IP Traffic Table Object"
+	::= { lanIpDeviceTrafficTable 2 }
+
+dhcpIpDeviceTrafficEntry OBJECT-TYPE
+	SYNTAX		DhcpIpDeviceTrafficEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"DHCP LAN IP Traffic Table Object entry"
+	INDEX { dhcpIpDeviceIndex }
+	::= { dhcpIpDeviceTrafficTable 1 }
+
+DhcpIpDeviceTrafficEntry ::= SEQUENCE {
+	dhcpIpDeviceIndex						INTEGER,
+	dhcpIpDeviceMacAddr						PhysAddress,
+	dhcpIpDeviceIpAddr						InetAddress,
+	dhcpIpDeviceInterfaceType				INTEGER,
+	dhcpIpDeviceOctetsIn					Counter32,
+	dhcpIpDeviceOctetsOut					Counter32,
+	dhcpIpDeviceResetCounters				INTEGER
+	}
+
+		dhcpIpDeviceIndex	OBJECT-TYPE
+			SYNTAX		INTEGER
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"Index for DHCP IP Device Traffic Entry"
+			::= { dhcpIpDeviceTrafficEntry 1 }
+
+		dhcpIpDeviceMacAddr OBJECT-TYPE
+			SYNTAX		PhysAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"MAC Address of the LAN IP Device"
+			::= { dhcpIpDeviceTrafficEntry 2 }
+
+		dhcpIpDeviceIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION	
+				"IP Address assigned by the PS.  If an IP Address is returned from the SNMP Poll,
+				the LAN device should be considered online.  If 0.0.0.0 is returned as the IP, 
+				the device is inactive."
+			::= { dhcpIpDeviceTrafficEntry 3 }	
+
+		dhcpIpDeviceInterfaceType OBJECT-TYPE
+			SYNTAX		INTEGER {
+						wired(1),	
+						wireless(2) 	
+						}
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"Client Connection type, Wired (1), Wireless(2)"
+			::= { dhcpIpDeviceTrafficEntry 4 }
+
+		dhcpIpDeviceOctetsIn OBJECT-TYPE
+			SYNTAX		Counter32
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"Traffic received by the IP Device."
+			::= { dhcpIpDeviceTrafficEntry 5 }	
+
+		dhcpIpDeviceOctetsOut OBJECT-TYPE
+			SYNTAX		Counter32
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"Traffic transmitted by the IP Device."
+			::= { dhcpIpDeviceTrafficEntry 6 }	
+
+		dhcpIpDeviceResetCounters OBJECT-TYPE
+			SYNTAX		INTEGER {
+			   			true(1),
+    					false(2)
+			   			}
+			MAX-ACCESS  read-write
+			STATUS      current
+			DESCRIPTION
+				"Reset both Octets In and Octets Out counters"
+			DEFVAL { 2 }
+			::= { dhcpIpDeviceTrafficEntry 7 }
+
+-- ========================================================================================================
+-- ========================================================================================================
+-- Parental Control Table
+-- Internet Access Time Limits
+
+internetAccessTimeLimitsTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF InternetAccessTimeLimitsEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Internet Access Time Limits Table Object"
+	::= { parentalControlTable 1 }
+
+internetAccessTimeLimitsEntry OBJECT-TYPE
+	SYNTAX		InternetAccessTimeLimitsEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Internet Access Time Limits Table Object"
+	INDEX { timeLimitsIndex }
+	::= { internetAccessTimeLimitsTable 1 }
+
+InternetAccessTimeLimitsEntry ::= SEQUENCE {
+	timeLimitsIndex				INTEGER,
+	timeLimitsDeviceMacAddr		PhysAddress,
+	timeLimitsDeviceName		DisplayString,
+	timeLimitsDaySelected		BITS,
+	timeLimitsStartTime			INTEGER,
+	timeLimitsEndTime			INTEGER,
+	timeLimitsEnabled			INTEGER,
+	timeLimitsRowStatus			RowStatus
+	}
+		
+		timeLimitsIndex	OBJECT-TYPE
+			SYNTAX		INTEGER
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"Index for Internet Access Time Limits Entry"
+			::= { internetAccessTimeLimitsEntry 1 }
+		
+		timeLimitsDeviceMacAddr OBJECT-TYPE
+			SYNTAX		PhysAddress
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"MAC Address of the IP Device"
+			::= { internetAccessTimeLimitsEntry 2 }
+			
+		timeLimitsDeviceName OBJECT-TYPE
+			SYNTAX		DisplayString
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"Name associated to the IP Device, same as Computer Name"
+			::= { internetAccessTimeLimitsEntry 3 }
+
+
+-- Explanation for "timeLimitsDaySelected"
+-- The Comcast UI allows the user to select the days during which Internet Access is resctricted.
+-- The user can select multiple days from the week, including an Check box option "Select all days".
+-- The MIB variable has been defined as a Integer and should function in the following manner:
+-- Each day should be assigned a field position in a Seven bit binary string "0000000".
+-- "0" == Not Selected
+-- "1" == Day Selected
+-- Positions:
+-- 	Sunday - 1 (1000000)
+-- 	Monday - 2 (0100000)
+-- 	Tuesday - 3 (0010000)
+-- 	Wednesday - 4 (0001000)
+-- 	Thrusday - 5 (0000100)
+-- 	Friday - 6 (0000010)
+-- 	Saturday - 7 (0000001)
+-- If a day is selected for example Wednesday the return value should be "00010000"
+-- If multiple days are selected Monday, Thursday, Saturday the value should be "01001010"
+-- If all days are selected the return value should be "1111111"
+-- If no days are slected the return value should be "0000000"
+
+
+		timeLimitsDaySelected	OBJECT-TYPE
+			SYNTAX		BITS {
+				sunday(0),
+				monday(1),
+				tuesday(2),     
+				wednesday(3),
+				thursday(4),
+				friday(5),
+				saturday(6)
+				}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Days during which the selected device can not access the Internet.
+				If a day is selected for example Wednesday the return value should be '0001000'
+				If multiple days are selected Monday, Thursday, Saturday the value should be '0100101'
+				If all days are selected the return value should be '1111111'."
+		
+	    	::= { internetAccessTimeLimitsEntry 4 }
+ 	        	
+		timeLimitsStartTime	OBJECT-TYPE
+			SYNTAX		INTEGER
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Start time for the days during which the selected device can not access the Internet
+				The return value should be reported in Military Time, however the UI should display 
+				the time in Standard Format. '0000 = 12:00 AM, 23:59 = 11:59 PM'
+				Example: '1245 = 12:45 PM, 0136 = 1:36 AM'"
+			DEFVAL { 0000 }
+			::= { internetAccessTimeLimitsEntry 5 }
+			
+		timeLimitsEndTime	OBJECT-TYPE
+			SYNTAX		INTEGER
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"End time for the days during which the selected device can not access the Internet
+				The return value should be reported in Military Time, however the UI should display 
+				the time in Standard Format. '0000 = 12:00 AM, 23:59 = 12:59 PM'
+				Example: '1145 = 11:45 AM', '1836 = 6:36 PM'"
+			DEFVAL { 0000 }
+			::= { internetAccessTimeLimitsEntry 6 }
+
+		timeLimitsEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled (1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Internet Access Time Limits Enabled - For each entry return status"
+			DEFVAL { 2 }
+			::= { internetAccessTimeLimitsEntry 7 }
+
+		timeLimitsRowStatus OBJECT-TYPE
+			SYNTAX		RowStatus
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Internet Access Time Limits Row Status"
+			::= { internetAccessTimeLimitsEntry 8 }
+
+
+-- ========================================================================================================
+-- ========================================================================================================
+-- Parental Control Table
+-- Website Blocking by Keyword Blocking
+
+keyWordBlocking OBJECT IDENTIFIER ::= { parentalControlTable 2 }
+
+keyWordBlockingEnabled OBJECT-TYPE
+	SYNTAX		INTEGER {
+				enabled(1),
+				disabled(2)
+				}
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Website Blocking bt Keyword Enabled -- Return if feature is enabled or disabled"
+	DEFVAL { 2 }
+	::= { keyWordBlocking 1 }
+	
+
+keyWordBlockingEntryCount OBJECT-TYPE
+	SYNTAX		INTEGER
+	MAX-ACCESS	read-only
+	STATUS		current                   
+	DESCRIPTION
+		"Number of keyword entries in the blocking list, maximum value 50 entries"
+	::= { keyWordBlocking 2 }
+
+
+-- ========================================================================================================
+-- ========================================================================================================
+-- Parental Control
+-- Trusted Computers
+
+trustedComputersTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF TrustedComputersEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Trusted Computers Name Table"
+	::= { parentalControlTable 3 }
+
+trustedComputersEntry OBJECT-TYPE
+	SYNTAX		TrustedComputersEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Entry for Trusted Computers Name Table"
+	INDEX { trustedComputersDeviceIndex }
+	::= { trustedComputersTable 1 }
+
+TrustedComputersEntry ::= SEQUENCE {
+	trustedComputersDeviceIndex			INTEGER,
+	trustedComputersDeviceMacAddr		PhysAddress,
+	trustedComputersDeviceName			DisplayString,
+	trustedComputersDeviceRowStatus		RowStatus
+	}
+
+		trustedComputersDeviceIndex OBJECT-TYPE
+			SYNTAX		INTEGER
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"Trusted Computers Index"
+			::= { trustedComputersEntry 1 }
+		
+		trustedComputersDeviceMacAddr OBJECT-TYPE
+			SYNTAX		PhysAddress
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"MAC Address of the Computer which is exempt from Keyword Blocking"
+			::= { trustedComputersEntry 2 }
+
+		trustedComputersDeviceName OBJECT-TYPE
+			SYNTAX		DisplayString
+			MAX-ACCESS	read-only
+			STATUS		current
+			DESCRIPTION
+				"Name of the Computer which is exempt from Keyword Blocking"
+			::= { trustedComputersEntry 3 }
+
+		trustedComputersDeviceRowStatus OBJECT-TYPE
+			SYNTAX		RowStatus
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Trusted Computers Table Row Status for creating and deleting entries"
+			::= { trustedComputersEntry 4 }
+
+-- ========================================================================================================
+-- ========================================================================================================
+-- Port Blocking (Port Configuration)
+
+portBlockingTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF PortBlockingEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Port Blocking Table Object"
+	::= { portConfigurationTable 1 }
+
+portBlockingEntry OBJECT-TYPE
+	SYNTAX		PortBlockingEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Entry containing information for Port Blocking Table"
+	INDEX { portBlockingIndex }
+	::= { portBlockingTable 1 }
+
+PortBlockingEntry ::= SEQUENCE {
+	portBlockingIndex				INTEGER,
+	portBlockingStartRangeIpType	InetAddressType,
+	portBlockingStartRangeIpAddr	InetAddress,
+	portBlockingEndRangeIpType		InetAddressType,
+	portBlockingEndRangeIpAddr		InetAddress,
+	portBlockingPortStartValue		INTEGER,
+	portBlockingPortEndValue		INTEGER,
+	portBlockingEnabled				INTEGER,
+	portBlockingRowStatus			RowStatus
+	}
+
+		portBlockingIndex OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"Port Blocking Table Index"
+			::= { portBlockingEntry 1 }
+		
+		portBlockingStartRangeIpType OBJECT-TYPE
+			SYNTAX		InetAddressType
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"IP Address version, v4/v6.  Default Value v4"
+			DEFVAL { ipv4 }
+			::= { portBlockingEntry 2 }
+				
+		portBlockingStartRangeIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Starting Range IP Address Value"
+			::= { portBlockingEntry 3 }
+		
+		portBlockingEndRangeIpType OBJECT-TYPE
+			SYNTAX		InetAddressType
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"IP Address version, v4/v6.  Default Value v4"
+			DEFVAL { ipv4 }			
+			::= { portBlockingEntry 4 }
+				
+		portBlockingEndRangeIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Ending Range IP Address Value"
+			::= { portBlockingEntry 5 }
+		
+		portBlockingPortStartValue OBJECT-TYPE
+			SYNTAX		INTEGER  (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Starting Port Range Value"
+			DEFVAL { 1 }
+			::= { portBlockingEntry 6 }
+		
+		portBlockingPortEndValue OBJECT-TYPE
+			SYNTAX		INTEGER  (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Ending Port Range Value"
+			DEFVAL { 65535 }
+			::= { portBlockingEntry 7 }
+		
+		portBlockingEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Blocking Enabled - For each entry return status"
+			DEFVAL { 2 }
+			::= { portBlockingEntry 8 }
+		
+		portBlockingRowStatus OBJECT-TYPE
+			SYNTAX		RowStatus
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Blocking Row Status - For creating and deleting entries"
+			::= { portBlockingEntry 9 }
+
+-- ========================================================================================================
+-- ========================================================================================================
+-- Port Forwarding (Port Configuration)
+
+
+portForwardingTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF PortForwardingEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Port Forwarding Table Object"
+	::= { portConfigurationTable 2 }
+
+portForwardingEntry OBJECT-TYPE
+	SYNTAX		PortForwardingEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Port Forwarding Table Object"
+	INDEX { portForwardingIndex }
+	::= { portForwardingTable 1 }
+
+PortForwardingEntry ::= SEQUENCE {
+	portForwardingIndex				INTEGER,
+	portForwardingApplicationName	DisplayString,
+	portForwardingPortStartValue	INTEGER,
+	portForwardingPortEndValue		INTEGER,
+	portForwardingProtocolType		INTEGER,
+	portForwardingIpAddrType		InetAddressType,
+	portForwardingIpAddr			InetAddress,
+	portForwardingEnabled			INTEGER,
+	portForwardingRowStatus			RowStatus
+	}
+
+		portForwardingIndex OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	not-accessible
+			STATUS		current
+			DESCRIPTION
+				"port Forwarding Table index"
+			::= { portForwardingEntry 1 }
+		
+		portForwardingApplicationName OBJECT-TYPE
+			SYNTAX		DisplayString (SIZE (0..255))
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Customized Application Name Value"
+			::= { portForwardingEntry 2 }
+		
+		portForwardingPortStartValue OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Starting Port Range Value"
+			DEFVAL { 1 }
+			::= { portForwardingEntry 3 }
+		
+		portForwardingPortEndValue OBJECT-TYPE
+			SYNTAX		INTEGER (1..65535)
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"End Port Range Value"
+			DEFVAL { 65535 }
+			::= { portForwardingEntry 4 }
+		
+		portForwardingProtocolType OBJECT-TYPE
+			SYNTAX		INTEGER {
+						both (1),
+						tcp (2),
+						udp (3)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding Protocol Type"
+			DEFVAL { 1 }
+			::= { portForwardingEntry 5 }
+		
+		portForwardingIpAddrType OBJECT-TYPE
+			SYNTAX      InetAddressType
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"IP Address version, v4/v6.  Default Value v4"
+			DEFVAL { ipv4 }
+			::= { portForwardingEntry 6 }
+		
+		portForwardingIpAddr OBJECT-TYPE
+			SYNTAX		InetAddress
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding IP Address"
+			::= { portForwardingEntry 7 }
+		
+		portForwardingEnabled OBJECT-TYPE
+			SYNTAX		INTEGER {
+						enabled	(1),
+						disabled (2)
+						}
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding Enabled - For each entry return status"
+			DEFVAL { 2 }
+			::= { portForwardingEntry 8 }
+		
+		portForwardingRowStatus OBJECT-TYPE
+			SYNTAX		RowStatus
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Port Forwarding Row Status - For creating and deleting entries"
+			::= { portForwardingEntry 9 }
+
+-- ========================================================================================================
+-- ========================================================================================================
+-- User Interface Password
+-- Reset User Interface Password to factory default "1234", Login will remain "comcast"
+
+setUiPassword OBJECT-TYPE
+	SYNTAX		DisplayString (SIZE(4..8))
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Default Value '1234' Password must be between 4-8 characters in length.  Only accept alphanumeric
+		characters."
+	DEFVAL { "1234" }
+	::= { userInterfacePassword 1 }
+
+-- ========================================================================================================
+-- ========================================================================================================
+-- Wireless Access Filter
+
+wirelessAccessFilterEnabled OBJECT-TYPE
+	SYNTAX		INTEGER {
+				enabled (1),
+				disabled (2)
+				}
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Wireless Access Filter - Return status"
+	DEFVAL { 2 }
+	::= { wirelessAccessFilterList 1 }
+
+wirelessAccessFilterListTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF WirelessAccessFilterListEntry	
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Wireless Access Filter Table Object"
+	::= { wirelessAccessFilterList 2  }
+
+wirelessAccessFilterListEntry OBJECT-TYPE
+	SYNTAX		WirelessAccessFilterListEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Wireless Access Filter Table Object"
+	INDEX { wirelessAccessFilterListIndex }
+	::= { wirelessAccessFilterListTable 1 }
+
+WirelessAccessFilterListEntry ::= SEQUENCE {
+	wirelessAccessFilterListIndex		INTEGER,
+	wirelessAccessFilterListMacAddr		PhysAddress,
+	wirelessAccessFilterListRowStatus	RowStatus
+	}
+        wirelessAccessFilterListIndex	OBJECT-TYPE
+        	SYNTAX		INTEGER
+        	MAX-ACCESS	not-accessible
+        	STATUS		current
+        	DESCRIPTION
+        		"Index for Wirless Access Filter List"
+        	::= { wirelessAccessFilterListEntry 1 }
+		
+		wirelessAccessFilterListMacAddr OBJECT-TYPE
+			SYNTAX		PhysAddress
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Wireless Access Filter Mac Address -- Return the Mac Address of the wireless device"
+			::= { wirelessAccessFilterListEntry 2 }
+
+		wirelessAccessFilterListRowStatus OBJECT-TYPE
+			SYNTAX		RowStatus
+			MAX-ACCESS	read-create
+			STATUS		current
+			DESCRIPTION
+				"Wireless Access Filter Table Row Status - For creating and deleting entries"
+			::= { wirelessAccessFilterListEntry 3 }
+
+END

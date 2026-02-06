@@ -1,0 +1,65 @@
+--****************************************************************************
+--    Filename: THOMSON-BATTERY-MIB.mib
+--    Author:  rex beard
+--    Creation Date: 2008/07
+--
+--**************************************************************************
+--    Description:
+--
+--      private MIB for management of the Battery
+--
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+THOMSON-BATTERY-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Integer32
+        FROM SNMPv2-SMI
+    thomson
+        FROM THOMSON-MIB
+    DateAndTime,
+    DisplayString,
+    TEXTUAL-CONVENTION
+        FROM SNMPv2-TC ;
+
+--
+-- SubGroup for battery properties
+--
+battery MODULE-IDENTITY
+    LAST-UPDATED "200807110000Z"
+    ORGANIZATION "Thomson"
+    CONTACT-INFO
+        "   E-mail: "
+    DESCRIPTION
+        "Thomson private MIB for management of the Battery"
+    REVISION      "200807110000Z"
+    DESCRIPTION
+        "Syntax check"
+    REVISION      "200807110000Z"
+    DESCRIPTION
+        "Initial version of this MIB module."
+    ::= { thomson 78 200 2 }
+
+--
+-- Power states when running on battery
+--
+battReserveState OBJECT-TYPE
+    SYNTAX      BITS {
+                dectOn(0),
+                slicOn(1),
+                wifiOn(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "When a bit is SET, that device will remain ON when the ACG
+         is running on battery power. Otherwise the device will be
+         powered off."
+    ::= { battery 1 }
+
+END

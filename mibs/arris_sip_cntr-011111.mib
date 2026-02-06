@@ -1,0 +1,323 @@
+ARRIS-SIP-CNTR-MIB
+
+-- Revision 011111 BR comments in front of DEFAULT and OBJECT-TYPE => OBJECT IDENTIFIER
+
+DEFINITIONS ::= BEGIN
+
+IMPORTS
+        OBJECT IDENTIFIER
+            FROM RFC-1212  
+
+        arrisSipMib
+        FROM ARRIS-SIP-MIB;
+
+sipConfiguration OBJECT IDENTIFIER
+        --DEFAULT test-function-async     sipConfiguration_test
+        --DEFAULT set-function-async      sipConfiguration_set
+        --DEFAULT get-function-async      sipConfiguration_get
+        --DEFAULT next-function-async     std_next_async
+        --DEFAULT view-mask               0xff
+        --DEFAULT cookie                  (char *)0
+        ::= { arrisSipMib 1 }
+        
+sipStatus OBJECT IDENTIFIER
+          --DEFAULT view-mask                  0xff
+          --DEFAULT cookie                        (char *)0
+          ::= { arrisSipMib 2 }
+
+sipCfgPortTable OBJECT IDENTIFIER
+    ::= { sipConfiguration 1 }
+
+sipCfgPortEntry OBJECT IDENTIFIER
+        --DEFAULT test-function-async     sipCfgPortEntry_test
+        --DEFAULT set-function-async      sipCfgPortEntry_set
+        --DEFAULT get-function-async      sipCfgPortEntry_get
+        --DEFAULT next-function-async     sipCfgPortEntry_next
+        --DEFAULT view-mask               0xff
+        --DEFAULT cookie                  (char *)0
+        ::= { sipCfgPortTable 1 }
+
+sipCfgPortPortNumber OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 1 }
+        
+sipCfgPortUserName OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 2 } 
+
+sipCfgPortDisplayName OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 3 }
+
+sipCfgPortLogin OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 4 }
+
+sipCfgPortPassword OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 5 }
+
+sipCfgPortWarmOrHotlineNumber OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 6 }
+
+sipCfgPortWarmLineTimeout OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 7 }
+        
+sipCfgPortRegistrarAdr OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 8 }
+
+sipCfgPortRegistrarPort OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 9 }
+        
+sipCfgPortRegistrarType OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 10 }        
+        
+sipCfgPortProxyAdr OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 11 }
+
+sipCfgPortProxyPort OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 12 }                
+
+sipCfgPortProxyType OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 13 }                
+
+sipCfgPortFeatureSettings OBJECT IDENTIFIER
+        ::= { sipCfgPortEntry 14 }                
+
+sipCfgDigitMap OBJECT IDENTIFIER
+        ::= { sipConfiguration 2 }
+
+sipCfgProxyAdr OBJECT IDENTIFIER
+        ::= { sipConfiguration 3 }
+        
+sipCfgProxyType OBJECT IDENTIFIER
+        ::= { sipConfiguration 4 }
+        
+sipCfgRegistrarAdr OBJECT IDENTIFIER
+        ::= { sipConfiguration 5 }
+        
+sipCfgRegistrarType OBJECT IDENTIFIER
+        ::= { sipConfiguration 6 }
+        
+sipCfgSipFeatureSwitch OBJECT IDENTIFIER
+        ::= { sipConfiguration 7 }
+
+sipCfgProvisionedCodecArray OBJECT IDENTIFIER
+        ::= { sipConfiguration 8 }
+
+sipCfgPacketizationRate OBJECT IDENTIFIER
+        ::= { sipConfiguration 9 }
+
+sipCfgDialFeatMap OBJECT IDENTIFIER
+        ::= { sipConfiguration 10 }
+        
+sipCfgDialFeatTable OBJECT IDENTIFIER
+        ::= { sipConfiguration 11 }
+        
+sipCfgDialFeatEntry OBJECT IDENTIFIER
+        --DEFAULT test-function-async     sipCfgDialFeatEntry_test
+        --DEFAULT set-function-async      sipCfgDialFeatEntry_set
+        --DEFAULT get-function-async      sipCfgDialFeatEntry_get
+        --DEFAULT next-function-async     sipCfgDialFeatEntry_next
+        --DEFAULT view-mask               0xff
+        --DEFAULT cookie                  (char *)0
+        ::= { sipCfgDialFeatTable 1 }
+
+sipCfgDialFeatNumber OBJECT IDENTIFIER
+        ::= { sipCfgDialFeatEntry 1}
+        
+sipCfgDialFeatName OBJECT IDENTIFIER
+        ::= { sipCfgDialFeatEntry 2}
+        
+sipCfgDialFeatCode OBJECT IDENTIFIER
+        ::= { sipCfgDialFeatEntry 3}
+
+sipCfgDialFeatTone OBJECT IDENTIFIER
+        ::= { sipCfgDialFeatEntry 4}
+        
+sipCfgDialFeatActive OBJECT IDENTIFIER
+        ::= { sipCfgDialFeatEntry 5}
+
+sipCfgDialFeatMode OBJECT IDENTIFIER
+        ::= { sipCfgDialFeatEntry 6}
+
+sipCfgDialProxyMap OBJECT IDENTIFIER
+        ::= { sipConfiguration 12 }
+        
+sipCfgAlertInfoR0 OBJECT IDENTIFIER
+        ::= { sipConfiguration 13 }        
+
+sipCfgAlertInfoR1 OBJECT IDENTIFIER
+        ::= { sipConfiguration 14 }        
+                                                                   
+sipCfgAlertInfoR2 OBJECT IDENTIFIER
+        ::= { sipConfiguration 15 }        
+
+sipCfgAlertInfoR3 OBJECT IDENTIFIER
+        ::= { sipConfiguration 16 }        
+                                
+sipCfgAlertInfoR4 OBJECT IDENTIFIER
+        ::= { sipConfiguration 17 }        
+
+sipCfgAlertInfoR5 OBJECT IDENTIFIER
+        ::= { sipConfiguration 18 }        
+
+sipCfgAlertInfoR6 OBJECT IDENTIFIER
+        ::= { sipConfiguration 19 }        
+
+sipCfgAlertInfoR7 OBJECT IDENTIFIER
+        ::= { sipConfiguration 20 }       
+                        
+sipCfgDomainOverride OBJECT IDENTIFIER
+        ::= { sipConfiguration 21 }
+        
+sipCfgEmergencyNumber OBJECT IDENTIFIER
+        ::= { sipConfiguration 22 }
+        
+sipCfgRegTimerMin OBJECT IDENTIFIER
+        ::= { sipConfiguration 23 }
+ 
+sipCfgRegTimerMax OBJECT IDENTIFIER
+        ::= { sipConfiguration 24 }
+        
+sipStatusPortTable OBJECT IDENTIFIER
+ ::= { sipStatus 1 }        
+ 
+ sipStatusPortEntry OBJECT IDENTIFIER
+        --DEFAULT get-function-async      sipStatusPortEntry_get
+        --DEFAULT next-function-async     sipStatusPortEntry_next
+        --DEFAULT view-mask               0xff
+        --DEFAULT cookie                  (char *)0
+        ::= { sipStatusPortTable 1 }
+
+sipCfgT1 OBJECT IDENTIFIER
+ ::= { sipConfiguration 25 }
+ 
+sipCfgMaxRetrans OBJECT IDENTIFIER
+ ::= { sipConfiguration 26 } 
+ 
+sipCfgMediaLoopbackNumber OBJECT IDENTIFIER
+ ::= { sipConfiguration 27 }
+ 
+sipCfgPacketLoopbackNumber OBJECT IDENTIFIER
+ ::= { sipConfiguration 28 } 
+
+sipCfgBusyDigitMap OBJECT IDENTIFIER
+ ::= { sipConfiguration 29 }
+
+sipCfgRepeatDialingInterval OBJECT IDENTIFIER
+ ::= { sipConfiguration 30 }
+
+sipCfgRepeatDialingTimeout OBJECT IDENTIFIER
+ ::= { sipConfiguration 31 }
+
+sipCfgRepeatDialingSessionProgressTimer OBJECT IDENTIFIER
+ ::= { sipConfiguration 32 }
+
+sipCfgFeatureCapability OBJECT IDENTIFIER
+        --DEFAULT test-function-async     sipCfgFeatureCapability_test
+        --DEFAULT set-function-async      sipCfgFeatureCapability_set
+        --DEFAULT get-function-async      sipCfgFeatureCapability_get
+        --DEFAULT next-function-async     std_next_async
+        --DEFAULT view-mask               0xff
+        --DEFAULT cookie                  (char *)0
+ ::= {sipConfiguration 33}
+
+sipCfgCallerIdDisplayCapability OBJECT IDENTIFIER 
+ ::= {sipCfgFeatureCapability 1}
+
+sipCfgCallerIdSendCapability OBJECT IDENTIFIER 
+ ::= {sipCfgFeatureCapability 2}
+
+sipCfgAnonCallRejectionCapability OBJECT IDENTIFIER 
+ ::= {sipCfgFeatureCapability 3}
+
+sipCfgCallWaitingCapability OBJECT IDENTIFIER 
+ ::= {sipCfgFeatureCapability 4}
+
+sipCfgThreeWayCallCapability OBJECT IDENTIFIER 
+ ::= {sipCfgFeatureCapability 5}
+
+sipCfgCallTransferCapability OBJECT IDENTIFIER 
+ ::= {sipCfgFeatureCapability 6}
+
+sipCfgCallForwardCapability OBJECT IDENTIFIER 
+ ::= {sipCfgFeatureCapability 7}
+
+sipCfgCallReturnCapability OBJECT IDENTIFIER 
+ ::= {sipCfgFeatureCapability 8}
+
+sipCfgCallRedialCapability OBJECT IDENTIFIER 
+ ::= {sipCfgFeatureCapability 9}
+
+sipCfgCallHoldCapability OBJECT IDENTIFIER 
+ ::= {sipCfgFeatureCapability 10}
+
+sipCfgProxyDigitMap OBJECT IDENTIFIER
+ ::= { sipConfiguration 34 }
+
+sipCfgCallWaitingStarCodeSurvivesReset OBJECT IDENTIFIER
+ ::= { sipConfiguration 35} 
+ 
+sipCfgResetCallWaitingStarCode OBJECT IDENTIFIER
+ ::= { sipConfiguration 36 }
+
+sipCfgDialProxyTable OBJECT IDENTIFIER
+        ::= { sipConfiguration 37 }
+        
+sipCfgDialProxyEntry OBJECT IDENTIFIER
+        --DEFAULT test-function-async     sipCfgDialProxyEntry_test
+        --DEFAULT set-function-async      sipCfgDialProxyEntry_set
+        --DEFAULT get-function-async      sipCfgDialProxyEntry_get
+        --DEFAULT next-function-async     sipCfgDialProxyEntry_next
+        --DEFAULT view-mask               0xff
+        --DEFAULT cookie                  (char *)0
+        ::= { sipCfgDialProxyTable 1 }
+
+sipCfgDialProxyNumber OBJECT IDENTIFIER
+        ::= { sipCfgDialProxyEntry 1}
+                
+sipCfgDialProxyCode OBJECT IDENTIFIER
+        ::= { sipCfgDialProxyEntry 2}
+
+sipCfgDialProxyTone OBJECT IDENTIFIER
+        ::= { sipCfgDialProxyEntry 3}
+        
+sipCfgDialProxyActive OBJECT IDENTIFIER
+        ::= { sipCfgDialProxyEntry 4}
+
+sipCfgDialProxyMessageType OBJECT IDENTIFIER
+        ::= { sipCfgDialProxyEntry 5}
+
+sipCfgDialProxyMethod OBJECT IDENTIFIER
+        ::= { sipCfgDialProxyEntry 6 }
+
+sipCfgDhcp60AnnouncementMode OBJECT IDENTIFIER
+        ::= { sipConfiguration 38} 
+
+sipCfgCallForwardForbiddenNumbers OBJECT IDENTIFIER
+        ::= { sipConfiguration 39 }
+
+sipCfgDefaultG711 OBJECT IDENTIFIER
+        ::= { sipConfiguration 40 }
+
+sipCfgGenLinger OBJECT IDENTIFIER
+        ::= { sipConfiguration 41 }
+
+sipCfgInviteLinger OBJECT IDENTIFIER
+        ::= { sipConfiguration 42 }
+
+sipCfgTimerB OBJECT IDENTIFIER
+        ::= { sipConfiguration 43 }
+
+sipCfgTimerF OBJECT IDENTIFIER
+        ::= { sipConfiguration 44 }
+ 
+sipCfgRegExpires OBJECT IDENTIFIER
+        ::= { sipConfiguration 45 }
+
+sipCfgMaxUDPSize OBJECT IDENTIFIER
+        ::= { sipConfiguration 46 }
+
+sipCfgSessionExpires OBJECT IDENTIFIER
+        ::= { sipConfiguration 47 }
+
+sipCfgPenaltyBoxTimeout OBJECT IDENTIFIER
+        ::= { sipConfiguration 48 }
+
+END
