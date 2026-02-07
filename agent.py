@@ -2405,10 +2405,10 @@ class PyPNMAgent:
             'docsIf31CmUsOfdmaChanTable': {
                 1: 'channelId', 3: 'subcarrierZeroFreq', 4: 'firstActiveSubcarrier',
                 5: 'lastActiveSubcarrier', 6: 'numActiveSubcarriers',
-                7: 'subcarrierSpacing'
+                7: 'subcarrierSpacing', 10: 'txPower'
             },
             'docsIf31CmStatusOfdmaUsTable': {
-                1: 'txPower', 2: 't3Timeouts', 3: 't4Timeouts'
+                2: 't3Timeouts', 3: 't4Timeouts'
             },
         }
         
@@ -2598,7 +2598,7 @@ class PyPNMAgent:
             sc_hz = 25000 if sc_spacing == 1 else 50000
             bandwidth = num_sc * sc_hz if num_sc else 0
             
-            # Get TX power from the separate status table
+            # Get timeouts from the separate status table
             status_data = us_ofdma_status.get(idx, {})
             
             us_ofdma_channels.append({
@@ -2606,7 +2606,7 @@ class PyPNMAgent:
                 'channel_id': channel_id,
                 'zero_freq': zero_freq,
                 'zero_freq_mhz': zero_freq / 1_000_000 if zero_freq else None,
-                'tx_power': status_data.get('txPower'),
+                'tx_power': ofdma.get('txPower'),  # TX power is in channel table, not status table
                 't3_timeouts': status_data.get('t3Timeouts'),
                 't4_timeouts': status_data.get('t4Timeouts'),
                 'num_subcarriers': num_sc,
