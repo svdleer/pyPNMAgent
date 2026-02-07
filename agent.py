@@ -656,21 +656,29 @@ class PyPNMAgent:
         return asyncio.run(self._async_snmp_set(target_ip, oid, value, value_type, community, params.get('timeout', 5)))
     
     def _handle_snmp_bulk_get(self, params: dict) -> dict:
-        """Handle multiple SNMP GET requests in parallel."""
+        """Handle multiple SNMP GET requests with controlled concurrency."""
         oids = params.get('oids', [])
         target_ip = params.get('target_ip') or params.get('modem_ip')
         if not target_ip:
             return {'success': False, 'error': 'target_ip or modem_ip required'}
         community = params.get('community', 'private')
         timeout = params.get('timeout', 5)
+        # Limit concurrent SNMP requests to avoid overwhelming the modem
+        max_concurrent = params.get('max_concurrent', 10)
         
         # Use pysnmp
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
         
-        # Run all SNMP GETs in parallel using asyncio.gather
+        # Run SNMP GETs with concurrency limit using semaphore
         async def fetch_all():
-            tasks = [self._async_snmp_get(target_ip, oid, community, timeout) for oid in oids]
+            semaphore = asyncio.Semaphore(max_concurrent)
+            
+            async def fetch_with_semaphore(oid):
+                async with semaphore:
+                    return await self._async_snmp_get(target_ip, oid, community, timeout)
+            
+            tasks = [fetch_with_semaphore(oid) for oid in oids]
             return await asyncio.gather(*tasks, return_exceptions=True)
         
         fetch_results = asyncio.run(fetch_all())
