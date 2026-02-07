@@ -2362,13 +2362,13 @@ class PyPNMAgent:
             'docsIfDownChannelTable': '1.3.6.1.2.1.10.127.1.1.1',
             'docsIfSigQTable': '1.3.6.1.2.1.10.127.1.1.4',
             'docsIf3SignalQualityExtTable': '1.3.6.1.4.1.4491.2.1.20.1.24',
-            # Downstream OFDM (DOCSIS 3.1) - CORRECT OIDs
+            # Downstream OFDM (DOCSIS 3.1) - DOCS-IF31-MIB
             'docsIf31CmDsOfdmChanTable': '1.3.6.1.4.1.4491.2.1.28.1.9',
             'docsIf31CmDsOfdmChannelPowerTable': '1.3.6.1.4.1.4491.2.1.28.1.11',
             # Upstream ATDMA
             'docsIfUpChannelTable': '1.3.6.1.2.1.10.127.1.1.2',
             'docsIf3CmStatusUsTable': '1.3.6.1.4.1.4491.2.1.20.1.2',
-            # Upstream OFDMA (DOCSIS 3.1) - CORRECT OIDs
+            # Upstream OFDMA (DOCSIS 3.1) - DOCS-IF31-MIB
             'docsIf31CmUsOfdmaChanTable': '1.3.6.1.4.1.4491.2.1.28.1.13',
             'docsIf31CmStatusOfdmaUsTable': '1.3.6.1.4.1.4491.2.1.28.1.12',
         }
@@ -2392,7 +2392,7 @@ class PyPNMAgent:
                 7: 'subcarrierSpacing', 10: 'plcFreq'
             },
             'docsIf31CmDsOfdmChannelPowerTable': {
-                1: 'centerFrequency', 2: 'rxPower', 3: 'rxMer'
+                2: 'centerFrequency', 3: 'rxPower'
             },
             'docsIfUpChannelTable': {
                 1: 'channelId', 2: 'frequency', 3: 'width',
@@ -2403,17 +2403,22 @@ class PyPNMAgent:
                 4: 'rangingAborteds', 5: 'modulationType'
             },
             'docsIf31CmUsOfdmaChanTable': {
-                1: 'channelId', 3: 'subcarrierZeroFreq', 4: 'firstActiveSubcarrier',
-                5: 'lastActiveSubcarrier', 6: 'numActiveSubcarriers',
-                7: 'subcarrierSpacing', 10: 'txPower'
+                2: 'subcarrierZeroFreq', 3: 'firstActiveSubcarrier',
+                4: 'lastActiveSubcarrier', 5: 'numActiveSubcarriers',
+                6: 'subcarrierSpacing', 10: 'txPower', 12: 'channelId'
             },
             'docsIf31CmStatusOfdmaUsTable': {
-                2: 't3Timeouts', 3: 't4Timeouts'
+                2: 't3Timeouts', 3: 't4Timeouts', 4: 'rangingAborteds',
+                5: 't3Exceededs', 6: 'isMuted', 7: 'rangingStatus'
             },
         }
         
-        # Fields that need /10 conversion (TenthdB, TenthdBmV)
-        TENTH_FIELDS = {'power', 'snr', 'rxmer', 'txPower', 'mer', 'rxPower', 'rxMer'}
+        # Fields that need /10 conversion (TenthdB, TenthdBmV) - from DOCS-IF-MIB and DOCS-IF31-MIB
+        TENTH_FIELDS = {'power', 'snr', 'rxmer', 'mer', 'rxPower', 'rxMer', 'txPower'}
+        # OFDMA TX power is QuarterdBmV (divide by 4) - DOCS-IF31-MIB docsIf31CmUsOfdmaChanTxPower
+        QUARTER_FIELDS_BY_TABLE = {
+            'docsIf31CmUsOfdmaChanTable': {'txPower'}
+        }
         
         # Step 3: Walk all tables in parallel
         walk_result = self._snmp_parallel_walk(modem_ip, list(TABLES.values()), community, timeout=15)
@@ -2460,13 +2465,20 @@ class PyPNMAgent:
                         if idx not in parsed:
                             parsed[idx] = {}
                         
+                        # Check if this field needs special conversion
+                        quarter_fields = QUARTER_FIELDS_BY_TABLE.get(table_name, set())
+                        is_quarter = field_name in quarter_fields
+                        is_tenth = field_name in TENTH_FIELDS and not is_quarter
+                        
                         # Convert value
                         if isinstance(value, (int, float)):
-                            if field_name in TENTH_FIELDS:
-                                value = value / 10.0
+                            if is_quarter:
+                                value = value / 4.0  # QuarterdBmV
+                            elif is_tenth:
+                                value = value / 10.0  # TenthdBmV or TenthdB
                         elif isinstance(value, str):
                             # Check for unit suffix indicating already converted
-                            if ' dB' in value or 'TenthdB' in value:
+                            if ' dB' in value or 'TenthdB' in value or 'QuarterdB' in value:
                                 # Already converted - just extract number
                                 import re
                                 match = re.search(r'[-+]?\d+\.?\d*', value)
@@ -2474,7 +2486,9 @@ class PyPNMAgent:
                                     value = float(match.group())
                             elif value.lstrip('-').replace('.', '').isdigit():
                                 num = float(value)
-                                if field_name in TENTH_FIELDS:
+                                if is_quarter:
+                                    value = num / 4.0
+                                elif is_tenth:
                                     value = num / 10.0
                                 else:
                                     value = int(num) if num == int(num) else num
