@@ -656,7 +656,7 @@ class PyPNMAgent:
         return asyncio.run(self._async_snmp_set(target_ip, oid, value, value_type, community, params.get('timeout', 5)))
     
     def _handle_snmp_bulk_get(self, params: dict) -> dict:
-        """Handle multiple SNMP GET requests."""
+        """Handle multiple SNMP GET requests in parallel."""
         oids = params.get('oids', [])
         target_ip = params.get('target_ip') or params.get('modem_ip')
         if not target_ip:
@@ -668,13 +668,20 @@ class PyPNMAgent:
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
         
+        # Run all SNMP GETs in parallel using asyncio.gather
+        async def fetch_all():
+            tasks = [self._async_snmp_get(target_ip, oid, community, timeout) for oid in oids]
+            return await asyncio.gather(*tasks, return_exceptions=True)
+        
+        fetch_results = asyncio.run(fetch_all())
+        
         results = {}
-        for oid in oids:
-            try:
-                result = asyncio.run(self._async_snmp_get(target_ip, oid, community, timeout))
+        for oid, result in zip(oids, fetch_results):
+            if isinstance(result, Exception):
+                results[oid] = {'success': False, 'error': str(result)}
+            else:
                 results[oid] = result
-            except Exception as e:
-                results[oid] = {'success': False, 'error': str(e)}
+        
         return {'success': True, 'results': results}
     
     def _handle_snmp_bulk_walk(self, params: dict) -> dict:

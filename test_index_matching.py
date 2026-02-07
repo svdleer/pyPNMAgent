@@ -227,3 +227,4 @@ if all('upstream_channel_id' in m for m in modems):
 else:
     print("\n✗✗✗ FAILED! Not all modems have upstream_channel_id field")
     print("    Check the index extraction logic above.")
+                                                                                     
