@@ -2362,13 +2362,15 @@ class PyPNMAgent:
             'docsIfDownChannelTable': '1.3.6.1.2.1.10.127.1.1.1',
             'docsIfSigQTable': '1.3.6.1.2.1.10.127.1.1.4',
             'docsIf3SignalQualityExtTable': '1.3.6.1.4.1.4491.2.1.20.1.24',
-            # Downstream OFDM (DOCSIS 3.1)
+            # Downstream OFDM (DOCSIS 3.1) - channel info and power in separate tables
             'docsIf31CmDsOfdmChanTable': '1.3.6.1.4.1.4491.2.1.28.1.1',
+            'docsIf31CmDsOfdmChannelPowerTable': '1.3.6.1.4.1.4491.2.1.28.1.5',
             # Upstream ATDMA
             'docsIfUpChannelTable': '1.3.6.1.2.1.10.127.1.1.2',
             'docsIf3CmStatusUsTable': '1.3.6.1.4.1.4491.2.1.20.1.2',
-            # Upstream OFDMA (DOCSIS 3.1)
+            # Upstream OFDMA (DOCSIS 3.1) - channel info and status in separate tables
             'docsIf31CmUsOfdmaChanTable': '1.3.6.1.4.1.4491.2.1.28.1.6',
+            'docsIf31CmStatusOfdmaUsTable': '1.3.6.1.4.1.4491.2.1.20.1.4',
         }
         
         # Column mappings for parsing
@@ -2385,8 +2387,12 @@ class PyPNMAgent:
                 1: 'rxmer'
             },
             'docsIf31CmDsOfdmChanTable': {
-                1: 'channelId', 3: 'subcarrierZeroFreq', 6: 'numActiveSubcarriers',
-                7: 'subcarrierSpacing', 10: 'plcFreq', 17: 'power', 18: 'mer'
+                1: 'channelId', 3: 'subcarrierZeroFreq', 4: 'firstActiveSubcarrier',
+                5: 'lastActiveSubcarrier', 6: 'numActiveSubcarriers',
+                7: 'subcarrierSpacing', 10: 'plcFreq'
+            },
+            'docsIf31CmDsOfdmChannelPowerTable': {
+                1: 'centerFrequency', 2: 'rxPower', 3: 'rxMer'
             },
             'docsIfUpChannelTable': {
                 1: 'channelId', 2: 'frequency', 3: 'width',
@@ -2397,13 +2403,17 @@ class PyPNMAgent:
                 4: 'rangingAborteds', 5: 'modulationType'
             },
             'docsIf31CmUsOfdmaChanTable': {
-                1: 'channelId', 3: 'subcarrierZeroFreq', 6: 'numActiveSubcarriers',
-                7: 'subcarrierSpacing', 11: 'txPower'
+                1: 'channelId', 3: 'subcarrierZeroFreq', 4: 'firstActiveSubcarrier',
+                5: 'lastActiveSubcarrier', 6: 'numActiveSubcarriers',
+                7: 'subcarrierSpacing'
+            },
+            'docsIf31CmStatusOfdmaUsTable': {
+                1: 'txPower', 2: 't3Timeouts', 3: 't4Timeouts'
             },
         }
         
         # Fields that need /10 conversion (TenthdB, TenthdBmV)
-        TENTH_FIELDS = {'power', 'snr', 'rxmer', 'txPower', 'mer'}
+        TENTH_FIELDS = {'power', 'snr', 'rxmer', 'txPower', 'mer', 'rxPower', 'rxMer'}
         
         # Step 3: Walk all tables in parallel
         walk_result = self._snmp_parallel_walk(modem_ip, list(TABLES.values()), community, timeout=15)
@@ -2484,9 +2494,11 @@ class PyPNMAgent:
         ds_sigq = tables_data.get('docsIfSigQTable', {})
         ds_rxmer = tables_data.get('docsIf3SignalQualityExtTable', {})
         ds_ofdm = tables_data.get('docsIf31CmDsOfdmChanTable', {})
+        ds_ofdm_power = tables_data.get('docsIf31CmDsOfdmChannelPowerTable', {})
         us_up = tables_data.get('docsIfUpChannelTable', {})
         us_status = tables_data.get('docsIf3CmStatusUsTable', {})
         us_ofdma = tables_data.get('docsIf31CmUsOfdmaChanTable', {})
+        us_ofdma_status = tables_data.get('docsIf31CmStatusOfdmaUsTable', {})
         
         # Build SC-QAM downstream channels
         ds_scqam_channels = []
@@ -2528,13 +2540,16 @@ class PyPNMAgent:
             sc_hz = 25000 if sc_spacing == 1 else 50000
             bandwidth = num_sc * sc_hz if num_sc else 0
             
+            # Get power/MER from the separate power table
+            power_data = ds_ofdm_power.get(idx, {})
+            
             ds_ofdm_channels.append({
                 'index': idx,
                 'channel_id': channel_id,
                 'plc_freq': plc_freq,
                 'plc_freq_mhz': plc_freq / 1_000_000 if plc_freq else None,
-                'power': ofdm.get('power'),
-                'mer': ofdm.get('mer'),
+                'power': power_data.get('rxPower'),
+                'mer': power_data.get('rxMer'),
                 'num_subcarriers': num_sc,
                 'subcarrier_spacing_khz': sc_hz / 1000,
                 'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
@@ -2583,12 +2598,17 @@ class PyPNMAgent:
             sc_hz = 25000 if sc_spacing == 1 else 50000
             bandwidth = num_sc * sc_hz if num_sc else 0
             
+            # Get TX power from the separate status table
+            status_data = us_ofdma_status.get(idx, {})
+            
             us_ofdma_channels.append({
                 'index': idx,
                 'channel_id': channel_id,
                 'zero_freq': zero_freq,
                 'zero_freq_mhz': zero_freq / 1_000_000 if zero_freq else None,
-                'tx_power': ofdma.get('txPower'),
+                'tx_power': status_data.get('txPower'),
+                't3_timeouts': status_data.get('t3Timeouts'),
+                't4_timeouts': status_data.get('t4Timeouts'),
                 'num_subcarriers': num_sc,
                 'subcarrier_spacing_khz': sc_hz / 1000,
                 'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
