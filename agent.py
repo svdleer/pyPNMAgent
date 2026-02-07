@@ -2362,15 +2362,15 @@ class PyPNMAgent:
             'docsIfDownChannelTable': '1.3.6.1.2.1.10.127.1.1.1',
             'docsIfSigQTable': '1.3.6.1.2.1.10.127.1.1.4',
             'docsIf3SignalQualityExtTable': '1.3.6.1.4.1.4491.2.1.20.1.24',
-            # Downstream OFDM (DOCSIS 3.1) - channel info and power in separate tables
-            'docsIf31CmDsOfdmChanTable': '1.3.6.1.4.1.4491.2.1.28.1.1',
-            'docsIf31CmDsOfdmChannelPowerTable': '1.3.6.1.4.1.4491.2.1.28.1.5',
+            # Downstream OFDM (DOCSIS 3.1) - CORRECT OIDs
+            'docsIf31CmDsOfdmChanTable': '1.3.6.1.4.1.4491.2.1.28.1.9',
+            'docsIf31CmDsOfdmChannelPowerTable': '1.3.6.1.4.1.4491.2.1.28.1.11',
             # Upstream ATDMA
             'docsIfUpChannelTable': '1.3.6.1.2.1.10.127.1.1.2',
             'docsIf3CmStatusUsTable': '1.3.6.1.4.1.4491.2.1.20.1.2',
-            # Upstream OFDMA (DOCSIS 3.1) - channel info and status in separate tables
-            'docsIf31CmUsOfdmaChanTable': '1.3.6.1.4.1.4491.2.1.28.1.6',
-            'docsIf31CmStatusOfdmaUsTable': '1.3.6.1.4.1.4491.2.1.20.1.4',
+            # Upstream OFDMA (DOCSIS 3.1) - CORRECT OIDs
+            'docsIf31CmUsOfdmaChanTable': '1.3.6.1.4.1.4491.2.1.28.1.13',
+            'docsIf31CmStatusOfdmaUsTable': '1.3.6.1.4.1.4491.2.1.28.1.12',
         }
         
         # Column mappings for parsing
@@ -2614,6 +2614,53 @@ class PyPNMAgent:
                 'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
             })
         
+        # If bulk walk didn't find OFDM/OFDMA but modem should have them,
+        # try individual SNMP GETs (more reliable for some firmware)
+        if len(ds_ofdm_channels) == 0 or len(us_ofdma_channels) == 0:
+            self.logger.info(f"Bulk walk found {len(ds_ofdm_channels)} OFDM, {len(us_ofdma_channels)} OFDMA - trying individual GETs")
+            
+            # Get ifTable to find OFDM/OFDMA interfaces
+            iftable_oids = ['1.3.6.1.2.1.2.2.1.1', '1.3.6.1.2.1.2.2.1.2']  # ifIndex, ifDescr
+            if_result = self._snmp_parallel_walk(modem_ip, iftable_oids, community, timeout=10)
+            
+            if if_result.get('success'):
+                if_data = if_result.get('results', {})
+                ofdm_indexes = []
+                ofdma_indexes = []
+                
+                # Find OFDM/OFDMA interface indexes
+                for entry in if_data.get(iftable_oids[1], []):
+                    ifdescr = str(entry.get('value', '')).lower()
+                    idx_str = entry['oid'].split('.')[-1]
+                    idx = int(idx_str)
+                    
+                    if 'ofdm' in ifdescr and 'downstream' in ifdescr:
+                        ofdm_indexes.append(idx)
+                    elif 'ofdma' in ifdescr or ('ofdm' in ifdescr and 'upstream' in ifdescr):
+                        ofdma_indexes.append(idx)
+                
+                self.logger.info(f"Found OFDM indexes: {ofdm_indexes}, OFDMA indexes: {ofdma_indexes}")
+                
+                # Query OFDM channels if bulk walk missed them
+                if len(ds_ofdm_channels) == 0 and ofdm_indexes:
+                    for idx in ofdm_indexes:
+                        try:
+                            result = self._snmp_get_ofdm_channel(modem_ip, idx, community)
+                            if result:
+                                ds_ofdm_channels.append(result)
+                        except Exception as e:
+                            self.logger.warning(f"Failed to GET OFDM channel {idx}: {e}")
+                
+                # Query OFDMA channels if bulk walk missed them  
+                if len(us_ofdma_channels) == 0 and ofdma_indexes:
+                    for idx in ofdma_indexes:
+                        try:
+                            result = self._snmp_get_ofdma_channel(modem_ip, idx, community)
+                            if result:
+                                us_ofdma_channels.append(result)
+                        except Exception as e:
+                            self.logger.warning(f"Failed to GET OFDMA channel {idx}: {e}")
+        
         total_time = time.time() - start_time
         
         return {
@@ -2646,6 +2693,91 @@ class PyPNMAgent:
                     'count': len(us_ofdma_channels),
                 },
             },
+        }
+    
+    def _snmp_get_ofdm_channel(self, modem_ip: str, ifindex: int, community: str) -> dict:
+        """Get OFDM channel data using individual SNMP GETs."""
+        base_chan = '1.3.6.1.4.1.4491.2.1.28.1.9.1'  # docsIf31CmDsOfdmChanTable
+        base_power = '1.3.6.1.4.1.4491.2.1.28.1.11.1'  # docsIf31CmDsOfdmChannelPowerTable
+        
+        oids = [
+            f'{base_chan}.1.{ifindex}',  # channelId
+            f'{base_chan}.3.{ifindex}',  # subcarrierZeroFreq
+            f'{base_chan}.6.{ifindex}',  # numActiveSubcarriers
+            f'{base_chan}.7.{ifindex}',  # subcarrierSpacing
+            f'{base_chan}.10.{ifindex}', # plcFreq
+            f'{base_power}.2.{ifindex}', # rxPower
+            f'{base_power}.3.{ifindex}', # rxMer
+        ]
+        
+        result = asyncio.run(self._async_snmp_get(modem_ip, oids, community, timeout=5))
+        if not result.get('success'):
+            return None
+        
+        values = result.get('values', [])
+        if len(values) < 7:
+            return None
+        
+        channel_id = int(values[0]) if values[0] else 0
+        plc_freq = int(values[4]) if values[4] else 0
+        num_sc = int(values[2]) if values[2] else 0
+        sc_spacing = int(values[3]) if values[3] else 2
+        sc_hz = 25000 if sc_spacing == 1 else 50000
+        bandwidth = num_sc * sc_hz if num_sc else 0
+        
+        return {
+            'index': ifindex,
+            'channel_id': channel_id,
+            'plc_freq': plc_freq,
+            'plc_freq_mhz': plc_freq / 1_000_000 if plc_freq else None,
+            'power': float(values[5]) / 10.0 if values[5] else None,
+            'mer': float(values[6]) / 10.0 if values[6] else None,
+            'num_subcarriers': num_sc,
+            'subcarrier_spacing_khz': sc_hz / 1000,
+            'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
+        }
+    
+    def _snmp_get_ofdma_channel(self, modem_ip: str, ifindex: int, community: str) -> dict:
+        """Get OFDMA channel data using individual SNMP GETs."""
+        base_chan = '1.3.6.1.4.1.4491.2.1.28.1.13.1'  # docsIf31CmUsOfdmaChanTable
+        base_status = '1.3.6.1.4.1.4491.2.1.28.1.12.1'  # docsIf31CmStatusOfdmaUsTable
+        
+        oids = [
+            f'{base_chan}.1.{ifindex}',  # channelId
+            f'{base_chan}.3.{ifindex}',  # subcarrierZeroFreq
+            f'{base_chan}.6.{ifindex}',  # numActiveSubcarriers
+            f'{base_chan}.7.{ifindex}',  # subcarrierSpacing
+            f'{base_status}.1.{ifindex}', # txPower
+            f'{base_status}.2.{ifindex}', # t3Timeouts
+            f'{base_status}.3.{ifindex}', # t4Timeouts
+        ]
+        
+        result = asyncio.run(self._async_snmp_get(modem_ip, oids, community, timeout=5))
+        if not result.get('success'):
+            return None
+        
+        values = result.get('values', [])
+        if len(values) < 7:
+            return None
+        
+        channel_id = int(values[0]) if values[0] else 0
+        zero_freq = int(values[1]) if values[1] else 0
+        num_sc = int(values[2]) if values[2] else 0
+        sc_spacing = int(values[3]) if values[3] else 2
+        sc_hz = 25000 if sc_spacing == 1 else 50000
+        bandwidth = num_sc * sc_hz if num_sc else 0
+        
+        return {
+            'index': ifindex,
+            'channel_id': channel_id,
+            'zero_freq': zero_freq,
+            'zero_freq_mhz': zero_freq / 1_000_000 if zero_freq else None,
+            'tx_power': float(values[4]) / 10.0 if values[4] else None,
+            't3_timeouts': int(values[5]) if values[5] else 0,
+            't4_timeouts': int(values[6]) if values[6] else 0,
+            'num_subcarriers': num_sc,
+            'subcarrier_spacing_khz': sc_hz / 1000,
+            'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
         }
     
     def _handle_pnm_event_log(self, params: dict) -> dict:
