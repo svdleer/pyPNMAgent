@@ -379,6 +379,7 @@ class PyPNMAgent:
             'snmp_set': self._handle_snmp_set,
             'snmp_bulk_get': self._handle_snmp_bulk_get,
             'snmp_bulk_walk': self._handle_snmp_bulk_walk,
+            'snmp_parallel_walk': self._handle_snmp_parallel_walk,
             'tftp_get': self._handle_tftp_get,
             'cmts_command': self._handle_cmts_command,
             'execute_pnm': self._handle_pnm_command,
@@ -391,7 +392,8 @@ class PyPNMAgent:
             'pnm_fec': self._handle_pnm_fec,
             'pnm_pre_eq': self._handle_pnm_pre_eq,
 
-            'pnm_channel_stats': self._handle_pnm_channel_stats,  # New optimized channel stats
+            'pnm_channel_stats': self._handle_pnm_channel_stats,
+            'pnm_channel_stats_raw': self._handle_pnm_channel_stats_raw,  # New optimized channel stats
             'pnm_event_log': self._handle_pnm_event_log,
             # OFDM capture commands (downstream - on CM)
             'pnm_ofdm_channels': self._handle_pnm_ofdm_channels,
@@ -727,6 +729,24 @@ class PyPNMAgent:
                 'error': str(e),
                 'modems': []
             }
+    
+    def _handle_snmp_parallel_walk(self, params: dict) -> dict:
+        """Handle parallel SNMP BULK WALK for multiple OID trees concurrently."""
+        ip = params.get('ip')
+        oids = params.get('oids', [])
+        community = params.get('community', 'public')
+        timeout = params.get('timeout', 10)
+        
+        if not ip or not oids:
+            return {'success': False, 'error': 'ip and oids required'}
+        
+        self.logger.info(f"SNMP parallel walk: {ip} - {len(oids)} OIDs")
+        
+        result = self._snmp_parallel_walk(ip, oids, community, timeout)
+        
+        self.logger.info(f"Parallel walk completed: {len(result.get('results', {}))} OID trees")
+        
+        return result
     
     async def _async_snmp_get(self, target_ip: str, oid: str, community: str, timeout: int = 5) -> dict:
         """Async SNMP GET using pysnmp."""
