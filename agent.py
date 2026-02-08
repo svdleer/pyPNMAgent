@@ -1722,10 +1722,45 @@ class PyPNMAgent:
             if hasattr(value, 'prettyPrint'):
                 # For timeticks and other special formats
                 if hasattr(value, '_value'):
-                    return int(value._value)
-            return int(value) if hasattr(value, '__int__') else str(value)
+                    result = int(value._value) if value._value is not None else 0
+                    # Debug large integers that become 0
+                    if result == 0 and hasattr(value, '__class__'):
+                        self._debug_snmp_value(value)
+                    return result
+            result = int(value) if hasattr(value, '__int__') else str(value)
+            # Debug large integers that become 0
+            if result == 0 and hasattr(value, '__class__'):
+                self._debug_snmp_value(value)
+            return result
         except:
             return str(value) if value is not None else None
+    
+    def _debug_snmp_value(self, value):
+        """Debug function to see what pysnmp is returning."""
+        try:
+            self.logger.warning(f"DEBUG SNMP VALUE:")
+            self.logger.warning(f"  Type: {type(value)}")
+            self.logger.warning(f"  Type name: {type(value).__name__}")
+            try:
+                self.logger.warning(f"  Direct int(): {int(value)}")
+            except:
+                self.logger.warning(f"  Direct int(): FAILED")
+            
+            # Special attributes
+            for attr in ['_value', 'value', 'asNumbers', 'asOctets', 'components']:
+                if hasattr(value, attr):
+                    try:
+                        self.logger.warning(f"  {attr}: {repr(getattr(value, attr))}")
+                    except:
+                        pass
+            
+            if hasattr(value, 'prettyPrint'):
+                try:
+                    self.logger.warning(f"  prettyPrint(): {repr(value.prettyPrint())}")
+                except:
+                    pass
+        except Exception as e:
+            self.logger.error(f"Debug failed: {e}")
     
     def _to_snmp_value(self, value: Any, value_type: str):
         """Convert Python value to pysnmp type."""
