@@ -2794,60 +2794,6 @@ class PyPNMAgent:
             'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
         }
     
-    def _get_fiber_node_from_cmts(self, cmts_ip: str, mac_address: str, community: str) -> str:
-        """Lookup fiber node name from CMTS using modem MAC address.
-        
-        Queries CMTS docsIfCmtsCmStatusTable to get downstream channel ifIndex,
-        then queries docsIf3MdNodeStatusTable to find the fiber node name.
-        """
-        # Convert MAC address to decimal format for SNMP index
-        # e.g., "9c:30:5b:f7:e7:ff" -> "156.48.91.247.231.255"
-        try:
-            # Remove separators and convert hex to decimal
-            mac_clean = mac_address.replace(':', '').replace('-', '').replace('.', '')
-            # Convert each pair of hex digits to decimal
-            mac_parts = '.'.join(str(int(mac_clean[i:i+2], 16)) for i in range(0, len(mac_clean), 2))
-        except Exception as e:
-            self.logger.warning(f"Failed to convert MAC address {mac_address} to decimal format: {e}")
-            return None
-        
-        self.logger.info(f"Looking up fiber node for MAC {mac_address} (decimal: {mac_parts})")
-        
-        # Query CMTS for downstream channel ifIndex
-        # OID: 1.3.6.1.2.1.10.127.1.3.3.1.6.<mac_in_decimal>
-        oid_ds_ifindex = f'1.3.6.1.2.1.10.127.1.3.3.1.6.{mac_parts}'
-        
-        self.logger.debug(f"Querying CMTS {cmts_ip} OID: {oid_ds_ifindex}")
-        result = asyncio.run(self._async_snmp_get(cmts_ip, oid_ds_ifindex, community, timeout=5))
-        if not result.get('success'):
-            self.logger.warning(f"Failed to get DS ifIndex from CMTS for MAC {mac_address}: {result.get('error', 'Unknown error')}")
-            return None
-        
-        ds_ifindex = result.get('values', [None])[0]
-        if not ds_ifindex:
-            self.logger.warning(f"No DS ifIndex returned from CMTS for MAC {mac_address}")
-            return None
-        
-        self.logger.info(f"Got DS ifIndex {ds_ifindex} for MAC {mac_address}")
-        
-        # Query CMTS for fiber node name using ifIndex
-        # Walk docsIf3MdNodeStatusTable: 1.3.6.1.4.1.4491.2.1.20.1.12.1.1.<ifIndex>
-        oid_node_name = f'1.3.6.1.4.1.4491.2.1.20.1.12.1.1.{ds_ifindex}'
-        
-        walk_result = self._snmp_parallel_walk(cmts_ip, [oid_node_name], community, timeout=10)
-        if not walk_result.get('success'):
-            self.logger.warning(f"Failed to walk fiber node table for ifIndex {ds_ifindex}")
-            return None
-        
-        results = walk_result.get('results', {}).get(oid_node_name, [])
-        if results:
-            # Return first node name found
-            node_name = str(results[0].get('value', ''))
-            self.logger.info(f"Found fiber node: {node_name}")
-            return node_name
-        
-        self.logger.warning(f"No fiber node found for ifIndex {ds_ifindex}")
-        return None
     
     def _handle_pnm_event_log(self, params: dict) -> dict:
         """Get event log from modem via pysnmp."""
