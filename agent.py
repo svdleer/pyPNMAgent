@@ -2818,22 +2818,28 @@ class PyPNMAgent:
             if '.' not in mac_parts:
                 # Try hex format
                 mac_parts = '.'.join(str(int(mac_address[i:i+2], 16)) for i in range(0, len(mac_address), 2))
-        except:
-            self.logger.warning(f"Failed to convert MAC address {mac_address} to decimal format")
+        except Exception as e:
+            self.logger.warning(f"Failed to convert MAC address {mac_address} to decimal format: {e}")
             return None
+        
+        self.logger.info(f"Looking up fiber node for MAC {mac_address} (decimal: {mac_parts})")
         
         # Query CMTS for downstream channel ifIndex
         # OID: 1.3.6.1.2.1.10.127.1.3.3.1.6.<mac_in_decimal>
         oid_ds_ifindex = f'1.3.6.1.2.1.10.127.1.3.3.1.6.{mac_parts}'
         
+        self.logger.debug(f"Querying CMTS {cmts_ip} OID: {oid_ds_ifindex}")
         result = asyncio.run(self._async_snmp_get(cmts_ip, oid_ds_ifindex, community, timeout=5))
         if not result.get('success'):
-            self.logger.warning(f"Failed to get DS ifIndex from CMTS for MAC {mac_address}")
+            self.logger.warning(f"Failed to get DS ifIndex from CMTS for MAC {mac_address}: {result.get('error', 'Unknown error')}")
             return None
         
         ds_ifindex = result.get('values', [None])[0]
         if not ds_ifindex:
+            self.logger.warning(f"No DS ifIndex returned from CMTS for MAC {mac_address}")
             return None
+        
+        self.logger.info(f"Got DS ifIndex {ds_ifindex} for MAC {mac_address}")
         
         # Query CMTS for fiber node name using ifIndex
         # Walk docsIf3MdNodeStatusTable: 1.3.6.1.4.1.4491.2.1.20.1.12.1.1.<ifIndex>
@@ -2841,13 +2847,17 @@ class PyPNMAgent:
         
         walk_result = self._snmp_parallel_walk(cmts_ip, [oid_node_name], community, timeout=10)
         if not walk_result.get('success'):
+            self.logger.warning(f"Failed to walk fiber node table for ifIndex {ds_ifindex}")
             return None
         
         results = walk_result.get('results', {}).get(oid_node_name, [])
         if results:
             # Return first node name found
-            return str(results[0].get('value', ''))
+            node_name = str(results[0].get('value', ''))
+            self.logger.info(f"Found fiber node: {node_name}")
+            return node_name
         
+        self.logger.warning(f"No fiber node found for ifIndex {ds_ifindex}")
         return None
     
     def _handle_pnm_event_log(self, params: dict) -> dict:
