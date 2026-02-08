@@ -2323,8 +2323,6 @@ class PyPNMAgent:
         modem_ip = params.get('modem_ip')
         community = params.get('community', self.config.cm_community)
         mac_address = params.get('mac_address')
-        cmts_ip = params.get('cmts_ip')
-        cmts_community = params.get('cmts_community', self.config.cmts_community)
         skip_connectivity_check = params.get('skip_connectivity_check', False)
         
         if not modem_ip:
@@ -2679,20 +2677,11 @@ class PyPNMAgent:
         
         total_time = time.time() - start_time
         
-        # Step 7: Lookup fiber node from CMTS if CMTS IP provided
-        fiber_node = None
-        if cmts_ip and mac_address:
-            try:
-                fiber_node = self._get_fiber_node_from_cmts(cmts_ip, mac_address, cmts_community)
-            except Exception as e:
-                self.logger.warning(f"Failed to get fiber node from CMTS: {e}")
-        
         return {
             'success': True,
             'status': 0,
             'mac_address': mac_address,
             'modem_ip': modem_ip,
-            'fiber_node': fiber_node,
             'timestamp': datetime.now().isoformat(),
             'timing': {
                 'walk_time': round(walk_time, 2),
