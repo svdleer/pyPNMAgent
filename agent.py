@@ -409,7 +409,7 @@ class PyPNMAgent:
             # 'pnm_us_rxmer_data': self._handle_pnm_us_rxmer_data,
             # 'pnm_us_get_interfaces': self._handle_pnm_us_get_interfaces,
             # OFDM capture commands (downstream - on CM)
-            'pnm_ofdm_channels': self._handle_pnm_ofdm_channels,
+            # 'pnm_ofdm_channels': self._handle_pnm_ofdm_channels,  # REMOVED - handler deleted
         }
     
     def _setup_pypnm_tunnel(self) -> bool:
