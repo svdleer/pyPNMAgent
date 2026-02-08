@@ -1704,50 +1704,28 @@ class PyPNMAgent:
     
     def _parse_snmp_value(self, value) -> Any:
         """Parse pysnmp value to Python native type."""
+        if value is None:
+            return None
+        
+        # For OctetString
+        if hasattr(value, 'asOctets'):
+            raw = bytes(value)
+            # Try UTF-8, fall back to hex
+            try:
+                return raw.decode('utf-8').strip()
+            except UnicodeDecodeError:
+                return raw.hex()
+        
+        # For most other types, let pysnmp do the conversion
         try:
-            # Check the actual pysnmp type name
-            type_name = type(value).__name__
-            
-            # For OctetString (may contain binary data like MAC addresses)
-            if type_name == 'OctetString':
-                raw = bytes(value)
-                # Try to decode as UTF-8 string first
-                try:
-                    return raw.decode('utf-8')
-                except:
-                    # Return as hex string for binary data (like MAC addresses)
-                    return ':'.join(f'{b:02x}' for b in raw)
-            
-            # For integer types
-            if type_name in ('Integer', 'Integer32', 'Unsigned32', 'Counter32', 'Counter64', 'Gauge32', 'TimeTicks'):
-                int_val = int(value)
-                # Debug large integer parsing - pysnmp bug with large integers
-                if int_val == 0:
-                    # Try to get raw value from pysnmp object
-                    if hasattr(value, '_value'):
-                        int_val = int(value._value) if value._value else 0
-                    elif hasattr(value, 'prettyPrint'):
-                        pretty = value.prettyPrint()
-                        try:
-                            int_val = int(pretty)
-                        except:
-                            pass
-                return int_val
-            
-            # For IpAddress
-            if type_name == 'IpAddress':
-                return value.prettyPrint()
-            
-            # Fallback to prettyPrint
+            # This handles Integer, Counter, Gauge, etc.
             if hasattr(value, 'prettyPrint'):
-                return value.prettyPrint()
-            
-            return str(value)
-        except Exception as e:
-            # Ultimate fallback
-            if hasattr(value, 'prettyPrint'):
-                return value.prettyPrint()
-            return str(value)
+                # For timeticks and other special formats
+                if hasattr(value, '_value'):
+                    return int(value._value)
+            return int(value) if hasattr(value, '__int__') else str(value)
+        except:
+            return str(value) if value is not None else None
     
     def _to_snmp_value(self, value: Any, value_type: str):
         """Convert Python value to pysnmp type."""
