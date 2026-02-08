@@ -776,7 +776,7 @@ class PyPNMAgent:
     async def _async_snmp_walk(self, target_ip: str, oid: str, community: str, timeout: int = 10) -> dict:
         """Async SNMP WALK using pysnmp."""
         try:
-            output_lines = []
+            results = []
             async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
                 SnmpEngine(),
                 CommunityData(community),
@@ -792,9 +792,17 @@ class PyPNMAgent:
                     return {'success': False, 'error': f'{errorStatus.prettyPrint()} at {errorIndex}'}
                 
                 for varBind in varBinds:
-                    output_lines.append(f"{varBind[0].prettyPrint()} = {varBind[1].prettyPrint()}")
+                    oid_str = str(varBind[0])
+                    # Stop if we've walked past the requested OID tree
+                    if not oid_str.startswith(oid):
+                        break
+                    results.append({
+                        'oid': oid_str,
+                        'value': self._parse_snmp_value(varBind[1]),
+                        'type': type(varBind[1]).__name__
+                    })
             
-            return {'success': True, 'output': '\n'.join(output_lines)}
+            return {'success': True, 'results': results}
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
