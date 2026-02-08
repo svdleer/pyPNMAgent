@@ -383,9 +383,10 @@ class PyPNMAgent:
             'tftp_get': self._handle_tftp_get,
             'cmts_command': self._handle_cmts_command,
             'execute_pnm': self._handle_pnm_command,
-            'cmts_get_modems': self._handle_cmts_get_modems,
-            'cmts_get_modem_info': self._handle_cmts_get_modem_info,
-            'enrich_modems': self._handle_enrich_modems,
+            # REMOVED: cmts_get_modems, cmts_get_modem_info, enrich_modems - handlers deleted
+            # 'cmts_get_modems': self._handle_cmts_get_modems,
+            # 'cmts_get_modem_info': self._handle_cmts_get_modem_info,
+            # 'enrich_modems': self._handle_enrich_modems,
             # PNM measurement commands (downstream - on CM)
             'pnm_rxmer': self._handle_pnm_rxmer,
             'pnm_spectrum': self._handle_pnm_spectrum,
