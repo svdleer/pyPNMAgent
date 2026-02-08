@@ -1721,15 +1721,17 @@ class PyPNMAgent:
             # For integer types
             if type_name in ('Integer', 'Integer32', 'Unsigned32', 'Counter32', 'Counter64', 'Gauge32', 'TimeTicks'):
                 int_val = int(value)
-                # Debug large integer parsing
-                if int_val == 0 and hasattr(value, 'prettyPrint'):
-                    pretty = value.prettyPrint()
-                    self.logger.warning(f"Integer value is 0 but prettyPrint is: {pretty}")
-                    # Try parsing prettyPrint
-                    try:
-                        int_val = int(pretty)
-                    except:
-                        pass
+                # Debug large integer parsing - pysnmp bug with large integers
+                if int_val == 0:
+                    # Try to get raw value from pysnmp object
+                    if hasattr(value, '_value'):
+                        int_val = int(value._value) if value._value else 0
+                    elif hasattr(value, 'prettyPrint'):
+                        pretty = value.prettyPrint()
+                        try:
+                            int_val = int(pretty)
+                        except:
+                            pass
                 return int_val
             
             # For IpAddress
