@@ -392,8 +392,7 @@ class PyPNMAgent:
             'pnm_fec': self._handle_pnm_fec,
             'pnm_pre_eq': self._handle_pnm_pre_eq,
 
-            'pnm_channel_stats': self._handle_pnm_channel_stats,
-            'pnm_channel_stats_raw': self._handle_pnm_channel_stats_raw,  # New optimized channel stats
+            'pnm_channel_stats': self._handle_pnm_channel_stats,  # New optimized channel stats
             'pnm_event_log': self._handle_pnm_event_log,
             # OFDM capture commands (downstream - on CM)
             'pnm_ofdm_channels': self._handle_pnm_ofdm_channels,
