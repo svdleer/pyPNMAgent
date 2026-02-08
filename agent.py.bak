@@ -2322,6 +2322,2149 @@ class PyPNMAgent:
             'upstream': sorted(upstream, key=lambda x: x['channel_id'])
         }
     
+    def _handle_pnm_channel_stats(self, params: dict) -> dict:
+        """Get comprehensive channel stats via optimized parallel bulk walks.
+        
+        This is the new optimized version that:
+        1. Does a quick connectivity check (ping + SNMP sysDescr)
+        2. Walks all channel stats tables in parallel using bulk_walk_cmd
+        3. Returns merged channel stats for SC-QAM, OFDM, ATDMA, and OFDMA
+        
+        Tables walked:
+        - docsIfDownChannelTable: DS SC-QAM freq, power, modulation
+        - docsIfSigQTable: DS SC-QAM SNR, codewords
+        - docsIf3SignalQualityExtTable: DS SC-QAM RxMER
+        - docsIf31CmDsOfdmChanTable: DS OFDM (DOCSIS 3.1)
+        - docsIfUpChannelTable: US ATDMA freq, width, type
+        - docsIf3CmStatusUsTable: US ATDMA TX power, T3 timeouts
+        - docsIf31CmUsOfdmaChanTable: US OFDMA (DOCSIS 3.1)
+        """
+        modem_ip = params.get('modem_ip')
+        community = params.get('community', self.config.cm_community)
+        mac_address = params.get('mac_address')
+        skip_connectivity_check = params.get('skip_connectivity_check', False)
+        
+        if not modem_ip:
+            return {'success': False, 'error': 'modem_ip required'}
+        
+        start_time = time.time()
+        self.logger.info(f"Getting channel stats for modem {modem_ip}")
+        
+        # Step 1: Quick connectivity check (unless skipped)
+        if not skip_connectivity_check:
+            # Quick ping check (1 packet, 2 second timeout)
+            ping_result = subprocess.run(
+                ['ping', '-c', '1', '-W', '2', modem_ip],
+                capture_output=True,
+                text=True
+            )
+            if ping_result.returncode != 0:
+                return {
+                    'success': False,
+                    'error': f'Modem {modem_ip} not reachable (ping failed)',
+                    'reachable': False
+                }
+            
+            # Quick SNMP check - get sysDescr
+            snmp_check = asyncio.run(self._async_snmp_get(modem_ip, '1.3.6.1.2.1.1.1.0', community, timeout=3))
+            if not snmp_check.get('success'):
+                return {
+                    'success': False,
+                    'error': f'SNMP not responding on {modem_ip}',
+                    'reachable': True,
+                    'snmp_error': snmp_check.get('error')
+                }
+        
+        # Step 2: Define all table OIDs to walk
+        TABLES = {
+            # Downstream SC-QAM
+            'docsIfDownChannelTable': '1.3.6.1.2.1.10.127.1.1.1',
+            'docsIfSigQTable': '1.3.6.1.2.1.10.127.1.1.4',
+            'docsIf3SignalQualityExtTable': '1.3.6.1.4.1.4491.2.1.20.1.24',
+            # Downstream OFDM (DOCSIS 3.1) - DOCS-IF31-MIB
+            'docsIf31CmDsOfdmChanTable': '1.3.6.1.4.1.4491.2.1.28.1.9',
+            'docsIf31CmDsOfdmChannelPowerTable': '1.3.6.1.4.1.4491.2.1.28.1.11',
+            # Upstream ATDMA
+            'docsIfUpChannelTable': '1.3.6.1.2.1.10.127.1.1.2',
+            'docsIf3CmStatusUsTable': '1.3.6.1.4.1.4491.2.1.20.1.2',
+            # Upstream OFDMA (DOCSIS 3.1) - DOCS-IF31-MIB
+            'docsIf31CmUsOfdmaChanTable': '1.3.6.1.4.1.4491.2.1.28.1.13',
+            'docsIf31CmStatusOfdmaUsTable': '1.3.6.1.4.1.4491.2.1.28.1.12',
+        }
+        
+        # Column mappings for parsing
+        COLUMN_MAPS = {
+            'docsIfDownChannelTable': {
+                1: 'channelId', 2: 'frequency', 3: 'width', 
+                4: 'modulation', 5: 'interleave', 6: 'power'
+            },
+            'docsIfSigQTable': {
+                2: 'unerroreds', 3: 'correcteds', 4: 'uncorrectables',
+                5: 'snr', 6: 'microreflections'
+            },
+            'docsIf3SignalQualityExtTable': {
+                1: 'rxmer'
+            },
+            'docsIf31CmDsOfdmChanTable': {
+                1: 'channelId', 3: 'subcarrierZeroFreq', 4: 'firstActiveSubcarrier',
+                5: 'lastActiveSubcarrier', 6: 'numActiveSubcarriers',
+                7: 'subcarrierSpacing', 10: 'plcFreq'
+            },
+            'docsIf31CmDsOfdmChannelPowerTable': {
+                2: 'centerFrequency', 3: 'rxPower'
+            },
+            'docsIfUpChannelTable': {
+                1: 'channelId', 2: 'frequency', 3: 'width',
+                4: 'modulationProfile', 15: 'type'
+            },
+            'docsIf3CmStatusUsTable': {
+                1: 'txPower', 2: 't3Timeouts', 3: 't4Timeouts',
+                4: 'rangingAborteds', 5: 'modulationType'
+            },
+            'docsIf31CmUsOfdmaChanTable': {
+                2: 'subcarrierZeroFreq', 3: 'firstActiveSubcarrier',
+                4: 'lastActiveSubcarrier', 5: 'numActiveSubcarriers',
+                6: 'subcarrierSpacing', 10: 'txPower', 12: 'channelId'
+            },
+            'docsIf31CmStatusOfdmaUsTable': {
+                2: 't3Timeouts', 3: 't4Timeouts', 4: 'rangingAborteds',
+                5: 't3Exceededs', 6: 'isMuted', 7: 'rangingStatus'
+            },
+        }
+        
+        # Fields that need /10 conversion (TenthdB, TenthdBmV) - from DOCS-IF-MIB and DOCS-IF31-MIB
+        TENTH_FIELDS = {'power', 'snr', 'rxmer', 'mer', 'rxPower', 'rxMer', 'txPower'}
+        # OFDMA TX power is QuarterdBmV (divide by 4) - DOCS-IF31-MIB docsIf31CmUsOfdmaChanTxPower
+        QUARTER_FIELDS_BY_TABLE = {
+            'docsIf31CmUsOfdmaChanTable': {'txPower'}
+        }
+        
+        # Step 3: Walk all tables in parallel
+        walk_result = self._snmp_parallel_walk(modem_ip, list(TABLES.values()), community, timeout=15)
+        
+        if not walk_result.get('success'):
+            return {
+                'success': False,
+                'error': 'SNMP table walks failed',
+                'details': walk_result.get('error')
+            }
+        
+        raw_results = walk_result.get('results', {})
+        walk_time = time.time() - start_time
+        
+        # Step 4: Parse results into structured data
+        def parse_table(table_name: str, base_oid: str, raw_data: list) -> dict:
+            """Parse raw SNMP results into per-index structured data."""
+            columns = COLUMN_MAPS.get(table_name, {})
+            parsed = {}  # {index: {field: value}}
+            
+            for item in raw_data:
+                oid = item.get('oid', '')
+                value = item.get('value')
+                
+                # Extract column and index from OID
+                # Format: base_oid.1.column.index
+                suffix = oid.replace(base_oid + '.', '').lstrip('.')
+                parts = suffix.split('.')
+                
+                if len(parts) >= 2:
+                    try:
+                        # Handle .1.col.idx format
+                        if parts[0] == '1':
+                            col = int(parts[1])
+                            idx = int(parts[2]) if len(parts) > 2 else 0
+                        else:
+                            col = int(parts[0])
+                            idx = int(parts[1]) if len(parts) > 1 else 0
+                    except (ValueError, IndexError):
+                        continue
+                    
+                    field_name = columns.get(col)
+                    if field_name:
+                        if idx not in parsed:
+                            parsed[idx] = {}
+                        
+                        # Check if this field needs special conversion
+                        quarter_fields = QUARTER_FIELDS_BY_TABLE.get(table_name, set())
+                        is_quarter = field_name in quarter_fields
+                        is_tenth = field_name in TENTH_FIELDS and not is_quarter
+                        
+                        # Convert value
+                        if isinstance(value, (int, float)):
+                            if is_quarter:
+                                value = value / 4.0  # QuarterdBmV
+                            elif is_tenth:
+                                value = value / 10.0  # TenthdBmV or TenthdB
+                        elif isinstance(value, str):
+                            # Check for unit suffix indicating already converted
+                            if ' dB' in value or 'TenthdB' in value or 'QuarterdB' in value:
+                                # Already converted - just extract number
+                                import re
+                                match = re.search(r'[-+]?\d+\.?\d*', value)
+                                if match:
+                                    value = float(match.group())
+                            elif value.lstrip('-').replace('.', '').isdigit():
+                                num = float(value)
+                                if is_quarter:
+                                    value = num / 4.0
+                                elif is_tenth:
+                                    value = num / 10.0
+                                else:
+                                    value = int(num) if num == int(num) else num
+                        
+                        parsed[idx][field_name] = value
+            
+            return parsed
+        
+        # Parse all tables
+        tables_data = {}
+        for table_name, base_oid in TABLES.items():
+            raw_data = raw_results.get(base_oid, [])
+            tables_data[table_name] = parse_table(table_name, base_oid, raw_data)
+        
+        # Step 5: Build channel stats response
+        ds_down = tables_data.get('docsIfDownChannelTable', {})
+        ds_sigq = tables_data.get('docsIfSigQTable', {})
+        ds_rxmer = tables_data.get('docsIf3SignalQualityExtTable', {})
+        ds_ofdm = tables_data.get('docsIf31CmDsOfdmChanTable', {})
+        ds_ofdm_power = tables_data.get('docsIf31CmDsOfdmChannelPowerTable', {})
+        us_up = tables_data.get('docsIfUpChannelTable', {})
+        us_status = tables_data.get('docsIf3CmStatusUsTable', {})
+        us_ofdma = tables_data.get('docsIf31CmUsOfdmaChanTable', {})
+        us_ofdma_status = tables_data.get('docsIf31CmStatusOfdmaUsTable', {})
+        
+        # Build SC-QAM downstream channels
+        ds_scqam_channels = []
+        for idx in sorted(ds_down.keys()):
+            down = ds_down.get(idx, {})
+            sigq = ds_sigq.get(idx, {})
+            rxmer_data = ds_rxmer.get(idx, {})
+            
+            channel_id = down.get('channelId')
+            if not channel_id:
+                continue
+            
+            freq = down.get('frequency')
+            ds_scqam_channels.append({
+                'index': idx,
+                'channel_id': channel_id,
+                'frequency': freq,
+                'frequency_mhz': freq / 1_000_000 if freq else None,
+                'power': down.get('power'),
+                'modulation': down.get('modulation'),
+                'snr': sigq.get('snr'),
+                'rxmer': rxmer_data.get('rxmer'),
+                'unerroreds': sigq.get('unerroreds'),
+                'correcteds': sigq.get('correcteds'),
+                'uncorrectables': sigq.get('uncorrectables'),
+            })
+        
+        # Build OFDM downstream channels
+        ds_ofdm_channels = []
+        for idx in sorted(ds_ofdm.keys()):
+            ofdm = ds_ofdm.get(idx, {})
+            channel_id = ofdm.get('channelId')
+            if not channel_id:
+                continue
+            
+            plc_freq = ofdm.get('plcFreq')
+            num_sc = ofdm.get('numActiveSubcarriers', 0)
+            sc_spacing = ofdm.get('subcarrierSpacing', 2)  # 1=25kHz, 2=50kHz
+            sc_hz = 25000 if sc_spacing == 1 else 50000
+            bandwidth = num_sc * sc_hz if num_sc else 0
+            
+            # Get power/MER from the separate power table
+            power_data = ds_ofdm_power.get(idx, {})
+            
+            ds_ofdm_channels.append({
+                'index': idx,
+                'channel_id': channel_id,
+                'plc_freq': plc_freq,
+                'plc_freq_mhz': plc_freq / 1_000_000 if plc_freq else None,
+                'power': power_data.get('rxPower'),
+                'mer': power_data.get('rxMer'),
+                'num_subcarriers': num_sc,
+                'subcarrier_spacing_khz': sc_hz / 1000,
+                'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
+            })
+        
+        # Build ATDMA upstream channels
+        us_atdma_channels = []
+        for idx in sorted(us_up.keys()):
+            up = us_up.get(idx, {})
+            status = us_status.get(idx, {})
+            
+            channel_id = up.get('channelId')
+            freq = up.get('frequency')
+            if not channel_id or not freq:
+                continue
+            
+            ch_type = up.get('type', 0)
+            type_name = {1: 'TDMA', 2: 'ATDMA', 3: 'SCDMA'}.get(ch_type, str(ch_type))
+            width = up.get('width')
+            
+            us_atdma_channels.append({
+                'index': idx,
+                'channel_id': channel_id,
+                'frequency': freq,
+                'frequency_mhz': freq / 1_000_000 if freq else None,
+                'width': width,
+                'width_mhz': width / 1_000_000 if width else None,
+                'type': type_name,
+                'tx_power': status.get('txPower'),
+                't3_timeouts': status.get('t3Timeouts'),
+                't4_timeouts': status.get('t4Timeouts'),
+                'modulation_type': status.get('modulationType'),
+            })
+        
+        # Build OFDMA upstream channels
+        us_ofdma_channels = []
+        for idx in sorted(us_ofdma.keys()):
+            ofdma = us_ofdma.get(idx, {})
+            channel_id = ofdma.get('channelId')
+            if not channel_id:
+                continue
+            
+            zero_freq = ofdma.get('subcarrierZeroFreq')
+            num_sc = ofdma.get('numActiveSubcarriers', 0)
+            sc_spacing = ofdma.get('subcarrierSpacing', 2)
+            sc_hz = 25000 if sc_spacing == 1 else 50000
+            bandwidth = num_sc * sc_hz if num_sc else 0
+            
+            # Get timeouts from the separate status table
+            status_data = us_ofdma_status.get(idx, {})
+            
+            us_ofdma_channels.append({
+                'index': idx,
+                'channel_id': channel_id,
+                'zero_freq': zero_freq,
+                'zero_freq_mhz': zero_freq / 1_000_000 if zero_freq else None,
+                'tx_power': ofdma.get('txPower'),  # TX power is in channel table, not status table
+                't3_timeouts': status_data.get('t3Timeouts'),
+                't4_timeouts': status_data.get('t4Timeouts'),
+                'num_subcarriers': num_sc,
+                'subcarrier_spacing_khz': sc_hz / 1000,
+                'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
+            })
+        
+        # If bulk walk didn't find OFDM/OFDMA but modem should have them,
+        # try individual SNMP GETs (more reliable for some firmware)
+        if len(ds_ofdm_channels) == 0 or len(us_ofdma_channels) == 0:
+            self.logger.info(f"Bulk walk found {len(ds_ofdm_channels)} OFDM, {len(us_ofdma_channels)} OFDMA - trying individual GETs")
+            
+            # Get ifTable to find OFDM/OFDMA interfaces
+            iftable_oids = ['1.3.6.1.2.1.2.2.1.1', '1.3.6.1.2.1.2.2.1.2']  # ifIndex, ifDescr
+            if_result = self._snmp_parallel_walk(modem_ip, iftable_oids, community, timeout=10)
+            
+            if if_result.get('success'):
+                if_data = if_result.get('results', {})
+                ofdm_indexes = []
+                ofdma_indexes = []
+                
+                # Find OFDM/OFDMA interface indexes
+                for entry in if_data.get(iftable_oids[1], []):
+                    ifdescr = str(entry.get('value', '')).lower()
+                    idx_str = entry['oid'].split('.')[-1]
+                    idx = int(idx_str)
+                    
+                    if 'ofdm' in ifdescr and 'downstream' in ifdescr:
+                        ofdm_indexes.append(idx)
+                    elif 'ofdma' in ifdescr or ('ofdm' in ifdescr and 'upstream' in ifdescr):
+                        ofdma_indexes.append(idx)
+                
+                self.logger.info(f"Found OFDM indexes: {ofdm_indexes}, OFDMA indexes: {ofdma_indexes}")
+                
+                # Query OFDM channels if bulk walk missed them
+                if len(ds_ofdm_channels) == 0 and ofdm_indexes:
+                    for idx in ofdm_indexes:
+                        try:
+                            result = self._snmp_get_ofdm_channel(modem_ip, idx, community)
+                            if result:
+                                ds_ofdm_channels.append(result)
+                        except Exception as e:
+                            self.logger.warning(f"Failed to GET OFDM channel {idx}: {e}")
+                
+                # Query OFDMA channels if bulk walk missed them  
+                if len(us_ofdma_channels) == 0 and ofdma_indexes:
+                    for idx in ofdma_indexes:
+                        try:
+                            result = self._snmp_get_ofdma_channel(modem_ip, idx, community)
+                            if result:
+                                us_ofdma_channels.append(result)
+                        except Exception as e:
+                            self.logger.warning(f"Failed to GET OFDMA channel {idx}: {e}")
+        
+        total_time = time.time() - start_time
+        
+        return {
+            'success': True,
+            'status': 0,
+            'mac_address': mac_address,
+            'modem_ip': modem_ip,
+            'timestamp': datetime.now().isoformat(),
+            'timing': {
+                'walk_time': round(walk_time, 2),
+                'total_time': round(total_time, 2),
+            },
+            'downstream': {
+                'scqam': {
+                    'channels': ds_scqam_channels,
+                    'count': len(ds_scqam_channels),
+                },
+                'ofdm': {
+                    'channels': ds_ofdm_channels,
+                    'count': len(ds_ofdm_channels),
+                },
+            },
+            'upstream': {
+                'atdma': {
+                    'channels': us_atdma_channels,
+                    'count': len(us_atdma_channels),
+                },
+                'ofdma': {
+                    'channels': us_ofdma_channels,
+                    'count': len(us_ofdma_channels),
+                },
+            },
+        }
+    
+    def _snmp_get_ofdm_channel(self, modem_ip: str, ifindex: int, community: str) -> dict:
+        """Get OFDM channel data using individual SNMP GETs."""
+        base_chan = '1.3.6.1.4.1.4491.2.1.28.1.9.1'  # docsIf31CmDsOfdmChanTable
+        base_power = '1.3.6.1.4.1.4491.2.1.28.1.11.1'  # docsIf31CmDsOfdmChannelPowerTable
+        
+        oids = [
+            f'{base_chan}.1.{ifindex}',  # channelId
+            f'{base_chan}.3.{ifindex}',  # subcarrierZeroFreq
+            f'{base_chan}.6.{ifindex}',  # numActiveSubcarriers
+            f'{base_chan}.7.{ifindex}',  # subcarrierSpacing
+            f'{base_chan}.10.{ifindex}', # plcFreq
+            f'{base_power}.2.{ifindex}', # rxPower
+            f'{base_power}.3.{ifindex}', # rxMer
+        ]
+        
+        result = asyncio.run(self._async_snmp_get(modem_ip, oids, community, timeout=5))
+        if not result.get('success'):
+            return None
+        
+        values = result.get('values', [])
+        if len(values) < 7:
+            return None
+        
+        channel_id = int(values[0]) if values[0] else 0
+        plc_freq = int(values[4]) if values[4] else 0
+        num_sc = int(values[2]) if values[2] else 0
+        sc_spacing = int(values[3]) if values[3] else 2
+        sc_hz = 25000 if sc_spacing == 1 else 50000
+        bandwidth = num_sc * sc_hz if num_sc else 0
+        
+        return {
+            'index': ifindex,
+            'channel_id': channel_id,
+            'plc_freq': plc_freq,
+            'plc_freq_mhz': plc_freq / 1_000_000 if plc_freq else None,
+            'power': float(values[5]) / 10.0 if values[5] else None,
+            'mer': float(values[6]) / 10.0 if values[6] else None,
+            'num_subcarriers': num_sc,
+            'subcarrier_spacing_khz': sc_hz / 1000,
+            'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
+        }
+    
+    def _snmp_get_ofdma_channel(self, modem_ip: str, ifindex: int, community: str) -> dict:
+        """Get OFDMA channel data using individual SNMP GETs."""
+        base_chan = '1.3.6.1.4.1.4491.2.1.28.1.13.1'  # docsIf31CmUsOfdmaChanTable
+        base_status = '1.3.6.1.4.1.4491.2.1.28.1.12.1'  # docsIf31CmStatusOfdmaUsTable
+        
+        oids = [
+            f'{base_chan}.1.{ifindex}',  # channelId
+            f'{base_chan}.3.{ifindex}',  # subcarrierZeroFreq
+            f'{base_chan}.6.{ifindex}',  # numActiveSubcarriers
+            f'{base_chan}.7.{ifindex}',  # subcarrierSpacing
+            f'{base_status}.1.{ifindex}', # txPower
+            f'{base_status}.2.{ifindex}', # t3Timeouts
+            f'{base_status}.3.{ifindex}', # t4Timeouts
+        ]
+        
+        result = asyncio.run(self._async_snmp_get(modem_ip, oids, community, timeout=5))
+        if not result.get('success'):
+            return None
+        
+        values = result.get('values', [])
+        if len(values) < 7:
+            return None
+        
+        channel_id = int(values[0]) if values[0] else 0
+        zero_freq = int(values[1]) if values[1] else 0
+        num_sc = int(values[2]) if values[2] else 0
+        sc_spacing = int(values[3]) if values[3] else 2
+        sc_hz = 25000 if sc_spacing == 1 else 50000
+        bandwidth = num_sc * sc_hz if num_sc else 0
+        
+        return {
+            'index': ifindex,
+            'channel_id': channel_id,
+            'zero_freq': zero_freq,
+            'zero_freq_mhz': zero_freq / 1_000_000 if zero_freq else None,
+            'tx_power': float(values[4]) / 10.0 if values[4] else None,
+            't3_timeouts': int(values[5]) if values[5] else 0,
+            't4_timeouts': int(values[6]) if values[6] else 0,
+            'num_subcarriers': num_sc,
+            'subcarrier_spacing_khz': sc_hz / 1000,
+            'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
+        }
+    
+    
+    def _handle_pnm_event_log(self, params: dict) -> dict:
+        """Get event log from modem via pysnmp."""
+        modem_ip = params.get('modem_ip')
+        community = params.get('community') or self.config.cm_community
+        mac_address = params.get('mac_address')
+        
+        if not modem_ip:
+            return {'success': False, 'error': 'modem_ip required'}
+        
+        self.logger.info(f"Getting event log for modem {modem_ip} via pysnmp")
+        
+        # DOCSIS Event Log OIDs
+        OID_EVENT_TEXT = '1.3.6.1.2.1.69.1.5.8.1.7'   # docsDevEvText
+        OID_EVENT_TIME = '1.3.6.1.2.1.69.1.5.8.1.6'   # docsDevEvLastTime
+        OID_EVENT_LEVEL = '1.3.6.1.2.1.69.1.5.8.1.4'  # docsDevEvLevel
+        
+        result = self._snmp_parallel_walk(modem_ip, [OID_EVENT_TEXT, OID_EVENT_TIME, OID_EVENT_LEVEL], community, timeout=15)
+        
+        if not result.get('success'):
+            return {'success': False, 'error': result.get('error', 'SNMP query failed')}
+        
+        walk_results = result.get('results', {})
+        
+        # Parse text entries
+        text_map = {}
+        for r in walk_results.get(OID_EVENT_TEXT, []):
+            try:
+                idx = r['oid'].split('.')[-1]
+                text_map[idx] = r['value']
+            except:
+                pass
+        
+        # Parse time entries
+        time_map = {}
+        for r in walk_results.get(OID_EVENT_TIME, []):
+            try:
+                idx = r['oid'].split('.')[-1]
+                time_map[idx] = r['value']
+            except:
+                pass
+        
+        # Parse level entries
+        level_map = {}
+        level_names = {1: 'emergency', 2: 'alert', 3: 'critical', 4: 'error', 5: 'warning', 6: 'notice', 7: 'info', 8: 'debug'}
+        for r in walk_results.get(OID_EVENT_LEVEL, []):
+            try:
+                idx = r['oid'].split('.')[-1]
+                level_val = int(r['value']) if isinstance(r['value'], (int, str)) else 7
+                level_map[idx] = level_names.get(level_val, 'unknown')
+            except:
+                pass
+        
+        events = []
+        for idx in text_map:
+            events.append({
+                'id': int(idx),
+                'text': text_map[idx],
+                'time': time_map.get(idx, ''),
+                'level': level_map.get(idx, 'info')
+            })
+        
+        # Sort by ID descending (newest first)
+        events.sort(key=lambda x: x['id'], reverse=True)
+        
+        return {
+            'success': True,
+            'mac_address': mac_address,
+            'modem_ip': modem_ip,
+            'timestamp': datetime.now().isoformat(),
+            'events': events[:50],  # Last 50 events
+            'total_events': len(events)
+        }
+
+    def _handle_pnm_ofdm_channels(self, params: dict) -> dict:
+        """Get list of OFDM channels via cm_proxy SNMP."""
+        modem_ip = params.get('modem_ip')
+        community = params.get('community') or self.config.cm_community
+        
+        if not modem_ip:
+            return {'success': False, 'error': 'modem_ip required'}
+        
+        if not self.config.cm_proxy_host and not self.config.cm_enabled:
+            return {'success': False, 'error': 'cm_proxy not configured'}
+        
+        try:
+            # DOCSIS 3.1 OFDM channel OIDs
+            OID_OFDM_CHAN_ID = '1.3.6.1.4.1.4491.2.1.28.1.9.1.1'  # docsIf31CmDsOfdmChanChannelId
+            
+            self.logger.info(f"Querying OFDM channels for {modem_ip}")
+            result = self._query_modem(modem_ip, OID_OFDM_CHAN_ID, community, walk=True)
+            self.logger.info(f"OFDM query result: success={result.get('success')}")
+            
+            if not result.get('success'):
+                # Not an error - modem might be DOCSIS 3.0 only
+                return {'success': True, 'channels': []}
+            
+            channels = []
+            for line in result.get('output', '').split('\n'):
+                if '=' in line and 'INTEGER' in line:
+                    try:
+                        parts = line.split('=')[0].strip().split('.')
+                        idx = int(parts[-1])
+                        chan_id = int(line.split('INTEGER:')[-1].strip())
+                        channels.append({
+                            "index": idx,
+                            "channel_id": chan_id
+                        })
+                    except:
+                        pass
+            
+            return {"success": True, "channels": channels}
+        except Exception as e:
+            self.logger.error(f"OFDM channels error: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def _handle_pnm_ofdm_capture(self, params: dict) -> dict:
+        """Trigger OFDM RxMER capture via cm_proxy SNMP SET."""
+        modem_ip = params.get('modem_ip')
+        ofdm_channel = params.get('ofdm_channel', 0)
+        filename = params.get('filename', 'rxmer_capture')
+        community = params.get('community') or self.config.cm_community
+        
+        if not modem_ip:
+            return {'success': False, 'error': 'modem_ip required'}
+        
+        if not self.config.cm_proxy_host and not self.config.cm_enabled:
+            return {'success': False, 'error': 'cm_proxy not configured'}
+        
+        try:
+            # Correct OIDs from PyPNM compiled_oids.py
+            OID_RXMER_FILENAME = f'1.3.6.1.4.1.4491.2.1.27.1.2.5.1.8.{ofdm_channel}'
+            OID_RXMER_ENABLE = f'1.3.6.1.4.1.4491.2.1.27.1.2.5.1.1.{ofdm_channel}'
+            
+            # Set filename
+            self.logger.info(f"Setting OFDM capture filename for {modem_ip} channel {ofdm_channel}")
+            result = self._set_modem_via_cm_proxy(modem_ip, OID_RXMER_FILENAME, filename, 's', community)
+            self.logger.info(f"Filename set result: success={result.get('success')}")
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to set filename: {result.get('error')}"}
+            
+            # Trigger capture (enable = 1)
+            self.logger.info(f"Triggering OFDM capture for {modem_ip} channel {ofdm_channel}")
+            result = self._set_modem_via_cm_proxy(modem_ip, OID_RXMER_ENABLE, '1', 'i', community)
+            self.logger.info(f"Trigger result: success={result.get('success')}")
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to trigger capture: {result.get('error')}"}
+            
+            return {'success': True, 'message': 'OFDM capture triggered', 'filename': filename}
+        except Exception as e:
+            self.logger.error(f"OFDM capture error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _handle_pnm_ofdm_rxmer(self, params: dict) -> dict:
+        """Trigger OFDM RxMER capture via SNMP.
+        
+        This only triggers the capture - PyPNM handles file retrieval and parsing.
+        The modem uploads the PNM file to TFTP, PyPNM fetches and parses it.
+        """
+        modem_ip = params.get('modem_ip')
+        mac_address = params.get('mac_address', '')
+        community = params.get('community') or self.config.cm_community
+        tftp_server = params.get('tftp_server', os.environ.get('TFTP_IPV4', '172.22.147.18'))
+        
+        if not modem_ip:
+            return {'success': False, 'error': 'modem_ip required'}
+        
+        self.logger.info(f"Triggering OFDM RxMER capture for {modem_ip}")
+        
+        try:
+            # Step 1: Get OFDM channel indexes
+            OID_OFDM_CHAN_ID = '1.3.6.1.4.1.4491.2.1.28.1.1.1.1'  # docsIf31CmDsOfdmChanChannelId
+            chan_result = self._snmp_walk(modem_ip, OID_OFDM_CHAN_ID, community)
+            
+            if not chan_result.get('success') or not chan_result.get('results'):
+                return {'success': False, 'error': 'No OFDM channels found - modem may be DOCSIS 3.0'}
+            
+            # Extract channel indexes
+            ofdm_indexes = []
+            for r in chan_result['results']:
+                try:
+                    oid_parts = r['oid'].split('.')
+                    idx = int(oid_parts[-1])
+                    ofdm_indexes.append(idx)
+                except (ValueError, IndexError):
+                    pass
+            
+            if not ofdm_indexes:
+                return {'success': False, 'error': 'No OFDM channel indexes found'}
+            
+            self.logger.info(f"Found OFDM channel indexes: {ofdm_indexes}")
+            
+            # Step 2: Set TFTP destination on modem (docsPnmBulk)
+            OID_BULK_IP_TYPE = '1.3.6.1.4.1.4491.2.1.27.1.1.1.1.0'
+            OID_BULK_IP_ADDR = '1.3.6.1.4.1.4491.2.1.27.1.1.1.2.0'
+            
+            # Set IP type to IPv4 (1)
+            self._snmp_set(modem_ip, OID_BULK_IP_TYPE, 1, 'i', community)
+            
+            # Set TFTP server IP (as hex)
+            ip_parts = tftp_server.split('.')
+            ip_hex = ''.join([f'{int(p):02x}' for p in ip_parts])
+            self._snmp_set(modem_ip, OID_BULK_IP_ADDR, ip_hex, 'x', community)
+            
+            # Step 3: Trigger RxMER capture for each OFDM channel
+            triggered_channels = []
+            
+            for ofdm_idx in ofdm_indexes:
+                # Generate unique filename
+                mac_clean = mac_address.replace(':', '').lower()
+                timestamp = int(time.time())
+                filename = f"{mac_clean}_{timestamp}_{ofdm_idx}_rxmer"
+                
+                # Set filename (docsPnmCmDsOfdmRxMerFileName)
+                OID_RXMER_FILENAME = f'1.3.6.1.4.1.4491.2.1.27.1.2.5.1.8.{ofdm_idx}'
+                set_result = self._snmp_set(modem_ip, OID_RXMER_FILENAME, filename, 's', community)
+                
+                if not set_result.get('success'):
+                    self.logger.warning(f"Failed to set RxMER filename for channel {ofdm_idx}")
+                    continue
+                
+                # Trigger capture (docsPnmCmDsOfdmRxMerFileEnable = 1)
+                OID_RXMER_ENABLE = f'1.3.6.1.4.1.4491.2.1.27.1.2.5.1.1.{ofdm_idx}'
+                set_result = self._snmp_set(modem_ip, OID_RXMER_ENABLE, 1, 'i', community)
+                
+                if set_result.get('success'):
+                    self.logger.info(f"Triggered RxMER capture for channel {ofdm_idx}: {filename}")
+                    triggered_channels.append({
+                        'channel_index': ofdm_idx,
+                        'filename': filename
+                    })
+                else:
+                    self.logger.warning(f"Failed to trigger RxMER for channel {ofdm_idx}")
+            
+            if not triggered_channels:
+                return {'success': False, 'error': 'Failed to trigger capture on any channel'}
+            
+            # Return success - PyPNM will handle file retrieval and parsing
+            return {
+                'success': True,
+                'message': 'RxMER capture triggered',
+                'mac_address': mac_address,
+                'modem_ip': modem_ip,
+                'tftp_server': tftp_server,
+                'channels': triggered_channels,
+                'note': 'Call PyPNM API to retrieve parsed data'
+            }
+            
+        except Exception as e:
+            self.logger.error(f"OFDM RxMER trigger error: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def _handle_pnm_set_tftp(self, params: dict) -> dict:
+        """Configure modem TFTP destination for PNM captures."""
+        modem_ip = params.get('modem_ip')
+        mac_address = params.get('mac_address')
+        tftp_server = params.get('tftp_server', '149.210.167.40')
+        tftp_path = params.get('tftp_path', '')
+        community = params.get('community') or self.config.cm_community
+        
+        if not modem_ip:
+            return {'success': False, 'error': 'modem_ip required'}
+        
+        try:
+            # OIDs from PyPNM
+            OID_IP_TYPE = '1.3.6.1.4.1.4491.2.1.27.1.1.1.1.0'  # docsPnmBulkDestIpAddrType
+            OID_IP_ADDR = '1.3.6.1.4.1.4491.2.1.27.1.1.1.2.0'  # docsPnmBulkDestIpAddr
+            OID_PATH = '1.3.6.1.4.1.4491.2.1.27.1.1.1.3.0'      # docsPnmBulkDestPath
+            OID_UPLOAD = '1.3.6.1.4.1.4491.2.1.27.1.1.1.4.0'    # docsPnmBulkUploadControl
+            
+            # Set IP address type (1 = IPv4)
+            result = self._set_modem_via_cm_proxy(modem_ip, OID_IP_TYPE, '1', 'i', community)
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to set IP type: {result.get('error')}"}
+            
+            # Set IP address (as hex string: 149.210.167.40 = 95d2a728)
+            ip_parts = tftp_server.split('.')
+            ip_hex = ''.join([f'{int(p):02x}' for p in ip_parts])
+            result = self._set_modem_via_cm_proxy(modem_ip, OID_IP_ADDR, ip_hex, 'x', community)
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to set IP address: {result.get('error')}"}
+            
+            # Set TFTP path
+            if tftp_path:
+                result = self._set_modem_via_cm_proxy(modem_ip, OID_PATH, tftp_path, 's', community)
+                if not result.get('success'):
+                    return {'success': False, 'error': f"Failed to set path: {result.get('error')}"}
+            
+            # Enable auto upload (2 = autoUpload)
+            result = self._set_modem_via_cm_proxy(modem_ip, OID_UPLOAD, '2', 'i', community)
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to enable auto upload: {result.get('error')}"}
+            
+            return {
+                'success': True,
+                'message': f'TFTP destination set to {tftp_server}{tftp_path} with AUTO_UPLOAD enabled',
+                'tftp_server': tftp_server,
+                'tftp_path': tftp_path,
+                'auto_upload': True
+            }
+                
+        except Exception as e:
+            self.logger.error(f"Set TFTP error: {e}")
+            return {'success': False, 'error': str(e)}
+
+    # ============== Upstream PNM Handlers (CMTS-side) ==============
+    
+    def _query_cmts_direct(self, cmts_ip: str, oid: str, community: str, walk: bool = False) -> dict:
+        """Query CMTS directly via pysnmp SNMP."""
+        self.logger.info(f"CMTS SNMP {'WALK' if walk else 'GET'}: {cmts_ip} {oid}")
+        if walk:
+            result = self._snmp_walk(cmts_ip, oid, community, timeout=15)
+            # Convert to old format for compatibility
+            if result.get('success') and result.get('results'):
+                output_lines = []
+                for r in result['results']:
+                    output_lines.append(f"{r['oid']} = {r['type']}: {r['value']}")
+                return {'success': True, 'output': '\n'.join(output_lines), 'results': result['results']}
+            return result
+        else:
+            result = self._snmp_get(cmts_ip, oid, community, timeout=15)
+            if result.get('success') and result.get('results'):
+                r = result['results'][0]
+                return {'success': True, 'output': f"{r['oid']} = {r['type']}: {r['value']}", 'results': result['results']}
+            return result
+    
+    def _set_cmts_direct(self, cmts_ip: str, oid: str, value: str, value_type: str, community: str) -> dict:
+        """Set SNMP value on CMTS directly via pysnmp."""
+        self.logger.info(f"CMTS SNMP SET: {cmts_ip} {oid} = {value} (type={value_type})")
+        return self._snmp_set(cmts_ip, oid, value, value_type, community, timeout=15)
+    
+    def _handle_pnm_us_get_interfaces(self, params: dict) -> dict:
+        """Get upstream RF port interfaces from CMTS for UTSC.
+        
+        Uses same OIDs as PyPNM UtscRfPortDiscoveryService:
+        - docsIf3CmtsCmRegStatusMacAddr to find CM index
+        - docsIf3CmtsCmUsStatusRxPower to find modem's US channels  
+        - docsPnmCmtsUtscCfgLogicalChIfIndex to get RF ports
+        """
+        cmts_ip = params.get('cmts_ip')
+        cm_mac = params.get('cm_mac_address')
+        community = params.get('community') or self.config.cmts_write_community or self.config.cmts_community
+        
+        if not cmts_ip:
+            return {'success': False, 'error': 'cmts_ip required'}
+        
+        try:
+            # OIDs from PyPNM UtscRfPortDiscoveryService
+            OID_CM_REG_MAC = '1.3.6.1.4.1.4491.2.1.20.1.3.1.2'  # docsIf3CmtsCmRegStatusMacAddr
+            OID_CM_US_RXPOWER = '1.3.6.1.4.1.4491.2.1.20.1.4.1.2'  # docsIf3CmtsCmUsStatusRxPower
+            OID_UTSC_LOGICAL_CH = '1.3.6.1.4.1.4491.2.1.27.1.3.10.2.1.2'  # docsPnmCmtsUtscCfgLogicalChIfIndex
+            OID_IF_DESCR = '1.3.6.1.2.1.2.2.1.2'  # ifDescr
+            
+            cm_index = None
+            us_channels = []
+            rf_ports = []
+            modem_rf_port = None
+            
+            # Step 1: Find CM index from MAC
+            if cm_mac:
+                mac_normalized = cm_mac.replace(':', '').replace('-', '').lower()
+                result = self._query_cmts_direct(cmts_ip, OID_CM_REG_MAC, community, walk=True)
+                
+                if result.get('success') and result.get('results'):
+                    for r in result['results']:
+                        try:
+                            mac_value = str(r.get('value', '')).replace(':', '').replace(' ', '').lower()
+                            if mac_normalized == mac_value:
+                                cm_index = int(r['oid'].split('.')[-1])
+                                self.logger.info(f"Found CM index {cm_index} for MAC {cm_mac}")
+                                break
+                        except:
+                            pass
+            
+            # Step 2: Get modem's US channels from docsIf3CmtsCmUsStatusRxPower
+            if cm_index:
+                result = self._query_cmts_direct(cmts_ip, OID_CM_US_RXPOWER, community, walk=True)
+                
+                if result.get('success') and result.get('results'):
+                    for r in result['results']:
+                        try:
+                            # OID format: base.cmIndex.usChIfIndex
+                            oid_suffix = r['oid'].replace(OID_CM_US_RXPOWER + '.', '')
+                            parts = oid_suffix.split('.')
+                            if len(parts) >= 2:
+                                found_cm_idx = int(parts[0])
+                                us_ch_ifindex = int(parts[1])
+                                if found_cm_idx == cm_index and us_ch_ifindex not in us_channels:
+                                    us_channels.append(us_ch_ifindex)
+                                    self.logger.info(f"Found US channel ifIndex {us_ch_ifindex} for CM {cm_mac}")
+                        except:
+                            pass
+            
+            # Step 3: Get RF ports from docsPnmCmtsUtscCfgLogicalChIfIndex
+            result = self._query_cmts_direct(cmts_ip, OID_UTSC_LOGICAL_CH, community, walk=True)
+            
+            if result.get('success') and result.get('results'):
+                seen_rf_ports = set()
+                for r in result['results']:
+                    try:
+                        # OID format: base.rfPortIfIndex.cfgIndex
+                        oid_suffix = r['oid'].replace(OID_UTSC_LOGICAL_CH + '.', '')
+                        parts = oid_suffix.split('.')
+                        if len(parts) >= 1:
+                            rf_port_ifindex = int(parts[0])
+                            if rf_port_ifindex > 1000000000 and rf_port_ifindex not in seen_rf_ports:
+                                seen_rf_ports.add(rf_port_ifindex)
+                                # Get description
+                                desc_result = self._snmp_get(cmts_ip, f"{OID_IF_DESCR}.{rf_port_ifindex}", community)
+                                description = ""
+                                if desc_result.get('success') and desc_result.get('results'):
+                                    description = str(desc_result['results'][0].get('value', ''))
+                                rf_ports.append({'ifindex': rf_port_ifindex, 'description': description})
+                    except:
+                        pass
+            
+            # Step 4: If modem has US channels, find matching RF port
+            if us_channels and rf_ports:
+                first_us_ch = us_channels[0]
+                for rf_port in rf_ports:
+                    # Test if this RF port accepts the modem's logical channel
+                    test_oid = f"{OID_UTSC_LOGICAL_CH}.{rf_port['ifindex']}.1"
+                    set_result = self._snmp_set(cmts_ip, test_oid, first_us_ch, 'i', community)
+                    if set_result.get('success'):
+                        modem_rf_port = rf_port
+                        self.logger.info(f"Found modem's RF port: {rf_port['description']} ({rf_port['ifindex']})")
+                        # Reset to 0
+                        self._snmp_set(cmts_ip, test_oid, 0, 'i', community)
+                        break
+            
+            # Return modem-specific RF port - for UTSC the RF port goes in ofdma_channels
+            # Frontend expects ofdma_channels for UTSC measurement
+            return {
+                'success': True,
+                'cmts_ip': cmts_ip,
+                'rf_ports': [modem_rf_port] if modem_rf_port else rf_ports,
+                'all_rf_ports': rf_ports,
+                'ofdma_channels': [modem_rf_port] if modem_rf_port else rf_ports,  # RF port for UTSC
+                'scqam_channels': [],  # No SC-QAM selection needed
+                'cm_index': cm_index,
+                'modem_rf_port': modem_rf_port,
+                'us_channels': us_channels
+            }
+            
+        except Exception as e:
+            self.logger.error(f"US get interfaces error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _handle_pnm_utsc_configure(self, params: dict) -> dict:
+        """Configure UTSC test parameters on CMTS."""
+        cmts_ip = params.get('cmts_ip')
+        rf_port_ifindex = params.get('rf_port_ifindex')
+        community = params.get('community') or self.config.cmts_write_community or self.config.cmts_community
+        
+        if not cmts_ip or not rf_port_ifindex:
+            return {'success': False, 'error': 'cmts_ip and rf_port_ifindex required'}
+        
+        try:
+            # UTSC OIDs (with ifIndex suffix)
+            base = '1.3.6.1.4.1.4491.2.1.27.1.3.1.1'  # docsPnmCmtsUtscCfgTable
+            idx = f".{rf_port_ifindex}.1"  # ifIndex.cfgIndex
+            
+            # Set trigger mode
+            trigger_mode = params.get('trigger_mode', 2)  # Default: FreeRunning
+            result = self._set_cmts_direct(cmts_ip, f"{base}.3{idx}", str(trigger_mode), 'i', community)
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to set trigger mode: {result.get('error')}"}
+            
+            # Set center frequency (in Hz)
+            center_freq = params.get('center_freq_hz', 30000000)
+            result = self._set_cmts_direct(cmts_ip, f"{base}.8{idx}", str(center_freq), 'u', community)
+            if not result.get('success'):
+                self.logger.warning(f"Failed to set center freq: {result.get('error')}")
+            
+            # Set span (in Hz)
+            span = params.get('span_hz', 80000000)
+            result = self._set_cmts_direct(cmts_ip, f"{base}.9{idx}", str(span), 'u', community)
+            if not result.get('success'):
+                self.logger.warning(f"Failed to set span: {result.get('error')}")
+            
+            # Set number of bins
+            num_bins = params.get('num_bins', 800)
+            result = self._set_cmts_direct(cmts_ip, f"{base}.10{idx}", str(num_bins), 'u', community)
+            if not result.get('success'):
+                self.logger.warning(f"Failed to set num_bins: {result.get('error')}")
+            
+            # Set output format (2 = fftPower)
+            output_format = params.get('output_format', 2)
+            result = self._set_cmts_direct(cmts_ip, f"{base}.17{idx}", str(output_format), 'i', community)
+            if not result.get('success'):
+                self.logger.warning(f"Failed to set output format: {result.get('error')}")
+            
+            # Set filename
+            filename = params.get('filename', 'utsc_capture')
+            result = self._set_cmts_direct(cmts_ip, f"{base}.13{idx}", filename, 's', community)
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to set filename: {result.get('error')}"}
+            
+            # For CM MAC trigger mode
+            if trigger_mode == 6 and params.get('cm_mac_address'):
+                mac = params['cm_mac_address'].replace(':', '').replace('-', '').upper()
+                mac_hex = ' '.join([mac[i:i+2] for i in range(0, 12, 2)])
+                result = self._set_cmts_direct(cmts_ip, f"{base}.6{idx}", mac_hex, 'x', community)
+                if not result.get('success'):
+                    self.logger.warning(f"Failed to set CM MAC: {result.get('error')}")
+                
+                # Set logical channel ifindex if provided
+                if params.get('logical_ch_ifindex'):
+                    result = self._set_cmts_direct(cmts_ip, f"{base}.2{idx}", 
+                                                   str(params['logical_ch_ifindex']), 'i', community)
+            
+            # For FreeRunning mode, set repeat period and duration
+            if trigger_mode == 2:
+                repeat_period = params.get('repeat_period_ms', 0)
+                result = self._set_cmts_direct(cmts_ip, f"{base}.18{idx}", str(repeat_period), 'u', community)
+                
+                freerun_duration = params.get('freerun_duration_ms', 1000)
+                result = self._set_cmts_direct(cmts_ip, f"{base}.19{idx}", str(freerun_duration), 'u', community)
+            
+            return {
+                'success': True,
+                'message': 'UTSC configured',
+                'rf_port_ifindex': rf_port_ifindex,
+                'trigger_mode': trigger_mode,
+                'filename': filename
+            }
+            
+        except Exception as e:
+            self.logger.error(f"UTSC configure error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _handle_pnm_utsc_start(self, params: dict) -> dict:
+        """Start UTSC test (set InitiateTest to true)."""
+        cmts_ip = params.get('cmts_ip')
+        rf_port_ifindex = params.get('rf_port_ifindex')
+        community = params.get('community') or self.config.cmts_write_community or self.config.cmts_community
+        
+        if not cmts_ip or not rf_port_ifindex:
+            return {'success': False, 'error': 'cmts_ip and rf_port_ifindex required'}
+        
+        try:
+            # docsPnmCmtsUtscCtrlInitiateTest
+            oid = f"1.3.6.1.4.1.4491.2.1.27.1.3.2.1.1.{rf_port_ifindex}.1"
+            
+            result = self._set_cmts_direct(cmts_ip, oid, '1', 'i', community)  # 1 = true
+            
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to start UTSC: {result.get('error')}"}
+            
+            return {
+                'success': True,
+                'message': 'UTSC test started',
+                'rf_port_ifindex': rf_port_ifindex
+            }
+            
+        except Exception as e:
+            self.logger.error(f"UTSC start error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _handle_pnm_utsc_stop(self, params: dict) -> dict:
+        """Stop UTSC test (set InitiateTest to false)."""
+        cmts_ip = params.get('cmts_ip')
+        rf_port_ifindex = params.get('rf_port_ifindex')
+        community = params.get('community') or self.config.cmts_write_community or self.config.cmts_community
+        
+        if not cmts_ip or not rf_port_ifindex:
+            return {'success': False, 'error': 'cmts_ip and rf_port_ifindex required'}
+        
+        try:
+            # docsPnmCmtsUtscCtrlInitiateTest
+            oid = f"1.3.6.1.4.1.4491.2.1.27.1.3.2.1.1.{rf_port_ifindex}.1"
+            
+            result = self._set_cmts_direct(cmts_ip, oid, '2', 'i', community)  # 2 = false
+            
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to stop UTSC: {result.get('error')}"}
+            
+            return {
+                'success': True,
+                'message': 'UTSC test stopped',
+                'rf_port_ifindex': rf_port_ifindex
+            }
+            
+        except Exception as e:
+            self.logger.error(f"UTSC stop error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _handle_pnm_utsc_status(self, params: dict) -> dict:
+        """Get UTSC test status."""
+        cmts_ip = params.get('cmts_ip')
+        rf_port_ifindex = params.get('rf_port_ifindex')
+        community = params.get('community') or self.config.cmts_write_community or self.config.cmts_community
+        
+        if not cmts_ip or not rf_port_ifindex:
+            return {'success': False, 'error': 'cmts_ip and rf_port_ifindex required'}
+        
+        try:
+            # docsPnmCmtsUtscStatusMeasStatus
+            oid = f"1.3.6.1.4.1.4491.2.1.27.1.3.3.1.1.{rf_port_ifindex}.1"
+            
+            result = self._query_cmts_direct(cmts_ip, oid, community, walk=False)
+            
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to get UTSC status: {result.get('error')}"}
+            
+            # Parse status value
+            status_value = 1  # other
+            status_name = 'unknown'
+            output = result.get('output', '')
+            if 'INTEGER' in output:
+                try:
+                    status_value = int(output.split(':')[-1].strip().split('(')[0])
+                    status_names = {1: 'other', 2: 'inactive', 3: 'busy', 4: 'sampleReady', 
+                                    5: 'error', 6: 'resourceUnavailable', 7: 'sampleTruncated'}
+                    status_name = status_names.get(status_value, 'unknown')
+                except:
+                    pass
+            
+            return {
+                'success': True,
+                'rf_port_ifindex': rf_port_ifindex,
+                'meas_status': status_value,
+                'meas_status_name': status_name,
+                'is_ready': status_value == 4,
+                'is_busy': status_value == 3,
+                'is_error': status_value == 5
+            }
+            
+        except Exception as e:
+            self.logger.error(f"UTSC status error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _handle_pnm_utsc_data(self, params: dict) -> dict:
+        """Fetch and parse UTSC spectrum data from TFTP server."""
+        cmts_ip = params.get('cmts_ip')
+        rf_port_ifindex = params.get('rf_port_ifindex')
+        filename = params.get('filename', 'utsc_capture')
+        community = params.get('community') or self.config.cmts_community
+        
+        if not cmts_ip:
+            return {'success': False, 'error': 'cmts_ip required'}
+        
+        try:
+            # First try to get the filename from CMTS if not provided
+            if not filename or filename == 'utsc_capture':
+                base = '1.3.6.1.4.1.4491.2.1.27.1.3.2.1'
+                idx = f".{rf_port_ifindex}.1" if rf_port_ifindex else ".1.1"
+                result = self._query_cmts_direct(cmts_ip, f"{base}.13{idx}", community)
+                if result.get('success') and 'STRING' in result.get('output', ''):
+                    filename = result['output'].split('STRING:')[-1].strip().strip('"')
+            
+            # Construct full path on TFTP server
+            # Format: /tftpboot/pnm/utsc/<cmts_name>/<filename>
+            tftp_path = self.config.tftp_path or '/tftpboot'
+            cmts_name = cmts_ip.replace('.', '_')
+            full_path = f"{tftp_path}/pnm/utsc/{cmts_name}/{filename}"
+            
+            self.logger.info(f"Fetching UTSC data from: {full_path}")
+            
+            # Fetch file via SSH/SFTP
+            if not self.config.tftp_ssh_host:
+                return {'success': False, 'error': 'TFTP SSH not configured'}
+            
+            binary_data = self._fetch_file_via_ssh(
+                self.config.tftp_ssh_host,
+                self.config.tftp_ssh_user,
+                self.config.tftp_ssh_key,
+                full_path,
+                self.config.tftp_ssh_port
+            )
+            
+            if not binary_data:
+                return {'success': False, 'error': f'Could not fetch file: {full_path}'}
+            
+            # Parse with PyPNM CmSpectrumAnalysis
+            try:
+                from pypnm.pnm.parser.CmSpectrumAnalysis import CmSpectrumAnalysis
+                parser = CmSpectrumAnalysis(binary_data)
+                model = parser.to_model()
+                
+                # Convert to JSON-serializable format
+                spectrum_data = {
+                    'channel_id': model.channel_id,
+                    'mac_address': model.mac_address,
+                    'first_freq_hz': model.first_segment_center_frequency,
+                    'last_freq_hz': model.last_segment_center_frequency,
+                    'span_hz': model.segment_frequency_span,
+                    'num_bins': model.num_bins_per_segment,
+                    'bin_spacing_hz': model.bin_frequency_spacing,
+                    'segments': []
+                }
+                
+                # Build frequency and amplitude arrays for graphing
+                frequencies = []
+                amplitudes = []
+                
+                for seg_idx, segment in enumerate(model.amplitude_bin_segments_float):
+                    seg_center = model.first_segment_center_frequency + (seg_idx * model.segment_frequency_span)
+                    for bin_idx, amplitude in enumerate(segment):
+                        freq = seg_center - (model.segment_frequency_span / 2) + (bin_idx * model.bin_frequency_spacing)
+                        frequencies.append(freq / 1e6)  # Convert to MHz
+                        amplitudes.append(amplitude)
+                
+                spectrum_data['frequencies_mhz'] = frequencies
+                spectrum_data['amplitudes_dbmv'] = amplitudes
+                
+                return {
+                    'success': True,
+                    'data': spectrum_data
+                }
+                
+            except ImportError:
+                self.logger.warning("CmSpectrumAnalysis not available, returning raw data")
+                import base64
+                return {
+                    'success': True,
+                    'data': {
+                        'raw_data': base64.b64encode(binary_data).decode('ascii'),
+                        'file_size': len(binary_data)
+                    }
+                }
+            
+        except Exception as e:
+            self.logger.error(f"UTSC data fetch error: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            return {'success': False, 'error': str(e)}
+    
+    def _fetch_file_via_ssh(self, host: str, user: str, key_file: str, remote_path: str, port: int = 22) -> bytes:
+        """Fetch a file from remote server via SSH/SFTP."""
+        if not paramiko:
+            self.logger.error("paramiko not installed")
+            return None
+        
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            connect_kwargs = {
+                'hostname': host,
+                'port': port,
+                'username': user,
+                'timeout': 30
+            }
+            
+            if key_file and os.path.exists(os.path.expanduser(key_file)):
+                connect_kwargs['key_filename'] = os.path.expanduser(key_file)
+            
+            ssh.connect(**connect_kwargs)
+            sftp = ssh.open_sftp()
+            
+            with sftp.file(remote_path, 'rb') as f:
+                data = f.read()
+            
+            sftp.close()
+            ssh.close()
+            
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"SSH file fetch error: {e}")
+            return None
+    
+    def _handle_pnm_us_rxmer_data(self, params: dict) -> dict:
+        """Fetch and parse Upstream OFDMA RxMER data from TFTP folder (mounted or via SSH)."""
+        cmts_ip = params.get('cmts_ip')
+        ofdma_ifindex = params.get('ofdma_ifindex')
+        filename = params.get('filename', 'us_rxmer')
+        community = params.get('community') or self.config.cmts_community
+        
+        if not cmts_ip:
+            return {'success': False, 'error': 'cmts_ip required'}
+        
+        try:
+            import os
+            import glob
+            
+            tftp_path = self.config.tftp_path or '/tftpboot'
+            
+            # Search for the file - CMTS may write to different locations
+            # Try multiple patterns:
+            # 1. Direct in tftp root: /tftpboot/usrxmer_<mac>*
+            # 2. Organized: /tftpboot/pnm/rxmer/<cmts>/filename
+            # 3. Access folder: /tftpboot/access/config/ccap/pnm/*
+            
+            search_patterns = [
+                f"{tftp_path}/{filename}*",
+                f"{tftp_path}/pnm/rxmer/*/{filename}*",
+                f"{tftp_path}/access/config/ccap/pnm/{filename}*",
+            ]
+            
+            found_file = None
+            for pattern in search_patterns:
+                matches = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+                if matches:
+                    found_file = matches[0]  # Most recent match
+                    break
+            
+            self.logger.info(f"Searching for US RxMER file: {filename}")
+            
+            binary_data = None
+            
+            # Try local file first (if TFTP is mounted)
+            if found_file and os.path.exists(found_file):
+                self.logger.info(f"Reading from local mount: {found_file}")
+                with open(found_file, 'rb') as f:
+                    binary_data = f.read()
+            elif self.config.tftp_ssh_host:
+                # Fall back to SSH if configured
+                cmts_name = cmts_ip.replace('.', '_')
+                full_path = f"{tftp_path}/pnm/rxmer/{cmts_name}/{filename}"
+                binary_data = self._fetch_file_via_ssh(
+                    self.config.tftp_ssh_host,
+                    self.config.tftp_ssh_user,
+                    self.config.tftp_ssh_key,
+                    full_path,
+                    self.config.tftp_ssh_port
+                )
+            else:
+                # List what files match the pattern
+                all_matches = glob.glob(f"{tftp_path}/*{filename}*") + glob.glob(f"{tftp_path}/**/*{filename}*", recursive=True)
+                if all_matches:
+                    return {'success': False, 'error': f'File not found for: {filename}. Similar: {[os.path.basename(f) for f in all_matches[:5]]}'}
+                return {'success': False, 'error': f'No files matching: {filename}'}
+            
+            if not binary_data:
+                return {'success': False, 'error': f'Could not fetch file: {filename}'}
+            
+            # Parse the RxMER data - E6000 ARRIS/CommScope format
+            # Header: "PNNi" magic bytes, then metadata, MER data starts around offset 0x128
+            # Each MER value is a single byte, representing dB * 4 (so 0xa6 = 166 → 41.5 dB)
+            # 0xff is used for excluded subcarriers
+            
+            rxmer_values = []
+            subcarriers = []
+            
+            # Find the MER data section
+            # Look for the pattern after MAC address (6 bytes) + some metadata
+            offset = 0
+            
+            if len(binary_data) > 4 and binary_data[0:4] == b'PNNi':
+                # E6000 US RxMER format - data starts after header (~0x128)
+                offset = 0x128
+                
+                idx = 0
+                while offset < len(binary_data):
+                    val = binary_data[offset]
+                    if val != 0xff:  # 0xff = excluded subcarrier
+                        mer_db = val / 4.0  # Convert to dB (value is in 0.25 dB units)
+                        rxmer_values.append(mer_db)
+                        subcarriers.append(idx)
+                    idx += 1
+                    offset += 1
+            else:
+                # Generic 2-byte format fallback
+                import struct
+                idx = 0
+                while offset + 2 <= len(binary_data):
+                    val = struct.unpack('>h', binary_data[offset:offset+2])[0]
+                    rxmer_values.append(val / 10.0)
+                    subcarriers.append(idx)
+                    idx += 1
+                    offset += 2
+            
+            return {
+                'success': True,
+                'data': {
+                    'subcarriers': subcarriers,
+                    'rxmer_values': rxmer_values,
+                    'ofdma_ifindex': ofdma_ifindex,
+                    'found_file': found_file
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error(f"US RxMER data fetch error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _handle_pnm_us_rxmer_start(self, params: dict) -> dict:
+        """Start Upstream OFDMA RxMER measurement on CMTS."""
+        cmts_ip = params.get('cmts_ip')
+        ofdma_ifindex = params.get('ofdma_ifindex')
+        cm_mac = params.get('cm_mac_address')
+        community = params.get('community') or self.config.cmts_write_community or self.config.cmts_community
+        
+        if not cmts_ip or not ofdma_ifindex or not cm_mac:
+            return {'success': False, 'error': 'cmts_ip, ofdma_ifindex, and cm_mac_address required'}
+        
+        try:
+            # docsPnmCmtsUsOfdmaRxMerTable OIDs (1.3.6.1.4.1.4491.2.1.27.1.3.7.1)
+            # Column order: .1=Enable, .2=CmMac, .3=PreEq, .4=NumAvgs, .5=MeasStatus, .6=FileName, .7=DestIdx
+            base = '1.3.6.1.4.1.4491.2.1.27.1.3.7.1'
+            idx = f".{ofdma_ifindex}"
+            
+            # Set CM MAC address first
+            mac = cm_mac.replace(':', '').replace('-', '').upper()
+            mac_hex = ' '.join([mac[i:i+2] for i in range(0, 12, 2)])
+            result = self._set_cmts_direct(cmts_ip, f"{base}.2{idx}", mac_hex, 'x', community)
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to set CM MAC: {result.get('error')}"}
+            
+            # Set filename
+            filename = params.get('filename', 'us_rxmer')
+            result = self._set_cmts_direct(cmts_ip, f"{base}.6{idx}", filename, 's', community)
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to set filename: {result.get('error')}"}
+            
+            # Set pre-equalization option (.3)
+            pre_eq = 1 if params.get('pre_eq', True) else 2  # 1=true, 2=false
+            result = self._set_cmts_direct(cmts_ip, f"{base}.3{idx}", str(pre_eq), 'i', community)
+            
+            # Enable measurement (.1 = 1 = true)
+            result = self._set_cmts_direct(cmts_ip, f"{base}.1{idx}", '1', 'i', community)
+            if not result.get('success'):
+                return {'success': False, 'error': f"Failed to start US RxMER: {result.get('error')}"}
+            
+            return {
+                'success': True,
+                'message': 'US OFDMA RxMER measurement started',
+                'ofdma_ifindex': ofdma_ifindex,
+                'cm_mac': cm_mac,
+                'filename': filename
+            }
+            
+        except Exception as e:
+            self.logger.error(f"US RxMER start error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _handle_pnm_us_rxmer_status(self, params: dict) -> dict:
+        """Get Upstream RxMER measurement status."""
+        cmts_ip = params.get('cmts_ip')
+        ofdma_ifindex = params.get('ofdma_ifindex')
+        community = params.get('community') or self.config.cmts_write_community or self.config.cmts_community
+        
+        if not cmts_ip or not ofdma_ifindex:
+            return {'success': False, 'error': 'cmts_ip and ofdma_ifindex required'}
+        
+        try:
+            # docsPnmCmtsUsOfdmaRxMerMeasStatus (.5)
+            oid = f"1.3.6.1.4.1.4491.2.1.27.1.3.7.1.5.{ofdma_ifindex}"
+            
+            result = self._snmp_get(cmts_ip, oid, community)
+            
+            if not result.get('success') or not result.get('results'):
+                return {'success': False, 'error': f"Failed to get status: {result.get('error')}"}
+            
+            # Parse status value from pysnmp result
+            status_value = int(result['results'][0].get('value', 1))
+            status_names = {1: 'other', 2: 'inactive', 3: 'busy', 4: 'sampleReady', 5: 'error'}
+            status_name = status_names.get(status_value, 'unknown')
+            
+            return {
+                'success': True,
+                'ofdma_ifindex': ofdma_ifindex,
+                'meas_status': status_value,
+                'meas_status_name': status_name,
+                'is_ready': status_value == 4,
+                'is_busy': status_value == 3,
+                'is_error': status_value == 5
+            }
+            
+        except Exception as e:
+            self.logger.error(f"US RxMER status error: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def _handle_cmts_get_modems(self, params: dict) -> dict:
+        """
+        Get list of cable modems from a CMTS via SNMP.
+        Uses parallel queries for MAC, IP, Status. Supports Redis caching.
+        
+        DOCSIS CMTS MIBs used:
+        - docsIfCmtsCmStatusMacAddress: 1.3.6.1.2.1.10.127.1.3.3.1.2
+        - docsIfCmtsCmStatusIpAddress: 1.3.6.1.2.1.10.127.1.3.3.1.3
+        - docsIfCmtsCmStatusValue (status): 1.3.6.1.2.1.10.127.1.3.3.1.9
+        - docsIf3CmtsCmRegStatusMdIfIndex (interface): 1.3.6.1.4.1.4491.2.1.20.1.3.1.5
+        """
+        cmts_ip = params.get('cmts_ip')
+        community = params.get('community') or self.config.cmts_write_community or self.config.cmts_community
+        limit = params.get('limit', 10000)  # Increased limit
+        use_bulk = params.get('use_bulk', True)
+        use_cache = params.get('use_cache', True)
+        enrich = params.get('enrich', False)  # Whether to enrich modems with firmware/model
+        modem_community = params.get('modem_community') or self.config.cm_community  # Modem SNMP community
+        # CMTS queries go DIRECT - don't auto-enable equalizer just because it's configured
+        # Equalizer/cm_proxy is for modem enrichment, not CMTS queries
+        use_equalizer = params.get('use_equalizer', False)
+        
+        self.logger.info(f"CMTS query params: enrich={enrich}, modem_community={modem_community}")
+        
+        if not cmts_ip:
+            return {'success': False, 'error': 'cmts_ip required'}
+        
+        # Check Redis cache first
+        cache_key = f"cmts_modems:{cmts_ip}"
+        if use_cache and redis and self.config.redis_host:
+            try:
+                r = redis.Redis(host=self.config.redis_host, port=self.config.redis_port, decode_responses=True)
+                cached = r.get(cache_key)
+                if cached:
+                    self.logger.info(f"Returning cached modems for {cmts_ip}")
+                    return json.loads(cached)
+            except Exception as e:
+                self.logger.warning(f"Redis cache error: {e}")
+        
+        self.logger.info(f"Getting cable modems from CMTS {cmts_ip}")
+        
+        # DOCSIS 3.0 MIB OIDs - use docsIf3 table for MAC and DOCSIS version
+        OID_D3_MAC = '1.3.6.1.4.1.4491.2.1.20.1.3.1.2'  # docsIf3CmtsCmRegStatusMacAddr
+        
+        # Old DOCSIS table for IP and Status (has different index, correlate by MAC)
+        OID_OLD_MAC = '1.3.6.1.2.1.10.127.1.3.3.1.2'   # docsIfCmtsCmStatusMacAddress
+        OID_OLD_IP = '1.3.6.1.2.1.10.127.1.3.3.1.3'    # docsIfCmtsCmStatusIpAddress
+        OID_OLD_STATUS = '1.3.6.1.2.1.10.127.1.3.3.1.9'  # docsIfCmtsCmStatusValue
+        OID_OLD_US_CH_IF = '1.3.6.1.2.1.10.127.1.3.3.1.5'  # docsIfCmtsCmStatusUpChannelIfIndex
+        
+        # DOCSIS 3.1 MIB - MaxUsableDsFreq: if > 0, modem is DOCSIS 3.1
+        OID_D31_MAX_DS_FREQ = '1.3.6.1.4.1.4491.2.1.28.1.3.1.7'  # docsIf31CmtsCmRegStatusMaxUsableDsFreq
+        
+        # Use pysnmp (required)
+        if not PYSNMP_AVAILABLE:
+            return {'success': False, 'error': 'pysnmp not available', 'cmts_ip': cmts_ip}
+        
+        self.logger.info(f"Using pysnmp for CMTS modem discovery")
+        
+        # Check if we have cached enriched data for this CMTS (from background enrichment)
+        if hasattr(self, '_enriched_modems_cache') and self._enriched_modems_cache:
+            cache = self._enriched_modems_cache
+            if cache.get('cmts_ip') == cmts_ip and time.time() - cache.get('timestamp', 0) < 120:
+                self.logger.info(f"Returning {len(cache.get('modems', []))} enriched modems from background cache")
+                return {
+                    'success': True,
+                    'modems': cache['modems'],
+                    'cmts_ip': cmts_ip,
+                    'enriched': True,
+                    'cached': True
+                }
+        
+        result = asyncio.run(self._async_cmts_get_modems(
+            cmts_ip, community, limit,
+            OID_D3_MAC, OID_OLD_MAC, OID_OLD_IP, OID_OLD_STATUS, OID_D31_MAX_DS_FREQ, OID_OLD_US_CH_IF
+        ))
+        
+        # Enrich modems with firmware/model if requested - run in background thread
+        if enrich and result.get('success') and result.get('modems'):
+            import threading
+            all_modems = result['modems']
+            modems_to_enrich = all_modems[:100]  # Limit for speed
+            self.logger.info(f"Starting background enrichment for {len(modems_to_enrich)} modems")
+            
+            def background_enrich():
+                try:
+                    # 1. Enrich with model/firmware from modem SNMP
+                    self.logger.info(f"Background enriching {len(modems_to_enrich)} modems with community={modem_community}")
+                    enrich_result = self._handle_enrich_modems({
+                        'modems': modems_to_enrich,
+                        'modem_community': modem_community
+                    })
+                    if enrich_result.get('success'):
+                        enriched_by_mac = {m['mac_address']: m for m in enrich_result['modems']}
+                        for m in all_modems:
+                            if m['mac_address'] in enriched_by_mac:
+                                m.update(enriched_by_mac[m['mac_address']])
+                        self.logger.info(f"Background enrichment complete: {enrich_result.get('enriched_count', 0)} modems enriched")
+                    
+                    # 2. Enrich with cable-mac and upstream interface from CMTS
+                    self.logger.info(f"Background enriching cable-mac/upstream for {len(all_modems)} modems")
+                    asyncio.run(self._async_enrich_cmts_interfaces(cmts_ip, community, all_modems))
+                    
+                    # Store enriched modems in cache for next request
+                    self._enriched_modems_cache = {
+                        'cmts_ip': cmts_ip,
+                        'modems': all_modems,
+                        'timestamp': time.time()
+                    }
+                    self.logger.info(f"Background enrichment cached {len(all_modems)} modems")
+                except Exception as e:
+                    self.logger.error(f"Background enrichment failed: {e}")
+            
+            # Start background thread
+            thread = threading.Thread(target=background_enrich, daemon=True)
+            thread.start()
+            result['enriching'] = True  # Tell GUI enrichment is in progress
+        
+        return result
+    
+    def _handle_enrich_modems(self, params: dict) -> dict:
+        """
+        Enrich modems with vendor/model/firmware info via cm_proxy (hop-access) or cm_direct.
+        This runs in background after initial modem list is returned.
+        """
+        modems = params.get('modems', [])
+        modem_community = params.get('modem_community', 'm0d3m1nf0')
+        
+        # Check if we can reach modems - either via cm_proxy or cm_direct
+        if not self.config.cm_proxy_host and not self.config.cm_enabled:
+            self.logger.error("Neither cm_proxy_host nor cm_direct configured!")
+            return {
+                'success': False,
+                'error': 'No modem access method configured for enrichment'
+            }
+        
+        # Log some stats about incoming modems
+        status_counts = {}
+        for m in modems:
+            s = m.get('status', 'unknown')
+            status_counts[s] = status_counts.get(s, 0) + 1
+        self.logger.info(f"Enrichment request: {len(modems)} modems, status breakdown: {status_counts}")
+        
+        try:
+            # Use cm_direct if enabled (direct SNMP to modems), otherwise use cm_proxy
+            if self.config.cm_enabled:
+                enriched = self._enrich_modems_direct(modems, modem_community, max_workers=50)
+            else:
+                enriched = self._enrich_modems_parallel(modems, modem_community, max_workers=50)
+            
+            # Count how many were enriched
+            enriched_count = sum(1 for m in enriched if m.get('model') and m.get('model') not in ['N/A', 'Unknown'])
+            self.logger.info(f"Enrichment complete: {enriched_count}/{len(enriched)} modems have model info")
+            
+            return {
+                'success': True,
+                'modems': enriched,
+                'enriched_count': enriched_count,
+                'total_count': len(enriched)
+            }
+        except Exception as e:
+            self.logger.exception(f"Failed to enrich modems: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _enrich_modems_direct(self, modems: list, modem_community: str = 'm0d3m1nf0', max_workers: int = 20) -> list:
+        """
+        Query each modem directly via pysnmp to get sysDescr for model info.
+        Uses asyncio with concurrent execution.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        OID_SYS_DESCR = '1.3.6.1.2.1.1.1.0'  # sysDescr
+        
+        # Query modems with valid IPs (any status that indicates online)
+        online_statuses = {'operational', 'registrationComplete', 'ipComplete', 'online'}
+        online_modems = [m for m in modems 
+                         if m.get('ip_address') and m.get('ip_address') != 'N/A' 
+                         and m.get('status') in online_statuses][:200]
+        
+        self.logger.info(f"Direct enrichment: {len(online_modems)} modems with valid IP (from {len(modems)} total)")
+        
+        if not online_modems:
+            self.logger.warning("No online modems to enrich")
+            return modems
+        
+        if not PYSNMP_AVAILABLE:
+            self.logger.error("pysnmp not available for enrichment")
+            return modems
+        
+        results = {}
+        
+        def query_modem(modem):
+            ip = modem.get('ip_address')
+            try:
+                result = asyncio.run(self._async_snmp_get(ip, OID_SYS_DESCR, modem_community, timeout=1))
+                if result.get('success') and result.get('output'):
+                    output = result.get('output', '')
+                    if '=' in output:
+                        sys_descr = output.split('=', 1)[-1].strip()
+                        return ip, sys_descr
+            except Exception as e:
+                pass
+            return ip, None
+        
+        self.logger.info(f"Running direct SNMP queries for {len(online_modems)} modems with {max_workers} workers")
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(query_modem, m): m for m in online_modems}
+            for future in as_completed(futures):
+                ip, sys_descr = future.result()
+                if sys_descr:
+                    results[ip] = sys_descr
+        
+        self.logger.info(f"Direct query returned {len(results)} results")
+        
+        # Apply results to modems
+        enriched_count = 0
+        for modem in online_modems:
+            ip = modem.get('ip_address')
+            if ip in results:
+                model_info = self._parse_sys_descr(results[ip])
+                modem['model'] = model_info.get('model', 'Unknown')
+                modem['software_version'] = model_info.get('software', '')
+                if model_info.get('vendor'):
+                    modem['vendor'] = model_info.get('vendor')
+                enriched_count += 1
+        
+        self.logger.info(f"Direct enrichment done: {enriched_count}/{len(online_modems)} modems enriched")
+        
+        # Merge enriched modems back
+        enriched_map = {m['mac_address']: m for m in online_modems}
+        for modem in modems:
+            if modem['mac_address'] in enriched_map:
+                modem.update(enriched_map[modem['mac_address']])
+        
+        return modems
+    
+    def _enrich_modems_parallel(self, modems: list, modem_community: str = 'm0d3m1nf0', max_workers: int = 20) -> list:
+        """
+        Query each modem via pysnmp to get sysDescr for model info.
+        This is an alias for _enrich_modems_direct (cm_proxy SSH no longer used).
+        """
+        return self._enrich_modems_direct(modems, modem_community, max_workers)
+    
+    def _parse_sys_descr(self, sys_descr: str) -> dict:
+        """Parse sysDescr to extract vendor, model, and software version."""
+        result = {}
+        import re
+        
+        # Check for structured format: <<KEY: value; KEY: value>>
+        # Example: "FAST3896 Wireless Voice Gateway <<HW_REV: 1.2; VENDOR: SAGEMCOM; SW_REV: LG-RDK_11.10.26; MODEL: F3896LG>>"
+        structured_match = re.search(r'<<(.+?)>>', sys_descr)
+        if structured_match:
+            fields = structured_match.group(1)
+            for pair in fields.split(';'):
+                if ':' in pair:
+                    key, value = pair.split(':', 1)
+                    key = key.strip().upper()
+                    value = value.strip()
+                    if key == 'MODEL':
+                        result['model'] = value
+                    elif key == 'VENDOR':
+                        result['vendor'] = value
+                    elif key == 'SW_REV':
+                        result['software'] = value
+            if result.get('model'):
+                return result
+        
+        # Fallback: pattern matching for non-structured sysDescr
+        descr = sys_descr.lower()
+        
+        if 'arris' in descr or 'touchstone' in descr:
+            result['vendor'] = 'ARRIS'
+        elif 'technicolor' in descr:
+            result['vendor'] = 'Technicolor'
+        elif 'sagemcom' in descr:
+            result['vendor'] = 'Sagemcom'
+        elif 'hitron' in descr:
+            result['vendor'] = 'Hitron'
+        elif 'motorola' in descr:
+            result['vendor'] = 'Motorola'
+        elif 'cisco' in descr:
+            result['vendor'] = 'Cisco'
+        elif 'ubee' in descr:
+            result['vendor'] = 'Ubee'
+        
+        # Model patterns
+        model_match = re.search(r'(FAST\d+|F\d{4}[A-Z]*|TG\d+|TC\d+|SB\d+|DPC\d+|EPC\d+|CM\d+|SBG\d+|CGM\d+)', sys_descr, re.I)
+        if model_match:
+            result['model'] = model_match.group(1).upper()
+        
+        # Software version
+        version_match = re.search(r'(\d+\.\d+\.\d+[\.\d\-a-zA-Z]*)', sys_descr)
+        if version_match:
+            result['software'] = version_match.group(1)
+        
+        return result
+    
+    def _decode_cm_status(self, status_code: int) -> str:
+        """Decode DOCSIS CM status code to human-readable string."""
+        # docsIfCmtsCmStatusValue values
+        status_map = {
+            1: 'other',
+            2: 'ranging',
+            3: 'rangingAborted',
+            4: 'rangingComplete',
+            5: 'ipComplete',
+            6: 'registrationComplete',
+            7: 'accessDenied',
+            8: 'operational',  # This is the "online" state
+            9: 'registeredBPIInitializing',
+        }
+        return status_map.get(status_code, f'unknown({status_code})')
+    
+    def _decode_d3_status(self, status_code: int) -> str:
+        """Decode docsIf3CmtsCmRegStatusValue to human-readable string."""
+        # docsIf3CmtsCmRegStatusValue values from DOCS-IF3-MIB
+        status_map = {
+            1: 'other',
+            2: 'initialRanging',
+            3: 'rangingAutoAdjComplete',
+            4: 'startEae',
+            5: 'startDhcpv4',
+            6: 'startDhcpv6',
+            7: 'dhcpv4Complete',
+            8: 'dhcpv6Complete',
+            9: 'startCfgFileDownload',
+            10: 'cfgFileDownloadComplete',
+            11: 'startRegistration',
+            12: 'registrationComplete',
+            13: 'operational',  # This is the "online" state
+            14: 'bpiInit',
+            15: 'forwardingDisabled',
+            16: 'rfMuteAll',
+        }
+        return status_map.get(status_code, f'unknown({status_code})')
+    
+    def _decode_docsis_version(self, docsis_code: int) -> str:
+        """Decode DOCSIS version from docsIf3CmtsCmRegStatusDocsisVersion."""
+        # docsIf3CmtsCmRegStatusDocsisVersion values from DOCSIS-IF3-MIB
+        version_map = {
+            1: 'ATDMA',
+            2: 'SCDMA', 
+            3: 'DOCSIS 1.0',
+            4: 'DOCSIS 1.1',
+            5: 'DOCSIS 2.0',
+            6: 'DOCSIS 3.0',
+            7: 'DOCSIS 3.1',
+            8: 'DOCSIS 4.0',
+        }
+        return version_map.get(docsis_code, f'Unknown({docsis_code})')
+    
+    def _get_vendor_from_mac(self, mac: str) -> str:
+        """Get vendor name from MAC address OUI (first 3 bytes)."""
+        # Common cable modem OUIs
+        oui_vendors = {
+            '00:00:ca': 'ARRIS',
+            '00:01:5c': 'ARRIS',
+            '00:15:96': 'ARRIS',
+            '00:15:a2': 'ARRIS',
+            '00:15:a3': 'ARRIS',
+            '00:15:a4': 'ARRIS',
+            '00:15:a5': 'ARRIS',
+            '00:1d:ce': 'ARRIS',
+            '00:1d:cf': 'ARRIS',
+            '00:1d:d0': 'ARRIS',
+            '00:1d:d1': 'ARRIS',
+            '00:1d:d2': 'ARRIS',
+            '00:1d:d3': 'ARRIS',
+            '00:1d:d4': 'ARRIS',
+            '00:1d:d5': 'ARRIS',
+            '00:23:74': 'ARRIS',
+            '18:35:d1': 'Arris',
+            '20:3d:66': 'ARRIS',
+            '40:0d:10': 'Arris',
+            '44:6a:b7': 'Arris',
+            '48:d3:43': 'Arris',
+            '4c:38:d8': 'Arris',
+            '54:e2:e0': 'Arris',
+            '70:76:30': 'Arris',
+            '70:85:c6': 'Arris',
+            '7c:26:34': 'Arris',
+            '84:a0:6e': 'ARRIS',
+            '84:e0:58': 'Arris',
+            'a0:c5:62': 'Arris',
+            'a4:05:d6': 'Arris',
+            'ac:f8:cc': 'Arris',
+            'c0:05:c2': 'Arris',
+            'd4:2c:0f': 'Arris',
+            'd8:25:22': 'Arris',
+            'e4:57:40': 'Arris',
+            'e8:ed:05': 'ARRIS',
+            'f0:af:85': 'ARRIS',
+            'f8:0b:be': 'ARRIS',
+            'fc:51:a4': 'ARRIS',
+            'fc:6f:b7': 'Arris',
+            '00:1e:5a': 'CISCO',
+            '00:1e:bd': 'CISCO',
+            '00:22:6b': 'CISCO',
+            '00:26:0a': 'CISCO',
+            '00:30:f1': 'CISCO',
+            '5c:50:15': 'CISCO',
+            'c0:c5:20': 'CISCO',
+            '00:11:1a': 'Motorola',
+            '00:12:25': 'Motorola',
+            '00:14:f8': 'Motorola',
+            '00:15:9a': 'Motorola',
+            '00:15:d1': 'Motorola',
+            '00:17:e2': 'Motorola',
+            '00:18:a4': 'Motorola',
+            '00:19:47': 'Motorola',
+            '00:1a:66': 'Motorola',
+            '00:1a:77': 'Motorola',
+            '00:1c:c1': 'Motorola',
+            '00:1c:fb': 'Motorola',
+            '00:1d:6b': 'Motorola',
+            '00:1e:46': 'Motorola',
+            '00:1e:5d': 'Motorola',
+            '00:1f:6b': 'Motorola',
+            '00:23:be': 'Motorola',
+            '00:24:95': 'Motorola',
+            '00:26:41': 'Motorola',
+            '00:26:42': 'Motorola',
+            '08:95:2a': 'Technicolor',
+            '10:86:8c': 'Technicolor',
+            '18:35:d1': 'Technicolor',
+            '2c:39:96': 'Technicolor',
+            '30:d3:2d': 'Technicolor',
+            '44:32:c8': 'Technicolor',
+            '50:09:59': 'Technicolor',
+            '58:23:8c': 'Technicolor',
+            '70:5a:9e': 'Technicolor',
+            '70:b1:4e': 'Technicolor',
+            '7c:03:4c': 'Technicolor',
+            '80:29:94': 'Technicolor',
+            '88:f7:c7': 'Technicolor',
+            '8c:04:ff': 'Technicolor',
+            '90:01:3b': 'Technicolor',
+            'a0:ce:c8': 'Technicolor',
+            'b0:c2:87': 'Technicolor',
+            'c4:27:95': 'Technicolor',
+            'c8:d1:5e': 'Technicolor',
+            'cc:03:fa': 'Technicolor',
+            'cc:35:40': 'Technicolor',
+            'd0:b2:c4': 'Technicolor',
+            'd4:35:1d': 'Technicolor',
+            'e0:88:5d': 'Technicolor',
+            'f4:ca:e5': 'Technicolor',
+            'fc:52:8d': 'Technicolor',
+            'fc:91:14': 'Technicolor',
+            'fc:94:e3': 'Technicolor',
+            '00:1d:b5': 'Juniper',
+            '00:1f:12': 'Juniper',
+            '00:21:59': 'Juniper',
+            '00:23:9c': 'Juniper',
+            '00:26:88': 'Juniper',
+            # Sci Atl
+            '00:0a:73': 'Sci Atl',
+            '00:14:f8': 'Sci Atl',
+            '00:16:92': 'Sci Atl',
+            '00:18:68': 'Sci Atl',
+            '00:19:47': 'Sci Atl',
+            '00:1a:c3': 'Sci Atl',
+            '00:1b:d7': 'Sci Atl',
+            '00:1c:ea': 'Sci Atl',
+            # Thomson
+            '00:18:9b': 'Thomson',
+            '00:1e:69': 'Thomson',
+            '00:24:d1': 'Thomson',
+            '00:26:24': 'Thomson',
+            '80:c6:ab': 'Thomson',
+            # Samsung
+            '00:21:4c': 'Samsung',
+            '1c:3a:de': 'Samsung',
+            '20:d5:bf': 'Samsung',
+            '54:fa:3e': 'Samsung',
+            'd4:7a:e2': 'Samsung',
+            # Cisco
+            '00:22:3a': 'Cisco',
+            '08:80:39': 'Cisco',
+            '0c:02:27': 'Cisco',
+            '10:5f:49': 'Cisco',
+            '14:98:7d': 'Cisco',
+            '18:55:0f': 'Cisco',
+            '24:37:4c': 'Cisco',
+            '2c:ab:a4': 'Cisco',
+            '38:5f:66': 'Cisco',
+            '48:1d:70': 'Cisco',
+            '48:f7:c0': 'Cisco',
+            '50:39:55': 'Cisco',
+            '74:54:7d': 'Cisco',
+            '84:8d:c7': 'Cisco',
+            'c0:c6:87': 'Cisco',
+            'c8:fb:26': 'Cisco',
+            'e4:48:c7': 'Cisco',
+            # Pace
+            '00:4c:00': 'Pace',
+            '00:4e:00': 'Pace',
+            '00:d0:37': 'Pace',
+            '34:7a:60': 'Pace',
+            '80:f5:03': 'Pace',
+            '84:96:d8': 'Pace',
+            'fc:8e:7e': 'Pace',
+            # Intel
+            '00:50:f1': 'Intel',
+            # Teleste
+            '00:90:50': 'Teleste',
+            # Netgear
+            '04:a1:51': 'Netgear',
+            '6c:b0:ce': 'Netgear',
+            # FritzBox
+            '04:b4:fe': 'FritzBox',
+            '1c:ed:6f': 'FritzBox',
+            '2c:91:ab': 'FritzBox',
+            '3c:37:12': 'FritzBox',
+            '3c:a6:2f': 'FritzBox',
+            '48:5d:35': 'FritzBox',
+            '74:42:7f': 'FritzBox',
+            'b0:f2:08': 'FritzBox',
+            'dc:15:c8': 'FritzBox',
+            # Sagemcom
+            '04:e3:1a': 'Sagemcom',
+            '08:95:2a': 'Sagemcom',
+            '10:b3:6f': 'Sagemcom',
+            '18:6a:81': 'Sagemcom',
+            '28:52:e8': 'Sagemcom',
+            '30:7c:b2': 'Sagemcom',
+            '34:5d:9e': 'Sagemcom',
+            '44:05:3f': 'Sagemcom',
+            '44:d4:54': 'Sagemcom',
+            '44:e1:37': 'Sagemcom',
+            '4c:19:5d': 'Sagemcom',
+            '54:47:cc': 'Sagemcom',
+            '5c:fa:25': 'Sagemcom',
+            '64:fd:96': 'Sagemcom',
+            '6c:ff:ce': 'Sagemcom',
+            '70:fc:8f': 'Sagemcom',
+            '7c:16:89': 'Sagemcom',
+            '7c:8b:ca': 'Sagemcom',
+            '94:3c:96': 'Sagemcom',
+            '94:98:8f': 'Sagemcom',
+            'a0:1b:29': 'Sagemcom',
+            'a8:4e:3f': 'Sagemcom',
+            'a8:70:5d': 'Sagemcom',
+            'b0:5b:99': 'Sagemcom',
+            'c4:eb:39': 'Sagemcom',
+            'cc:00:f1': 'Sagemcom',
+            'cc:33:bb': 'Sagemcom',
+            'cc:58:30': 'Sagemcom',
+            'd0:6d:c9': 'Sagemcom',
+            'd0:cf:0e': 'Sagemcom',
+            'e4:c0:e2': 'Sagemcom',
+            'f8:08:4f': 'Sagemcom',
+            # Ubee
+            '00:14:d1': 'Ubee',
+            '00:15:2c': 'Ubee',
+            '00:26:5e': 'Ubee',
+            '08:3e:8e': 'Ubee',
+            '0c:84:dc': 'Ubee',
+            '0c:b9:37': 'Ubee',
+            '0c:ee:e6': 'Ubee',
+            '10:08:b1': 'Ubee',
+            '1c:3e:84': 'Ubee',
+            '28:c6:8e': 'Ubee',
+            '2c:33:7a': 'Ubee',
+            '34:23:87': 'Ubee',
+            '38:b1:db': 'Ubee',
+            '3c:77:e6': 'Ubee',
+            '48:5a:b6': 'Ubee',
+            '4c:eb:bd': 'Ubee',
+            '54:35:30': 'Ubee',
+            '58:6d:8f': 'Ubee',
+            '5c:3a:45': 'Ubee',
+            '5c:b0:66': 'Ubee',
+            '64:0d:ce': 'Ubee',
+            '64:7c:34': 'Ubee',
+            '68:94:23': 'Ubee',
+            '68:b6:fc': 'Ubee',
+            '70:18:8b': 'Ubee',
+            '70:77:81': 'Ubee',
+            '74:29:af': 'Ubee',
+            '78:96:84': 'Ubee',
+            '78:dd:08': 'Ubee',
+            '7c:e9:d3': 'Ubee',
+            '80:56:f2': 'Ubee',
+            '88:9f:fa': 'Ubee',
+            '90:32:4b': 'Ubee',
+            '94:53:30': 'Ubee',
+            '9c:2a:70': 'Ubee',
+            '9c:30:5b': 'Ubee',
+            'a4:17:31': 'Ubee',
+            'a4:cf:d2': 'Ubee',
+            'ac:d1:b8': 'Ubee',
+            'bc:85:56': 'Ubee',
+            'c0:38:96': 'Ubee',
+            'd4:6a:6a': 'Ubee',
+            'd8:0f:99': 'Ubee',
+            'fc:01:7c': 'Ubee',
+            '08:95:2a': 'Sagemcom',
+            '10:b3:6f': 'Sagemcom',
+            '28:52:e8': 'Sagemcom',
+            '30:7c:b2': 'Sagemcom',
+            '44:e1:37': 'Sagemcom',
+            '70:fc:8f': 'Sagemcom',
+            '7c:8b:ca': 'Sagemcom',
+            'a0:1b:29': 'Sagemcom',
+            'a8:4e:3f': 'Sagemcom',
+            'a8:70:5d': 'Sagemcom',
+            'cc:33:bb': 'Sagemcom',
+            'f8:08:4f': 'Sagemcom',
+            # Compal
+            '34:2c:c4': 'Compal',
+            '38:43:7d': 'Compal',
+            '54:67:51': 'Compal',
+            '68:02:b8': 'Compal',
+            '90:5c:44': 'Compal',
+            'ac:22:05': 'Compal',
+            'b4:f2:67': 'Compal',
+            # Hitron
+            '00:04:bd': 'Hitron',
+            '00:26:5b': 'Hitron',
+            '00:26:d8': 'Hitron',
+            '1c:ab:c0': 'Hitron',
+            '84:94:8c': 'Hitron',
+            '90:50:ca': 'Hitron',
+            'a8:4e:3f': 'Hitron',
+            'ac:20:2e': 'Hitron',
+            'bc:14:85': 'Hitron',
+            'bc:4d:fb': 'Hitron',
+            'f0:f2:49': 'Hitron',
+            'f8:1d:0f': 'Hitron',
+        }
+        
+        if not mac or len(mac) < 8:
+            return 'Unknown'
+        
+        # Normalize MAC format
+        mac_normalized = mac.lower().replace('-', ':')
+        oui = mac_normalized[:8]
+        
+        return oui_vendors.get(oui, 'Unknown')
+    
+    def _handle_cmts_get_modem_info(self, params: dict) -> dict:
+        """
+        Get detailed info for a specific modem from CMTS.
+        
+        Can search by MAC or IP address.
+        """
+        cmts_ip = params.get('cmts_ip')
+        mac_address = params.get('mac_address')
+        modem_ip = params.get('modem_ip')
+        community = params.get('community', 'private')
+        
+        if not cmts_ip:
+            return {'success': False, 'error': 'cmts_ip required'}
+        
+        if not mac_address and not modem_ip:
+            return {'success': False, 'error': 'mac_address or modem_ip required'}
+        
+        # First get all modems and find the matching one
+        modems_result = self._handle_cmts_get_modems({
+            'cmts_ip': cmts_ip,
+            'community': community,
+            'limit': 5000,  # Get more for search
+            'use_bulk': True
+        })
+        
+        if not modems_result.get('success'):
+            return modems_result
+        
+        # Find matching modem
+        for modem in modems_result.get('modems', []):
+            if mac_address and modem['mac_address'].lower() == mac_address.lower():
+                return {'success': True, 'modem': modem, 'cmts_ip': cmts_ip}
+            if modem_ip and modem['ip_address'] == modem_ip:
+                return {'success': True, 'modem': modem, 'cmts_ip': cmts_ip}
+        
+        return {
+            'success': False,
+            'error': f"Modem not found on CMTS {cmts_ip}",
+            'search_mac': mac_address,
+            'search_ip': modem_ip
+        }
+    
     def connect(self):
         """Connect to PyPNM Server."""
         self.running = True
