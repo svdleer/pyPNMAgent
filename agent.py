@@ -2323,6 +2323,8 @@ class PyPNMAgent:
         modem_ip = params.get('modem_ip')
         community = params.get('community', self.config.cm_community)
         mac_address = params.get('mac_address')
+        cmts_ip = params.get('cmts_ip')
+        cmts_community = params.get('cmts_community', self.config.cmts_community)
         skip_connectivity_check = params.get('skip_connectivity_check', False)
         
         if not modem_ip:
@@ -2677,11 +2679,20 @@ class PyPNMAgent:
         
         total_time = time.time() - start_time
         
+        # Step 7: Lookup fiber node from CMTS if CMTS IP provided
+        fiber_node = None
+        if cmts_ip and mac_address:
+            try:
+                fiber_node = self._get_fiber_node_from_cmts(cmts_ip, mac_address, cmts_community)
+            except Exception as e:
+                self.logger.warning(f"Failed to get fiber node from CMTS: {e}")
+        
         return {
             'success': True,
             'status': 0,
             'mac_address': mac_address,
             'modem_ip': modem_ip,
+            'fiber_node': fiber_node,
             'timestamp': datetime.now().isoformat(),
             'timing': {
                 'walk_time': round(walk_time, 2),
@@ -2793,6 +2804,51 @@ class PyPNMAgent:
             'subcarrier_spacing_khz': sc_hz / 1000,
             'bandwidth_mhz': bandwidth / 1_000_000 if bandwidth else None,
         }
+    
+    def _get_fiber_node_from_cmts(self, cmts_ip: str, mac_address: str, community: str) -> str:
+        """Lookup fiber node name from CMTS using modem MAC address.
+        
+        Queries CMTS docsIfCmtsCmStatusTable to get downstream channel ifIndex,
+        then queries docsIf3MdNodeStatusTable to find the fiber node name.
+        """
+        # Convert MAC address to decimal format for SNMP index
+        # e.g., "9c:30:5b:f7:e7:ff" -> "156.48.91.247.231.255"
+        try:
+            mac_parts = mac_address.replace(':', '.').replace('-', '.')
+            if '.' not in mac_parts:
+                # Try hex format
+                mac_parts = '.'.join(str(int(mac_address[i:i+2], 16)) for i in range(0, len(mac_address), 2))
+        except:
+            self.logger.warning(f"Failed to convert MAC address {mac_address} to decimal format")
+            return None
+        
+        # Query CMTS for downstream channel ifIndex
+        # OID: 1.3.6.1.2.1.10.127.1.3.3.1.6.<mac_in_decimal>
+        oid_ds_ifindex = f'1.3.6.1.2.1.10.127.1.3.3.1.6.{mac_parts}'
+        
+        result = asyncio.run(self._async_snmp_get(cmts_ip, oid_ds_ifindex, community, timeout=5))
+        if not result.get('success'):
+            self.logger.warning(f"Failed to get DS ifIndex from CMTS for MAC {mac_address}")
+            return None
+        
+        ds_ifindex = result.get('values', [None])[0]
+        if not ds_ifindex:
+            return None
+        
+        # Query CMTS for fiber node name using ifIndex
+        # Walk docsIf3MdNodeStatusTable: 1.3.6.1.4.1.4491.2.1.20.1.12.1.1.<ifIndex>
+        oid_node_name = f'1.3.6.1.4.1.4491.2.1.20.1.12.1.1.{ds_ifindex}'
+        
+        walk_result = self._snmp_parallel_walk(cmts_ip, [oid_node_name], community, timeout=10)
+        if not walk_result.get('success'):
+            return None
+        
+        results = walk_result.get('results', {}).get(oid_node_name, [])
+        if results:
+            # Return first node name found
+            return str(results[0].get('value', ''))
+        
+        return None
     
     def _handle_pnm_event_log(self, params: dict) -> dict:
         """Get event log from modem via pysnmp."""
