@@ -390,7 +390,7 @@ class PyPNMAgent:
             'pnm_spectrum': self._handle_pnm_spectrum,
             'pnm_fec': self._handle_pnm_fec,
             'pnm_pre_eq': self._handle_pnm_pre_eq,
-            'pnm_channel_info': self._handle_pnm_channel_info,
+
             'pnm_channel_stats': self._handle_pnm_channel_stats,  # New optimized channel stats
             'pnm_event_log': self._handle_pnm_event_log,
             # OFDM capture commands (downstream - on CM)
@@ -547,7 +547,7 @@ class PyPNMAgent:
         caps.extend(['pnm_ofdm_channels', 'pnm_ofdm_capture', 'pnm_ofdm_rxmer', 'pnm_set_tftp', 'pnm_spectrum'])
         
         # Modem SNMP capabilities (requires cm_reachable)
-        caps.extend(['pnm_channel_info', 'pnm_event_log'])
+        caps.extend(['pnm_event_log'])
         
         # Upstream PNM capabilities (requires cmts_reachable)
         if self.config.cmts_enabled:
