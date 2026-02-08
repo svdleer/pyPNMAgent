@@ -1704,63 +1704,100 @@ class PyPNMAgent:
     
     def _parse_snmp_value(self, value) -> Any:
         """Parse pysnmp value to Python native type."""
-        if value is None:
-            return None
-        
-        # For OctetString
-        if hasattr(value, 'asOctets'):
-            raw = bytes(value)
-            # Try UTF-8, fall back to hex
-            try:
-                return raw.decode('utf-8').strip()
-            except UnicodeDecodeError:
-                return raw.hex()
-        
-        # For most other types, let pysnmp do the conversion
         try:
-            # This handles Integer, Counter, Gauge, etc.
-            if hasattr(value, 'prettyPrint'):
-                # For timeticks and other special formats
-                if hasattr(value, '_value'):
-                    result = int(value._value) if value._value is not None else 0
-                    # Debug large integers that become 0
-                    if result == 0 and hasattr(value, '__class__'):
-                        self._debug_snmp_value(value)
-                    return result
-            result = int(value) if hasattr(value, '__int__') else str(value)
-            # Debug large integers that become 0
-            if result == 0 and hasattr(value, '__class__'):
-                self._debug_snmp_value(value)
-            return result
-        except:
-            return str(value) if value is not None else None
-    
-    def _debug_snmp_value(self, value):
-        """Debug function to see what pysnmp is returning."""
-        try:
-            self.logger.warning(f"DEBUG SNMP VALUE:")
-            self.logger.warning(f"  Type: {type(value)}")
-            self.logger.warning(f"  Type name: {type(value).__name__}")
-            try:
-                self.logger.warning(f"  Direct int(): {int(value)}")
-            except:
-                self.logger.warning(f"  Direct int(): FAILED")
+            if value is None:
+                return None
             
-            # Special attributes
-            for attr in ['_value', 'value', 'asNumbers', 'asOctets', 'components']:
-                if hasattr(value, attr):
-                    try:
-                        self.logger.warning(f"  {attr}: {repr(getattr(value, attr))}")
-                    except:
-                        pass
+            type_name = type(value).__name__
             
-            if hasattr(value, 'prettyPrint'):
+            # Debug: Check what we're receiving
+            # print(f"DEBUG: Parsing {type_name}: {repr(value)}")
+            
+            # For OctetString
+            if type_name == 'OctetString':
+                raw = bytes(value)
                 try:
-                    self.logger.warning(f"  prettyPrint(): {repr(value.prettyPrint())}")
+                    return raw.decode('utf-8').strip()
+                except UnicodeDecodeError:
+                    if len(raw) == 6:
+                        return ':'.join(f'{b:02x}' for b in raw).upper()
+                    return raw.hex()
+            
+            # For integer types - handle pysnmp's conversion bug
+            if type_name in ('Integer', 'Integer32', 'Unsigned32', 'Counter32', 
+                            'Counter64', 'Gauge32', 'TimeTicks', 'IpAddress'):
+                
+                # METHOD 1: Try _value attribute first (most reliable)
+                if hasattr(value, '_value'):
+                    raw_val = value._value
+                    if raw_val is not None:
+                        try:
+                            # _value could be a Python int already
+                            return int(raw_val)
+                        except (ValueError, TypeError):
+                            # If _value is something else, try conversion
+                            try:
+                                return int(str(raw_val))
+                            except:
+                                pass
+                
+                # METHOD 2: Try prettyPrint
+                if hasattr(value, 'prettyPrint'):
+                    pretty = value.prettyPrint()
+                    if pretty and pretty != '':
+                        try:
+                            # For timeticks with format "1:23:45.67"
+                            if type_name == 'TimeTicks' and ':' in pretty:
+                                # You might want to parse this differently
+                                return pretty
+                            return int(pretty)
+                        except (ValueError, TypeError):
+                            # Check if it's a string representation of a number
+                            if pretty.isdigit():
+                                return int(pretty)
+                
+                # METHOD 3: Direct int() conversion
+                try:
+                    direct_int = int(value)
+                    # Check if this is the problematic conversion
+                    # If we get 0 but prettyPrint shows something else, there's an issue
+                    if direct_int == 0 and hasattr(value, 'prettyPrint'):
+                        pretty = value.prettyPrint()
+                        if pretty and pretty != '' and pretty != '0':
+                            # Try to extract number from string
+                            import re
+                            numbers = re.findall(r'\d+', pretty)
+                            if numbers:
+                                return int(numbers[0])
+                    return direct_int
+                except (ValueError, TypeError):
+                    pass
+                
+                # METHOD 4: String representation
+                try:
+                    str_val = str(value)
+                    if str_val.isdigit():
+                        return int(str_val)
+                    return str_val
                 except:
                     pass
+                
+                return 0  # Last resort
+            
+            # For ObjectIdentifier
+            if type_name == 'ObjectIdentifier':
+                return str(value)
+            
+            # For other types
+            try:
+                return str(value)
+            except:
+                return ''
+                
         except Exception as e:
-            self.logger.error(f"Debug failed: {e}")
+            # For debugging
+            # print(f"Error parsing SNMP value {value}: {e}")
+            return None
     
     def _to_snmp_value(self, value: Any, value_type: str):
         """Convert Python value to pysnmp type."""
