@@ -2814,10 +2814,10 @@ class PyPNMAgent:
         # Convert MAC address to decimal format for SNMP index
         # e.g., "9c:30:5b:f7:e7:ff" -> "156.48.91.247.231.255"
         try:
-            mac_parts = mac_address.replace(':', '.').replace('-', '.')
-            if '.' not in mac_parts:
-                # Try hex format
-                mac_parts = '.'.join(str(int(mac_address[i:i+2], 16)) for i in range(0, len(mac_address), 2))
+            # Remove separators and convert hex to decimal
+            mac_clean = mac_address.replace(':', '').replace('-', '').replace('.', '')
+            # Convert each pair of hex digits to decimal
+            mac_parts = '.'.join(str(int(mac_clean[i:i+2], 16)) for i in range(0, len(mac_clean), 2))
         except Exception as e:
             self.logger.warning(f"Failed to convert MAC address {mac_address} to decimal format: {e}")
             return None
