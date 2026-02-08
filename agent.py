@@ -394,22 +394,22 @@ class PyPNMAgent:
             'pnm_pre_eq': self._handle_pnm_pre_eq,
 
             # REMOVED: pnm_channel_stats - parsing now done in API, agent only does SNMP walks
-            'pnm_event_log': self._handle_pnm_event_log,
+            # Temporarily disabled until these handlers are restored:
+            # 'pnm_event_log': self._handle_pnm_event_log,
+            # 'pnm_ofdm_capture': self._handle_pnm_ofdm_capture,
+            # 'pnm_ofdm_rxmer': self._handle_pnm_ofdm_rxmer,
+            # 'pnm_set_tftp': self._handle_pnm_set_tftp,
+            # 'pnm_utsc_configure': self._handle_pnm_utsc_configure,
+            # 'pnm_utsc_start': self._handle_pnm_utsc_start,
+            # 'pnm_utsc_stop': self._handle_pnm_utsc_stop,
+            # 'pnm_utsc_status': self._handle_pnm_utsc_status,
+            # 'pnm_utsc_data': self._handle_pnm_utsc_data,
+            # 'pnm_us_rxmer_start': self._handle_pnm_us_rxmer_start,
+            # 'pnm_us_rxmer_status': self._handle_pnm_us_rxmer_status,
+            # 'pnm_us_rxmer_data': self._handle_pnm_us_rxmer_data,
+            # 'pnm_us_get_interfaces': self._handle_pnm_us_get_interfaces,
             # OFDM capture commands (downstream - on CM)
             'pnm_ofdm_channels': self._handle_pnm_ofdm_channels,
-            'pnm_ofdm_capture': self._handle_pnm_ofdm_capture,
-            'pnm_ofdm_rxmer': self._handle_pnm_ofdm_rxmer,
-            'pnm_set_tftp': self._handle_pnm_set_tftp,
-            # Upstream PNM commands (on CMTS)
-            'pnm_utsc_configure': self._handle_pnm_utsc_configure,
-            'pnm_utsc_start': self._handle_pnm_utsc_start,
-            'pnm_utsc_stop': self._handle_pnm_utsc_stop,
-            'pnm_utsc_status': self._handle_pnm_utsc_status,
-            'pnm_utsc_data': self._handle_pnm_utsc_data,
-            'pnm_us_rxmer_start': self._handle_pnm_us_rxmer_start,
-            'pnm_us_rxmer_status': self._handle_pnm_us_rxmer_status,
-            'pnm_us_rxmer_data': self._handle_pnm_us_rxmer_data,
-            'pnm_us_get_interfaces': self._handle_pnm_us_get_interfaces,
         }
     
     def _setup_pypnm_tunnel(self) -> bool:
