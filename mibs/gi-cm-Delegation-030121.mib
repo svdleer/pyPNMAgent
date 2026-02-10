@@ -1,0 +1,203 @@
+--
+-- (c) 2002 Motorola, Inc.
+--
+--
+-- cmDelegation MIB
+--
+CM-DELEGATION-MIB DEFINITIONS ::= BEGIN
+
+   IMPORTS
+      enterprises, OBJECT-TYPE, MODULE-IDENTITY
+         FROM SNMPv2-SMI
+      MacAddress, RowStatus, TruthValue
+         FROM SNMPv2-TC;
+
+cmDelegation MODULE-IDENTITY
+      LAST-UPDATED "200301210000Z"  -- Jan. 21, 2003
+      ORGANIZATION
+         "Motorola BCS"
+      CONTACT-INFO
+         "Author: Greg Nakanishi
+          Org:    Motorola BCS
+          postal: 6450 Sequence Drive
+                  San Diego, CA 92121
+          email:  gnakanishi@motorola.com
+          phone:  858-404-2366"
+      DESCRIPTION
+          "This MIB defines a method to delegate access privileges 
+           to management objects for non-SNMP applications."  
+                            
+	REVISION "200301210000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang. Published as cmDelegation-06.mib.
+		- Per SCR793, cmDelegationTable no longer is maintained in the non-volatile memory."
+                            
+	REVISION "200301130000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang. Published as cmDelegation-05.mib.
+		- document maximum OID length is 30 and the maximum number of delegation entries is 100."
+          
+	REVISION "200209130000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang. Published as cmDelegation-04.mib.
+		- add cmDelegationSetToFactory."
+
+	REVISION "200209120000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang. Published as cmDelegation-03.mib.
+		- comment out cmDelegationOid off cmDelegationBaseGroup."
+
+	REVISION "200209100000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang. Published as cmDelegation-02.mib.
+		- correct mispelling per Lisa's comment."
+	REVISION "200208220000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang.
+		Notes: Delegation MIB only controls authorized access level for GUI objects.
+			   maximum access level for GUI objects is NOT defined by MIB object's MAX-ACCESS.
+		- Change cmDelegationOid MAX-ACCESS according to SMIv2 rule.
+		- Change cmDelegationAccess enum text string."
+           
+      ::= {cm 50}
+
+
+--
+-- Path to root
+--
+
+gi OBJECT IDENTIFIER ::= {enterprises 1166}
+giproducts OBJECT IDENTIFIER ::= {gi 1}
+cm OBJECT IDENTIFIER ::= {giproducts 19}
+
+-- Administrative assignments ----------------------
+
+cmDelegationObjects OBJECT IDENTIFIER ::= { cmDelegation 1 }
+cmDelegationConformance OBJECT IDENTIFIER ::= { cmDelegation 2 }
+
+-- Object definitions ------------------------------
+cmDelegationSetToFactory OBJECT-TYPE
+	SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "Setting this object to true(1) causes all entries in 
+            cmDelegationTable will be destroyed.  
+			"
+    ::= { cmDelegationObjects 1 }
+
+cmDelegationTable OBJECT-TYPE
+      SYNTAX SEQUENCE OF CmDelegationEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "Table to store access privileges to management objects.  This table is
+          consulted to find the maximum access privileges that an application has
+          to a management object.  The table is searched for the OID of the managed
+          object.  
+          
+          The matching rules are as follows:
+           - Given the OID of the management object, attempt to find an entry 
+             in the table that exactly matches. If a match is found, apply the access
+             privilege specified by this entry.
+           - If an exact match is not found, attempt to find an entry that matches the 
+             most number of OID sub-identifiers from left-to-right.  E.g. Let's say 
+             that the feature OID is 1.3.6.1.2.3.4.8 and there are two entries in the 
+             table, <1.3.6.1.2, RW> and <1.3.6.1.2.3, RO>.  The access privilege for the 
+             management object would be read-only since it best matches the second entry.
+           - If there is no matching entry in the table, the access privilege is as defined
+             by the maximum access specified by the managment object MIB definition.  
+                   
+          The maximum number of entries is 100."
+   ::= { cmDelegationObjects 2 }
+
+cmDelegationEntry OBJECT-TYPE
+      SYNTAX CmDelegationEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "An entry in the Delegation table."
+      INDEX {cmDelegationOid}
+   ::= { cmDelegationTable 1 }
+
+CmDelegationEntry ::=
+      SEQUENCE {
+         cmDelegationOid
+            OBJECT IDENTIFIER,
+         cmDelegationAccess
+            INTEGER,
+         cmDelegationStatus
+            RowStatus
+      }
+
+cmDelegationOid OBJECT-TYPE
+      SYNTAX OBJECT IDENTIFIER
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "OID of a management object for which an access privilege is defined.
+         
+         The number of sub-identifiers for this object is at least 2 and at most 30.
+         
+         The value of the first sub-identifier is one of the following well-known names:
+
+         Value   Name
+          0     ccitt
+          1     iso
+          2     joint-iso-ccitt
+         "
+      ::= { cmDelegationEntry 1 }
+
+cmDelegationAccess OBJECT-TYPE
+      SYNTAX INTEGER
+             {
+              readWrite(1),
+              readOnly(2),
+              noAccess(3)
+             }
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "The maximum access allowed to all management objects under the OID specified in
+          cmDelegationOid."
+      ::= { cmDelegationEntry 2 }
+
+cmDelegationStatus OBJECT-TYPE
+      SYNTAX RowStatus
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "Controls the creation and modification of entries in this table."
+      ::= { cmDelegationEntry 3 }              
+      
+--  Conformance ---------------------------------------------------------------------
+
+cmDelegationCompliances OBJECT IDENTIFIER ::= { cmDelegationConformance 1 }
+cmDelegationGroups      OBJECT IDENTIFIER ::= { cmDelegationConformance 2 }
+   
+-- Compliance statements
+cmDot11plusCompliance MODULE-COMPLIANCE
+    STATUS       current
+    DESCRIPTION "The compliance statement for devices that implement the Delegation MIB"
+
+    MODULE       -- this module
+        MANDATORY-GROUPS { cmDelegationBaseGroup }            
+        
+    ::= { cmDelegationCompliances 1 }    
+    
+-- Units of compliance
+cmDelegationBaseGroup OBJECT-GROUP
+    OBJECTS     {
+    			  cmDelegationSetToFactory,
+                  -- cmDelegationOid,    
+                  cmDelegationAccess,
+                  cmDelegationStatus
+                }    
+    STATUS       current
+    DESCRIPTION "A collection of objects providing for the delegation of access privileges to management objects."
+    ::= { cmDelegationGroups 1 }
+               
+END   
+
+
+

@@ -1,0 +1,383 @@
+--
+-- (c) 2002-2003 Motorola, Inc.
+--
+--
+-- cmRouter MIB
+--
+
+CM-ROUTER-MIB DEFINITIONS ::= BEGIN
+
+   IMPORTS
+      enterprises, OBJECT-TYPE, MODULE-IDENTITY, Unsigned32
+         FROM SNMPv2-SMI
+      RowStatus, DisplayString, TruthValue
+         FROM SNMPv2-TC
+	  InetAddressType, InetAddress 
+         FROM INET-ADDRESS-MIB; 
+      
+   cmRouter MODULE-IDENTITY
+      LAST-UPDATED "200306240000Z"  -- June 24, 2003
+      ORGANIZATION
+         "Motorola BCS"
+      CONTACT-INFO
+         "Author: Greg Nakanishi
+          Org:    Motorola BCS
+          postal: 6450 Sequence Drive
+                  San Diego, CA 92121
+          email:  gnakanishi@motorola.com
+          phone:  858-404-2366"
+      DESCRIPTION
+          "This MIB defines management objects for configuration of
+           an IP routing."    
+                    
+	REVISION "200306240000Z"
+	DESCRIPTION
+		"Edited by Lisa Ruby.
+		- Added cmRouterRteSubnetGateway and cmRouterRteBypassFirewall. Changed the 
+		  index for cmRouteRteTable from cmRouterIfConfAddressType, cmRouterIfConfAddress, 
+          cmRouterRteIndex to just cmRouteRteIndex."
+	
+	REVISION "200212190000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang. Published as cmRouter-07.mib.
+		
+		- update cmRouterIfConfUpdateTimer range to (1..255)."
+                
+   ::= {cm 53}
+
+--
+-- Path to root
+--
+
+   gi OBJECT IDENTIFIER ::= {enterprises 1166}
+   giproducts OBJECT IDENTIFIER ::= {gi 1}
+   cm OBJECT IDENTIFIER ::= {giproducts 19}
+
+-- Administrative assignments ----------------------
+
+   cmRouterObjects OBJECT IDENTIFIER ::= { cmRouter 1 }
+   cmRouterConformance OBJECT IDENTIFIER ::= { cmRouter 2 }
+
+-- Object definitions ------------------------------
+
+-- 
+-- Mirror some objects from RFC1724   
+-- The RIP Interface Configuration Table.
+--
+
+    cmRouterIfConfTable OBJECT-TYPE
+        SYNTAX   SEQUENCE OF CmRouterIfConfEntry
+        MAX-ACCESS   not-accessible
+        STATUS   current
+        DESCRIPTION
+           "A list of subnets which require separate
+           configuration in RIP. 
+           
+           Only one entry is allowed for now.
+           All objects are saved in NV RAM."
+           
+       ::= { cmRouterObjects 1 }
+
+   cmRouterIfConfEntry OBJECT-TYPE
+       SYNTAX   CmRouterIfConfEntry
+       MAX-ACCESS   not-accessible
+       STATUS   current
+       DESCRIPTION
+          "A Single Routing Domain in a single Subnet."
+      INDEX { cmRouterIfConfAddressType, cmRouterIfConfAddress }
+      ::= { cmRouterIfConfTable 1 }
+
+    CmRouterIfConfEntry ::=
+        SEQUENCE {
+         	cmRouterIfConfAddressType
+            	InetAddressType, 
+         	cmRouterIfConfAddress
+            	InetAddress,        
+            cmRouterIfConfAuthKey
+                OCTET STRING,
+			cmRouterIfConfAuthKeyId
+                Unsigned32, 
+            cmRouterIfConfMode
+                INTEGER,
+            cmRouterIfConfUpdateTimer
+                Unsigned32,                
+            cmRouterIfConfStatus
+                RowStatus
+		}
+
+    cmRouterIfConfAddressType OBJECT-TYPE
+        SYNTAX   InetAddressType
+        MAX-ACCESS   not-accessible
+        STATUS   current
+        DESCRIPTION
+           "The destination router IP Address type."
+        DEFVAL { ipv4 }
+       ::= { cmRouterIfConfEntry 1 }
+
+    cmRouterIfConfAddress OBJECT-TYPE
+        SYNTAX   InetAddress
+        MAX-ACCESS   not-accessible
+        STATUS   current
+        DESCRIPTION
+           "The destination router IP Address."
+        DEFVAL { "224.0.0.9" }
+       ::= { cmRouterIfConfEntry 2 }
+
+    cmRouterIfConfAuthKey OBJECT-TYPE
+        SYNTAX   OCTET STRING (SIZE(0..16))
+        MAX-ACCESS   read-create
+        STATUS   current
+        DESCRIPTION
+           "The value to be used as the Authentication Key.
+		   If a string shorter
+           than 16 octets is supplied, it will be left-
+           justified and padded to 16 octets, on the right,
+           with nulls (0x00).
+
+           Reading this object always results in an  OCTET
+           STRING of length zero; authentication may not
+           be bypassed by reading the MIB object."
+       DEFVAL { ''h }
+       ::= { cmRouterIfConfEntry 3 } 
+       
+    cmRouterIfConfAuthKeyId OBJECT-TYPE
+        SYNTAX   Unsigned32 (0..255)
+        MAX-ACCESS   read-create
+        STATUS   current
+        DESCRIPTION
+           "Auth Key ID used in update RIP message."
+        DEFVAL { 0 }
+       ::= { cmRouterIfConfEntry 4 }
+
+    cmRouterIfConfMode OBJECT-TYPE
+        SYNTAX   INTEGER {
+                    doNotSend(1),
+                    ripV2NoAuth(2),
+                    ripV2Md5(3)
+                 }
+        MAX-ACCESS   read-create
+        STATUS   current
+        DESCRIPTION
+           "What the router sends on this interface."
+       DEFVAL { doNotSend }
+       ::= { cmRouterIfConfEntry 5 }
+       
+    cmRouterIfConfUpdateTimer OBJECT-TYPE
+        SYNTAX   Unsigned32 (1..255)
+        UNITS "seconds"
+        MAX-ACCESS   read-create
+        STATUS   current
+        DESCRIPTION
+           "The interval at which RIP advertisements are sent."
+        DEFVAL { 30 }
+       ::= { cmRouterIfConfEntry 6 }
+      
+    cmRouterIfConfStatus OBJECT-TYPE
+        SYNTAX   RowStatus
+        MAX-ACCESS   read-create
+        STATUS   current
+        DESCRIPTION
+           "Writing invalid has  the  effect  of  deleting
+           this interface."
+       ::= { cmRouterIfConfEntry 7 }
+
+-- Routes      
+   cmRouterRteTable OBJECT-TYPE
+      SYNTAX SEQUENCE OF CmRouterRteEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "Table to store routes in RIP response message.
+         Only one entry is allowed for now.
+         All objects are saved in NV RAM."
+   ::= { cmRouterObjects 2 }
+
+   cmRouterRteEntry OBJECT-TYPE
+      SYNTAX CmRouterRteEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "An entry in the routing table."
+      INDEX { cmRouterRteIndex }
+   ::= { cmRouterRteTable 1 }
+
+   CmRouterRteEntry ::=
+      SEQUENCE {
+         cmRouterRteIndex
+            Unsigned32,
+         cmRouterRteSubnetIpAddressType
+            InetAddressType,
+         cmRouterRteSubnetIpAddress
+            InetAddress,
+         cmRouterRteSubnetMaskType
+         	InetAddressType,
+         cmRouterRteSubnetMask
+            InetAddress,
+         cmRouterRteStatus
+            RowStatus,
+         cmRouterRteSubnetGatewayType
+            InetAddressType, 
+         cmRouterRteSubnetGateway
+            InetAddress,
+         cmRouterRteBypassFirewall
+            TruthValue
+      }
+
+   cmRouterRteIndex OBJECT-TYPE 
+      SYNTAX      Unsigned32(1..1) 
+      MAX-ACCESS  not-accessible 
+      STATUS      current 
+      DESCRIPTION 
+         "index of routes."
+      ::= { cmRouterRteEntry 1 }
+      
+   cmRouterRteSubnetIpAddressType OBJECT-TYPE 
+      SYNTAX      InetAddressType 
+      MAX-ACCESS  read-create 
+      STATUS      current 
+      DESCRIPTION 
+         "The type of IP address of cmRouterRteIpAddress."
+      DEFVAL { ipv4 }           
+      ::= { cmRouterRteEntry 2 }
+      
+   cmRouterRteSubnetIpAddress OBJECT-TYPE 
+      SYNTAX      InetAddress 
+      MAX-ACCESS  read-create 
+      STATUS      current 
+      DESCRIPTION 
+         "Route IP address."
+      ::= { cmRouterRteEntry 3 }
+
+   cmRouterRteSubnetMaskType OBJECT-TYPE 
+      SYNTAX      InetAddressType 
+      MAX-ACCESS  read-create 
+      STATUS      current 
+      DESCRIPTION 
+         "Subnet mask type."
+      DEFVAL { ipv4 }          
+      ::= { cmRouterRteEntry 4 }
+
+   cmRouterRteSubnetMask OBJECT-TYPE 
+      SYNTAX      InetAddress 
+      MAX-ACCESS  read-create 
+      STATUS      current 
+      DESCRIPTION 
+         "Route Subnet mask. The subnet size that results from applying this value to 
+          the value of cmRouterRteSubnetIpAddress must contain no fewer than 4 IP addresses
+          and no more than 64 IP addresses."
+      ::= { cmRouterRteEntry 5 }
+
+   cmRouterRteStatus OBJECT-TYPE
+      SYNTAX RowStatus
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "Controls the creation and modification of entries in this table." 
+                ::= { cmRouterRteEntry 6 } 
+  
+  cmRouterRteSubnetGatewayType OBJECT-TYPE
+      SYNTAX InetAddressType
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "Subnet Gateway Type."
+      DEFVAL { ipv4 }
+      ::= { cmRouterRteEntry 7 } 
+           
+   cmRouterRteSubnetGateway OBJECT-TYPE
+      SYNTAX InetAddress
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "Route Gateway IP address. Used by CPEs as their default gateway. Assigned 
+          as secondary address to Gateway LAN interface. Defaults to the first 
+          address in the routed subnet which is defined by applying cmRouterRteSubnetMask to 
+          cmRouterRteIpAddress. MUST be in the subnet defined by applying cmRouterRteSubnetMask to 
+          cmRouterRteIpAddress."
+      ::= { cmRouterRteEntry 8 }                
+
+   cmRouterRteBypassFirewall OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "When set to True the firewall is bypassed for all CPEs in the routed subnet
+          defined by applying cmRouterRteSubnetMask to cmRouterRteSubnetIpAddress. 
+          Default is False."
+      DEFVAL { false }
+      ::= { cmRouterRteEntry 9 }  
+      
+--  Conformance ---------------------------------------------------------------------
+
+   cmRouterCompliances OBJECT IDENTIFIER ::= { cmRouterConformance 1 }
+   cmRouterGroups      OBJECT IDENTIFIER ::= { cmRouterConformance 2 }
+   
+  -- Compliance statements
+
+   cmRouterCompliance MODULE-COMPLIANCE
+      STATUS       current
+      DESCRIPTION "The compliance statement for devices that implement the CM Router MIB"
+
+    MODULE       -- this module
+        MANDATORY-GROUPS { cmRouterBaseGroup }            
+
+    OBJECT  cmRouterIfConfAddressType
+       WRITE-SYNTAX INTEGER { ipv4(1) } 
+       MIN-ACCESS  read-only 
+       DESCRIPTION 
+         "Only IPv4 address type is required to be supported.  This can be
+          done by making this object read-only or only allowing the value
+          of ipv4 to be written."
+    
+    OBJECT  cmRouterRteSubnetIpAddressType
+       WRITE-SYNTAX INTEGER { ipv4(1) } 
+       MIN-ACCESS  read-only 
+       DESCRIPTION 
+         "Only IPv4 address type is required to be supported.  This can be
+          done by making this object read-only or only allowing the value
+          of ipv4 to be written."
+
+    OBJECT  cmRouterRteSubnetMaskType
+       WRITE-SYNTAX INTEGER { ipv4(1) } 
+       MIN-ACCESS  read-only 
+       DESCRIPTION 
+         "Only IPv4 address type is required to be supported.  This can be
+          done by making this object read-only or only allowing the value
+          of ipv4 to be written."
+      
+    OBJECT  cmRouterRteSubnetGatewayType
+       WRITE-SYNTAX INTEGER { ipv4(1) } 
+       MIN-ACCESS  read-only 
+       DESCRIPTION 
+         "Only IPv4 address type is required to be supported.  This can be
+          done by making this object read-only or only allowing the value
+          of ipv4 to be written."
+    ::= { cmRouterCompliances 1 }    
+    
+-- Units of compliance
+cmRouterBaseGroup OBJECT-GROUP
+    OBJECTS     {
+         		  --cmRouterIfConfAddressType,
+         		  --cmRouterIfConfAddress,        
+            	  cmRouterIfConfAuthKey,
+            	  cmRouterIfConfAuthKeyId, 
+            	  cmRouterIfConfMode,
+            	  cmRouterIfConfUpdateTimer, 
+            	  cmRouterIfConfStatus,
+                  cmRouterRteSubnetIpAddressType,
+                  cmRouterRteSubnetIpAddress,
+                  cmRouterRteSubnetMaskType,
+                  cmRouterRteSubnetMask,
+                  cmRouterRteStatus,
+                  cmRouterRteSubnetGatewayType,
+                  cmRouterRteSubnetGateway,
+                  cmRouterRteBypassFirewall
+                }    
+    STATUS       current
+    DESCRIPTION "A collection of objects for configuring dynamic routing."
+    ::= { cmRouterGroups 1 }
+               
+END   
+
+
+

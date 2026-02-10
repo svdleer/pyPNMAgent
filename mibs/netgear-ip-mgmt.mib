@@ -1,0 +1,415 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-ip-mgmt.mib
+--    Creation Date: June 1, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--		private MIB for ip management.
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-IP-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,
+	Integer32,
+	NOTIFICATION-TYPE       FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION      FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP      FROM SNMPv2-CONF
+	SnmpAdminString         FROM SNMP-FRAMEWORK-MIB
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6         FROM INET-ADDRESS-MIB
+    ifIndex                 FROM IF-MIB
+    PositiveInteger         FROM UPS-MIB
+    cableMgmt               FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- Netgear Group
+-- 
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrIpMgmt MODULE-IDENTITY
+	LAST-UPDATED "201205100000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"Initial version of this MIB module."
+::= { cableMgmt 4 }
+
+lanBase              OBJECT IDENTIFIER ::= { ntgrIpMgmt 1 }
+dhcpServer           OBJECT IDENTIFIER ::= { lanBase 5 }
+wanBase              OBJECT IDENTIFIER ::= { ntgrIpMgmt 2 }
+dnsServer            OBJECT IDENTIFIER ::= { wanBase 8 }
+l2tpDhcpMgmt         OBJECT IDENTIFIER ::= { wanBase 9 }
+
+lanIpAddressType  OBJECT-TYPE
+	SYNTAX     InetAddressType
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The IP address type assigned to the LAN IP Device.Only support ipv4 now."
+  DEFVAL { ipv4 }  
+	::= { lanBase 1 }
+
+lanIpAddress  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The address assigned to the LAN IP Device."
+	::= { lanBase 2 }
+
+lanIpNetMask  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Ip Address of the SubnetMask for a specific Network."
+	::= { lanBase 3 }
+
+lanMacAddress  OBJECT-TYPE
+	SYNTAX     MacAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The mac address assigned to the LAN interface."
+	::= { lanBase 4 }
+
+dhcpServerEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Whether or not the DHCP Server is enabled."
+	::= { dhcpServer 1 }
+
+dhcpServerIpAddressType  OBJECT-TYPE
+	SYNTAX     InetAddressType
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"DHCP server IP type.Only support ipv4 now."
+	::= { dhcpServer 2 }
+
+dhcpServerIpPoolStart  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Ip Address of the Start of the LAN Network Pool."
+	::= { dhcpServer 3 }
+
+dhcpServerIpPoolEnd  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Ip Address of the End of the LAN Network Pool."
+	::= { dhcpServer 4 }
+
+dhcpServerLeaseTime  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Lease Time for the DHCP Pool"
+	::= { dhcpServer 5 }
+
+dhcpServerReservedTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF DhcpServerReservedEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"DHCP server reserved IP table."
+	::= { dhcpServer 6 }
+
+dhcpServerReservedEntry  OBJECT-TYPE
+	SYNTAX 	DhcpServerReservedEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"DHCP server reserved IP entry."
+  INDEX { ifIndex }  
+	::= { dhcpServerReservedTable 1 }
+
+DhcpServerReservedEntry ::= SEQUENCE {
+	dhcpServerReservedIpAddressType
+		InetAddressType,
+	dhcpServerReservedIpaddress
+		InetAddress,
+	dhcpServerReservedDeviceName
+		SnmpAdminString,
+	dhcpServerReservedMacAddress
+		MacAddress,
+  dhcpServerReservedRowStatus          
+    RowStatus  
+}
+
+dhcpServerReservedIpAddressType  OBJECT-TYPE
+	SYNTAX     InetAddressType
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"DHCP server reserved IP type.Only support ipv4 now."
+	::= { dhcpServerReservedEntry 1 }
+
+dhcpServerReservedIpaddress  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"DHCP server reserved IP address."
+	::= { dhcpServerReservedEntry 2 }
+
+dhcpServerReservedDeviceName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"DHCP server reserved device name."
+	::= { dhcpServerReservedEntry 3 }
+
+dhcpServerReservedMacAddress  OBJECT-TYPE
+	SYNTAX     MacAddress
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"DHCP server reserved mac address."
+	::= { dhcpServerReservedEntry 4 }
+  
+dhcpServerReservedRowStatus  OBJECT-TYPE
+	SYNTAX     RowStatus
+	MAX-ACCESS read-create
+	STATUS     current
+	DESCRIPTION 
+		"The RowStatus interlock for the creation and deletion can be modified at any time while the row is active(1)."
+	::= { dhcpServerReservedEntry 5 }  
+
+dnsServerType  OBJECT-TYPE
+	SYNTAX      INTEGER {
+          dhcp(0),
+          static(1)
+  }         
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"dhcp(0)   : Get DNS server information from DHCP Server, it is only workable when wanConnectionType is dhcp or l2tp-dhcp
+     static(1) : Configure DNS server information manually"
+	::= { dnsServer 1 }
+
+dnsServerTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF DnsServerEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"WAN DNS server table."
+	::= { dnsServer 2 }
+
+dnsServerEntry  OBJECT-TYPE
+	SYNTAX 	DnsServerEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"WAN DNS server entry."
+	INDEX { ifIndex } 
+	::= { dnsServerTable 1 }
+
+DnsServerEntry ::= SEQUENCE {
+	dnsServerIpAddressType
+		InetAddressType,
+	dnsServerIpAddress
+		InetAddress
+}
+
+dnsServerIpAddressType  OBJECT-TYPE
+	SYNTAX     InetAddressType
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Ip Address type of WAN DNS server.Only support ipv4 now."
+	::= { dnsServerEntry 1 }
+
+dnsServerIpAddress  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Ip Address of WAN DNS server."
+	::= { dnsServerEntry 2 }
+
+wanConnectionType  OBJECT-TYPE
+	SYNTAX  INTEGER {
+          dhcp(0),
+          static(1),
+          l2tp-dhcp(2)
+  }
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"0  -- WAN DHCP Type (default).
+     1  -- WAN Static Type.
+     2  -- WAN L2TP (DHCP) Type."
+	::= { wanBase 1 }
+
+wanIpAddressType  OBJECT-TYPE
+	SYNTAX     InetAddressType
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The address type assigned to the WAN IP Device.Only support ipv4 now."
+	::= { wanBase 2 }
+
+wanIpAddress  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The address assigned to the WAN IP Device."
+	::= { wanBase 3 }
+
+wanIpNetMask  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Ip Address of the SubnetMask for a WAN Network."
+	::= { wanBase 4 }
+
+wanIpGateway  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Ip Address of the WAN Gateway."
+	::= { wanBase 5 }
+
+wanMacAddress  OBJECT-TYPE
+	SYNTAX     MacAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The mac address assigned to the WAN interface."
+	::= { wanBase 6 }
+	
+l2tpConnectionStatus  OBJECT-TYPE
+	SYNTAX     INTEGER {
+                  Off(0),
+                  On(1)
+             }
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The L2TP connection status."
+	::= { l2tpDhcpMgmt 1 }
+
+l2tpUserName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { l2tpDhcpMgmt 2 }
+	
+l2tpUserPassword  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { l2tpDhcpMgmt 3 }
+	
+l2tpServerAddressType  OBJECT-TYPE
+	SYNTAX     InetAddressType
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Only support ipv4 now."
+  DEFVAL { ipv4 }
+	::= { l2tpDhcpMgmt 4 }
+
+l2tpServerAddress  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The ip address of server or domain name of server."
+	::= { l2tpDhcpMgmt 5 }
+
+l2tpTunnelIpAddress  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { l2tpDhcpMgmt 6 }
+
+l2tpTunnelWanIpAddress  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { l2tpDhcpMgmt 7 }
+
+l2tpTunnelWanNetMask  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { l2tpDhcpMgmt 8 }
+	
+l2tpTunnelWanGateway  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { l2tpDhcpMgmt 9 }
+  
+ipApplySettings  OBJECT-TYPE
+	SYNTAX TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Apply all the parameters that have been entered."
+	::= { ntgrIpMgmt 100 }  
+  
+END
+

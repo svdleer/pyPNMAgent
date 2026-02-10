@@ -1,0 +1,742 @@
+-- **************************************************************************
+--
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+--
+-- **************************************************************************
+--    Filename: Ntgr-diag-mgmt.mib
+--    Creation Date: May 10, 2012
+--
+-- **************************************************************************
+--    Description:
+--
+--		private MIB for runtime management of diag thread.
+--
+-- **************************************************************************
+--    Revision History:
+--
+-- **************************************************************************
+
+NETGEAR-DIAG-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    enterprises,
+    NOTIFICATION-TYPE,
+    Integer32,
+    Unsigned32,
+    IpAddress,
+    TimeTicks,
+    Counter32
+        FROM SNMPv2-SMI
+    DisplayString,
+    TruthValue
+        FROM SNMPv2-TC
+    SnmpAdminString
+        FROM SNMP-FRAMEWORK-MIB
+    InetAddressType,
+    InetAddress
+        FROM INET-ADDRESS-MIB
+    cableMgmt
+        FROM NETGEAR-CABLEMGMT-SMI;
+
+--
+-- Netgear Group
+--
+
+--
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrDiagMgmt MODULE-IDENTITY
+    LAST-UPDATED "201205100000Z"
+    ORGANIZATION "Netgear, Inc"
+    CONTACT-INFO
+        ""
+    DESCRIPTION
+        "Initial version of this MIB module."
+    ::= { cableMgmt 16 }
+
+-- 
+-- Ping
+--
+
+pingBase  OBJECT IDENTIFIER ::= { ntgrDiagMgmt 1 }
+
+pingIpStackInterface OBJECT-TYPE
+    SYNTAX      Integer32 (0..8)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to select the IP stack from which the pings will be
+         sent.  Specifying 0 means that the pings will be sent from the same IP
+         stack on which this MIB is hosted.
+
+         This object may not be changed while a ping is in progress."
+    DEFVAL { 0 }
+    ::= { pingBase 1 }
+
+pingTargetAddressType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The type of internet address used for pingTargetAddress.
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { ipv4 }
+    ::= { pingBase 2 }
+
+pingTargetAddress OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the internet address of the entity to be pinged.  Note that if
+         an all-zeros value is specified for this object, then the ping will
+         be sent to the default gateway, if one exists.
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { '00000000'h }
+    ::= { pingBase 3 }
+
+pingOption OBJECT-TYPE
+    SYNTAX      INTEGER {
+        none(0),
+        q(1),
+        full(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the option of pings to be sent.
+
+         -q Quiet, only displays output at start and when finished.
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { 0 }
+    ::= { pingBase 4 }
+
+pingNumPkts OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the number of pings to be sent.  This can be
+         set to any number between 1 and (2^32 - 1), or can be set to 'infinite'
+         by setting the value to 0.
+
+         Note that if set to infinite, then the ping must be stopped explicitly
+         in order to get it to stop.
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { 3 }
+    ::= { pingBase 5 }
+
+pingPktSize OBJECT-TYPE
+    SYNTAX      Unsigned32 (64..1518)
+    UNITS       "bytes"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the packet size of the ping packets that will
+         be sent.  This size includes the LLC header, IP header, ICMP header,
+         and the CRC32 at the end.  You must specify values between 64 and 1518,
+         which are the min and max size Ethernet frames.
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { 64 }
+    ::= { pingBase 6 }
+
+pingMaxTTL OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..255)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the final size of the ping packets that will
+         be sent.  This size includes the LLC header, IP header, ICMP header,
+         and the CRC32 at the end.  You must specify values between 64 and 1518,
+         which are the min and max size Ethernet frames.
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { 64 }
+    ::= { pingBase 7 }
+
+pingInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the amount of time (in milliseconds) that the
+         device will sleep before sending a ping.  Generally, this is the time
+         between when a ping reply is received and when the next ping will be
+         sent.
+
+         Note that the amount of time between sending one ping and sending the
+         next ping varies depending on whether or not you enable waiting for
+         replies, and how long it takes to receive the reply.
+
+         If waiting for replies is disabled, then this is the time between
+         sending one ping and sending the next ping.
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { 0 }
+    ::= { pingBase 8 }
+
+pingWaitTime OBJECT-TYPE
+    SYNTAX      Integer32 (-1..65535)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the amount of time (in milliseconds) that the
+         device should wait for a reply after sending a ping.
+
+         If set to any non-negative value, then the device will send a ping and
+         wait for a response for the specified amount of time.  Event if
+         set to 0, the thread will check for and process a reply packet.
+
+         If set to -1, then the device will not wait at all, and won't even
+         check for any replies.
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { 5000 }
+    ::= { pingBase 9 }
+
+pingWaitDeadline OBJECT-TYPE
+    SYNTAX      Integer32 (-1..65535)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { pingBase 10 }
+
+pingNow OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Starts or stops the pings, as well as indicating whether a ping is in
+         progress when read.  If a ping is already in progress and this object
+         is set to true(1), then the ping will continue but the ping statistics
+         will be reset.
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { true }
+    ::= { pingBase 11 }
+
+pingResultTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF PingResultEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { pingBase 12 }
+
+pingResultEntry  OBJECT-TYPE
+	SYNTAX 	PingResultEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { pingResultPktSeq }
+	::= { pingResultTable 1 }
+
+PingResultEntry ::= SEQUENCE {
+	pingResultPktSeq
+		Integer32,
+	pingResultPktTTL
+		Integer32,
+	pingResultPktResponseTime
+		Integer32
+}
+
+pingResultPktSeq OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { pingResultEntry 1 }
+
+pingResultPktTTL OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { pingResultEntry 2 }
+
+pingResultPktResponseTime OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { pingResultEntry 3 }
+
+-- 
+-- Traceroute
+--
+
+tracerouteBase  OBJECT IDENTIFIER ::= { ntgrDiagMgmt 2 }
+
+tracerouteIpStackInterface OBJECT-TYPE
+    SYNTAX      Integer32 (0..8)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to select the IP stack from which the traceroute will be
+         sent.  Specifying 0 means that the traceroute will be sent from the same IP
+         stack on which this MIB is hosted.
+
+         This object may not be changed while a ping is in progress."
+    DEFVAL { 0 }
+    ::= { tracerouteBase 1 }
+
+tracerouteTargetAddressType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The type of internet address used for tracerouteTargetAddress.
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { ipv4 }
+    ::= { tracerouteBase 2 }
+
+tracerouteTargetAddress OBJECT-TYPE
+    SYNTAX      SnmpAdminString
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { tracerouteBase 3 }
+
+tracerouteOption OBJECT-TYPE
+    SYNTAX      INTEGER {
+        none(0),
+        F(1),
+        I(2),
+        d(3),
+        l(4),
+        n(5),
+        v(6)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the option of traceroutes to be sent.
+
+         -F Set the don't fragment bit.
+         -I Use ICMP ECHO instead of UDP datagrams
+         -d Do not resolve addresses to hostnames
+         -l set the data size in bytes of each probe packet (default 32)
+         -n Print numeric addresses
+         -v Verbose
+
+         This object may be changed while a ping is in progress."
+    DEFVAL { 0 }
+    ::= { tracerouteBase 4 }
+
+tracerouteStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+        stop(0),
+        inprogress(1),
+        done(2)
+    }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    DEFVAL { 0 }
+    ::= { tracerouteBase 5 }
+
+traceroutePktSize OBJECT-TYPE
+    SYNTAX      Unsigned32 (64..1518)
+    UNITS       "bytes"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the packet size of the traceroute packets that will
+         be sent.  This size includes the LLC header, IP header, ICMP header,
+         and the CRC32 at the end.  You must specify values between 64 and 1518,
+         which are the min and max size Ethernet frames.
+
+         This object may be changed while a traceroute is in progress."
+    DEFVAL { 64 }
+    ::= { tracerouteBase 6 }
+
+tracerouteMaxTTL OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..255)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the final size of the traceroute packets that will
+         be sent.  This size includes the LLC header, IP header, ICMP header,
+         and the CRC32 at the end.  You must specify values between 64 and 1518,
+         which are the min and max size Ethernet frames.
+
+         This object may be changed while a traceroute is in progress."
+    DEFVAL { 64 }
+    ::= { tracerouteBase 7 }
+
+tracerouteUDPPort OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { tracerouteBase 8 }
+
+tracerouteQueryNum OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        ""
+    DEFVAL { 1 }
+    ::= { tracerouteBase 9 }
+
+tracerouteTos OBJECT-TYPE
+    SYNTAX      Integer32 (0..64)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { tracerouteBase 10 }
+
+tracerouteWaitTime OBJECT-TYPE
+    SYNTAX      Integer32 (-1..65535)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows the client to set the amount of time (in milliseconds) that the
+         device should wait for a reply after sending a traceroute.
+
+         If set to any non-negative value, then the device will send a traceroute and
+         wait for a response for the specified amount of time.  Event if
+         set to 0, the thread will check for and process a reply packet.
+
+         If set to -1, then the device will not wait at all, and won't even
+         check for any replies.
+
+         This object may be changed while a traceroute is in progress."
+    DEFVAL { 5000 }
+    ::= { tracerouteBase 11 }
+
+tracerouteNow OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        ""
+    DEFVAL { true }
+    ::= { tracerouteBase 12 }
+
+tracerouteResultTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF TracerouteResultEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { tracerouteBase 13 }
+
+tracerouteResultEntry  OBJECT-TYPE
+	SYNTAX 	TracerouteResultEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { tracerouteResultPktSeq  }
+	::= { tracerouteResultTable 1 }
+
+TracerouteResultEntry ::= SEQUENCE {
+	tracerouteResultPktSeq 
+		Integer32,
+	tracerouteResultHopAddress1
+		InetAddress,
+	tracerouteResultResponseTime1
+		Integer32,
+	tracerouteResultHopAddress2
+		InetAddress,
+	tracerouteResultResponseTime2
+		Integer32,
+	tracerouteResultHopAddress3
+		InetAddress,
+	tracerouteResultResponseTime3
+		Integer32
+}
+
+tracerouteResultPktSeq OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { tracerouteResultEntry 1 }
+
+tracerouteResultHopAddress1 OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { tracerouteResultEntry 2 }
+
+tracerouteResultResponseTime1 OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { tracerouteResultEntry 3 }
+
+tracerouteResultHopAddress2 OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { tracerouteResultEntry 4 }
+
+tracerouteResultResponseTime2 OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { tracerouteResultEntry 5 }
+
+tracerouteResultHopAddress3 OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { tracerouteResultEntry 6 }
+
+tracerouteResultResponseTime3 OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { tracerouteResultEntry 7 }
+
+-- 
+-- Speed Test
+--
+
+speedTestBase  OBJECT IDENTIFIER ::= { ntgrDiagMgmt 3 }
+
+speedTestType OBJECT-TYPE
+    SYNTAX      INTEGER {
+                ftpTimeBase(0),
+                ftpSizeBase(1),
+                httpTimeBase(2),
+                httpSizeBase(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Specifies speed test type"
+    ::= { speedTestBase 1 }
+
+speedTestIpStackInterface OBJECT-TYPE
+    SYNTAX      Integer32 (1..8)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Specifies the IP stack which will be used for FTP transfers."
+    ::= { speedTestBase 2 }       
+
+speedTestServerAddressType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The type of internet address used for SpeedTestServerAddress."
+    ::= { speedTestBase 3 }
+
+speedTestServerAddress OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The internet address of the FTP server used for FTP transfers."
+    ::= { speedTestBase 4 }
+
+speedTestServerPort OBJECT-TYPE
+    SYNTAX      Integer32 (1..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The TCP port on the FTP server to which the client will attempt to 
+         connect."
+    ::= { speedTestBase 5 }
+
+speedTestUserName OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "The user name to be used when logging in to the FTP server."
+    DEFVAL { "" }
+    ::= { speedTestBase 6 }
+
+speedTestPassword OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "The password to be used when logging in to the FTP server."
+    DEFVAL { "" }
+    ::= { speedTestBase 7 }
+
+speedTestFilename OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "The path to the file to be transferred."
+    DEFVAL { "" }
+    ::= { speedTestBase 8 }
+
+speedTestTime OBJECT-TYPE
+    SYNTAX      Integer32 (1..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { speedTestBase 9 }
+
+speedTestSize OBJECT-TYPE
+    SYNTAX      Integer32 (1..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { speedTestBase 10 }    
+    
+speedTestCommand OBJECT-TYPE
+    SYNTAX      INTEGER {
+                cancel(0),
+                get(1),
+                put(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Used to invoke an HTTP/FTP command, or cancel a command which is in 
+         progress.  When read, indicates the most recent command.  Note that
+         the value of this object does not indicate the current transfer 
+         status.  Current status should be read from ftpTransferStatus."
+    ::= { speedTestBase 11 }
+
+speedTestStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                idle(0),
+                fileStatusOk(150),
+                serviceReady(200),
+                sessionReady(221),
+                transferComplete(226),
+                passwordOk(230),
+                userNameOk(331),
+                serviceNotAvail(421),
+                invalidLogin(530),
+                fileNotFound(550),
+                socketConnectFailure(600) -- This is a BRCM extension to the FTP status codes
+    }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the status of the file transfer which is currently in 
+         progress, or which most recently completed.  If no file transfer has
+         been initiated, this object returns a value of idle(0)."
+    ::= { speedTestBase 12 }
+
+speedTestDownloadTotalBytes OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the total number of bytes transferred during the 
+         file transfer which is currently in progress, or which most recently 
+         completed.  This value includes file data payload as well as FTP/HTTP 
+         framing data and all IP and layer 2 headers.  This value should be 
+         used when calculating transfer throughput."
+    ::= { speedTestBase 13 }
+    
+speedTestDownloadElapsedTime OBJECT-TYPE
+    SYNTAX      Counter32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the total elapsed time of the file transfer which is 
+         currently in progress, or which most recently completed."
+    ::= { speedTestBase 14 }
+    
+speedTestDownloadThroughput OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "bits per second"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the calculated throughput during the file transfer which is
+         currently in progress, or which most recently completed.  This value
+         is calculated by dividing speedTestDownloadTotalBytes by 
+         speedTestDownloadElapsedTime."
+    ::= { speedTestBase 15 }  
+
+speedTestUploadTotalBytes OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the total number of bytes transferred during the 
+         file transfer which is currently in progress, or which most recently 
+         completed.  This value includes file data payload as well as FTP/HTTP 
+         framing data and all IP and layer 2 headers.  This value should be 
+         used when calculating transfer throughput."
+    ::= { speedTestBase 16 }
+    
+speedTestUploadElapsedTime OBJECT-TYPE
+    SYNTAX      Counter32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the total elapsed time of the file transfer which is 
+         currently in progress, or which most recently completed."
+    ::= { speedTestBase 17 }
+    
+speedTestUploadThroughput OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "bits per second"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the calculated throughput during the file transfer which is
+         currently in progress, or which most recently completed.  This value
+         is calculated by dividing speedTestUploadTotalBytes by 
+         speedTestUploadElapsedTime."
+    ::= { speedTestBase 18 } 
+
+END

@@ -1,0 +1,46 @@
+-- vim: set ts=4, set expandtab, match Todo /\%>79v/
+-- ***********************************************************************
+-- ***********************************************************************
+--                             ROUTER
+--                      SNMP/MIB : MIB Files
+--
+--            Copyright (C) 2012 Hitron Technologies Inc.
+--                       All Rights Reserved.
+-- ***********************************************************************
+--  Filename    : HITRON-RG-APP.mib
+--  Description : Applications MIB
+-- ***********************************************************************
+--
+
+HITRON-RG-APP-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+        FROM SNMPv2-SMI -- RFC2578
+
+    hitronRg
+        FROM HITRON-RG-MIB
+
+    ; -- END of IMPORTS
+
+hitronRgApp MODULE-IDENTITY
+    LAST-UPDATED    "201209051602Z" -- Sep. 05, 2012
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "Liangfeng Wu
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8120
+        E-mail: wuliangfeng@sz.hitrontech.com"
+    DESCRIPTION
+        "MIB module for Applications configuration. "
+
+    REVISION    "201209051602Z" -- Sep. 05, 2012
+    DESCRIPTION
+        "Initial Version"
+
+    ::= { hitronRg 21 }
+
+END

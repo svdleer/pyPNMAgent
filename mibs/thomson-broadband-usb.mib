@@ -1,0 +1,66 @@
+--*****************************************************************
+--
+-- THOMSON-BROADBAND-USB.MIB:  Thomson Inc.
+--
+-- Copyright (c) 2003 by Thomson Inc.
+-- All rights reserved.
+-- 
+--*****************************************************************
+
+--**************************************************************************
+--                                                                          
+--    Copyright 2003 Thomson Inc.
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--             Thomson Inc.                                   
+--             101 W 103rd St.                                   
+--             Indianapolis, IN  46290  USA                                   
+--    All information contained in this document is Thomson Inc.    
+--    company private, proprietary, and trade secret.                       
+--                                                                          
+--**************************************************************************
+--
+--    Filename:      thomson-broadband-usb.mib
+--    Author:        Gary Gutknecht
+--    Creation Date: March 20, 2003
+--
+--**************************************************************************
+--
+--    Description:
+--
+--      Thomson Cable Modem MIB.
+--      
+--**************************************************************************
+
+THOMSON-BROADBAND-USB-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        OBJECT-TYPE
+            FROM SNMPv2-SMI 
+        DisplayString
+            FROM SNMPv2-TC
+        broadbandUsb
+            FROM THOMSON-BROADBAND-MIB;
+                      
+--*****************************************************************
+--
+-- Thomson broadband USB objects.
+-- 
+--*****************************************************************
+
+broadbandUsbBase OBJECT IDENTIFIER 
+        ::= { broadbandUsb 1 }
+
+-- --------------------------------------------------------
+-- USB Host Version
+-- --------------------------------------------------------       
+bbUsbHostVersion OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE (0..255))
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+             "The USB Host software driver version number."
+        ::= { broadbandUsbBase 5 }
+                                                                            
+END

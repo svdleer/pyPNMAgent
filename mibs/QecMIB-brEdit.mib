@@ -1,0 +1,153 @@
+-- *****************************************************************
+-- SNMP MIB FILE
+-- *****************************************************************
+
+QUINTECH-SMI DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY,
+    enterprises
+        FROM SNMPv2-SMI;
+
+quintech MODULE-IDENTITY
+--br    LAST-UPDATED "30110510"
+    LAST-UPDATED "200511300510Z"
+    ORGANIZATION "QuinTech"
+    CONTACT-INFO
+		"Quintech Electronics & Communications, Inc.
+		250 Airport Road . Indiana, PA 15701 . USA
+		E-mail:       tphelps@qecinc.com
+		Phone:       724.349.1412 ext. 324
+		800.839.3658
+		Fax:           724.349.1421
+		Website:    http://www.qecinc.com"
+    DESCRIPTION
+        "The Structure of Management Information for the
+        Quintech Electronics & Communications, Inc."
+--br    REVISION      "30110510"
+    REVISION      "200511300510Z"
+    DESCRIPTION
+        "Quintech MIB module."
+    ::= { enterprises 20398 }	-- assigned by IANA
+
+rwObjects OBJECT IDENTIFIER ::= { quintech 1 }  -- read/write objects
+roObjects OBJECT IDENTIFIER ::= { quintech 2 }  -- read-only objects
+
+rw-Output OBJECT-TYPE
+--br        SYNTAX     INTEGER (1..1)
+        SYNTAX     INTEGER (-32768..32767)
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+            "Matrix Output"
+        ::= { rwObjects 1 }
+
+rw-Input OBJECT-TYPE
+        SYNTAX     INTEGER (-32768..32767)
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+            "Matrix Input"
+        ::= { rwObjects 2 }
+
+rw-MgrIP OBJECT-TYPE
+        SYNTAX     IpAddress
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+        "This is the address to which traps will be sent."
+        ::= { rwObjects 3 }
+
+
+-- *****************************************************************
+-- Setup ReadOnly here
+-- *****************************************************************
+ro-Model OBJECT-TYPE
+        SYNTAX  OCTET STRING (SIZE(8))
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+			"Model"
+        ::= { roObjects 1 }
+
+ro-ModelNum OBJECT-TYPE
+        SYNTAX  OCTET STRING (SIZE(8))
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+			"Model Number"
+        ::= { roObjects 2 }
+
+ro-FirmwareVer OBJECT-TYPE
+        SYNTAX  OCTET STRING (SIZE(8))
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+			"Firmware Version"
+        ::= { roObjects 3 }
+
+ro-ProtocolVer OBJECT-TYPE
+        SYNTAX  OCTET STRING (SIZE(8))
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+			"Protocol Version"
+        ::= { roObjects 4 }
+
+ro-SizeOutputs OBJECT-TYPE
+        SYNTAX     INTEGER (1..256)
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+            "Matrix Output Size"
+        ::= { roObjects 5 }
+
+ro-SizeInputs OBJECT-TYPE
+        SYNTAX     INTEGER (1..256)
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+            "Matrix Input Size"
+        ::= { roObjects 6 }
+
+ro-PortBInputs OBJECT-TYPE
+        SYNTAX     INTEGER (1..256)
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+            "Port B Value"
+        ::= { roObjects 7 }
+
+ro-CngFlg OBJECT-TYPE
+        SYNTAX     INTEGER (1..256)
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+            "Change Flag"
+        ::= { roObjects 8 }
+
+
+ro-Que OBJECT-TYPE
+        SYNTAX  OCTET STRING (SIZE(64))
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+			"Change queue"
+        ::= { roObjects 9 }
+
+ro-MessageQue OBJECT-TYPE
+        SYNTAX  OCTET STRING (SIZE(128))
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+			"Message queue"
+        ::= { roObjects 10 }
+
+
+
+
+
+
+END
+

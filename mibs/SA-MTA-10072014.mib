@@ -1,0 +1,524 @@
+--**************************************************************************
+--                                                                          
+--    Copyright 2010 Scientific Atlanta, A Cisco Company                                   
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any
+--    form without the written permission of:                                                
+--             Scientific Atlanta, A Cisco Company                                          
+--             5030 Sugarloaf Pkwy                                     
+--             Lawrenceville, Georgia 30044                                    
+--                                                                          
+--**************************************************************************
+
+SA-MTA-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+        MODULE-IDENTITY, 
+        OBJECT-TYPE,
+        enterprises, 
+        Integer32,
+        Unsigned32
+                FROM SNMPv2-SMI
+        ifIndex
+                FROM IF-MIB
+        SnmpAdminString 
+                FROM SNMP-FRAMEWORK-MIB
+        TruthValue,
+        DateAndTime
+                FROM SNMPv2-TC ;
+                
+sa           OBJECT IDENTIFIER ::= { enterprises 1429 }
+saVoip       OBJECT IDENTIFIER ::= { sa 78 }
+
+saMta   MODULE-IDENTITY
+        LAST-UPDATED    "201102220000Z"
+        ORGANIZATION    "Cisco Inc."
+        CONTACT-INFO    "vveeraga@cisco.com"
+        DESCRIPTION
+            "saMtaDevLCSSignalingSupport controls the LCS Signaling."
+
+        -- History  
+        REVISION "201102220000Z"
+        DESCRIPTION
+        	"Updated default value of saMtaDevResetCleanupTimeout from 0 to 1 minute"
+        	
+        REVISION "201102140000Z"
+        DESCRIPTION
+        	" Modified saMtaDevLCSSignalingSupport MIB description"
+        	
+        REVISION "201101240000Z"
+        DESCRIPTION
+        	" Added saMtaDevLCSSignalingSupport"
+        	
+	REVISION "201101140000Z"
+        DESCRIPTION
+        	" Added saMtaDnsBaseTimeout - CR17582 "
+			
+		REVISION "201009130000Z"
+        DESCRIPTION
+        	" Added saMtaDevDTMFRelayPayloadType"
+
+        REVISION "201004300000Z"
+        DESCRIPTION
+        	" Fixed compilation errors-FEMFMode object"
+
+        REVISION "201004220000Z"
+        DESCRIPTION
+        	" Updated Copyright and dates"
+
+        REVISION "201001140000Z"
+        DESCRIPTION
+        	" Added countryCode values
+        		netherlands2(30) (CR15565)"
+
+
+        REVISION "200912010000Z"
+        DESCRIPTION
+        	" Added countryCode values
+        		argentina(24),
+        		columbia(25),
+        		romania(26),
+       			singapore(27),
+       			columbia2(28)  (CR4465),
+       			chile2(29) (CR15140)"
+        
+        REVISION "200908260000Z"
+        DESCRIPTION 
+        	" Added saMtaDevSdpSuppression"
+        
+        REVISION "200908130000Z"
+        DESCRIPTION 
+        	" Added saMtaDevOSITimerInterval"
+        
+        REVISION    "200906170000Z"
+        DESCRIPTION 
+        	"Added saMtaTestFEMFOnBoot and saMtaTestFEMFMode
+        	Flipped the description for saMtaTestFEMFMode"
+        
+        REVISION     "200903090000Z"
+        DESCRIPTION
+            "Added value 0 (notApplicable) to saMtaEndPntStatePhysical (3590)
+            Updated behavior of saMtaDevAutoSendOSI when switch sends OSI (3500)"
+              
+        REVISION	"200902230000Z"
+        DESCRIPTION         
+        	"Added saMtaDevIgnoreRtpMap - CR3511
+        	 Added saMtaDevSlicVoltageBoost(53) - CR3359"
+        	
+        REVISION     "200805270000Z"
+        DESCRIPTION
+            "Added saMtaEndPntCtrlCustomCWCIDCfg 
+    		 Added saMtaEndPntCtrlCASLevelCfg
+    		 Added saMtaEndPntCtrlOffhookCIDFSKLevelCfg (2473,5696)
+    		 Added Australia country code value for saMtaDevCountryCode (2340),
+    		 Added noNameField(2) value to saMtaDevCidNameLength object(2392,2267)"    		  	 
+
+        REVISION     "200804230000Z"
+        DESCRIPTION
+            "Added advertiseCsuitesOnly(2) to saMtaDevMediaSecurityAdvertise (2093)"
+
+        REVISION     "200801180000Z"
+        DESCRIPTION
+            "Added saMtaDevTddDetection (1912)
+             Added saMtaDevLcoTosOverride (1913)
+             Added saMtaEndPntQuarantineState (2218)
+             Added saMtaDevMaintenance (2215)
+             Added advertiseCsuitesOnly(2) to saMtaDevMediaSecurityAdvertise (2093)"
+
+        REVISION     "200711160000Z"
+        DESCRIPTION
+            "Changed description for saMtaDevAutoSendOSI
+             Changed DEFVAL for saMtaDevQuarantineQueueDepth
+             Changed DEFVAL for saMtaDevExitRsipDisconnectState (1519)"
+
+        REVISION     "200708140000Z"
+        DESCRIPTION
+            "Added saMtaDevCidConvertPlus (1635)
+             Changed description and DEFVAL for saMtaDevExitRsipDisconnectState (1519)"
+
+        REVISION     "200706210000Z"
+        DESCRIPTION
+            "Added saMtaDevReversePolarityEnable (1568)
+             Added saMtaDevDsaPollJitter (1569)"
+
+        REVISION     "200705290000Z"
+        DESCRIPTION
+            "Added saMtaDevQuarantineQueueDepth (1498)
+             Added saMtaDevNotificationMode (1499)"
+
+        REVISION     "200704050000Z"
+        DESCRIPTION
+            "Added saMtaDevCidNameLength (1385)"
+
+        REVISION     "200703150000Z"
+        DESCRIPTION
+            "Changed saMtaDevEcanTailLength to obsolete (1281)
+             Changed saMtaDevRsipDisconnectTimer to
+                     saMtaDevExitRsipDisconnectState (5505)"
+
+        REVISION     "200701240000Z"
+        DESCRIPTION
+            "Changed saMtaDevLoopVoltageMaintain (1209)
+             Added saMtaDevLoopVoltageMaintainTimer (1209)
+             Corrected startForeignElectromotiveForceTest (remove extra start)"
+
+        REVISION     "200701120000Z"
+        DESCRIPTION
+            "Added saMtaEndPntLedVmwiBehavior (1198)"
+
+        REVISION     "200611170000Z"
+        DESCRIPTION
+            "Added hungary2 to saMtaDevCountryCode (967)"
+
+        REVISION     "200609280000Z"
+        DESCRIPTION
+            "Added saMtaDevSnmpTosValue (962)
+             Changed description of saMtaDevPulseMetering"
+
+        REVISION     "200609130000Z"
+        DESCRIPTION
+            "Added saMtaDevEmbeddedRequestTO (777)"
+
+        REVISION     "200608110000Z"
+        DESCRIPTION
+            "Corrected startForceTestExecution bit in
+                       saMtaTestEndPntDiagTestsStart
+             Added saMtaDevCidMissingSigTime (851,5191)
+             Added saMtaDevDhcpNak (846,5192)
+             Added saMtaDevCidNameChange (802)
+             Added saMtaDevEndofDigitString (776)"
+
+        REVISION     "200607110000Z"
+        DESCRIPTION
+            "Added saMtaDevEcanTailLength (785)"
+
+        REVISION     "200606220000Z"
+        DESCRIPTION
+            "Added saMtaDevLogPageSigEntriesLimit (741)"
+
+        REVISION     "200605100000Z"
+        DESCRIPTION
+            "Added saMtaDevNcsKparam (5107)
+             Added hongkong(21) to saMtaDevCountryCode (5056)
+             Changed name saMtaDevAutoDetectOSI to saMtaDevAutoSendOSI
+             Changed description of saMtaDevBell103Ntfy
+             Changed description of saMtaDevRingVoltageOffset"
+
+        REVISION     "200604190000Z"
+        DESCRIPTION
+            "Moved saMtaEndPntConnectionCleanupTimeout
+                to saMtaDevConnectionCleanupTimeout
+             Added saMtaEndPntCtrlAlarmPanelAndPosTerminalDetection (5083)"
+
+        REVISION     "200603300000Z"
+        DESCRIPTION
+            "Added saMtaDevBell103Ntfy
+             Added saMtaDevAutodetectOSI
+             Added saMtaEndPntQuarantineEvents"
+
+        REVISION     "200602100000Z"
+        DESCRIPTION
+            "Replaced saMtaTestMltTable with saMtaTestEndPntTable
+             Added saMtaDevCmsRedirect
+             Added saMtaDevRsipDisconnectTimer"
+
+        REVISION     "200601260000Z"
+        DESCRIPTION
+            "Added india(20) to saMtaDevCountryCode
+             Added saMtaDev2833KeepAlive
+             Added saMtaDevNegotiateSingleCodec
+             Changed saMtaDevG711Mode status to obsolete
+             Changed saMtaDevJitCommitSetting status to obsolete
+             Added inCallVoice(3), inCallData(4) to
+                   saMtaEndPntStateLogical
+             Added saMtaDevJitVoiceType
+             Added saMtaDevJitDataMaxLen
+             Added saMtaDevResetCleanupTimeout
+             Added saMtaEndPntConnectionCleanupTimeout"
+
+        REVISION     "200511280000Z"
+        DESCRIPTION
+            "Added mexico(18) and czech(19) to saMtaDevCountryCode
+             Removed default values for min/max hookflash and gain"
+
+        ::= { saVoip 3 }
+
+-- ==========================
+-- ENDPOINT TABLE STARTS HERE
+-- ==========================
+
+saMtaEndPointTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF SaMtaEndPointEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       "This table describes the MTA EndPoint
+        Volume configuration. "
+   ::=  { saMta 2 }
+
+saMtaEndPointEntry  OBJECT-TYPE
+    SYNTAX        SaMtaEndPointEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        " List of attributes for a single MTA endpoint interface."
+    INDEX { ifIndex }
+    ::= { saMtaEndPointTable 1 }
+
+SaMtaEndPointEntry  ::= SEQUENCE {
+    saMtaEndPntStatePhysical            INTEGER,
+    saMtaEndPntStateLogical             INTEGER    
+    }
+
+saMtaEndPntStatePhysical OBJECT-TYPE
+    SYNTAX INTEGER {
+        notApplicable(0),
+        onHook(1),
+        offHook(2)
+    }
+    MAX-ACCESS 	  read-only
+    STATUS        current
+    DESCRIPTION	
+        "Returns the physical state of the end point.
+         0: Line is either administratively down or not provisioned. 
+         1: No phones attached or one or more phones are attached and 
+            on-hook 
+         2: One or more phones are attached and off-hook" 
+    ::= { saMtaEndPointEntry 6 }
+
+saMtaEndPntStateLogical  OBJECT-TYPE 
+    SYNTAX INTEGER { 
+        connectedIdle(1), 
+        disconnected(2),
+        inCallVoice(3),
+        inCallData(4)
+    } 
+    MAX-ACCESS read-only 
+    STATUS current 
+    DESCRIPTION 
+        "Returns the logical state of the end point. 
+         1: endpoint is connected to CMS and not in call
+         2: endpoint is not connected to CMS
+         3: endpoint is in voice mode call
+         4: endpoint is in data mode (fax/modem) call"
+    ::= {  saMtaEndPointEntry 7 } 
+  
+
+
+-- MTA Testing, in the MTA MIB file. Index is ifIndex of voice port.
+-- Tests are:
+
+-- resTipToGroundShortDetection(0) - This test measures the resistance
+-- between the Tip pin and the Ground of the MTA. If the resistance is
+-- less that 10K it is declared a fault and the test fails.
+ 
+-- resRingToGroundShortDetection(1) - This test measures the resistance
+-- between the Ring pin and the Ground of the MTA. If the resistance is
+-- less that 10K it is declared a fault and the test fails.
+
+-- resTipToRingShortDetection(2) - This test measures the resistance
+-- between the Tip pin and the Ring Pin. If the resistance is less that
+-- 10K it is declared a fault and the test fails.
+
+-- resRingerEquivalenceNetwork(3) - This test measures the load on the
+-- line. This represents the total AC load of all of the phones, fax
+-- machines, etc. attached to the line. This is measured in the units of
+-- RENs. If the load is less than 0.175 RENs or greater than 5.0 RENs
+-- the test fails.
+
+-- resSelfTestNoReboot(4) - General test of the DSP, APM, HVG. Tests
+-- verify that an endpoint is operational.
+
+-- resOffHookSimulationTest(5) - The phone is taken offhook for 2 seconds
+-- and then placed onhook through internal hardware. If the offhook
+-- condition is detected, relayed to the CMS, and a request to play
+-- dialtone is received from the CMS the test passes. Otherwise the test
+-- fails.
+
+-- resTip1ToRing2Short(6) - Not Implemented. Running this test will
+-- always result in the VALID bits for this test being set to 0 indicating
+-- that the test was not successful or supported.
+
+-- resTip2ToRing1Short(7) - Not Implemented. Running this test will
+-- always result in the VALID bits for this test being set to 0 indicating
+-- that the test was not successful or supported.
+
+-- resHazardousPotentialsTest(8) - This test measures the voltage at Tip
+-- and Ring. If either voltage exceeds a high voltage threshold then the
+-- test fails otherwise the test passes.
+
+-- resForeignElectromotiveForceTest(9) - This test measures the voltage at
+-- Tip and Ring. If either voltage exceeds a lower voltage threshold (6V)
+-- then the test fails otherwise the test passes.
+
+-- resReceiverOffhook(10) - This test is designed to test if a Tip to Ring
+-- resistive fault is actually an offhook phone and not a resistive fault.
+-- If the phone is not offhook then this test passes. This test only makes
+-- sense to run if the Tip to Ring resistive fault is detected.
+
+saMtaTestBase   OBJECT IDENTIFIER ::=  { saMta 3 }
+
+saMtaTestEndPntTable   OBJECT-TYPE
+    SYNTAX        SEQUENCE OF SaMtaTestEndPntEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+       "This table controls the loopback mode for each endpoint present on the eMTA."
+   ::=  { saMtaTestBase 1 }
+
+saMtaTestEndPntEntry  OBJECT-TYPE
+    SYNTAX        SaMtaTestEndPntEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Each entry controls the loopback mode for the particular endpoint indexed 
+        by the corresponding ifIndex."
+    INDEX { ifIndex }
+    ::= { saMtaTestEndPntTable 1 }
+
+SaMtaTestEndPntEntry  ::= SEQUENCE {
+       saMtaTestEndPntAnalogLoopback     TruthValue,
+       saMtaTestEndPntLineReset          TruthValue,
+       saMtaTestEndPntDiagTestsStart     BITS,
+       saMtaTestEndPntDiagTestsStop      BITS
+       }
+
+saMtaTestEndPntAnalogLoopback OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This oject controls the implementation of the analog loopback by the MTA.
+        When the object is set to true(1), the MTA starts an analog loopback 
+        operations to the network. When the object is set to false(2), the MTA stops loopback
+        operations immediately.
+        The default value of this object corresponds to the functionality compliant 
+        with the PacketCable requirements."
+    DEFVAL {false}
+    ::= { saMtaTestEndPntEntry 1 }
+
+saMtaTestEndPntLineReset OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Setting this object to true(1) causes the eMTA to reset the telephone line
+        of the corresponding endpoint and drop loop voltage for 2 seconds.
+        Setting this object to false(2) does not have 
+        any affect. Reading this object always returns 'false(2)'."
+    DEFVAL {false}
+    ::= { saMtaTestEndPntEntry 2 }
+
+saMtaTestEndPntDiagTestsStart    OBJECT-TYPE
+    SYNTAX BITS {
+       startTipToGroundShortDetection(0),
+       startRingToGroundShortDetection(1),
+       startTipToRingShortDetection(2),
+       startRingerEquivalenceNetwork(3),
+       startSelfTestNoReboot(4),
+       startOffHookSimulationTest(5),
+       startTip1ToRing2Short(6),     -- FUTURE
+       startTip2ToRing1Short(7),      -- FUTURE
+       startHazardousPotentialsTest(8),
+       startForeignElectromotiveForceTest(9),
+       startReceiverOffhook(10),
+       startForceTestExecution(15)
+    }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This MIB object is used to start one or more diagnostic tests 
+        associated with a corresponding endpoint.
+        Thus, whenever one or more BITS corresponding to diagnostic test
+        are set to a value of '1', the MTA MUST start those tests. 
+        Before starting the test, the MTA MUST clear the BITS of the 
+        objects 'saMtaTestEndPntDiagTestValid', 
+        'saMtaTestEndPntDiagTestResult', and 
+        'saMtaTestEndPntDiagTestsStop'.
+        Once the tests are executed, the MTA MUST:
+            - set the corresponding bits to a value of '0'
+            - update the corresponding BITS in the MIB Objects 
+        'saMtaTestEndPntDiagTestValid' and 
+        'saMtaTestEndPntDiagTestResult'.
+        Whenever a test is being run on an enpoint the MTA MUST 
+        set the corresponding 'ifOperStatus' MIB Object to a value of 
+        'testing(3)' for the whole duration of the test. 
+        When the test is completed, the MTA MUST set the 
+        ifOperStatus to the value corresponding to the current state of the line.
+        The selected tests will not run if the corresponding endpoint is offhook.
+        To force execution of the selected tests regardless of the endpoint status
+        set the corresponding startForceTestExecution(31) BIT."
+       ::= { saMtaTestEndPntEntry 3}
+
+saMtaTestEndPntDiagTestsStop    OBJECT-TYPE
+    SYNTAX BITS {
+       stopTipToGroundShortDetection(0),
+       stopRingToGroundShortDetection(1),
+       stopTipToRingShortDetection(2),
+       stopRingerEquivalenceNetwork(3),
+       stopSelfTestNoReboot(4),
+       stopOffHookSimulationTest(5),
+       stopTip1ToRing2Short(6),      -- FUTURE
+       stopTip2ToRing1Short(7),      -- FUTURE
+       stopHazardousPotentialsTest(8),
+       stopForeignElectromotiveForceTest(9),
+       stopReceiverOffhook(10)
+    }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This MIB object is used to stop the test corresponding to the 
+        bit being set if the test is not complete yet by the time when 
+        the the bit is set."
+       ::= { saMtaTestEndPntEntry 4}
+
+
+saMtaTestFEMFOnBoot OBJECT-TYPE
+   SYNTAX INTEGER 
+   UNITS	"seconds"
+   MAX-ACCESS read-write
+   STATUS  current
+   DESCRIPTION         
+       "Defines the number of seconds the  LED will blink after the Line diag tests fails
+       0: disabled
+       1: enabled
+       30-3600 : seconds after which it will stop blinking the LED.
+       
+       This setting enables or disables the automatic test for Foreign Electromotive force at boot time.
+       A value of '0'disables the test at boot time. 
+       '1' enables the test to run at boot time and and allows all LEDs to blink if FEMF is detected 
+       until the unit is rebooted. 
+       Values from 30 to 3600 enable the test to run at boot and allows all LEDs to blink
+       if FEMF is detected until the provisioned time value in seconds expires.  
+              If the test does NOT detect FEMF or the provisioned time expires then LEDs will operate normally "
+      DEFVAL {1}
+   ::= { saMtaTestBase 2}
+
+ 
+
+saMtaTestFEMFMode OBJECT-TYPE
+
+    SYNTAX INTEGER {        
+        other-line-Enabled-during-test (0),
+        other-line-Disabled-during-test(1)         
+    }
+
+    MAX-ACCESS read-write
+    STATUS  current
+    DESCRIPTION
+
+        "This setting provisions the device to enable or disable other phone line(s) when running
+
+        the Foreign Electromotive Force test.  Enabling the other phone line(s) during the test can
+
+        detect phone line cross-connections between phone lines, but some 2 line telephones have
+
+        sufficient electrical leakage between lines that false FEMF may be detected if other line(s)
+
+        are enabled during the test"
+
+     DEFVAL {1}
+
+     ::= { saMtaTestBase 3}
+
+
+END

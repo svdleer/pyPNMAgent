@@ -1,0 +1,525 @@
+-- *****************************************************************
+-- CISCO-CABLE-SPECTRUM-MIB.my: Cisco Data Over Cable Spectrum 
+-- Management MIB file
+--
+-- October 1998 Frances Shen
+--
+-- Copyright (c) 1998, 1999 by cisco Systems, Inc.
+-- All rights reserved.
+-- *****************************************************************
+
+CISCO-CABLE-SPECTRUM-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Integer32,
+        Gauge32,
+        Counter32
+                FROM SNMPv2-SMI
+        MacAddress,
+        RowStatus,
+        DateAndTime
+                FROM SNMPv2-TC
+        OBJECT-GROUP,
+        MODULE-COMPLIANCE
+                FROM SNMPv2-CONF
+        InterfaceIndex
+                FROM IF-MIB
+        ciscoMgmt
+                FROM CISCO-SMI;
+
+ciscoCableSpectrumMIB MODULE-IDENTITY
+        LAST-UPDATED    "9810290000Z"
+        ORGANIZATION    "Cisco Systems, Inc."
+        CONTACT-INFO
+            "        Cisco Systems
+                     Customer Service
+             Postal: cisco Systems
+                     170 West Tasman Drive
+                     San Jose, CA 95134
+                     U.S.A.
+                Tel: +1 800 553-NETS 
+             E-mail: cr-ubr@cisco.com"
+
+        DESCRIPTION
+            "This is the MIB Module for Cable Spectrum Management for 
+             MCNS compliant Cable Modem Termination Systems (CMTS).
+
+             Spectrum management is a software/hardware feature provided
+             in the CMTS so that the CMTS may sense both downstream and
+             upstream plant impairments, report them to a management entity,
+             and automatically mitigate them where possible. 
+ 
+             The CMTS directly senses upstream transmission errors.  It may
+             also indirectly monitor the condition of the plant by keeping
+             a record of modem state changes.  It is desireable to perform
+             these functions without reducing throughput or latency and
+             without creating additional packet overhead on the RF plant.
+
+             The purpose of cable Spectrum Management is to prevent long
+             term service interruptions caused by upstream noise events in
+             the cable plant.  It is also used for fault management and 
+             trouble shooting the cable network.  When modems are detected 
+             to go on-line and off-line by flap detectors, the cable 
+             operators can look at the flap list and spectrum tables to 
+             determine the possible causes."
+
+        ::= { ciscoMgmt 114 }
+
+
+ciscoCableSpectrumMIBObjects  OBJECT IDENTIFIER ::= { ciscoCableSpectrumMIB 1 }
+
+ccsFlapObjects OBJECT IDENTIFIER ::= { ciscoCableSpectrumMIBObjects 1 }
+
+--
+-- Flap List Group
+--
+-- CMTS maintains a list of polled cable modems, when a polled cable modem
+-- triggers a flap detector the modem is considered intermittent and is 
+-- added into the Flap List.
+--
+-- There are 3 flap detectors defined.  The flap count (ccsFlapTotal) 
+-- will be incremented when any one of the flap detectors is triggered.
+--
+-- (1) Registration Flap:
+--     A CM may fail the registration process due to not being able
+--     to get an IP address.  When that happens the CMTS will receive the 
+--     Initial Maintenance packet from the CM sooner than expected and the CM 
+--     is considered a flapping modem.  In addition to the flap count
+--     ccsFlapInsertionFails will be incremented; thus these two counters
+--     may tend to track each other for unauthorized modems.  Another causes
+--     of registration flap may be downstream loss of sync or upstream ranging
+--     failure.
+--
+-- (2) Station Maintenance Flap:
+--     When the CMTS receives a Miss followed by a Hit then the modem will be 
+--     added into the Flap List and the flap count will be incremented.  
+--     If ratio of Miss/Hit is high, then an upstream impairment is indicated.
+--
+-- (3) Power Adjustment Flap:
+--     When the CM upstream transmit power is adjusted and the adjustment 
+--     is greater than the threshold (ccsPowerAdjustThreshold), the modem will
+--     be added into the Flap List.  In addition to the flap count 
+--     ccsFlapPowerAdjustCnt will be incremented.  Excessive power adjustment 
+--     is an indication of poor or failing plant components.  It may also 
+--     indicate the exposure of plant components to the forces of wind, 
+--     moisture, or temperature.
+
+ccsFlapListMaxSize OBJECT-TYPE
+        SYNTAX      Integer32 (1..65536) 
+        UNITS       "modems"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The maximum number of modems that a flap list can support.
+             This number controls the size of the flap list.  For every 
+             MAC domain or downstream, the maximum number of cable modems
+             that can be supported is 8191.  The user may want to increase or
+             decrease the Flap List size according to the number of 
+             downstreams and the number of modem line cards in the CMTS.
+ 
+             When the number of modems exceeds the max flap list size, 
+             the additional modems are ignored.  The flap detector is an
+             information filter to avoid inundating a management agent 
+             with data which is less meaningful as a function of size."
+        DEFVAL { 100 }
+        ::= { ccsFlapObjects 1 }
+
+ccsFlapListCurrentSize OBJECT-TYPE
+        SYNTAX      Gauge32 (1..65536) 
+        UNITS       "modems"
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The current number of modems in the flap list.  Its value 
+             will be less than or equal to ccsFlapListMaxSize."
+        ::= { ccsFlapObjects 2 }
+
+ccsFlapAging OBJECT-TYPE
+        SYNTAX      Integer32 (1..86400) 
+        UNITS       "minutes"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The flap entry aging threshold.  Periodically, the 
+             aging process scans through the flap list and removes the 
+             cable modems that have not flapped for that many minutes."
+        DEFVAL { 10080 } -- one week
+        ::= { ccsFlapObjects 3 }
+
+ccsFlapInsertionTime OBJECT-TYPE
+        SYNTAX      Integer32 (60..86400)
+        UNITS       "seconds"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The insertion-time is an empirically derived, worst-case
+             number of seconds which the cable modem requires to complete
+             registration.  The time taken by cable modems to complete their
+             registration is measured by the cable operators and this 
+             information helps to determine the insertion time.  If the 
+             cable modem has not completed the registration stage within 
+             this insertion-time setting, the cable modem will be inserted 
+             into the flap-list."
+        DEFVAL { 90 }
+        ::= { ccsFlapObjects 4 }
+
+ccsFlapTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF CcsFlapEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table keeps the records of modem state changes. 
+             It can be used to identify the problematic cable modems.
+             An entry can be deleted from the table but can not be 
+             added to the table."
+        ::= { ccsFlapObjects 5 }
+
+ccsFlapEntry OBJECT-TYPE
+        SYNTAX      CcsFlapEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "List of attributes for an entry in the ccsFlapTable.
+             An entry in this table exists for each cable modem that
+             triggered one of our flap detectors."
+        INDEX { ccsFlapMacAddr }
+        ::= { ccsFlapTable 1 }
+
+CcsFlapEntry ::= SEQUENCE {
+            ccsFlapMacAddr              MacAddress,
+            ccsFlapUpstreamIfIndex      InterfaceIndex,
+            ccsFlapDownstreamIfIndex    InterfaceIndex,
+            ccsFlapInsertionFails       Counter32,
+            ccsFlapHits                 Counter32,
+            ccsFlapMisses               Counter32,
+            ccsFlapCrcErrors            Counter32,
+            ccsFlapPowerAdjustments     Counter32,
+            ccsFlapTotal                Counter32,
+            ccsFlapLastFlapTime         DateAndTime,
+            ccsFlapCreateTime           DateAndTime,
+            ccsFlapRowStatus            RowStatus
+        }
+
+ccsFlapMacAddr OBJECT-TYPE
+        SYNTAX      MacAddress
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "MAC address of the Cable Modem's Cable interface. Identifies 
+             a flap-list entry for a flapping Cable Modem."
+        ::= { ccsFlapEntry 1 }
+
+ccsFlapUpstreamIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The ifIndex of the Cable upstream interface whose ifType is 
+             docsCableUpstream(129).  The CMTS detects a flapping Cable 
+             Modem from its Cable upstream interface."
+        ::= { ccsFlapEntry 2 }
+
+ccsFlapDownstreamIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The ifIndex of the Cable downstream interface whose ifType is 
+             docsCableDownstream(128)."  
+        ::= { ccsFlapEntry 3 }
+
+ccsFlapInsertionFails OBJECT-TYPE
+        SYNTAX      Counter32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The number of times a Cable Modem registered
+             more frequently than expected.  Excessive registration
+             is defined as the presence of a time span between
+             two successive registration cycles which is less than
+             a threshold span (ccsFlapInsertionTime).
+
+             A Cable Modem may fail the ranging or registration process
+             due to not being able to get an IP address.  When the Cable Modem 
+             can not finish registeration within the insertion time, 
+             it retries the process and sends the Initial Maintenance
+             packet again.  CMTS will receive the Initial Maintenance 
+             packet from the Cable Modem sooner than expected and the 
+             Cable Modem is considered a flapping modem.
+
+             This count may indicate:
+                 Intermittent downstream sync loss, or
+                 DHCP or modem registration problems.
+
+             The Flap Count (ccsFlapTotal) will be incremented when this
+             counter is incremented.
+
+             Discontinuites in the value of this counter can occur if
+             this entry is removed from the table and then re-added, and
+             are indicated by a change in the value of ccsFlapCreateTime."
+        REFERENCE
+            "Data over Cable Radio Frequency Interface specification,
+             Section 7.2."
+        ::= { ccsFlapEntry 4 }
+
+ccsFlapHits OBJECT-TYPE
+        SYNTAX      Counter32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The number of times the CMTS receives the Ranging request 
+             from the Cable Modem.
+  
+             The CMTS issues a Station Maintenance transmit opportunity
+             at a typical rate of once every 10 seconds and waits for 
+             a Ranging request from the Cable Modem.  If the CMTS receives
+             a Ranging request then the Hit count will be increased by 1.
+
+             If the FlapTotal count is high, both Hits and Misses counts 
+             are high, and other counters are relatively low then the 
+             flapping is probably caused by the modem going up and down.
+             The Hits and Misses counts are keep-alive polling statistics.  
+             The Hits count should be much greater than the Misses count.
+
+             Discontinuites in the value of this counter can occur if
+             this entry is removed from the table and then re-added, and
+             are indicated by a change in the value of ccsFlapCreateTime."
+        ::= { ccsFlapEntry 5 }
+
+ccsFlapMisses OBJECT-TYPE
+        SYNTAX      Counter32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The number of times the CMTS misses the Ranging request 
+             from the Cable Modem.
+  
+             The CMTS issues a Station Maintenance packet every 10
+             seconds and waits for a Ranging request from the Cable Modem.
+             If the CMTS misses a Ranging request within 25 msec then 
+             the Misses count will be incremented.
+
+             If ccsFlapTotal is high, Hits and Misses are high but 
+             ccsFlapPowerAdjustments and ccsFlapInsertionFails are
+             low then the flapping is probably caused by the modem going 
+             up and down.
+
+             Miss counts can indicate:
+                 Intermittent upstream,
+                 Laser clipping, or
+                 Noise bursts.
+
+             Laser clipping can happen if the signal power is too high
+             when the upstream electrical signal is converted to an optical 
+             signal.  When it happens the more input produces less output,
+             until finally there is no more increase in output.  This 
+             phenomena is called laser clipping.
+
+             Discontinuites in the value of this counter can occur if
+             this entry is removed from the table and then re-added, and
+             are indicated by a change in the value of ccsFlapCreateTime."
+        ::= { ccsFlapEntry 6 }
+
+ccsFlapCrcErrors OBJECT-TYPE
+        SYNTAX      Counter32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The number of times the CMTS upstream receiver flagged 
+             a packet with a CRC error.
+
+             If ccsFlapCrcErrors is high, it indicates the cable upstream 
+             may have high noise level.  The modem may not be flapping yet but 
+             it may be a potential problem.
+
+             This count can indicate:
+                 Intermittent upstream,
+                 Laser clipping, or
+                 Noise bursts.
+
+             Laser clipping can happen if the signal power is too high
+             when the upstream electrical signal is converted to an optical 
+             signal.  When it happens the more input produces less output,
+             until finally there is no more increase in output.  This 
+             phenomena is called laser clipping.
+
+             Discontinuites in the value of this counter can occur if
+             this entry is removed from the table and then re-added, and
+             are indicated by a change in the value of ccsFlapCreateTime."
+        ::= { ccsFlapEntry 7 }
+
+ccsFlapPowerAdjustments OBJECT-TYPE
+        SYNTAX      Counter32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The number of times the Cable Modem upstream 
+             transmit power is adjusted during station 
+             maintenance.  When the adjustment is greater than the 
+             power adjustment threshold the counter will be incremented.
+             The power adjustment threshold is chosen in an implementation-
+             dependant manner.
+
+             The Flap Count (ccsFlapTotal) will be incremented when this
+             counter is incremented.
+
+             If ccsFlapTotal is high, ccsFlapPowerAdjustments is high but 
+             the Hits and Misses are low and ccsFlapInsertionFails are low 
+             then the flapping is probably caused by an improper transmit 
+             power level setting at the modem end.
+
+             This count can indicate:
+                 Amplifier degradation,
+                 Poor connections, or
+                 Wind, moisture, or temperature sensitivity.
+
+             Discontinuites in the value of this counter can occur if
+             this entry is removed from the table and then re-added, and
+             are indicated by a change in the value of ccsFlapCreateTime."
+        REFERENCE
+            "Data over Cable Radio Frequency Interface specification,
+             Section 7.2."
+        ::= { ccsFlapEntry 8 }
+
+ccsFlapTotal OBJECT-TYPE
+        SYNTAX      Counter32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Whenever the Cable Modem passes flap detection, 
+             then the flap counter is increased.
+ 
+             There are 3 flap detectors defined:  
+             (1) When ccsFlapInsertionFails is increased the Flap count 
+                 will be increased.
+             (2) When the CMTS receives a Miss followed by a Hit
+                 then the Flap count will be increased.  
+             (3) When ccsFlapPowerAdjustments is increased the Flap count 
+                 will be increased.
+
+             Discontinuites in the value of this counter can occur if
+             this entry is removed from the table and then re-added, and
+             are indicated by a change in the value of ccsFlapCreateTime."
+        REFERENCE
+            "Data over Cable Radio Frequency Interface specification,
+             Appendix B."
+        ::= { ccsFlapEntry 9 }
+
+ccsFlapLastFlapTime OBJECT-TYPE
+        SYNTAX      DateAndTime 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The flap time is set whenever the Cable Modem triggers a
+             flap detector."
+        ::= { ccsFlapEntry 10 }
+
+ccsFlapCreateTime OBJECT-TYPE
+        SYNTAX      DateAndTime 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The time that this entry was added to the table. If an entry is
+             removed and then later re-added, there may be a discontinuity
+             in the counters associated with this entry. This timestamp can
+             be used to detect those discontinuites."
+        ::= { ccsFlapEntry 11 }
+
+ccsFlapRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Controls and reflects the status of rows in this table.
+
+             When a cable modem triggers a flap detector, if an entry does
+             not already exist for this cable modem, and
+             ccsFlapListCurrentSize is less than ccsFlapListMaxSize,
+             then an entry will be created in this table. It's instance
+             of this object will be set to active(1).  All flapping 
+             modems have the status of active(1).
+
+             Active entries are removed from the table after they have
+             not triggered any additional flap detectors for the period
+             of time defined in csmFlapAging. Alternatively, setting
+             this instance to destroy(6) will remove the entry immediately.
+
+             To prevent an entry from being aged out, the entry should be
+             set to notInService(2). The entry will remain in the table
+             until this instance is set to active by CMTS (and ages out) or
+             destroy. Upon the next trigger of a flap detector, the entry
+             will be reset to active. An entry in the notInService state
+             can only be set, by the user, to destroy.  A user is not 
+             allowed to change a notInService entry to active.
+
+             createAndGo(4) and createAndWait(5) are not supported."
+        ::= { ccsFlapEntry 12 }
+
+
+--
+-- Notification group 
+-- 
+
+ciscoCableSpectrumMIBNotificationPrefix OBJECT IDENTIFIER ::= 
+                                { ciscoCableSpectrumMIB 2 }
+ccsMIBNotifications                    OBJECT IDENTIFIER ::= 
+                                { ciscoCableSpectrumMIBNotificationPrefix 0 }
+
+
+--
+-- Conformance statement
+--
+
+ciscoCableSpectrumMIBConformance  OBJECT IDENTIFIER ::= 
+                                        { ciscoCableSpectrumMIB 3 }
+ciscoCableSpectrumMIBCompliances  OBJECT IDENTIFIER ::= 
+                                        { ciscoCableSpectrumMIBConformance 1 }
+ciscoCableSpectrumMIBGroups       OBJECT IDENTIFIER ::= 
+                                        { ciscoCableSpectrumMIBConformance 2 }
+
+-- compliance statements
+
+ccsCompliance MODULE-COMPLIANCE
+        STATUS     current
+        DESCRIPTION
+            "The compliance statement for devices that implement MCNS
+             compliant Radio Frequency Interfaces and Spectrum Management
+             features."
+        MODULE  -- ciscoCableSpectrumMIB
+        MANDATORY-GROUPS {
+                ccsFlapGroup
+        }
+
+        ::= { ciscoCableSpectrumMIBCompliances 1 }
+
+-- units of conformance
+
+ccsFlapGroup OBJECT-GROUP
+        OBJECTS {
+                ccsFlapListMaxSize,
+                ccsFlapListCurrentSize,
+                ccsFlapAging,
+                ccsFlapInsertionTime,
+                ccsFlapUpstreamIfIndex,
+                ccsFlapDownstreamIfIndex,
+                ccsFlapInsertionFails,
+                ccsFlapHits,
+                ccsFlapMisses,
+                ccsFlapCrcErrors,
+                ccsFlapPowerAdjustments,
+                ccsFlapTotal,
+                ccsFlapLastFlapTime,
+                ccsFlapCreateTime,
+                ccsFlapRowStatus
+        }
+        STATUS    current
+        DESCRIPTION
+            "Group of objects implemented in Cable Modem Termination Systems
+             providing Flap List information."
+        ::= { ciscoCableSpectrumMIBGroups 1 }
+
+
+END
+

@@ -1,0 +1,169 @@
+--**************************************************************************
+--
+--  Copyright (c) 2011  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+--
+--
+--
+--    Description:
+--
+--      private MIB for Comcast cable wifi gateway management
+--
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+NETGEAR-COMCAST-SYSTEM-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,	
+	Integer32,
+	NOTIFICATION-TYPE
+							FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION              
+							FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP
+							FROM SNMPv2-CONF
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6
+							FROM INET-ADDRESS-MIB
+  	cableGatewayDev
+              FROM NETGEAR-CG-MIB
+	cableGatewayConfigrationComcastGroup
+			  FROM NETGEAR-COMCAST-MIB
+  SnmpAdminString         FROM SNMP-FRAMEWORK-MIB;
+
+cableGatewayConfigrationComcastGroup       OBJECT IDENTIFIER ::= { cableGatewayDev 102 }
+
+        
+cableSystem OBJECT IDENTIFIER ::= { cableGatewayConfigrationComcastGroup 12 }
+
+
+natForwardEntryNumber OBJECT-TYPE 
+    SYNTAX      Unsigned32 
+    MAX-ACCESS  read-only
+    STATUS      current 
+    DESCRIPTION            "Return current use of NAT forward session entry"
+    ::= { cableSystem 1 }  
+
+cableNATsessionLimit OBJECT-TYPE 
+    SYNTAX      Unsigned32 (1..65535)
+    MAX-ACCESS  read-write 
+    STATUS      current 
+    DESCRIPTION         "configure NAT sessoin table limit"
+    DEFVAL { 10000 }
+      ::= { cableSystem 2 }
+
+
+natDeleteTimeValue  OBJECT-TYPE
+    SYNTAX      Unsigned32 
+    MAX-ACCESS  read-write
+    STATUS      current 
+    DESCRIPTION    
+        "Set nat clean up timeout value. When clean process starts, it will delete session timeout less than equal to this value. 
+                   Default is 200 seconds"
+    DEFVAL { 280 }               
+    ::= { cableSystem 3 }  
+
+natDeleteRecord OBJECT-TYPE
+    SYNTAX      Unsigned32 
+    MAX-ACCESS  read-write
+    STATUS      current 
+    DESCRIPTION   "Set number of session record we like to delete.
+            When clean process starts, it will delete session entry until we reach this value. Default 0 means clear all records matches to natDeleteTimeValue"
+    DEFVAL { 0 }
+    ::= { cableSystem 4 }  
+
+natSessionPad OBJECT-TYPE
+    SYNTAX      Unsigned32 
+    MAX-ACCESS  read-write
+    STATUS      current 
+    DESCRIPTION      "Set number of session record we like to start clean up process.
+            When session records reaches to cableNATsessionLimit-natSessionPad, it will start clean up process. Default is 2000 records"
+    DEFVAL { 2000 }
+    ::= { cableSystem 5 }  
+
+-- Not finish in V1.03.01 porting from XB3
+cpuLoad  OBJECT-TYPE
+    SYNTAX      Unsigned32 
+    MAX-ACCESS  read-write
+    STATUS      current 
+    DESCRIPTION         "Displays current CPU load, averaged over the specified number of milliseconds." 
+    DEFVAL { 1000 }
+    ::= { cableSystem 6 }
+	
+msoLoginInterfaces OBJECT-TYPE
+    SYNTAX      BITS {
+                CmHttpAccess(0),
+                CmTelnetAccess(1),
+                CmSshAccess(2),
+                WanHttpAccess(3),
+                WanTelnetAccess(4),
+                WanSshAccess(5),
+                LanTelnetAccess(6),
+                LanSshAccess(7)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the interface on which service that mso account can login."
+    DEFVAL { '00'h }
+    ::= { cableSystem 7 }	 
+
+cusadminLoginInterfaces OBJECT-TYPE
+    SYNTAX      BITS {
+                CmHttpAccess(0),
+                CmTelnetAccess(1),
+                CmSshAccess(2),
+                WanHttpAccess(3),
+                WanTelnetAccess(4),
+                WanSshAccess(5),
+                LanTelnetAccess(6),
+                LanSshAccess(7)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the interface on which service that cusadmin account can login."
+    DEFVAL { '00'h }
+    ::= { cableSystem 8 }
+
+netgear1LoginInterfaces OBJECT-TYPE
+    SYNTAX      BITS {
+                CmHttpAccess(0),
+                CmTelnetAccess(1),
+                CmSshAccess(2),
+                WanHttpAccess(3),
+                WanTelnetAccess(4),
+                WanSshAccess(5),
+                LanTelnetAccess(6),
+                LanSshAccess(7)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the interface on which service that netgear1 account can login."
+    DEFVAL { '00'h }
+    ::= { cableSystem 9 }
+
+END

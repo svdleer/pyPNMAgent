@@ -1,0 +1,336 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-router-mgmt.mib
+--    Creation Date: June 1, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--		private MIB for router management.
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-ROUTER-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,
+	Integer32,
+	NOTIFICATION-TYPE       FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION      FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP      FROM SNMPv2-CONF
+	SnmpAdminString         FROM SNMP-FRAMEWORK-MIB
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6         FROM INET-ADDRESS-MIB
+    ifIndex                 FROM IF-MIB
+    PositiveInteger         FROM UPS-MIB
+    cableMgmt               FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- Netgear Group
+-- 
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrRouterMgmt MODULE-IDENTITY
+	LAST-UPDATED "201208130000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"Initial version of this MIB module."
+::= { cableMgmt 15 }
+
+routerBase           OBJECT IDENTIFIER ::= { ntgrRouterMgmt 1 }
+rip                  OBJECT IDENTIFIER ::= { routerBase 6 }
+ripRoutingSubnet     OBJECT IDENTIFIER ::= { routerBase 7 }
+dmzBase              OBJECT IDENTIFIER ::= { ntgrRouterMgmt 2 }
+algBase              OBJECT IDENTIFIER ::= { ntgrRouterMgmt 3 }
+
+operMode  OBJECT-TYPE
+	SYNTAX  INTEGER {
+          bridge(0),
+          natRouter(1),
+          router(2)
+  }
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { routerBase 1 }
+
+accountName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString (SIZE (1..255))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { routerBase 2 }
+
+domainName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString (SIZE (1..255))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { routerBase 3 }
+
+deviceName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString (SIZE (1..255))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { routerBase 4 }
+
+maxAllowedClients  OBJECT-TYPE
+	SYNTAX     Integer32 (0..255)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { routerBase 5 }
+
+ripEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { rip 1 }
+
+ripMd5AuthEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { rip 2 }
+
+ripMd5KeyId  OBJECT-TYPE
+	SYNTAX     Integer32 (1..255)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { rip 3 }
+
+ripMd5KeyValue  OBJECT-TYPE
+	SYNTAX     SnmpAdminString (SIZE (1..1024))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { rip 4 }
+
+ripInterval  OBJECT-TYPE
+	SYNTAX     Integer32 (1..255)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { rip 5 }
+
+ripDestIpAddressType  OBJECT-TYPE
+	SYNTAX 	InetAddressType
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { rip 6 }
+
+ripDestIpAddress  OBJECT-TYPE
+	SYNTAX 	InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { rip 7 }
+
+ripRoutedSubnetEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Setting Routed Subnet Enable."
+	::= { ripRoutingSubnet 1 }
+  
+ripDhcpRoutingSubnetEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Setting Dhcp Routed Subnet Enable."
+	::= { ripRoutingSubnet 2 }
+  
+ripNatRoutingSubnetEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Setting Routed Subnet Enable."
+	::= { ripRoutingSubnet 3 }    
+  
+ripNatRoutedSubnetGatewayIpAddress  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The address assigned to the Nat Routed Subnet Gateway Ip Address Device."
+	::= { ripRoutingSubnet 4 }   
+
+ripNatRoutingSubnetDNS1  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Primary Ip Address of the Routing Subnet DNS."
+	::= { ripRoutingSubnet 5 } 
+
+ripNatRoutingSubnetDNS2  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Second Ip Address of the Routing Subnet DNS."
+	::= { ripRoutingSubnet 6 } 
+
+ripNatRoutingSubnetDNS3  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Third Ip Address of the Routing Subnet DNS."
+	::= { ripRoutingSubnet 7 } 
+
+ripRoutingNetworkTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF RipRoutingNetworkEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ripRoutingSubnet 8 }
+
+ripRoutingNetworkEntry  OBJECT-TYPE
+	SYNTAX 	RipRoutingNetworkEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+  INDEX { ifIndex }  
+	::= { ripRoutingNetworkTable 1 }
+
+RipRoutingNetworkEntry ::= SEQUENCE {
+	ripRoutingNetworkIpAddress
+		InetAddress,
+	ripRoutingNetworkMask
+		InetAddress,
+	ripRoutingNetworkGateway
+		InetAddress
+}
+
+ripRoutingNetworkIpAddress  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The address assigned to the Routed Subnet Network Primary IP Device."
+	::= { ripRoutingNetworkEntry 1 }
+
+ripRoutingNetworkMask  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The address assigned to the Routed Subnet Network Mask Primary Device."
+	::= { ripRoutingNetworkEntry 2 }
+
+ripRoutingNetworkGateway  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The address assigned to the Routed Subnet Network Gateway Primary IP Device."
+	::= { ripRoutingNetworkEntry 3 }
+
+blockLanToWanTraffic  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"block Lan to Wan traffic."
+	::= { routerBase 8 }  
+
+routerApplySettings  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { routerBase 100 }
+
+dmzEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { dmzBase 1 }
+
+dmzServerIpAddressType  OBJECT-TYPE
+	SYNTAX     InetAddressType
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { dmzBase 2 }
+
+dmzServerIpAddress  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { dmzBase 3 }
+
+algEnableBitmask  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { algBase 1 }
+  
+END
+

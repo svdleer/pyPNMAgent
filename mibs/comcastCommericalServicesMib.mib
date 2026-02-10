@@ -1,0 +1,46 @@
+COMCAST-COMMERCIAL-SERVICES-MIB  DEFINITIONS ::= BEGIN
+                            
+IMPORTS
+	MODULE-IDENTITY,
+	enterprises			FROM SNMPv2-SMI;
+
+comcast	OBJECT IDENTIFIER ::= { enterprises 17270 }
+
+comcastCommercialServices	MODULE-IDENTITY
+	LAST-UPDATED	"200410050000Z" -- October 10, 2004
+	ORGANIZATION 	"Comcast Corporation"
+    CONTACT-INFO
+		"					Nirmal Mody
+			[Email] 		Nirmal_Mody@cable.comcast.com
+			[Organization]  Comcast Cable Communications
+			[Address]		1500 Market Street
+							9th Floor West Tower
+							Philadelphia, PA 19102
+			[Telephone]		215-981-8530
+			
+							Aaron Settles
+			[Email] 		Aaron_Settles@cable.comcast.com
+			[Organization]  Comcast Cable Communications
+			[Address]		30B Coachman Square
+							Clifton Park, NY 12065
+			[Telephone]		(720) 490-0137
+	        
+	        				Lee Berk
+			[Email] 		Lee_Berk@cable.comcast.com
+			[Organization]  Comcast Cable Communications
+							Manager - Commercial Services
+			[Address]		1500 Market Street
+							9th Floor West Tower
+							Philadelphia, PA 19102
+			[Telephone]		215-320-7432
+		"
+
+	DESCRIPTION
+		"This is the root MIB for all Comcast High-Speed Data Commercial 
+		Services."
+            
+	::= { comcast 4 }
+
+commercialGateway			OBJECT IDENTIFIER ::= { comcastCommercialServices  1 }
+
+END

@@ -1,0 +1,622 @@
+-- ****************************************************************************
+-- *  Copyright © 1996,  Tollgrade Communications, Inc.  All Rights Reserved.
+-- ****************************************************************************
+-- *
+-- *  Module Name:   HEC.MIB
+-- *
+-- *  Description:   Implements MIB definitions for Head End Controller
+-- *
+-- *  Notes:
+-- *
+-- *  Revision History:
+-- *
+-- *     $Log: TOLLGRADE-LIGHTHOUSE-HEADEND-HEC-MIB.mib,v $
+-- *     Revision 1.1  2004/07/27 20:48:16  fshimer
+-- *     Description: Added to support firmware download
+-- *     Developer: Frank Shimer
+-- *     PTR: N/A
+-- *     Tester Comments: N/A
+-- *
+-- * 
+-- *    Rev 5.5   Aug 28 2002 13:12:24   CBrewer
+-- * Corrected conflict in tlgdtree.mib with hms definitions:
+-- * Modified tlgdtree.mib to match the hms version.  Moved 
+-- * HEC-specific defines to TlgdtreeHec.mib where 
+-- * "TOLLGRADE-LIGHTHOUSE-TREE-HEC-MIB" is now defined.  
+-- * Modified all legacy mibs to import from this instead of
+-- * TOLLGRADE-LIGHTHOUSE-TREE-MIB.
+-- * 
+-- *    Rev 5.4   Aug 26 2002 13:52:48   CBrewer
+-- * (HPR1322) added more parms for watchdog info:
+-- *             hecDnMdmCheckMask, hecPmMdmCheckMask.
+-- * 
+-- *    Rev 5.3   Jun 25 2002 14:50:26   CBrewer
+-- * (HPR1318) added new parms for watchdog info:
+-- *             hecResetReason, hecPreRestartCheckinStatus,
+-- *             hecLastTimestampPriorToRestartPM,
+-- *             hecLastTimestampPriorToRestartDN
+-- * 
+-- *    Rev 5.2   Sep 14 2001 07:38:28   CBrewer
+-- * (HPR1244) hecAutoDiscoverDuration - modify max value from
+-- *              15 to 5.  This is intended to help prevent timeout
+-- *              problems.
+-- * 
+-- *    Rev 5.1   Aug 28 2001 14:49:24   CBrewer
+-- * (HPR1233) added autodiscovery group: hecAutoDiscoverInterval,
+-- *             hecAutoDiscoverDuration, hecAutoDiscoverForce.
+-- * 
+-- *    Rev 5.0   Jun 28 2001 10:14:04   CBrewer
+-- * (HPR1199, HPR1211) add new MIBs for "common" modem parms (freqs, total NEs, etc).
+-- *                    add new MIB, hecSNMPRetries.
+-- * 
+-- *    Rev 2.25   May 15 2001 09:12:56   CBrewer
+-- * Modified Copyright statement.
+-- * 
+-- *    Rev 2.24   May 25 2000 08:56:06   CBrewer
+-- * (HPR1129) hecCommandStatus - shorten max length from 255 to 70.
+-- * 
+-- *    Rev 2.23   Feb 24 2000 09:08:30   CBrewer
+-- * add hecFirmwareBuildVer.
+-- * 
+-- *    Rev 2.22   Dec 14 1999 14:20:24   CBrewer
+-- * added hecParameterChangeCnt.
+-- * 
+-- *    Rev 2.21   Dec 07 1999 16:37:34   CBrewer
+-- * added hecHeartbeatInterval.
+-- * 
+-- *    Rev 2.20   Dec 07 1999 10:07:20   CBrewer
+-- * added hecSerialNumber.
+-- * 
+-- *    Rev 2.19   Oct 27 1999 10:27:10   CBrewer
+-- * added hecPollingModeStatus
+-- * 
+-- *    Rev 2.18   Oct 20 1999 16:59:56   CBrewer
+-- * added hecPollingTimerStatus.
+-- * 
+-- *    Rev 2.17   Aug 25 1999 11:44:18   CBrewer
+-- * added hecCommandStatus.
+-- * 
+-- *    Rev 2.16   Jun 10 1999 17:02:20   JOstrosky
+-- * Change alarm count variables from Counter to Uint32.
+-- * 
+-- *    Rev 2.15   Jun 03 1999 17:12:48   JOstrosky
+-- * Fixed some minor errors that the MCG
+-- * compiler caught.  Updated HEC agent
+-- * text.
+-- * 
+-- *    Rev 2.14   Jun 02 1999 13:05:54   JOstrosky
+-- * Added SNMP trap destination table
+-- * 
+-- *    Rev 2.13   Jan 11 1999 13:27:54   HWhitefield
+-- * Modified mib module name.
+-- * 
+-- *    Rev 2.12   Nov 12 1998 15:05:38   HWhitefield
+-- * Corrected characteristics of hecFirmware parameter.
+-- * 
+-- *    Rev 2.11   Nov 09 1998 14:48:02   HWhitefield
+-- * Added hecFirmware parameter for downloadable code binary
+-- * strings.
+-- * 
+-- *    Rev 2.10   Nov 02 1998 10:42:08   HWhitefield
+-- * Changed one parameter name, modified some
+-- * descriptions.
+-- * 
+-- *    Rev 2.9   Oct 20 1998 11:56:42   HWhitefield
+-- * Modified range for read-only parameters with DisplayString SYNTAX 
+-- * to have the maximum range of 0..255.
+-- * 
+-- *    Rev 2.8   Oct 16 1998 16:11:14   HWhitefield
+-- * Removed RFC import of DisplayString.
+-- * 
+-- *    Rev 2.7   Sep 25 1998 10:40:26   HWhitefield
+-- * Modified description for hecStatus. Increased range to 50 for 
+-- * hecParamChangeTries.
+-- * 
+-- *    Rev 2.6   Sep 10 1998 11:38:40   HWhitefield
+-- * END return for clean SNMPc compile.
+-- * 
+-- *    Rev 2.5   Sep 03 1998 17:09:56   HWhitefield
+-- * 80 character line formatting.
+-- * 
+-- *    Rev 2.4   Sep 01 1998 13:26:50   HWhitefield
+-- * Modified maximum size of DisplayString to be 255.
+-- * 
+-- *    Rev 2.3   Aug 14 1998 15:51:36   HWhitefield
+-- * Modifications to descriptions for gramatical purposes.
+-- * 
+-- *    Rev 2.2   Jul 15 1998 11:38:32   HWhitefield
+-- * First cut at new MIB architecture. All files
+-- * successfully compiled.
+-- * 
+-- *    Rev 2.0   Jul 14 1998 14:44:36   HWhitefield
+-- * Initial creation of HEC MIB file.
+-- * 
+-- *    Rev 1.37   17 Dec 1997 11:47:28   jameso
+-- * Change hecCommand from octet string to display string
+-- *
+-- * Reproduction of this document is authorized on condition that this
+-- * copyright notice is included.  This SNMP MIB Specification
+-- * embodies proprietary intellectual property.  The copyright
+-- * retains all title and ownership in the specification, including any
+-- * revisions. 
+-- * 
+-- * This specification is supplied "AS IS," and no
+-- * warranty, either express or implied, as to the use, operation,
+-- * condition, or performance of the specification, is made.
+-- * 
+-- * The right to change this MIB without notification is retained.
+-- * 
+-- * 
+-- * Agents supporting this MIB: Tollgrade Head End Controller, Software Rev: 2.xxx
+-- * 
+-- ****************************************************************************
+
+TOLLGRADE-LIGHTHOUSE-HEADEND-HEC-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+     IpAddress
+          FROM RFC1155-SMI
+     OBJECT-TYPE
+          FROM RFC-1212
+     hec 
+          FROM TOLLGRADE-LIGHTHOUSE-TREE-HEC-MIB
+     Digital, DisplayString, Frequency, Uint16, Uint32, Uint8
+          FROM TOLLGRADE-LIGHTHOUSE-MIB
+     ;
+
+-- /****************
+-- * The HEC group *
+-- ****************/
+
+hecStatus OBJECT-TYPE
+     SYNTAX OCTET STRING ( SIZE ( 2 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "General status of Head End Controller with bit definitions as 
+          follows.
+               Bit 0  - HEC dead(0) or alive(1)
+               Bit 1  - Modem 1 has problem (0) or is OK (1)
+               Bit 2  - Modem 2 has problem (0) or is OK (1)
+                 .
+                 .
+                 .
+               Bit 12 - Modem 12 has problem (0) or is OK (1)
+               Bit 13 - Reserved
+               Bit 14 - Reserved
+               Bit 15 - Reserved"
+	::= { hec 1 }
+
+hecVersion OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..255 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Version of HEC software in ASCII displayable format."
+	::= { hec 2 }
+                                                  
+hecTime OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 19 ) )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Current date & time in format yyyy/mm/dd hh:mm:ss."
+     ::= { hec 3 }
+
+hecTimeSyncInterval OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 5 ) )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Time (hh:mm) interval at which to perform time synchronization with 
+          network elements. For example, 01:00 indicates that the HEC will 
+          synchronize the times on the network elements on an hourly basis, 
+          starting from an initial synchronization when the HEC is restarted."
+     ::= { hec 4 }
+
+hecSNMPTrapIP OBJECT-TYPE
+     SYNTAX IpAddress
+     ACCESS read-write
+     STATUS obsolete
+     DESCRIPTION
+          "Destination IP address for trap messages. Typically, the PC that
+          communicates with the HEC and receives the alarm (trap) messages."
+     ::= { hec 5 }
+
+hecMajorAlarmNEs OBJECT-TYPE
+     SYNTAX Uint32
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Number of network elements on this HEC having major alarms."
+     ::= { hec 6 }
+
+hecMinorAlarmNEs OBJECT-TYPE
+     SYNTAX Uint32
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Number of network elements on this HEC having minor alarms."
+     ::= { hec 7 }
+
+hecContentionTime OBJECT-TYPE
+     SYNTAX INTEGER ( 50..60000 )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Number of milliseconds between alarm gathering when using the 
+          contention method, and used only when hecContentionStatus parameter 
+          is set to ENABLED. In between contention polling, normal polling 
+          still occurs. Contention is also governed on an individual modem 
+          basis using the mdmContentionStatus parameter for a specific
+          modem."
+     ::= { hec 8 }
+
+hecParamChangeTries OBJECT-TYPE
+     SYNTAX INTEGER ( 1..50 )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Number of times to send a major parameter change to the 
+          transponders. This number applies to forward & return path 
+          frequencies, baud rate, and time."
+     ::= { hec 9 }
+
+hecParamChangeTriesInterval OBJECT-TYPE
+     SYNTAX INTEGER ( 5..60000 )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "In conjunction with hecParamChangeTries, this variable defines the 
+          time interval in milliseconds between parameter change attempts."
+     ::= { hec 10 }
+
+hecContentionStatus OBJECT-TYPE
+     SYNTAX Digital
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Affects how HEC polling operates:
+          ON  - HEC is allowed to use both normal polling and contention 
+                polling.
+          OFF - HEC is allowed to use normal polling only.
+          When ON, contention polling is performed at hecContentionTime 
+          intervals for each modem that also has mdmContentionStatus 
+          set to ON."
+     ::= { hec 11 }
+
+hecCommand OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 1..255 ) )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Network management software can write special ASCII command string 
+          for the HEC to execute."
+     ::= { hec 12 }
+
+hecFirmware OBJECT-TYPE
+     SYNTAX OCTET STRING ( SIZE ( 0..260 ) )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "HEC firmware s records used to program the HEC flash memory. The
+          Host first converts these strings from ascii to binary, except for 
+          the first two characters. The Host then sends the strings to the
+          HEC, which uses the appropriate bytes from the strings to 
+          re-program its flash memory with updated application code."
+     ::= { hec 13 }
+
+hecTrapDestTable OBJECT-TYPE
+     SYNTAX SEQUENCE OF HecTrapDestTableEntry
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "A table that contains information about the SNMP Trap destinations."
+     ::= { hec 14 }
+
+hecCommandStatus OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..70 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Status of last Command issued to HEC in ASCII displayable format."
+     ::= { hec 15 }
+
+hecPollingTimerStatus OBJECT-TYPE
+     SYNTAX INTEGER ( 0..1800 )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Countdown timer for number of seconds remaining in specical NE polling mode."
+     ::= { hec 16 }
+
+hecPollingModeStatus OBJECT-TYPE
+     SYNTAX INTEGER { idle(1), setup(2), lockpoll(3), highPowerPoll(4) }
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Hec Polling mode for transponders."
+     ::= { hec 17 }
+
+hecSerialNumber OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..20 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Returns the HEC serial number, 20 alphanumeric characters max. length"
+     ::= { hec 18 }
+
+hecHeartbeatInterval OBJECT-TYPE
+     SYNTAX INTEGER ( 0..120 )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Controls the interval delay between Heartbeat Traps sent by the HEC.
+           A zero interval suspends the traps.  Unit of measure is minutes."
+     ::= { hec 19 }
+
+hecParameterChangeCnt OBJECT-TYPE
+     SYNTAX Uint16
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Returns a counter for the number of times that non-volatile data
+           has been saved on the HEC.  The value is limited to 65535, then 
+           wraps to 0."
+     ::= { hec 20 }
+
+hecFirmwareBuildVer OBJECT-TYPE
+     SYNTAX DisplayString ( SIZE ( 0..20 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Returns the HEC firmware build version, 20 alphanumeric characters 
+           max. length."
+     ::= { hec 21 }
+
+hecForwardFrequency OBJECT-TYPE
+     SYNTAX Frequency
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Frequency currently in use on the forward path."
+     ::= { hec 22 }
+
+hecReturnFrequency OBJECT-TYPE
+     SYNTAX Frequency
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Frequency currently in use on the return path for the receive 
+          lines."
+     ::= { hec 23 }
+
+hecMACRetries OBJECT-TYPE
+     SYNTAX Uint8 ( 0..255 )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Number of retries attempted by the HEC on a network element
+          when it does not respond."
+     ::= { hec 24 }
+
+hecMACTimeBetweenRetries OBJECT-TYPE
+     SYNTAX INTEGER ( 0..10000 )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Time delay between retry attempts.  A value of zero indicates
+          that retries can be initiated immediately.  On power-up, the
+          HEC forces this value to be 10 if NERetries is non-zero and the
+          TimeBetweenRetries value loaded from flash was <10.  This
+          change is saved back to flash.  Units are mSec."
+     ::= { hec 25 }
+
+hecCountTotalNEs OBJECT-TYPE
+     SYNTAX Uint32
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Total number of network elements handled by this HEC."
+     ::= { hec 26 }
+
+hecCountPolledNEs OBJECT-TYPE
+     SYNTAX Uint32
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Number of network elements polled following a modem
+          characteristic change."
+     ::= { hec 27 }
+
+hecCountDeadNEs OBJECT-TYPE
+     SYNTAX Uint32
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Count of network elements currently listed as not responding."
+     ::= { hec 28 }
+
+hecCountAliveNEs OBJECT-TYPE
+     SYNTAX Uint32
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Count of network elements currently listed as responsive."
+     ::= { hec 29 }
+
+hecSNMPRetries OBJECT-TYPE
+     SYNTAX Uint8
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Number of SNMP retries the HEC attempts when there is 
+           no response."
+     ::= { hec 30 }
+
+hecMdmCommErrorLimit   OBJECT-TYPE
+     SYNTAX INTEGER ( 0..100 )
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "Percent of acceptable errors before a communications alarm 
+           is reported.  This is applied to the receivers on all modems.
+          (This establishes, the alarm threshold for mdmRcvr1CommErrorPercent
+           and mdmRcvr2CommErrorPercent parameters on all modems)."
+     ::= { hec 31 }
+
+hecModemChangeStatus OBJECT-TYPE
+     SYNTAX INTEGER { complete(1), inprogress(2) }
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Status of transmission parameter change (baudrate, frequencies)."
+     ::= { hec 32 }
+
+hecAutoDiscoverGroup OBJECT IDENTIFIER
+     ::= { hec 33 }
+
+-- *********************
+-- * Autodiscover group
+-- *********************\
+         hecAutoDiscoverInterval OBJECT-TYPE
+              SYNTAX INTEGER ( 0..1440 )
+              ACCESS read-write
+              STATUS mandatory
+              DESCRIPTION
+                   "Defines the number of minutes that the HEC waits between auto-discovery
+                    attempts.  Default is 2 minutes.  Zero disables auto-discovery."
+              ::= { hecAutoDiscoverGroup 1 }
+
+         hecAutoDiscoverDuration OBJECT-TYPE
+              SYNTAX INTEGER ( 1..5 )
+              ACCESS read-write
+              STATUS mandatory
+              DESCRIPTION
+                   "Defines the time in seconds that the HEC enables an auto-discovery
+                    session.  Default is 3 seconds."
+              ::= { hecAutoDiscoverGroup 2 }
+
+         hecAutoDiscoverForce OBJECT-TYPE
+              SYNTAX INTEGER ( 1 )
+              ACCESS read-write
+              STATUS mandatory
+              DESCRIPTION
+                   "Writing a 1 to this parameter causes the HEC to initiate
+                    transponder auto-discovery.  Normally, this is performed on a 
+                    timed-basis, which is configured with the HEC parameter, 
+                    hecContentionTime.  Forcing auto-discovery does not affect the timer."
+              ::= { hecAutoDiscoverGroup 3 }
+
+hecResetReason OBJECT-TYPE
+     SYNTAX INTEGER { powerReset(1),  softwareWatchdogReset(2), busFault(3), 
+                      opcodeReset(4), other(5) }
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Indicates the reason for the most recent HEC restart."
+     ::= { hec 34 }
+
+hecPreRestartCheckinStatus OBJECT-TYPE
+	SYNTAX 	DisplayString (SIZE(0..20))
+	ACCESS	read-only
+	STATUS	mandatory
+	DESCRIPTION 
+		   "Displays the check-in tasks that were active prior to restart.  This value
+		    is stored in dynamic ram and is subject to corruption during restart.  It is 
+		    intended only as possible extraneous debug data."
+     ::= { hec 35 }
+
+hecLastTimestampPriorToRestartPM OBJECT-TYPE
+	SYNTAX 	DisplayString (SIZE(0..20))
+	ACCESS	read-only
+	STATUS	optional
+	DESCRIPTION 
+		   "Indicates the last time that this HEC task was active prior to
+		    the most recent restart.  Value is date in text format.  
+		    This value is stored in dynamic ram and is subject to corruption 
+		    during restart.  It is intended only as possible extraneous debug 
+		    data."
+     ::= { hec 36 }
+
+hecLastTimestampPriorToRestartDN OBJECT-TYPE
+	SYNTAX 	DisplayString (SIZE(0..20))
+	ACCESS	read-only
+	STATUS	optional
+	DESCRIPTION 
+		   "Indicates the last time that this HEC task was active prior to
+		    the most recent restart.  Value is date in text format.  
+		    This value is stored in dynamic ram and is subject to corruption 
+		    during restart.  It is intended only as possible extraneous debug 
+		    data."
+     ::= { hec 37 }
+
+hecDnMdmCheckMask OBJECT-TYPE
+     SYNTAX OCTET STRING ( SIZE ( 4 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Bits 2-12 indicate that a polling check has occurred
+           for respective HEC receiver cards.  
+           Bit 0 - unused     Bit 5 -  rcvr 5     Bit 10 -  rcvr 10
+           Bit 1 - unused     Bit 6 -  rcvr 6     Bit 11 -  rcvr 11
+           Bit 2 - rcvr 2     Bit 7 -  rcvr 7     Bit 12 -  rcvr 12
+           Bit 3 - rcvr 3     Bit 8 -  rcvr 8
+           Bit 4 - rcvr 4     Bit 9 -  rcvr 9
+           Bit values: (0)-rcvr checked by DN,  (1)-rcvr waiting for DN check"
+     ::= { hec 38 }
+
+hecPmMdmCheckMask OBJECT-TYPE
+     SYNTAX OCTET STRING ( SIZE ( 4 ) )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Bits 1-12 indicate that receiver cards with attached NEs are
+           alive.  
+           Bit 0 - unused     Bit 5 -  rcvr 5     Bit 10 -  rcvr 10
+           Bit 1 - xmitter    Bit 6 -  rcvr 6     Bit 11 -  rcvr 11
+           Bit 2 - rcvr 2     Bit 7 -  rcvr 7     Bit 12 -  rcvr 12
+           Bit 3 - rcvr 3     Bit 8 -  rcvr 8
+           Bit 4 - rcvr 4     Bit 9 -  rcvr 9
+           Bit values: (0)-mdm dead,  (1)-mdm alive"
+     ::= { hec 39 }
+
+
+-- ****************************************************************************
+-- * Table of Trap Destination Ip Addresses
+-- ****************************************************************************
+hecTrapDestTableEntry OBJECT-TYPE
+     SYNTAX HecTrapDestTableEntry
+     ACCESS not-accessible
+     STATUS mandatory
+     DESCRIPTION
+          "A list of information about each SNMP trap destination."
+     INDEX { hecTrapDestIndex }
+     ::= { hecTrapDestTable 1 }
+
+HecTrapDestTableEntry ::=
+     SEQUENCE
+     {
+          hecTrapDestIndex
+               INTEGER,
+          hecTrapDestAddress
+               IpAddress
+     }
+
+hecTrapDestIndex OBJECT-TYPE
+     SYNTAX INTEGER ( 1..5 )
+     ACCESS read-only
+     STATUS mandatory
+     DESCRIPTION
+          "Index into TrapDestTable"
+     ::= { hecTrapDestTableEntry 1 }
+
+hecTrapDestAddress OBJECT-TYPE
+     SYNTAX IpAddress
+     ACCESS read-write
+     STATUS mandatory
+     DESCRIPTION
+          "IP address of trap destination.  The HEC *must* be rebooted for new trap destinations to be used."
+     ::= { hecTrapDestTableEntry 2 }
+
+END

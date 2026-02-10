@@ -1,0 +1,259 @@
+ARRIS-MTA-DEVICE-CONTROL-MIB
+-- Revision 011111 BillRossComcast comments in front of DEFAULT and OBJECT-TYPE=> OBJECT IDENTIFIER
+
+DEFINITIONS ::= BEGIN
+
+IMPORTS
+   OBJECT IDENTIFIER
+      FROM RFC-1212
+   arrisProdIdCM
+      FROM ARRIS-MIB
+   arrisMtaDevMibObjects,
+   arrisMtaDevCallStatsTable,
+   arrisMtaDevLineParameterTable,
+   arrisMtaDevUpSvcFlowParameterTable,
+   arrisMtaDevSetup,
+   arrisMtaDevDiagLoopTable,
+   arrisMtaDevEndPntTable,
+   arrisMtaDevPowerSupplyTelemetry,
+   arrisMtaDevBatteryStatusTable,
+   arrisMtaDevVqmCallNumberTable,
+   arrisMtaDevVqmMetricTable,
+   arrisMtaDevLineCardTable 
+      FROM ARRIS-MTA-DEVICE-MIB;
+
+arrisMtaDevMib OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	it_exists_async
+        --DEFAULT set-function-async    	null_set_async
+        --DEFAULT get-function-async    	null_get_async
+        --DEFAULT next-function-async   	std_next_async
+        --DEFAULT cookie        (char *)0
+     ::= { arrisProdIdCM 3 }
+
+arrisMtaDevBase  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevBase_test
+        --DEFAULT set-function-async    	arrisMtaDevBase_set
+        --DEFAULT get-function-async    	arrisMtaDevBase_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevMibObjects 1 } 
+
+arrisMtaDevDhcp  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	null_test_async
+        --DEFAULT set-function-async    	null_set_async
+        --DEFAULT get-function-async    	std_get_async
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevBase 2 }
+
+arrisMtaDevDhcpMtaParameters  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	null_test_async
+        --DEFAULT set-function-async    	null_set_async
+        --DEFAULT get-function-async    	arrisMtaDevDhcpMtaParameters_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevDhcp 1 }
+
+arrisMtaDevDhcpSvrParameters  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	null_test_async
+        --DEFAULT set-function-async    	null_set_async
+        --DEFAULT get-function-async    	arrisMtaDevDhcpSvrParameters_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevDhcp 2 }
+
+arrisMtaDevDhcpLeaseParameters  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	null_test_async
+        --DEFAULT set-function-async    	null_set_async
+        --DEFAULT get-function-async    	arrisMtaDevDhcpLeaseParameters_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevDhcp 3 }
+
+arrisMtaDevDhcpPktcOptParameters  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	null_test_async
+        --DEFAULT set-function-async    	null_set_async
+        --DEFAULT get-function-async    	arrisMtaDevDhcpPktcOptParameters_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevDhcp 4 }
+    
+-- arrisMtaDevBase  OBJECT IDENTIFIER
+--        DEFAULT test-function-async   	arrisMtaDevBase_test
+--        DEFAULT set-function-async    	arrisMtaDevBase_set
+--        DEFAULT get-function-async    	arrisMtaDevBase_get
+--		DEFAULT next-function-async   	std_next_async
+--    ::= { arrisMtaDevMibObjects 1 }
+
+arrisMtaDevMonitoringMib  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevMonitoringMib_test
+        --DEFAULT set-function-async    	arrisMtaDevMonitoringMib_set
+        --DEFAULT get-function-async    	arrisMtaDevMonitoringMib_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevBase 1 }
+
+arrisMtaDevControl  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevControl_test
+        --DEFAULT set-function-async    	arrisMtaDevControl_set
+        --DEFAULT get-function-async    	arrisMtaDevControl_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevMonitoringMib 1 }
+
+arrisMtaDevTrace  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevTrace_test
+        --DEFAULT set-function-async    	arrisMtaDevTrace_set
+        --DEFAULT get-function-async    	arrisMtaDevTrace_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevMonitoringMib 2 }
+
+arrisMtaDevParameters  OBJECT IDENTIFIER
+        --DEFAULT test-function-async     arrisMtaDevParameters_test
+        --DEFAULT set-function-async      arrisMtaDevParameters_set
+        --DEFAULT get-function-async      arrisMtaDevParameters_get
+                --DEFAULT next-function-async     std_next_async
+    ::= { arrisMtaDevMonitoringMib 3 }
+
+arrisMtaDevLineParameterEntry OBJECT IDENTIFIER
+--        DEFAULT test-function-async   	arrisMtaDevLineParameterEntry_test
+--        DEFAULT set-function-async    	arrisMtaDevLineParameterEntry_set
+        --DEFAULT get-function-async    	arrisMtaDevLineParameterEntry_get
+        --DEFAULT next-function-async   	arrisMtaDevLineParameterEntry_next
+     ::= { arrisMtaDevLineParameterTable 1 }
+
+arrisMtaDevUpSvcFlowParameterEntry OBJECT IDENTIFIER
+--        DEFAULT test-function-async   	arrisMtaDevUpSvcFlowParameterEntry_test
+--        DEFAULT set-function-async    	arrisMtaDevUpSvcFlowParameterEntry_set
+        --DEFAULT get-function-async    	arrisMtaDevUpSvcFlowParameterEntry_get
+        --DEFAULT next-function-async   	arrisMtaDevUpSvcFlowParameterEntry_next
+     ::= { arrisMtaDevUpSvcFlowParameterTable 1 }
+
+
+arrisMtaDevVqm  OBJECT IDENTIFIER
+        --DEFAULT test-function-async     arrisMtaDevVqm_test
+        --DEFAULT set-function-async      arrisMtaDevVqm_set
+        --DEFAULT get-function-async      arrisMtaDevVqm_get
+                --DEFAULT next-function-async     std_next_async
+    ::= { arrisMtaDevMonitoringMib 4 }
+     
+arrisMtaDevVqmCallNumberEntry OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	it_exists_async
+        --DEFAULT set-function-async    	null_set_async
+        --DEFAULT get-function-async    	arrisMtaDevVqmCallNumberEntry_get
+        --DEFAULT next-function-async   	arrisMtaDevVqmCallNumberEntry_next
+     ::= { arrisMtaDevVqmCallNumberTable 1 }
+    
+arrisMtaDevVqmMetricEntry OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevVqmMetricEntry_test
+        --DEFAULT set-function-async    	arrisMtaDevVqmMetricEntry_set
+        --DEFAULT get-function-async    	arrisMtaDevVqmMetricEntry_get
+        --DEFAULT next-function-async   	arrisMtaDevVqmMetricEntry_next
+     ::= { arrisMtaDevVqmMetricTable 1 }
+    
+arrisMtaDevCallStatsEntry OBJECT IDENTIFIER
+--        DEFAULT test-function-async   	arrisMtaDevCallStatsEntry_test
+--        DEFAULT set-function-async    	arrisMtaDevCallStatsEntry_set
+        --DEFAULT get-function-async    	arrisMtaDevCallStatsEntry_get
+        --DEFAULT next-function-async   	arrisMtaDevCallStatsEntry_next
+     ::= { arrisMtaDevCallStatsTable 1 }
+
+arrisMtaDevOperationalSetup  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevOperationalSetup_test
+        --DEFAULT set-function-async    	arrisMtaDevOperationalSetup_set
+        --DEFAULT get-function-async    	arrisMtaDevOperationalSetup_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevSetup 3 }
+
+arrisMtaDevOptionality  OBJECT IDENTIFIER
+--        DEFAULT test-function-async   	arrisMtaDevOptionality_test
+--        DEFAULT set-function-async    	arrisMtaDevOptionality_set
+        --DEFAULT get-function-async    	arrisMtaDevOptionality_get
+--        DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevOperationalSetup 10 } 
+    
+arrisMtaDevLoopVoltageMgmt  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevLoopVoltageMgmt_test
+        --DEFAULT set-function-async    	arrisMtaDevLoopVoltageMgmt_set
+        --DEFAULT get-function-async    	arrisMtaDevLoopVoltageMgmt_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevOperationalSetup 11 } 
+
+arrisMtaDevGainControl  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevGainControl_test
+        --DEFAULT set-function-async    	arrisMtaDevGainControl_set
+        --DEFAULT get-function-async    	arrisMtaDevGainControl_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevOperationalSetup 12 } 
+
+arrisMtaDevDiag  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevDiag_test
+        --DEFAULT set-function-async    	arrisMtaDevDiag_set
+        --DEFAULT get-function-async    	arrisMtaDevDiag_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevOperationalSetup 15 } 
+
+arrisMtaDevLevelControl  OBJECT IDENTIFIER
+        --DEFAULT test-function-async     arrisMtaDevLevelControl_test
+        --DEFAULT set-function-async      arrisMtaDevLevelControl_set
+        --DEFAULT get-function-async      arrisMtaDevLevelControl_get
+        --DEFAULT next-function-async     std_next_async
+    ::= { arrisMtaDevOperationalSetup 40 }
+
+arrisMtaDevDiagLoopEntry OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevDiagLoop_test
+        --DEFAULT set-function-async    	arrisMtaDevDiagLoop_set
+        --DEFAULT get-function-async    	arrisMtaDevDiagLoop_get
+        --DEFAULT next-function-async   	arrisMtaDevDiagLoop_next
+     ::= { arrisMtaDevDiagLoopTable 1 }
+
+arrisMtaDevEndPntSetup  OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevEndPntSetup_test
+        --DEFAULT set-function-async    	arrisMtaDevEndPntSetup_set
+        --DEFAULT get-function-async    	arrisMtaDevEndPntSetup_get
+		--DEFAULT next-function-async   	std_next_async
+    ::= { arrisMtaDevSetup 4 }
+
+arrisMtaDevEndPntEntry OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevEndPntEntry_test
+        --DEFAULT set-function-async    	arrisMtaDevEndPntEntry_set
+        --DEFAULT get-function-async    	arrisMtaDevEndPntEntry_get
+        --DEFAULT next-function-async   	arrisMtaDevEndPntEntry_next
+     ::= { arrisMtaDevEndPntTable 1 }
+    
+arrisMtaDevPwrSupplyBase OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevPwrSupplyBase_test
+        --DEFAULT set-function-async    	arrisMtaDevPwrSupplyBase_set
+        --DEFAULT get-function-async    	arrisMtaDevPwrSupplyBase_get
+     ::= { arrisMtaDevPowerSupplyTelemetry 2 }
+
+arrisMtaDevPwrSupplyControl OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevPwrSupplyControl_test
+        --DEFAULT set-function-async    	arrisMtaDevPwrSupplyControl_set
+        --DEFAULT get-function-async    	arrisMtaDevPwrSupplyControl_get
+		--DEFAULT next-function-async   	std_next_async
+     ::= { arrisMtaDevPowerSupplyTelemetry 3 }    
+
+arrisMtaDevPwrSupplyTimers OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	arrisMtaDevPwrSupplyTimers_test
+        --DEFAULT set-function-async    	arrisMtaDevPwrSupplyTimers_set
+        --DEFAULT get-function-async    	arrisMtaDevPwrSupplyTimers_get
+        --DEFAULT next-function-async   	std_next_async
+     ::= { arrisMtaDevPowerSupplyTelemetry 4 }    
+
+arrisMtaDevPwrSupplyStats OBJECT IDENTIFIER    
+        --DEFAULT test-function-async   	arrisMtaDevPwrSupplyStats_test
+        --DEFAULT set-function-async    	arrisMtaDevPwrSupplyStats_set
+        --DEFAULT get-function-async    	arrisMtaDevPwrSupplyStats_get
+        --DEFAULT next-function-async   	std_next_async
+     ::= { arrisMtaDevPowerSupplyTelemetry 5 }
+
+arrisMtaDevBatteryStatusEntry OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	it_exists_async
+        --DEFAULT set-function-async    	null_set_async
+        --DEFAULT get-function-async    	arrisMtaDevBatteryStatusEntry_get
+        --DEFAULT next-function-async   	arrisMtaDevBatteryStatusEntry_next
+     ::= { arrisMtaDevBatteryStatusTable 1 }
+
+arrisMtaDevLineCardEntry OBJECT IDENTIFIER
+        --DEFAULT test-function-async   	it_exists_async
+        --DEFAULT set-function-async    	null_set_async
+        --DEFAULT get-function-async    	arrisMtaDevLineCardEntry_get
+        --DEFAULT next-function-async   	arrisMtaDevLineCardEntry_next
+     ::= { arrisMtaDevLineCardTable 1 }
+    
+END
+
+

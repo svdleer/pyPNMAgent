@@ -1,0 +1,62 @@
+ARRIS-CM-DOC30-DEVICE-CONTROL-MIB
+-- Revision 011111 BillRossComcast comments in front of DEFAULT and OBJECT IDENTIFIER => OBJECT IDENTIFIER
+
+DEFINITIONS ::= BEGIN
+
+IMPORTS
+        OBJECT IDENTIFIER
+        	FROM RFC-1212        	
+        arrisProdIdCM
+            FROM ARRIS-MIB                
+	arrisCmDoc30MibObjects
+	    FROM ARRIS-CM-DOC30-DEVICE-MIB;
+
+arrisCmDoc30Mib OBJECT IDENTIFIER
+        --DEFAULT test-function-async     it_exists_async
+        --DEFAULT set-function-async      null_set_async
+        --DEFAULT get-function-async      null_get_async
+        --DEFAULT next-function-async     std_next_async
+        --DEFAULT cookie        (char *)0
+        ::= { arrisProdIdCM 4 }
+
+arrisCmDoc30Base  OBJECT IDENTIFIER
+        --DEFAULT test-function-async     arrisCmDoc30Base_test
+        --DEFAULT set-function-async      arrisCmDoc30Base_set
+        --DEFAULT get-function-async      arrisCmDoc30Base_get
+        --DEFAULT next-function-async     std_next_async
+        ::= { arrisCmDoc30MibObjects 1 }
+
+arrisCmDoc30Access  OBJECT IDENTIFIER
+        --DEFAULT test-function-async     arrisCmDoc30Access_test
+        --DEFAULT set-function-async      arrisCmDoc30Access_set
+        --DEFAULT get-function-async      arrisCmDoc30Access_get
+        --DEFAULT next-function-async     std_next_async
+        ::= { arrisCmDoc30MibObjects 2 }
+
+--arrisCmDoc30Setup  OBJECT IDENTIFIER
+--        DEFAULT test-function-async     arrisCmDoc30Setup_test
+--        DEFAULT set-function-async      arrisCmDoc30Setup_set
+--        DEFAULT get-function-async      arrisCmDoc30Setup_get
+--        DEFAULT next-function-async     std_next_async
+--        ::= { arrisCmDoc30MibObjects 3 }
+
+arrisCmDoc30Dhcp  OBJECT IDENTIFIER
+        --DEFAULT test-function-async     null_test_async
+        --DEFAULT set-function-async      null_set_async
+        --DEFAULT get-function-async      std_get_async
+        --DEFAULT next-function-async     std_next_async
+    ::= { arrisCmDoc30MibObjects 4 }
+
+arrisCmDoc30DhcpLeaseParameters  OBJECT IDENTIFIER
+        --DEFAULT test-function-async     null_test_async
+        --DEFAULT set-function-async      null_set_async
+        --DEFAULT get-function-async      arrisCmDoc30DhcpLeaseParameters_get
+        --DEFAULT next-function-async     std_next_async
+    ::= { arrisCmDoc30Dhcp 1 }
+
+
+
+
+
+
+END

@@ -1,0 +1,365 @@
+M5T-VOIP-GW-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Unsigned32                          FROM SNMPv2-SMI
+    ifIndex                             FROM IF-MIB
+    m5tApplications                     FROM M5T-MIB
+    TruthValue                          FROM SNMPv2-TC
+    SnmpAdminString                     FROM SNMP-FRAMEWORK-MIB;
+
+m5tVoipGatewayMIB MODULE-IDENTITY
+    LAST-UPDATED "201210040000Z" -- October 4, 2012
+    ORGANIZATION "Media5 Corporation"
+    CONTACT-INFO "Media5 Corporation
+                  4229 Garlock Street
+                  Sherbrooke, Quebec
+                  J1L 2C8, Canada
+                  Tel: 1-819-829-8749
+                  Fax: 1-819-829-5100"
+    DESCRIPTION
+            "This MIB module defines the namespace organization for the
+             m5t VOIP gateway OID registry."
+    ::=  { m5tApplications 25 }
+
+m5tVoipConfig                        OBJECT IDENTIFIER ::=  { m5tVoipGatewayMIB 50 }
+
+endpointMIB                          OBJECT IDENTIFIER ::=  { m5tVoipConfig 50 }
+fxsTable    OBJECT-TYPE
+    SYNTAX      SEQUENCE OF FxsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains configuration related to endpoints."
+    ::= { endpointMIB 50 }
+
+fxsEntry    OBJECT-TYPE
+    SYNTAX      FxsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table contains configuration for a given endpoint."
+    INDEX { ifIndex }
+    ::= { fxsTable 1 }
+
+FxsEntry ::=
+    SEQUENCE {
+             fxsLoopCurent          Unsigned32,
+             enablePulseDialing     TruthValue
+             }
+
+fxsLoopCurent    OBJECT-TYPE
+    SYNTAX      Unsigned32(20..45)
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "{@PERSISTENCE_TYPE=PERSISTENT@}
+         Specifies the offhook loop current of the FXS port."
+    DEFVAL { 20 }
+    ::= { fxsEntry 1 }
+
+enablePulseDialing    OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "{@PERSISTENCE_TYPE=PERSISTENT@}
+         Specifies if the pulse dialing is enable on the endpoint."
+    DEFVAL { true }
+    ::= { fxsEntry 2 }
+
+mediaMIB                            OBJECT IDENTIFIER ::=  { m5tVoipConfig 100 }
+codecGroup                          OBJECT IDENTIFIER ::=  { mediaMIB 50 }
+
+codecGenericVoiceActivityDetection    OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Specifies if the VAD must be used and negotiatied in SDP for all codecs(if applicable)."
+    DEFVAL { true }
+    ::= { codecGroup 1 }
+
+prefCodecListToDisable  OBJECT-TYPE
+    SYNTAX      SnmpAdminString
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "{@PERSISTENCE_TYPE=PERSISTENT@}
+          This MIB Object contains the list of the voice and/or video
+          codecs to explicitly disable from the original list in
+          pktcEUERSTBCallPrefCodecList. The value in this object is formed
+          as a comma-separated list of the well-known literal voice/video codec
+          names to disable. The EUE MUST use the literal voice and/or video
+          codec name as per RTP AV Profile [RFC 3551], or per encoding names
+          registered with the IANA, or per encoding names referenced or defined
+          in the PacketCable Codec-Media specification.
+          Unknown or non-supported codecs are ignored.
+          The zero-length string indicates that no codec will be disabled and
+          so all of the pktcEUERSTBCallPrefCodecList values will be used."
+    ::= { codecGroup 2 }
+
+jitterBufferGroup                   OBJECT IDENTIFIER ::=  { mediaMIB 100 }
+epSpecificJitterBufferTable    OBJECT-TYPE
+    SYNTAX      SEQUENCE OF EpSpecificJitterBufferEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains jitter buffer configuration related to endpoints."
+    ::= { jitterBufferGroup 1 }
+
+epSpecificJitterBufferEntry    OBJECT-TYPE
+    SYNTAX      EpSpecificJitterBufferEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table contains jitter buffer configuration for a given endpoint."
+    INDEX { ifIndex }
+    ::= { epSpecificJitterBufferTable 1 }
+
+EpSpecificJitterBufferEntry ::=
+    SEQUENCE {
+             jitterBufferType       INTEGER,
+             jitterBufferMin        Unsigned32,
+             jitterBufferNominal    Unsigned32,
+             jitterBufferMax        Unsigned32
+             }
+
+jitterBufferType    OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        adaptative              (1),
+                        fixed                   (2)
+                        }
+
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies the jitter buffer type of the FXS port."
+    DEFVAL { adaptative }
+    ::= { epSpecificJitterBufferEntry 1 }
+
+jitterBufferMin    OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies the minimal jitter buffer length in ms of the FXS port."
+    DEFVAL { 30 }
+    ::= { epSpecificJitterBufferEntry 2 }
+
+jitterBufferNominal    OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies the nominal jitter buffer length in ms of the FXS port."
+    DEFVAL { 60 }
+    ::= { epSpecificJitterBufferEntry 3 }
+
+jitterBufferMax    OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies the maximum jitter buffer length in ms of the FXS port."
+    DEFVAL { 125 }
+    ::= { epSpecificJitterBufferEntry 4 }
+
+m5tVoipStatus                       OBJECT IDENTIFIER ::= { m5tVoipGatewayMIB 100 }
+
+endpointStatus                      OBJECT IDENTIFIER ::= { m5tVoipStatus 50 }
+
+endpointStatusTable     OBJECT-TYPE
+    SYNTAX      SEQUENCE OF EndpointStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This table contains status related to endpoints."
+    ::= { endpointStatus 50 }
+
+endpointStatusEntry    OBJECT-TYPE
+    SYNTAX      EndpointStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table contains status related to endpoints."
+    INDEX { ifIndex }
+    ::= { endpointStatusTable 1 }
+
+EndpointStatusEntry ::=
+    SEQUENCE {
+             administrativeState INTEGER,
+             hookState INTEGER,
+             operationalState INTEGER,
+             registrationState INTEGER,
+             registeredToPcscf OCTET STRING,
+             discoveredPcscfs OCTET STRING,
+             mwiConfigurationState INTEGER,
+             mwiResetState INTEGER,
+             mwiState INTEGER,
+             mwiSubscriptionState INTEGER,
+             rtcpXrConfigurationState INTEGER,
+             rtcpXrNegotiationState INTEGER,
+             callState INTEGER,
+             audioFreqRange INTEGER
+             }
+
+administrativeState    OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        enabled(1),
+                        disabled(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies if the endpoint is administratively enabled or disabled."
+    ::= { endpointStatusEntry 10 }
+
+hookState               OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        onHook(1),
+                        offHook(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies if the endpoint is on-hook or off-hook."
+    ::= { endpointStatusEntry 20 }
+
+operationalState        OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        inService(1),
+                        outOfService(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies if the endpoint is in-service or out-of-service."
+    ::= { endpointStatusEntry 30 }
+
+registrationState       OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        registered(1),
+                        unregistered(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies if the endpoint is registered or unregistered."
+    ::= { endpointStatusEntry 40 }
+
+registeredToPcscf       OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies the P-CSCF against with the endpoint is registered."
+    ::= { endpointStatusEntry 50 }
+
+discoveredPcscfs        OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies the list of P-CSCFs that were dynamically learned or
+         retrieved from the configuration."
+    ::= { endpointStatusEntry 60 }
+
+mwiConfigurationState   OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        enabled(1),
+                        disabled(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies whether or not the mwi service is configured for the endpoint."
+    ::= { endpointStatusEntry 70 }
+
+mwiResetState           OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        reset(1),
+                        nop(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Allows to reset the mwi state."
+    DEFVAL { 2 }
+    ::= { endpointStatusEntry 80 }
+
+mwiState                OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        on(1),
+                        off(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies if the mwi state is on or off."
+    ::= { endpointStatusEntry 90 }
+
+mwiSubscriptionState    OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        subscribed(1),
+                        unsubscribed(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies if the mwi state is on or off. When on, this indicates that
+         there are messages waiting on the server."
+    ::= { endpointStatusEntry 100 }
+
+rtcpXrConfigurationState    OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        enabled(1),
+                        disabled(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies if RTCP-XR is enabled or disabled for the endpoint."
+    ::= { endpointStatusEntry 110 }
+
+rtcpXrNegotiationState     OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        enabled(1),
+                        disabled(2),
+                        callNotInProgress(3)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies if RTCP-XR is enabled or disabled for the endpoint current
+         call following SDP negotiation."
+    ::= { endpointStatusEntry 120 }
+
+callState     OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        outOfService(1),
+                        idle(2),
+                        ringing(3),
+                        dialing(4),
+                        inCall(5)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies the endpoint's current call state."
+    ::= { endpointStatusEntry 130 }
+
+audioFreqRange     OBJECT-TYPE
+    SYNTAX      INTEGER {
+                        undefined(1),
+                        narrowband(2),
+                        wideband(3)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Specifies the endpoint's current audio frequency range used."
+    ::= { endpointStatusEntry 140 }
+
+END

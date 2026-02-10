@@ -1,0 +1,1756 @@
+--
+-- cmdot11plus MIB
+--
+
+CM-dot11plus-MIB DEFINITIONS ::= BEGIN
+
+   IMPORTS
+      enterprises, OBJECT-TYPE, MODULE-IDENTITY, Integer32, Unsigned32
+         FROM SNMPv2-SMI
+      MacAddress, RowStatus, StorageType, TruthValue, DisplayString, PhysAddress
+         FROM SNMPv2-TC
+      InetAddressType, InetAddress, InetPortNumber 
+         FROM INET-ADDRESS-MIB 
+      ifIndex
+         FROM IF-MIB;
+
+cmdot11plus MODULE-IDENTITY
+      LAST-UPDATED "201006010000Z"  -- June 1,2010
+      ORGANIZATION
+         "Motorola BCS"
+      CONTACT-INFO
+         "Author: Greg Nakanishi
+          Org:    Motorola BCS
+          postal: 6450 Sequence Drive
+                  San Diego, CA 92121
+          email:  gnakanishi@motorola.com
+          phone:  858-404-2366"
+      DESCRIPTION
+          "This MIB defines additional 802.11 management objects not defined in the 
+          IEEE 802.11 MIB" 
+          
+      
+      REVISION  "201006010000Z"  -- June 1, 2010
+      DESCRIPTION
+         "Added by Wilson from Compal broadband networks. 
+	      - Added MIB cqvds00022757
+	      - cmdot11plusWps.
+	      - cmdot11WpsEnable.
+	      - cmdot11WpsMethod.
+	      - cmdot11WpsPinNumber.
+	      - cmdot11WpsAddClient."
+  	        
+      REVISION  "200911160000Z"  -- Nov 16, 2009
+      DESCRIPTION
+         "Added (cqvds00019448)by Uma and Mithun. 
+	      -Added MIB object cmdot11ResetToDefaults."
+  	        
+      REVISION  "200909090000Z"  -- Sep 09, 2009
+      DESCRIPTION
+	     "- Modified by P. Rajiv
+          - Added MIB cqvds00018618.
+          - cmdot11NMode, cmdot11NPhyRate, cmdot11NBand,
+          - cmdot11NBandWidth, cmdot11NSideBand, and cmdot11NProtection."
+	  
+      REVISION  "200908110000Z"  -- Aug 11, 2009
+      DESCRIPTION
+	     "- Modified (cqvds00016882) by Chen Yang.
+          - Modified MIB object cmdot11BssSecurityMode.
+          - Added (cqvds00016778)by Lisa Ruby. 
+	      - Added MIB object cmdot11MulticastRate."
+             
+      REVISION  "200905270000Z"  -- May 27, 2009
+      DESCRIPTION
+	     "Added (cqvds00015174)by Uma. 
+	      -Deprecated the MIB groups cmdot11plusMgmt and cmdot11plusBaseObjects.
+		  -Changed the name of cmdot11plusMultipleSSID to cmdot11plusMgmtv2.
+		  -Removed the statement “This object is only valid for products that 
+		   support Multiple SSID” from description for MIB objects within the 
+		   group cmdot11plusMgmtv2. 
+		  -Added MIB group cmdot11MgmtBase
+	      -Added MIB object cmdot11OperMode.
+	      -Added MIB object cmdot11CurrentChannel.
+	      -Added MIB object cmdot11ChannelSetting.
+	      -Added MIB object cmdot1154gNetMode.
+  	      -Added MIB object cmdot11BssWepSharedKeyAuthentication."
+		 
+
+      REVISION  "200812190000Z"   -- Dec 19, 2008
+      DESCRIPTION
+        "Added (cqvds00012522)by Chen Yang , Poorna and Soumya.
+         Added cmdot11BssWpaPasscode."
+
+      REVISION  "200809110000Z"   -- Sep 11, 2008
+      DESCRIPTION
+        "Edited (cqvds00008397)by Chen Yang , Poorna and Soumya.
+        Modified MIB in multiple SSID section.
+        - Obsoleted the dot11BssNetworkBridge object.
+        - Changed description for dot11BssSecurityMode."
+
+      REVISION  "200402130000Z"   
+      DESCRIPTION
+        "Edited by Carolyn Huynh. 
+        Published as cmdot11plus-11.mib.        
+        - Changed cmdot11plusWepPassPhrase range (8..31)
+        "    
+           
+      REVISION  "200310300000Z"   
+      DESCRIPTION
+        "Edited by Jason Krasnow. 
+        Published as cmdot11plus-10.mib.        
+        - Added mib objects for WPA
+        "                        
+
+      
+      REVISION  "200307150000Z"   
+      DESCRIPTION
+        "Edited by Jason Krasnow. 
+        Published as cmdot11plus-09.mib.        
+        - Added mib object to control the tx output power in terms of percentage
+        "                        
+
+      REVISION  "200303030000Z"   
+      DESCRIPTION
+        "Edited by Zheng Fang. 
+        Published as cmdot11plus-07.mib.
+        - change cmdot11plusClosedNetworkEnable to cmdot11plusSsidBroadcastEnable.
+        "                
+          
+      REVISION  "200210080000Z"   
+      DESCRIPTION
+        "Edited by Zheng Fang. 
+        Published as cmdot11plus-03.mib.
+        - change cmdot11plusBasicRates default value to low,
+        update cmdot11plusSetToFactory description,
+        rename cmdot11plusWep128Enable to cmdot11plusWepMode to include disable value,
+        add defval for cmdot11plusInterfaceEnable.
+        "  
+
+      ::= {cm 51}  
+
+
+--
+-- Path to root
+--
+
+gi OBJECT IDENTIFIER ::= {enterprises 1166}     
+giproducts OBJECT IDENTIFIER ::= {gi 1}         
+cm OBJECT IDENTIFIER ::= {giproducts 19}        
+
+-- Administrative assignments ----------------------
+
+cmdot11plusObjects OBJECT IDENTIFIER ::= { cmdot11plus 1 }
+cmdot11plusConformance OBJECT IDENTIFIER ::= { cmdot11plus 2 }
+   
+cmdot11plusMgmt OBJECT IDENTIFIER ::= { cmdot11plusObjects 1 }
+cmdot11plusMgmtObjects OBJECT IDENTIFIER ::= { cmdot11plusMgmt 1 }
+
+cmdot11plusBaseObjects OBJECT IDENTIFIER ::= { cmdot11plusObjects 2 }
+
+cmdot11plusWpaObjects OBJECT IDENTIFIER ::= { cmdot11plusMgmt 2 }  
+
+cmdot11plusMgmtv2 OBJECT IDENTIFIER ::= { cmdot11plusObjects 5 }  
+
+cmdot11plusWps OBJECT IDENTIFIER ::= { cmdot11plusObjects 6 }  
+
+-- Object definitions ------------------------------
+cmdot11plusSetToFactory OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+            "Setting this object to true(1) causes the dot11 plus default 
+            options to be returned back to factory defaults.  
+            Reading this object always returns false(2).
+                            
+            The objects set to factory defaults are:      
+
+                  cmdot11plusInterfaceEnable,           
+                  cmdot11plusWepMode,
+                  cmdot11plusAclEnable,
+                  cmdot11plusSsidBroadcastEnable,
+                  cmdot11plusBasicRates,
+                  cmdot11plusShortPreambleEnable,
+                  cmdot11plusPhyOperatingMode,
+                  cmdot11plusTxOutputPower,
+                  cmdot11plusWepPassPhrase,
+                  cmdot11plusSecurityMode,
+                  cmdot11plusWpaAuthMode,
+                  cmdot11plusWpaGroupRekeyInterval,
+                  cmdot11plusWpaEncryptionMode,
+                  cmdot11plusLocalPreSharedKey,
+                  cmdot11plusRemoteRadiusIpType,
+                  cmdot11plusRemoteRadiusIp,
+                  cmdot11plusRemoteRadiusPort,
+                  cmdot11plusRemoteRadiusKey
+
+            All entries in cmdot11plusWep128DefaultKeysTable and 
+            cmdot11plusAclTable will be destroyed.
+            
+            This MIB object is only valid for products supporting a single SSID
+            "
+    ::= { cmdot11plusBaseObjects 1 }
+
+cmdot11plusInterfaceEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+            "Setting this object to true(1) causes 802.11 interface to be enabled.
+            Setting this object to false(2) causes 802.11 interface to be disabled.
+            A change to this object takes effect only after the device is rebooted.
+            
+            This MIB object is only valid for products supporting a single SSID
+            " 
+    DEFVAL { true }
+    ::= { cmdot11plusBaseObjects 2 }
+
+cmdot11plusApplySettings OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "When set to true(1),  all settings for 802.11 from this 
+		 MIB and from the ieee802dot11 MIB will be applied to
+         the hardware for on-the-fly reconfiguration.  
+         Always returns false(2) when read.
+         
+         This MIB object is only valid for products supporting a single SSID
+         "    
+         
+    ::= { cmdot11plusBaseObjects 3 }
+ 
+-- WEP configuration objects 
+cmdot11plusWepMode OBJECT-TYPE
+      SYNTAX INTEGER
+            {
+                disable(1),
+                bit64(2),
+                bit128(3)
+            }
+      MAX-ACCESS read-write
+      STATUS deprecated
+      DESCRIPTION
+         "The WEP encryption mode of 802.11 interface.
+          
+          This object is not writable and its return value should be ignored 
+          if cmdot11plusSecurityMode is not set to wep(2). 
+          
+          This MIB object is only valid for products supporting a single SSID
+          "
+      DEFVAL { disable }
+      ::= { cmdot11plusMgmtObjects 1 }
+
+cmdot11plusWep128DefaultKeysTable OBJECT-TYPE
+      SYNTAX SEQUENCE OF Cmdot11plusWep128DefaultKeysEntry
+      MAX-ACCESS not-accessible
+      STATUS deprecated
+      DESCRIPTION
+         "Table containing 128-bit WEP parameters.
+          This table shall contain the four WEP default secret 128-bit key values
+          corresponding to the four possible values.  The WEP default secret 128-bit 
+          keys are logically WRITE-ONLY.  Attempts to read the entries in this table 
+          shall return values of null.  
+          The default value of each WEP default key shall be null.
+          
+          This MIB object is only valid for products supporting a single SSID
+          "
+   ::= { cmdot11plusMgmtObjects 2 }
+
+cmdot11plusWep128DefaultKeysEntry OBJECT-TYPE
+      SYNTAX Cmdot11plusWep128DefaultKeysEntry
+      MAX-ACCESS not-accessible
+      STATUS deprecated
+      DESCRIPTION
+         "WEP key table entry. Each entry contains a 128-bit WEP key
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+      INDEX {cmdot11plusWep128Index}
+   ::= { cmdot11plusWep128DefaultKeysTable 1 }
+
+Cmdot11plusWep128DefaultKeysEntry ::=
+      SEQUENCE {
+         cmdot11plusWep128Index
+            Integer32,
+         cmdot11plusWep128DefaultKeyValue
+            OCTET STRING
+       }
+
+cmdot11plusWep128Index OBJECT-TYPE
+      SYNTAX Integer32 (1..4)
+      MAX-ACCESS not-accessible
+      STATUS deprecated
+      DESCRIPTION
+         "Identifies instances of the columnar objects in the ACL table
+
+          This MIB object is only valid for products supporting a single SSID         
+         "
+      ::= { cmdot11plusWep128DefaultKeysEntry 1 }
+
+cmdot11plusWep128DefaultKeyValue OBJECT-TYPE
+      SYNTAX OCTET STRING (SIZE(13))
+      MAX-ACCESS read-create
+      STATUS deprecated
+      DESCRIPTION
+         "A 128-bit WEP default secret key value.
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+      ::= { cmdot11plusWep128DefaultKeysEntry 2 }
+                                                      
+-- MAC ACL configuration objects
+
+cmdot11plusAclEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS deprecated
+      DESCRIPTION
+         "This object controls whether MAC address ACL checking is enabled in the access point.
+          When 'true', AP allows only those stations listed in cmdot11plusAclTable to associate.
+          When 'false', AP allows any station to associate.
+          
+          This MIB object is only valid for products supporting a single SSID
+          "         
+      DEFVAL { false }
+      ::= { cmdot11plusMgmtObjects 3 }
+
+cmdot11plusAclTable OBJECT-TYPE
+      SYNTAX SEQUENCE OF Cmdot11plusAclEntry
+      MAX-ACCESS not-accessible
+      STATUS deprecated
+      DESCRIPTION
+         "MAC ACL table contains a list of MAC addresses for stations that are allowed to
+          associate with the access point.
+          
+          This MIB object is only valid for products supporting a single SSID
+          "
+   ::= { cmdot11plusMgmtObjects 4 }
+
+cmdot11plusAclEntry OBJECT-TYPE
+      SYNTAX Cmdot11plusAclEntry
+      MAX-ACCESS not-accessible
+      STATUS deprecated
+      DESCRIPTION
+         "MAC ACL table entry. Primary column of the entry is the MAC address.
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+      INDEX {cmdot11plusAclIndex}
+   ::= { cmdot11plusAclTable 1 }
+
+Cmdot11plusAclEntry ::=
+      SEQUENCE {
+         cmdot11plusAclIndex
+            Integer32,
+         cmdot11plusAclAddress
+            MacAddress,
+         cmdot11plusAclRowStatus        
+            RowStatus           
+         }
+
+cmdot11plusAclIndex OBJECT-TYPE
+      SYNTAX Integer32 (1..32)
+      MAX-ACCESS not-accessible
+      STATUS deprecated
+      DESCRIPTION
+         "Identifies instances of the columnar objects in the ACL table
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+      ::= { cmdot11plusAclEntry 1 }
+
+cmdot11plusAclAddress OBJECT-TYPE
+      SYNTAX MacAddress
+      MAX-ACCESS read-create
+      STATUS deprecated
+      DESCRIPTION
+         "A MAC address of a station that is allowed to associate with the access point.
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+      ::= { cmdot11plusAclEntry 2 } 
+      
+cmdot11plusAclRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      deprecated
+    DESCRIPTION
+       "The RowStatus interlock for creation and deletion.
+       
+       This MIB object is only valid for products supporting a single SSID
+       "
+    ::= { cmdot11plusAclEntry 3 }
+    
+cmdot11plusSsidBroadcastEnable OBJECT-TYPE
+      SYNTAX TruthValue      
+      MAX-ACCESS read-write
+      STATUS deprecated
+      DESCRIPTION
+         "When 'true', AP does broadcast SSID in beacon packets.
+          When 'false', AP does not broadcast SSID in beacon packets.
+          
+          This MIB object is only valid for products supporting a single SSID
+          "   
+         
+      DEFVAL { true }
+      ::= { cmdot11plusMgmtObjects 5 } 
+
+-- Basic rate configuration
+
+cmdot11plusBasicRates OBJECT-TYPE
+      SYNTAX INTEGER
+        {
+         low(1),   -- 1 & 2 Mbps
+         high(2)   -- 1, 2, 5.5, & 11 Mbps
+        }        
+      MAX-ACCESS read-write
+      STATUS deprecated
+      DESCRIPTION
+         "Set of data rates that all stations in a BSS must be capable of receiving.
+         
+         This MIB object is only valid for products supporting a single SSID
+         "        
+      DEFVAL { low }
+      ::= { cmdot11plusMgmtObjects 6 }          
+
+-- Short Preamble Enable configuration
+
+cmdot11plusShortPreambleEnable OBJECT-TYPE
+      SYNTAX TruthValue      
+      MAX-ACCESS read-write
+      STATUS deprecated
+      DESCRIPTION
+         "When 'true', AP tranamits packets using a short preamble.
+          When 'false', AP transmits packets with the standard long preamble.
+          
+          This MIB object is only valid for products supporting a single SSID
+          "  
+          
+      DEFVAL { false }
+      ::= { cmdot11plusMgmtObjects 7 } 
+      
+-- Counters Reset configuration
+
+cmdot11plusCountersReset OBJECT-TYPE
+      SYNTAX TruthValue      
+      MAX-ACCESS read-write
+      STATUS deprecated
+      DESCRIPTION
+         "Setting this object to true(1) resets the counters in dot11CountersTable.
+          Reading this object always returns false(2).
+          
+          This MIB object is only valid for products supporting a single SSID
+          "  
+      ::= { cmdot11plusMgmtObjects 8 }
+
+-- 802.11g Operating Mode
+
+cmdot11plusPhyOperatingMode OBJECT-TYPE
+      SYNTAX INTEGER
+        {
+         standard(1),  -- 11b/11g Standard
+         enhanced(2)   -- 11g Enhanced
+        }            
+      MAX-ACCESS read-write
+      STATUS deprecated
+      DESCRIPTION
+         "This is the supported wireless operating mode of the SBG.
+          Select the default 11b/11g standard(1) option for most cases as this is the 
+          most flexible mode. It allows both 802.11b and 802.11g stations to work 
+          with the SBG device.  Select the 11g enhanced(2) option only if all 
+          802.11g stations in use are compatible with the performance enhancing 
+          features of the 11g Enhanced mode. Note: 11g enhanced is a proprietary 
+          mode which is not supported by all 802.11g stations.
+          
+          This MIB object is only valid for products supporting a single SSID
+          "  
+      DEFVAL { standard }
+      ::= { cmdot11plusMgmtObjects 9 }
+
+cmdot11plusTxOutputPower OBJECT-TYPE
+      SYNTAX INTEGER (100 | 75 | 50 | 25 | 12 | 6 | 3)
+      MAX-ACCESS read-write
+      STATUS deprecated
+      DESCRIPTION
+         "This object controls the ouput power of the 802.11 transmitter.  The number 
+          is a percentage of the maximum power possible based on 802.11 technology 
+          and other board specific issues. 
+          
+          This MIB object is only valid for products supporting a single SSID
+          "  
+      DEFVAL { 100 }
+      ::= { cmdot11plusMgmtObjects 10 }
+
+cmdot11plusWepPassPhrase OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(8..31))
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "Controls and reflects the WEP pass phrase.
+        
+        This MIB object is only valid for products supporting a single SSID
+        "
+    ::= { cmdot11plusMgmtObjects 11 }
+
+cmdot11plusGenerateWepKeys OBJECT-TYPE
+    SYNTAX      TruthValue      
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "Applies the WEP PassPhrase by generating new keys from the string
+         set in cmdot11plusWepPassPhrase. The keys are generated using the 
+         algorithm described in 802.11i appendix F.  This object will always 
+         return false went read.
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+    ::= { cmdot11plusMgmtObjects 12 }
+
+cmdot11plusSecurityMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                none(1),
+                wep(2),
+                wpa(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "Sets the network authentication and/or security method. 
+         WEP requires cmdot11plusWepMode to be set to either 64bit or 128bit 
+         encryption and valid keys be entered.  
+         WPA requires either valid RADIUS parameters be set or 
+         a valid WPA Pre-Shared Key to be set.
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+    DEFVAL { none } 
+    ::= { cmdot11plusMgmtObjects 13 }
+
+cmdot11plusWpaAuthMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                local(1),
+                remote(2)
+                }
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "Sets the network authentication method to be used with WPA. 
+         Local(1) requires a valid WPA Pre-Shared Key to be set. This
+		 mode is sometimes called WPA-PSK.
+         Remote(2) requires valid RADIUS parameters be set.  This mode
+		 is sometimes called WPA with 802.1x authentication. 
+         
+         This object is not writable and its return value should be ignored 
+         if cmdot11plusSecurityMode is not set to wpa(3). 
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+    DEFVAL { local } 
+    ::= { cmdot11plusWpaObjects 1 }
+
+cmdot11plusWpaGroupRekeyInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "Sets the WPA Group Rekey Interval in seconds. Set to zero to disable 
+         periodic rekeying.
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+DEFVAL { 300 } 
+    ::= { cmdot11plusWpaObjects 2 }
+
+cmdot11plusWpaEncryptionMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                tkip(1),
+                aes(2)
+                }
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "TKIP (Temporal Key Integrity Protocol) provides data encryption enhancements 
+         including a per-packet key mixing function, a MIC, an IV(initialization vector) 
+         and a re-keying mechanism.
+
+         AES (Advanced Encryption Standard) algorithm implements symmetric key 
+         cryptography as a block cipher using 128-bit keys.
+         
+         This object is not writable and its return value should be ignored 
+         if cmdot11plusSecurityMode is not set to wpa(3). 
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+    DEFVAL { tkip } 
+    ::= { cmdot11plusWpaObjects 3 }
+
+cmdot11plusLocalPreSharedKey OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(8..63))
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "Sets the WPA Pre-Shared Key (PSK).  This value MUST a 
+         8 to 63 character ASCII string.
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+    ::= { cmdot11plusWpaObjects 4 }
+    
+cmdot11plusRemoteRadiusIpType OBJECT-TYPE
+    SYNTAX      InetAddressType 
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "The address type assigned for the Radius IP address
+        
+        This MIB object is only valid for products supporting a single SSID
+        "
+    DEFVAL { ipv4 } 
+    ::= { cmdot11plusWpaObjects 5 } 
+    
+cmdot11plusRemoteRadiusIp OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..128))
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "Sets RADIUS server address.  The type of address is determined by 
+         cmdot11plusRemoteRadiusIpType.  If it is ipv4 then this should
+         be set to the 4 octets representing the IP address.  If it is
+         a DNS name then this must be a FQDN in ascii. 
+         
+         This MIB object is only valid for products supporting a single SSID
+         "
+    ::= { cmdot11plusWpaObjects 6 }
+    
+cmdot11plusRemoteRadiusPort OBJECT-TYPE
+    SYNTAX      InetPortNumber
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "Sets the UDP port used to communicate with the RADIUS server.
+        
+        This MIB object is only valid for products supporting a single SSID
+        "
+    DEFVAL { 1812 } 
+    ::= { cmdot11plusWpaObjects 7 }
+    
+cmdot11plusRemoteRadiusKey OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..255))
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "Sets or displays the RADIUS key.
+        
+        This MIB object is only valid for products supporting a single SSID
+        "
+    ::= { cmdot11plusWpaObjects 8 }
+
+
+
+
+           
+-- Conformance
+cmdot11plusCompliances OBJECT IDENTIFIER ::= { cmdot11plusConformance 1 }
+cmdot11plusGroups      OBJECT IDENTIFIER ::= { cmdot11plusConformance 2 }
+   
+-- Compliance statements
+cmdot11plusCompliance MODULE-COMPLIANCE
+    STATUS       deprecated
+    DESCRIPTION "The compliance statement for access points that implement the
+                 cmdot11plus MIB
+                 
+                 This MIB object is only valid for products supporting a single SSID
+                 "
+
+    MODULE       -- this module
+        MANDATORY-GROUPS { cmdot11plusBaseGroup }            
+
+    ::= { cmdot11plusCompliances 1 }    
+    
+-- Units of compliance
+cmdot11plusBaseGroup OBJECT-GROUP
+    OBJECTS     { 
+                  cmdot11plusSetToFactory, 
+                  cmdot11plusInterfaceEnable,
+                  cmdot11plusWepMode,
+                  cmdot11plusWep128DefaultKeyValue,               
+                  cmdot11plusAclEnable,
+                  cmdot11plusAclAddress,
+                  cmdot11plusAclRowStatus,
+                  cmdot11plusSsidBroadcastEnable,
+                  cmdot11plusCountersReset,
+                  cmdot11plusTxOutputPower,
+                  cmdot11plusWepPassPhrase,
+                  cmdot11plusGenerateWepKeys,
+                  cmdot11plusSecurityMode,
+				  cmdot11plusApplySettings
+                }    
+    STATUS       deprecated
+    DESCRIPTION "A collection of the basic objects providing for configuration
+                 of additional 802.11 management objects not defined
+                 by the IEEE 802.11 MIB.
+                 
+                 This MIB object is only valid for products supporting a single SSID
+                 "
+    ::= { cmdot11plusGroups 1 }
+
+cmdot11BplusGroup OBJECT-GROUP
+    OBJECTS     { 
+                  cmdot11plusBasicRates,
+                  cmdot11plusShortPreambleEnable
+                }    
+    STATUS       deprecated
+    DESCRIPTION "A collection of objects providing for configuration
+                 of additional 802.11 management objects for 802.11b 
+                 operation.
+                 
+                 This MIB object is only valid for products supporting a single SSID
+                 "
+    ::= { cmdot11plusGroups 2 }
+
+cmdot11GplusGroup OBJECT-GROUP
+    OBJECTS     { 
+                  cmdot11plusPhyOperatingMode,
+                  cmdot11plusWpaEncryptionMode
+                }    
+    STATUS       deprecated
+    DESCRIPTION "A collection of objects providing for configuration
+                 of additional 802.11 management objects for 802.11g 
+                 operation.
+                 
+                 This MIB object is only valid for products supporting a single SSID
+                 "
+    ::= { cmdot11plusGroups 3 }
+
+
+cmdot11plusWpaGroup OBJECT-GROUP
+    OBJECTS     { 
+                  cmdot11plusWpaAuthMode,
+                  cmdot11plusWpaGroupRekeyInterval,
+                  cmdot11plusLocalPreSharedKey,
+                  cmdot11plusRemoteRadiusIpType,
+                  cmdot11plusRemoteRadiusIp,
+                  cmdot11plusRemoteRadiusPort,
+                  cmdot11plusRemoteRadiusKey
+                }    
+    STATUS       deprecated
+    DESCRIPTION "A collection of objects providing for configuration
+                 of additional 802.11 management objects for WPA 
+                 operation.
+                 
+                 This MIB object is only valid for products supporting a single SSID
+                 "
+    ::= { cmdot11plusGroups 4 }
+
+
+
+cmdot11MgmtBase OBJECT IDENTIFIER ::= { cmdot11plusMgmtv2 1 }
+
+cmdot11OperMode OBJECT-TYPE
+    SYNTAX      INTEGER                             
+    			{
+                 enable(1),
+                 disable(2)
+                }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Setting this object to enable(1) enables the Wireless interface. Setting this object to 
+         disable(2) disables the Wireless interface.
+        "
+    ::= { cmdot11MgmtBase 1 } 
+   
+cmdot11CurrentChannel OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Reading this object displays the current channel number the access point is operating in.
+         It displays 0 if the Wireless interface is disabled.
+        "
+    ::= { cmdot11MgmtBase 2 } 
+ 
+cmdot11ChannelSetting  OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..216)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object sets the current channel number (802.11g) or control 
+        channel (802.11n).
+
+         If set to (0), the AP will be put in auto-channel mode where
+	 it automatically scans for the least-crowded channel.
+
+         For 802.11g cards, available channels are 1-14.
+	 For 802.11n cards, available channels are 34-216.
+
+         Channel selection is also subject to restrictions based on the selected
+	 country code.
+	    "
+    ::= { cmdot11MgmtBase 3 } 
+      
+cmdot1154gNetMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+		mode54g11bOnly(0),
+		mode54gAuto(1),
+		mode54gPerformance(4),
+		mode54gLRS(5)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the behavior of the device with regards to which
+         802.11 mode is used.  If set to mode54gLRS(5), the device
+         will interoperate with the widest variety of 54g and 802.11b clients.
+         If set to mode54gPerformance(4), the highest throughput will be provided 
+         and only 54g clients will be accepted, however nearby 802.11b networks 
+         may suffer degraded performance.  If set to mode54g11bOnly(0), only 802.11b clients
+	     will be accepted.  If set to mode54gAuto(1) the device will attempt to operate
+	     at 54g rates unless an 802.11b client is detected.
+	    "
+    ::= { cmdot11MgmtBase 10 }
+
+cmdot11NMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+        auto(1),
+        off(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "Used to enable/disable 802.11n operation. 
+            ‘Auto’ is used to enable 802.11n operation; the Access Point will detect which
+             stations are out there and operate in the proper mode.
+            ‘Off’ is used to disable 802.11n operation; the Access Point will operate in the
+             mode specified by dot1154gNetMode.
+             Note: This MIB object is only valid for products supporting 802.11n,
+             and also affects other MIB selections."
+    ::= { cmdot11MgmtBase 16 }
+   
+cmdot11NPhyRate OBJECT-TYPE
+    SYNTAX      INTEGER {
+        auto(0),
+        legacy(1),
+        mcs0(2),
+        mcs1(3),
+        mcs2(4),
+        mcs3(5),
+        mcs4(6),
+        mcs5(7),
+        mcs6(8),
+        mcs7(9),
+        mcs8(10),
+        mcs9(11),
+        mcs10(12),
+        mcs11(13),
+        mcs12(14),
+        mcs13(15),
+        mcs14(16),
+        mcs15(17)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "Used to specify the 802.11n PHY transmission rate.
+            ‘Auto’ is used to allow the Access Point to dynamically adapt 
+            to the environment and transmit using the fastest data rate 
+            for the given environmental conditions.
+            ‘Legacy’ is used to restrict the transmission to 802.11b/g rates.
+            ‘mcs0’ through ‘mcs15’ are used to force the 802.11N PHY transmission 
+            rate for the Access Point to a particular speed. The MCS-to-speed mapping
+            is provided by the 802.11n spec and depends on whether a 20 MHz
+            channel or a 40 MHz channel is being used.
+            Note: This MIB object is only valid for products supporting 802.11n."
+    ::= { cmdot11MgmtBase 17 }
+ 
+
+cmdot11NBand OBJECT-TYPE
+    SYNTAX      INTEGER {
+        band-2-4G(1),
+        band-5G(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "Selects the wireless frequency band (2.4 GHz or 5 GHz) the Access Point will operate in.
+            Note: This MIB object is only valid for products supporting 802.11n."
+    ::= { cmdot11MgmtBase 18 }
+
+cmdot11NBandWidth OBJECT-TYPE
+    SYNTAX      INTEGER {
+        width-20MHz(1),
+        width-20-40MHz(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "Specifies the channel width (20 MHz or 20/40 MHz) to be used by the Access Point.
+            When 20/40MHz is selected 802.11n clients experience improved throughput
+            using 40 MHz, while legacy clients(either 802.11a or 802.11b/g) can 
+            still be serviced without interruption using 20MHz.
+            Note: This MIB object is only valid for products supporting 802.11n, and
+            also affects other MIB selections such as cmdot11NSideBand."
+    ::= { cmdot11MgmtBase 19 }
+
+cmdot11NSideBand OBJECT-TYPE
+    SYNTAX      INTEGER {
+        upper(1),
+        lower(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "When bonded channels (40 MHz) are used this object specifies if the 
+             control (primary) channel is in the lower or upper 20 MHz band of the 
+             bonded 40 MHz channel.
+             Note: This MIB object is only valid for products supporting 802.11n and
+             only applies when cmdot11NBandWidth is set to 20/40MHz."
+    ::= { cmdot11MgmtBase 20 }
+
+cmdot11NProtection OBJECT-TYPE
+    SYNTAX      INTEGER {
+        auto(1),
+        off(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "Determines if protection will be turned on or off for 802.11n mode.
+             When set to auto, the Access Point will enable protection to allow
+             802.11n clients to co-exist with 802.11a/b/g clients.
+             Note: This MIB object is only valid for products supporting 802.11n."
+    ::= { cmdot11MgmtBase 21 }
+
+
+cmdot11MulticastRate OBJECT-TYPE
+    SYNTAX      INTEGER {
+            rateAuto(1),
+            rate1Mbps(2),
+            rate2Mbps(3),
+            rate5dot5Mbps(4),
+            rate6Mbps(5),
+            rate9Mbps(6),
+            rate11Mbps(7),
+            rate12Mbps(8),
+            rate18Mbps(9),
+            rate24Mbps(10),
+            rate36Mbps(11),
+            rate48Mbps(12),
+            rate54Mbps(13)
+	}
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "Controls the physical layer transmission rate used for Multicast traffic on the 
+             Wireless interface. The defined rates are the theoretical physical link rate. 
+             Actual data rates will be much lower due to PHY and MAC overhead. If rateAuto
+             is selected, the Wireless driver will select the lowest valid rate, 
+             which for 802.11b and 802.11g is 1Mbps.
+             Note: Values above 11Mbps are not valid for 802.11b. If cmdot1154gNetMode is set 
+             to mode54g11bOnly and this object is set to a value above 11Mbps, the set will be rejected."
+    ::= { cmdot11MgmtBase 100 }
+		
+
+--
+-- cmdot11MgmtMbss contains objects used for managing configuration of all
+-- basic service sets in an access point which may have multiple BSS's.
+-- Note that if a system is not MBSS capable, the same objects are still used 
+-- but the tables will have a single entry rather than several.
+--              
+
+cmdot11MgmtMbss OBJECT IDENTIFIER ::= { cmdot11plusMgmtv2 4 }
+
+--
+-- cmdot11MbssBase contains objects used to configure basic operation
+-- of each service set.
+--
+ 
+cmdot11MbssBase OBJECT IDENTIFIER ::= { cmdot11MgmtMbss 1 }
+
+cmdot11BssTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cmdot11BssEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of entries in an MBSS system.
+        "
+    ::= { cmdot11MbssBase 14 }
+    
+cmdot11BssEntry OBJECT-TYPE
+    SYNTAX      Cmdot11BssEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry describing the characteristics of an individual BSS.  An
+         entry exists in this table for each entry of type ieee80211 (71) in
+         the ifTable.
+        "
+    INDEX   { ifIndex }
+    ::= { cmdot11BssTable 1 }
+
+Cmdot11BssEntry ::= 
+    SEQUENCE    {
+                cmdot11BssId                      PhysAddress,
+                cmdot11BssEnable                  TruthValue,
+                cmdot11BssSsid                    OCTET STRING,
+                cmdot11BssNetworkBridge           INTEGER,
+                cmdot11BssSecurityMode            INTEGER,
+                cmdot11BssClosedNetwork           TruthValue,
+                cmdot11BssAccessMode              INTEGER
+    }
+    
+cmdot11BssId OBJECT-TYPE
+    SYNTAX      PhysAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The physical address associated with this service set.
+        "
+    ::= { cmdot11BssEntry 1 }
+    
+cmdot11BssEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables this service set.
+        "
+    ::= { cmdot11BssEntry 2 }
+    
+cmdot11BssSsid OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the service set identifier for this BSS.
+        "
+    ::= { cmdot11BssEntry 3 }
+    
+cmdot11BssNetworkBridge OBJECT-TYPE
+    SYNTAX      INTEGER {
+                lan(1),
+                guest(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      obsolete
+    DESCRIPTION
+        "If set to lan(1), this service set will be authorized as a member of
+         the local area network.  If set to guest(2), this service set will
+         have access to the wide area internet, but will have restricted access
+         to the local area network.
+         "
+    ::= { cmdot11BssEntry 4 }
+    
+cmdot11BssSecurityMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                disabled(0),
+                wep(1),
+                wpaPsk(2),
+                wpa2Psk(3),
+                wpaEnterprise(4),
+                wpa2Enterprise(5),
+                radiusWep(6),
+                wpaPskwpa2Psk(7),
+                wpaEnterprisewpa2Enterprise(8)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Security mode may be chosen from Disable, WEP, WPA-PSK, WPA2-PSK,
+         WPA-Enterprise, WPA2-Enterprise, RADIUS-WEP, WPA-PSK_WPA2-PSK or 
+         WPA-Enterprise_WPA2-Enterprise.  All devices on the network must use
+         the same security mode in order to communicate.
+
+         If set to disabled(0):
+            Open system. No authentication or encryption.
+
+         If set to wep(1) then the following parameters must be set:
+            Default Transmit Key (cmdot11BssWepDefaultKey):
+                Choose which Key to use.
+            WEP Key Bit (cmdot11BssWepEncryptionMode):
+                May select from 64-Bit or 128-Bit encryption.
+            Passphrase (cmdot11BssWepPassPhrase):
+                Enter a passphrase consisting of any keyboard character
+                to be used to generate a hex WEP key.
+            Key 1-4 (cmdot11BssWep64BitKeyTable or cmdot11BssWep128BitKeyTable):
+                Enter a WEP key manually. Must use only hex character (0-9 and A-F).
+                64-bit WEP requires 10 hex characters, 128-Bit WEP requires the use of
+                26 hex characters.
+                
+         If set to wpaPsk(2) then the following parameters must be set:
+            WPA Algorithm (cmdot11BssWpaAlgorithm):
+                TKIP or AES.
+            WPA Pre-Shared Key (cmdot11BssWpaPreSharedKey):
+                Choose a unique key to authenticate with other devices on the network.
+                The Pre-Shared Key must be between 8 and 63 characters in length.
+            Group Key Renewal (cmdot11BssWpaGroupRekeyInterval):
+                This settings determines how often the group key changes.
+
+         If set to wpa2Psk(3) then the following parameters must be set:
+            WPA2 Algorithm (cmdot11BssWpaAlgorithm):
+                AES or TKIP+AES.
+            WPA2 Pre-Shared Key (cmdot11BssWpaPreSharedKey):
+                Choose a unique key to authenticate with other devices on the network.
+                The Pre-Shared Key must be between 8 and 63 characters in length.
+            Group Key Renewal (cmdot11BssWpaGroupRekeyInterval):
+                This settings determines how often the group key changes.
+                
+         If set to wpaEnterprise(4) then the following parameters must be set:
+            WPA Algorithm (cmdot11BssWpaAlgorithm):
+                TKIP or AES.
+            RADIUS Server Address (cmdot11BssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (cmdot11BssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (cmdot11BssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Key Renewal Timeout (cmdot11BssRadiusReAuthInterval):
+                Determines how often the keys should be renewed.
+                
+         If set to wpa2Enterprise(5) then the following parameters must be set:
+            WPA2 Algorithm (cmdot11BssWpaAlgorithm):
+                AES or TKIP+AES.
+            RADIUS Server Address (cmdot11BssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (cmdot11BssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (cmdot11BssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Key Renewal Timeout (cmdot11BssRadiusReAuthInterval):
+                Determines how often the keys should be renewed.
+                
+         If set to radiusWep(6) then the following parameters must be set:
+            RADIUS Server Address (cmdot11BssRadiusAddressType / cmdot11BssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (cmdot11BssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (cmdot11BssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Default Transmit Key (cmdot11BssWepDefaultKey):
+                Choose which Key to use.
+            WEP Key Bit (cmdot11BssWepEncryptionMode):
+                May select from 64-Bit or 128-Bit encryption.
+            Passphrase (cmdot11BssWepPassPhrase):
+                Enter a passphrase consisting of any keyboard character
+                to be used to generate a hex WEP key.
+            Key 1-4 (cmdot11BssWep64BitKeyTable or cmdot11BssWep128BitKeyTable):
+                Enter a WEP key manually. Must use only hex character (0-9 and A-F).
+                64-bit WEP requires 10 hex characters, 128-Bit WEP requires the use of
+                26 hex characters.
+
+         If set to wpaPsk_wpa2Psk(7) then the following parameters must be set:
+            WPA or WPA2 Algorithm (cmdot11BssWpaAlgorithm):
+                AES or TKIP+AES.
+            WPA or WPA2 Pre-Shared Key (cmdot11BssWpaPreSharedKey):
+                Choose a unique key to authenticate with other devices on the network.
+                The Pre-Shared Key must be between 8 and 63 characters in length.
+            Group Key Renewal (cmdot11BssWpaGroupRekeyInterval):
+                This settings determines how often the group key changes.
+                
+         If set to wpaEnterprise_wpa2Enterprise(8) then the following parameters must be set:
+            WPA2 Algorithm (cmdot11BssWpaAlgorithm):
+                AES or TKIP+AES.
+            RADIUS Server Address (cmdot11BssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (cmdot11BssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (cmdot11BssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Key Renewal Timeout (cmdot11BssRadiusReAuthInterval):
+                Determines how often the keys should be renewed.
+                
+                "
+    ::= { cmdot11BssEntry 5 }
+    
+cmdot11BssClosedNetwork OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls whether the device will operate in closed network mode.  If
+         set to true(1), then the network mode is closed and the SSID will not
+         be broadcast in beacon packets.  If set to false(2), then the network
+         mode is open and the SSID will be broadcast in beacon packets.
+        "
+    ::= { cmdot11BssEntry 6 }
+
+cmdot11BssAccessMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                allowAny(1),
+                allowList(2),
+                denyList(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls what stations will be given access to the device.  If set to
+         allowAny(1), then any station will be allowed to connect.  If set
+         to restrictToList(2), then only stations whose MAC address appears in
+         the cmdot11BssAccessTable will be allowed to connect.  If set to 
+         denyList(3), any station will be allowed to connect except those in 
+         the cmdot11BssAccessTable.
+        "
+    ::= { cmdot11BssEntry 7 }
+    
+--
+-- cmdot11MbssSecurity contains objects used to configure security options
+-- of each service set.
+--    
+    
+cmdot11MbssSecurity OBJECT IDENTIFIER ::= { cmdot11MgmtMbss 2 }
+
+-- Objects used to control WEP based security modes
+
+cmdot11BssWepTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cmdot11BssWepEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table used to configure settings related to the WEP security modes.
+        "
+    ::= { cmdot11MbssSecurity 1 }
+    
+cmdot11BssWepEntry OBJECT-TYPE
+    SYNTAX      Cmdot11BssWepEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry defining the WEP characteristics of an individual service set.
+         A row exists in this table for each row in the cmdot11BssTable for which
+         cmdot11BssSecurityMode is set to wep(1) or radiusWep(6).
+        "
+    INDEX   { ifIndex }
+    ::= { cmdot11BssWepTable 1 }
+    
+Cmdot11BssWepEntry ::= 
+    SEQUENCE    {
+                cmdot11BssWepDefaultKey           		Unsigned32,
+                cmdot11BssWepEncryptionMode       		INTEGER,
+                cmdot11BssWepPassPhrase           		DisplayString,
+                cmdot11BssWepSharedKeyAuthentication            INTEGER
+    }
+    
+cmdot11BssWepDefaultKey OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the default key which will be used when 64 or
+         128 bit encryption is enabled.  Indicates the entry from the 
+         cmdot11BssWep64BitKeyTable if cmdot11EncryptionMode is set to wep64(1), or
+         the entry from the cmdot11BssWep128BitKeyTable if cmdot11BssSecurityMode 
+         is set to wep128(2).
+         
+         This object may only be set to indicate an active row in the 
+         cmdot11BssWep64BitKeyTable or cmdot11BssWep128BitKeyTable.  If the value 
+         corresponds to a row which does not exist or a row which is not
+         active, the set will be rejected with an inconsistentValue error.
+        "
+    ::= { cmdot11BssWepEntry 1 }
+    
+cmdot11BssWepEncryptionMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                wep64(1),
+                wep128(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Selects the WEP encryption method used by this service set.
+         If set to wep64(1), then 64 bit WEP encryption will be
+         used with the keys from the cmdot11BssWep64BitKeyTable.  If set to 
+         wep128(2), then 128 bit WEP encryption will be used with keys from 
+         the cmdot11BssWep128BitKeyTable.
+        "
+    ::= { cmdot11BssWepEntry 2 }
+    
+cmdot11BssWepPassPhrase OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The passphrase used for WEP security.
+        "
+    ::= { cmdot11BssWepEntry 3 }
+    
+cmdot11BssWepSharedKeyAuthentication OBJECT-TYPE
+    SYNTAX      INTEGER
+    		    {
+    		     optional(1),
+    		     required(2)
+    		    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This object controls the use of Shared Key authentication in WEP protocol. If this object 
+         is set to optional(1), Shared Key authentication is optional. If set to required(2),
+         Shared Key authentication is required for WEP.
+        "
+    ::= { cmdot11BssWepEntry 4 }
+    
+cmdot11BssWep64BitKeyTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cmdot11BssWep64BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of 40 bit key values used when operating in WEP 64 mode."
+    ::= { cmdot11MbssSecurity 2 }
+    
+cmdot11BssWep64BitKeyEntry OBJECT-TYPE
+    SYNTAX      Cmdot11BssWep64BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A key to be used by the row in the cmdot11BssTable identified by the 
+         value of ifIndex in the row index. "
+    INDEX   { ifIndex, cmdot11BssWep64BitKeyIndex }
+    ::= { cmdot11BssWep64BitKeyTable 1 }
+    
+Cmdot11BssWep64BitKeyEntry ::= 
+    SEQUENCE    {
+                cmdot11BssWep64BitKeyIndex           Integer32,
+                cmdot11BssWep64BitKeyValue           OCTET STRING,
+                cmdot11BssWep64BitKeyStatus          RowStatus
+    }
+    
+cmdot11BssWep64BitKeyIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..4)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Identifies an instance of a key among those used by the service set 
+         identified by the value of ifIndex in the row index."
+    ::= { cmdot11BssWep64BitKeyEntry 1 }
+    
+cmdot11BssWep64BitKeyValue OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(5))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A 40 bit key to be used when the corresponding instance of
+         cmdot11BssSecurityMode is set to wep(1) and the corresponding instance
+         of cmdot11BssWepEncryptionMode is set to wep64(1)."
+    ::= { cmdot11BssWep64BitKeyEntry 2 }
+    
+cmdot11BssWep64BitKeyStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         cmdot11BssAccessStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of cmdot11BssWep64BitKeyValue has been set.
+         
+         Only rows with a status of active(1) will be applied.
+         
+         This object may not be set to a value of notInService(2) or destroy(6)
+         if the corresponding instance of cmdot11BssWepDefaultKey identifies
+         this row as they current key in use.  Such an attempt will be rejected
+         with an inconsistentValue error."
+    ::= { cmdot11BssWep64BitKeyEntry 3 }
+    
+    
+cmdot11BssWep128BitKeyTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cmdot11BssWep128BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of 104 bit key values used when operating in WEP 128 mode."
+    ::= { cmdot11MbssSecurity 3 }
+    
+cmdot11BssWep128BitKeyEntry OBJECT-TYPE
+    SYNTAX      Cmdot11BssWep128BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A key to be used by the row in the cmdot11BssTable identified by the 
+         value of ifIndex in the row index."
+    INDEX   { ifIndex, cmdot11BssWep128BitKeyIndex }
+    ::= { cmdot11BssWep128BitKeyTable 1 }
+    
+Cmdot11BssWep128BitKeyEntry ::= 
+    SEQUENCE    {
+                cmdot11BssWep128BitKeyIndex           Integer32,
+                cmdot11BssWep128BitKeyValue           OCTET STRING,
+                cmdot11BssWep128BitKeyStatus          RowStatus
+    }
+    
+cmdot11BssWep128BitKeyIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..4)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Identifies an instance of a key among those used by the service set 
+         identified by the value of ifIndex in the row index."
+    ::= { cmdot11BssWep128BitKeyEntry 1 }
+    
+cmdot11BssWep128BitKeyValue OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(13))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A 104 bit key to be used when the corresponding instance of
+         cmdot11BssSecurityMode is set to wep(1) and the corresponding instance
+         of cmdot11BssWepEncryptionMode is set to wep128(128)."
+    ::= { cmdot11BssWep128BitKeyEntry 2 }
+    
+cmdot11BssWep128BitKeyStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         cmdot11BssAccessStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of cmdot11BssWep128BitKeyValue has been set.
+         
+         Only rows with a status of active(1) will be applied.
+         
+         This object may not be set to a value of notInService(2) or destroy(6)
+         if the corresponding instance of cmdot11BssWepDefaultKey identifies
+         this row as the current key in use.  Such an attempt will be rejected
+         with an inconsistentValue error.
+        "
+    ::= { cmdot11BssWep128BitKeyEntry 3 }
+
+-- Objects used to control WPA based security modes
+    
+cmdot11BssWpaTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cmdot11BssWpaEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table used to configure settings related to the WPA security modes.
+        "
+    ::= { cmdot11MbssSecurity 4 }
+    
+cmdot11BssWpaEntry OBJECT-TYPE
+    SYNTAX      Cmdot11BssWpaEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry defining the WPA characteristics of an individual service set.
+         A row exists in this table for each row in the cmdot11BssTable for which
+         cmdot11BssSecurityMode is set to wpaPsk(2), wpa2Psk(3), wpaEnterprise(4), 
+         or wpa2Enterprise(5).
+        "
+    INDEX   { ifIndex }
+    ::= { cmdot11BssWpaTable 1 }
+    
+Cmdot11BssWpaEntry ::=
+    SEQUENCE    {
+                cmdot11BssWpaAlgorithm            INTEGER,
+                cmdot11BssWpaPreSharedKey         OCTET STRING,
+                cmdot11BssWpaGroupRekeyInterval   Unsigned32
+    }
+    
+cmdot11BssWpaAlgorithm OBJECT-TYPE
+    SYNTAX      INTEGER {
+                tkip(1),
+                aes(2),
+                tkipPlusAes(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the WPA encryption mode used by the service set.  
+         The WPA algorithm for WPA-PSK and WPA-Enterprise security mode is either
+         tkip(1) or aes(2).
+        
+         The WPA algorithm for WPA2-PSK and WPA2-Enterprise security mode is either
+         aes(2) or tkipPlusAes(3).
+        "
+    ::= { cmdot11BssWpaEntry 1 }
+    
+cmdot11BssWpaPreSharedKey OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (8..64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPA Pre-Shared Key (PSK) used by this service set.  This 
+         value MUST be either a 64 byte hexadecimal number, OR an 8 to 63 
+         character ASCII string.
+        "
+    ::= { cmdot11BssWpaEntry 2 }
+    
+cmdot11BssWpaGroupRekeyInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPA Group Rekey Interval for this service set. If set to zero, 
+         periodic rekeying is disabled for this service set.
+        "
+    ::= { cmdot11BssWpaEntry 3 }
+    
+-- Objects used to control RADIUS based security modes
+
+cmdot11BssRadiusTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cmdot11BssRadiusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table used to configure settings related to the RADIUS security 
+         modes, including WPA-Enterprise, WPA2-Enterprise and RADIUS-WEP.
+        "
+    ::= { cmdot11MbssSecurity 5 }
+    
+cmdot11BssRadiusEntry OBJECT-TYPE
+    SYNTAX      Cmdot11BssRadiusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+         "An entry defining the RADIUS characteristics of an individual service 
+          set.  A row exists in this table for each row in the cmdot11BssTable 
+          for which cmdot11BssSecurityMode is set to wpaEnterprise(4), 
+          wpa2Enterprise(5), or radiusWep(6).
+         "
+    INDEX   { ifIndex }
+    ::= { cmdot11BssRadiusTable 1 }
+    
+Cmdot11BssRadiusEntry ::= 
+    SEQUENCE    {
+                cmdot11BssRadiusAddressType       InetAddressType,
+                cmdot11BssRadiusAddress           InetAddress,
+                cmdot11BssRadiusPort              Unsigned32,
+                cmdot11BssRadiusKey               DisplayString,
+                cmdot11BssRadiusReAuthInterval    Unsigned32
+    }
+    
+cmdot11BssRadiusAddressType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The type of internet address used for cmdot11BssRadiusAddress.
+        "
+    ::= { cmdot11BssRadiusEntry 1 }
+    
+cmdot11BssRadiusAddress OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The internet address of the RADIUS server for this service set.
+        "
+    ::= { cmdot11BssRadiusEntry 2 }
+    
+cmdot11BssRadiusPort OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The UDP port used to communicate with the RADIUS server for this 
+         service set.
+        "
+    ::= { cmdot11BssRadiusEntry 3 }
+    
+cmdot11BssRadiusKey OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The RADIUS key.
+        "
+    ::= { cmdot11BssRadiusEntry 4 }
+    
+cmdot11BssRadiusReAuthInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The network re-authentication interval.  If set to zero, no
+         re-authentication will be performed.
+        "
+    ::= { cmdot11BssRadiusEntry 5 }
+    
+-- Objects used to control WPA factory default setting
+
+cmdot11BssWpaPasscode   OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..32))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The WPA Passcode used to generate the WPA factory default setting.  
+        "
+    ::= { cmdot11MbssSecurity 100 }
+    
+--
+-- cmdot11MbssAccess contains objects used to configure access restrictions
+-- of each service set.
+--
+    
+cmdot11MbssAccess OBJECT IDENTIFIER ::= { cmdot11MgmtMbss 3 }
+
+cmdot11BssAccessTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF Cmdot11BssAccessEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of MAC addresses which defines the MAC address based access 
+         restrictions for the system.
+        "
+    ::= { cmdot11MbssAccess 1 }
+    
+cmdot11BssAccessEntry OBJECT-TYPE
+    SYNTAX      Cmdot11BssAccessEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A row in the table which specifies a single MAC address for a given
+         service set.
+        "
+    INDEX   { ifIndex, cmdot11BssAccessIndex }
+    ::= { cmdot11BssAccessTable 1 }
+    
+Cmdot11BssAccessEntry ::= 
+    SEQUENCE    {
+                cmdot11BssAccessIndex       Integer32,
+                cmdot11BssAccessStation     PhysAddress,
+                cmdot11BssAccessStatus      RowStatus
+    }
+    
+cmdot11BssAccessIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..16)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Indicates the instance of this table row.
+        "
+    ::= { cmdot11BssAccessEntry 1 }
+    
+cmdot11BssAccessStation OBJECT-TYPE
+    SYNTAX      PhysAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A MAC address of a station which will be allowed to connect to the 
+         service set if cmdot11BssAccessMode is set to restrictToList(2), or
+         forbidden if cmdot11BssAccessMode is set to denyList(3).
+        "
+    ::= { cmdot11BssAccessEntry 2 }
+    
+cmdot11BssAccessStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         cmdot11BssAccessStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of cmdot11BssAccessStation has been set.
+         
+         Only rows with a status of active(1) will be applied.
+        "
+    ::= { cmdot11BssAccessEntry 3 }
+
+-- cmdot11ApplySettings: do 'on the fly' config with settings from above.
+-- This scalar object was placed by itself at cmdot11plusMgmtv2 100 because
+-- it applies all settings from all current and possibly future 802.11
+-- groups.  Wanted to leave plenty of room to add new groups in the future.
+
+cmdot11ApplySettings OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If set to true(1), the wi-fi driver will be restarted using the 
+         current configuration from non-volatile storage.  This object may be 
+         used to invoke an immediate reconfiguration of the wi-fi system without 
+         requiring a full reboot.  
+
+         Unless this object is explicitly set to true(1), any settings made via 
+         other objects in this MIB will be stored to non-volatile storage, but 
+         will not take effect until the next reboot.  
+
+         Always returns false(2) when read.
+        "
+    ::= { cmdot11plusMgmtv2 100 }
+
+cmdot11ResetToDefaults OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Setting this object to true(1) causes all the wireless settings
+         including Primary and Guest Network settings to be reset to factory
+         defaults. 
+                  
+         Reading this object always returns false(2). 
+        "
+    ::= { cmdot11plusMgmtv2 101 }
+               
+cmdot11WpsEnable OBJECT-TYPE
+    SYNTAX      TruthValue 
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Setting this object to true(1) enables the Wireless WPS feature.
+        Setting this object to false(2) disables the Wireless WPS feature.
+        "
+    ::= { cmdot11plusWps 1 }
+   
+cmdot11WpsMethod OBJECT-TYPE
+    SYNTAX      INTEGER                             
+    			{
+                 wpsPBC(1),
+                 wpsPIN(2)
+                }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "WPS method may be choosen from either Push Button Configuration(1) or Personal Information Number(2).
+        
+        if set to wpsPBC(1), user has to push a button, either an actual or virtual one, on both WPS device.
+        if set to wpsPIN(2), user has to input a wireless client's PIN on the WPS AP."
+    ::= { cmdot11plusWps 2 }
+   
+cmdot11WpsPinNumber OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Input a wireless client's PIN number to let it be able to register with the WPS AP."
+    ::= { cmdot11plusWps 3 }
+   
+cmdot11WpsAddClient OBJECT-TYPE
+    SYNTAX      TruthValue 
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Setting this object to true(1) starts the Wireless WPS procedure.
+        
+        Reading this object always returns false(2).
+        "
+    ::= { cmdot11plusWps 4 }
+   
+END   
+
+
+

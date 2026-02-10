@@ -1,0 +1,494 @@
+-- vim: set ts=4, set expandtab, match Todo /\%>79v/
+-- ***********************************************************************
+-- ***********************************************************************
+--                             ROUTER
+--                      SNMP/MIB : MIB Files
+--
+--            Copyright (C) 2012 Hitron Technologies Inc.
+--                       All Rights Reserved.
+-- ***********************************************************************
+--  Filename    : HITRON-RG-HOTSPOT.mib
+--  Description : HotSpot MIB
+-- ***********************************************************************
+--
+
+HITRON-RG-HOTSPOT-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+    , OBJECT-TYPE
+    , NOTIFICATION-TYPE
+    , enterprises
+    , Integer32
+    , IpAddress
+    , Unsigned32
+    , Counter32
+        FROM SNMPv2-SMI -- RFC2578
+
+    DisplayString
+    , MacAddress
+    , TruthValue
+    , RowStatus
+    , TimeStamp
+    , DateAndTime
+        FROM SNMPv2-TC  -- RFC2579
+
+    InetAddressType
+    , InetAddress
+    , InetAddressPrefixLength
+    , InetPortNumber
+    , InetVersion
+        FROM INET-ADDRESS-MIB -- RFC4001
+
+    hitronRg
+        FROM HITRON-RG-MIB
+    ;  --End of IMPORTS
+
+hitronRgHotSpot  MODULE-IDENTITY
+    LAST-UPDATED    "201406171512Z" -- Jun. 17, 2014
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "Haishuang Yan
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8122
+        E-mail: yanhaishuang@sz.hitrontech.com"
+
+    DESCRIPTION
+        "MIB module for HotSpot configuration"
+
+    REVISION    "201406171512Z" -- Jun. 17, 2014
+    DESCRIPTION
+        "Add hitronHotSpotGreTunnelAssociated2DOT4GSsid and hitronHotSpotGreTunnelAssociated5GSsid"
+
+    REVISION    "201406161449Z" -- Jun. 16, 2014
+    DESCRIPTION
+        "Initial Version"
+
+    ::= { hitronRg 23 }
+
+    -- HotSpot
+    hitronHotSpotGlobalCtrl    OBJECT IDENTIFIER  ::= { hitronRgHotSpot 1 }
+
+        hitronHotSpotGlobalEnabled OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "This object control whether HotSpot is enabled."
+            DEFVAL { false }
+            ::= { hitronHotSpotGlobalCtrl 1 }
+
+        hitronHotSpotGlobalType OBJECT-TYPE
+            SYNTAX      INTEGER {
+                            greTunnel(1)
+                        }
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "This object control the HotSpot function type. The type supported
+                 depends on the product. Not always all types are supported. "
+            ::= { hitronHotSpotGlobalCtrl 2 }
+
+    -- GRE Tunnel
+    hitronHotSpotGreTunnelCtrl    OBJECT IDENTIFIER  ::= { hitronRgHotSpot 2 }
+
+        hitronHotSpotGreTunnelTerminationServerDiscoveryType OBJECT-TYPE
+            SYNTAX      INTEGER {
+                            auto(1),
+                            static(2)
+                        }
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "This object decide the method used to provision the hitronHotSpotGreTunnelTerminationServersTable.
+                 If set to auto(1), device would do the DNS query for the FQDN name defined in
+                 hitronHotSpotGreTunnelTerminationServerFqdn and update the hitronHotSpotGreTunnelTerminationServersTable
+                 with information retieved from DNS response.
+
+                 If this object is set to static - items in the hitronHotSpotGreTunnelTerminationServersTable
+                 should be created manually."
+            DEFVAL { auto }
+            ::= { hitronHotSpotGreTunnelCtrl 1 }
+
+        hitronHotSpotGreTunnelTerminationServerFqdnDnsRetryTimer OBJECT-TYPE
+            SYNTAX      Unsigned32 (30..1800)
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Retry timer(s) triggered when device is unable to resolve the Tunnel
+                 Termination Server FQDN.
+                 Min: 30 seconds Max: 1800 seconds."
+            DEFVAL { 30 }
+            ::= { hitronHotSpotGreTunnelCtrl 2 }
+
+        hitronHotSpotGreTunnelTerminationServerPingCount OBJECT-TYPE
+            SYNTAX      Unsigned32 (1..10)
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Number of ICMP PINGs sent at regular interval for Tunnel Termination Server
+                 reachability health check."
+            DEFVAL { 3 }
+            ::= { hitronHotSpotGreTunnelCtrl 3 }
+
+        hitronHotSpotGreTunnelTerminationServerPingInterval OBJECT-TYPE
+            SYNTAX      Unsigned32 (10..1800)
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Configured interval between Tunnel Termination Server reachability health check.
+                 the unit for value is second."
+            DEFVAL { 60 }
+            ::= { hitronHotSpotGreTunnelCtrl 4 }
+
+        hitronHotSpotGreTunnelTerminationServerFailoverThreshold OBJECT-TYPE
+            SYNTAX      Unsigned32 (1..10)
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Number of consecutive un-acknowledged pings before the device determines that
+                 the Primary Gre Tunnel Termination Server is no longer available and the device
+                 starts failover to the Secondary Tunnel Termination Server."
+            DEFVAL { 3 }
+            ::= { hitronHotSpotGreTunnelCtrl 5 }
+
+        hitronHotSpotGreTunnelOptOut OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "This object define if the user has opted out of hotspot service.
+                 Returns TRUE if hitronHotSpotEnabled is set to disable using SNMP or config
+                 file via TFTP or from ACS via TR-069. If set to TRUE, the device must ignore
+                 any GRE hotspot setting and disable the GRE hotspot function."
+            DEFVAL { false }
+            ::= { hitronHotSpotGreTunnelCtrl 6 }
+
+        hitronHotSpotGreTunnelInsertSsidInDhcpOption OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Enable or disable insertion of DHCP Agent Information Option circuit-ID suboption."
+            DEFVAL { true }
+            ::= { hitronHotSpotGreTunnelCtrl 7 }
+
+        hitronHotSpotGreTunnelInsertMacInDhcpOption OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Enable or disable insertion of DHCP Agent Information Option Remote-ID suboption.
+                 If Enabled, the Gateway will insert the DHCP relay agent Remote-ID suboption with
+                 the hotspot client MAC address."
+            DEFVAL { true }
+            ::= { hitronHotSpotGreTunnelCtrl 8 }
+
+        hitronHotSpotGreTunnelDefaultDscp OBJECT-TYPE
+            SYNTAX      Unsigned32 (0..63)
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "This object defines the DSCP values used for marking the GRE tunneled packets.
+                 Individual ToS overwrite could be done via hitronWifiMbssIpRouteTypeOfService. If
+                 hitronHotSpotGreTunnelDefaultDscp and hitronWifiMbssIpRouteTypeOfService both exists,
+                 hitronWifiMbssIpRouteTypeOfService for each SSID should overrule the setting in
+                 hitronHotSpotGreTunnelDefaultDscp."
+            ::= { hitronHotSpotGreTunnelCtrl 9 }
+
+        hitronHotSpotGreTunnelAssociated2DOT4GSsid OBJECT-TYPE
+            SYNTAX      BITS {
+                            ssid1(0),
+                            ssid2(1),
+                            ssid3(2),
+                            ssid4(3),
+                            ssid5(4),
+                            ssid6(5),
+                            ssid7(6),
+                            ssid8(7),
+                            ssid9(8),
+                            ssid10(9),
+                            ssid11(10),
+                            ssid12(11),
+                            ssid13(12),
+                            ssid14(13),
+                            ssid15(14),
+                            ssid16(15)
+                        }
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "This object defines the 2.4G SSID associated with this Hotspot tunnel
+                 Default value = 0x3c00 (0011110000000000)
+                 Only Operator's SSIDs(ssid3~6) are permitted to be associated with hotspot function.
+                 Setting for the other SSIDs (ssid1, ssid2, ssid7 and ssid8) has no effect."
+            ::= { hitronHotSpotGreTunnelCtrl 10 }
+
+        hitronHotSpotGreTunnelAssociated5GSsid OBJECT-TYPE
+            SYNTAX      BITS {
+                            ssid1(0),
+                            ssid2(1),
+                            ssid3(2),
+                            ssid4(3),
+                            ssid5(4),
+                            ssid6(5),
+                            ssid7(6),
+                            ssid8(7),
+                            ssid9(8),
+                            ssid10(9),
+                            ssid11(10),
+                            ssid12(11),
+                            ssid13(12),
+                            ssid14(13),
+                            ssid15(14),
+                            ssid16(15)
+                        }
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "This object defines the 5G SSID associated with this Hotspot tunnel
+                 Default value = 0x3c00 (0011110000000000)
+                 Only Operator's SSIDs(ssid3~6) are permitted to be associated with hotspot function.
+                 Setting for the other SSIDs (ssid1, ssid2, ssid7 and ssid8) has no effect."
+            ::= { hitronHotSpotGreTunnelCtrl 11 }
+
+        hitronHotSpotGreTunnelSelectedInterface OBJECT-TYPE
+            SYNTAX      INTEGER {
+                            cableModemInterface(1),
+                            eRouterInterface(2)
+                        }
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "This object controls which interface is used for the GRE-tunnel."
+            DEFVAL { cableModemInterface }
+            ::= { hitronHotSpotGreTunnelCtrl 12 }
+
+        hitronHotSpotGreTunnelTcpMssClampSize OBJECT-TYPE
+            SYNTAX      Unsigned32 (700..1422)
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "This objects controls the tcp mss clamping size for GRE-tunnel.
+                 If enable the VLAN tag when the packets are encapsulated into tunnel traffic,
+                 the max MSS size should be 1418; else, the max MSS size should be 1422."
+            DEFVAL { 1414 }
+            ::= { hitronHotSpotGreTunnelCtrl 13 }
+
+        -- HotSpot GRE Tunnel table
+        hitronHotSpotGreTunnelTerminationServersTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF HotSpotGreTunnelTerminationServersEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "A table used to configure settings related to the GRE tunnel termination server info."
+            ::= { hitronHotSpotGreTunnelCtrl 14 }
+
+            hitronHotSpotGreTunnelTerminationServersEntry OBJECT-TYPE
+                SYNTAX      HotSpotGreTunnelTerminationServersEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Configuration parameters for an individual Hotspot Gre Tunnel Termination Server."
+                INDEX       { hitronHotSpotGreTunnelTerminationServersIndex }
+                ::= { hitronHotSpotGreTunnelTerminationServersTable 1 }
+
+            HotSpotGreTunnelTerminationServersEntry ::=
+                SEQUENCE {
+                    hitronHotSpotGreTunnelTerminationServersIndex      INTEGER,
+                    hitronHotSpotGreTunnelTerminationServerFqdn        OCTET STRING,
+                    hitronHotSpotGreTunnelTerminationServerPort        Unsigned32,
+                    hitronHotSpotGreTunnelTerminationServerPriority    Unsigned32,
+                    hitronHotSpotGreTunnelTerminationServerPrimary     TruthValue,
+                    hitronHotSpotGreTunnelTerminationServerIp          InetAddress,
+                    hitronHotSpotGreTunnelTerminationServerIPSource    INTEGER,
+                    hitronHotSpotGreTunnelTerminationServerRowStatus   RowStatus
+                }
+
+            hitronHotSpotGreTunnelTerminationServersIndex OBJECT-TYPE
+                SYNTAX      INTEGER (0..20)
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "The Hotspot Gre Tunnel Termination Servers index.
+                     Please add the Hotspot Gre Tunnel Termination Servers according to the
+                     order of priority, and please follow the order of index 1, 2, 3...20 to add.
+                     When the hitronHotSpotGreTunnelTerminationServerDiscoveryType is auto,
+                     we only accept the Fqdn information which is set as index 0 in the config file;
+                     When the hitronHotSpotGreTunnelTerminationServerDiscoveryType is static,
+                     we only accept the server informatins which are set as index 1,2,3...20
+                     in the config file."
+                ::= { hitronHotSpotGreTunnelTerminationServersEntry 1 }
+
+            hitronHotSpotGreTunnelTerminationServerFqdn  OBJECT-TYPE
+                SYNTAX      OCTET STRING (SIZE (0..64))
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "Hotspot Gre Tunnel Termination Server's FQDN.
+                     This object should be provided always if GRE tunnel
+                     is enabled to allow the device to do DNS query for
+                     the GRE tunnel termination server information."
+                ::= { hitronHotSpotGreTunnelTerminationServersEntry 2 }
+
+            hitronHotSpotGreTunnelTerminationServerPort OBJECT-TYPE
+                SYNTAX      Unsigned32 (0..65535)
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "Hotspot Gre Tunnel Termination Server port."
+                ::= { hitronHotSpotGreTunnelTerminationServersEntry 3 }
+
+            hitronHotSpotGreTunnelTerminationServerPriority OBJECT-TYPE
+                SYNTAX      Unsigned32 (0..65535)
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "Hotspot Gre Tunnel Termination Server Priority."
+                ::= { hitronHotSpotGreTunnelTerminationServersEntry 4 }
+
+            hitronHotSpotGreTunnelTerminationServerPrimary OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "This object identifies whether Hotspot Gre Tunnel
+                     Termination Server is Primary or not.  If the value
+                     is true, then it is primary; otherwise, not."
+                ::= { hitronHotSpotGreTunnelTerminationServersEntry 5 }
+
+            hitronHotSpotGreTunnelTerminationServerIp OBJECT-TYPE
+                SYNTAX      InetAddress
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "This object define the IP address used as the GRE termination Server.
+                     Its value might be retrieved from DNS reply if the
+                     hitronHotSpotGreTunnelTerminationServerDiscoveryType is auto.
+                     If hitronHotSpotGreTunnelTerminationServerDiscoveryType is static,
+                     this OID should be provisionined in the DOCSIS config file to provide the
+                     GRE termination server IP info."
+                ::= { hitronHotSpotGreTunnelTerminationServersEntry 6 }
+
+            hitronHotSpotGreTunnelTerminationServerIPSource OBJECT-TYPE
+                SYNTAX      INTEGER {
+                                viaDocsisConfig(1),
+                                viaDnsRecord(2),
+                                manually(3)
+                            }
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "Reflect the method the Gre tunnel termination server IP record was obtained."
+                ::= { hitronHotSpotGreTunnelTerminationServersEntry 7 }
+
+            hitronHotSpotGreTunnelTerminationServerRowStatus OBJECT-TYPE
+                SYNTAX      RowStatus
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "If hitronHotSpotGreTunnelTerminationServerDiscoveryType is auto:
+                     The device must assign a RowStatus of notReady(3) to any new row entry created
+                     without a hitronHotSpotGreTunnelTerminationServerIpjust in case the DNS query fails.
+
+                     If hitronHotSpotGreTunnelTerminationServerDiscoveryType is static:
+                     The RowStatus interlock for creation and deletion of row entries.
+                     The device must not allow the NMS to set RowStatus to notInService(2).
+                     The device must assign a RowStatus of notInService(2) to any new row entry created with a non-unique,
+                     hitronHotSpotGreTunnelTerminationServerIp or hitronHotSpotGreTunnelTerminationPriority values.
+                     The device must assign a RowStatus of notReady(3) to any new row entry created
+                     without hitronHotSpotGreTunnelTerminationServerIp & hitronHotSpotGreTunnelTerminationPriority.
+                     The device will prevent modification of this table's columns and return an inconsistentValue error,
+                     if the NMS attempts to make such modifications while the RowStatus is active(1)."
+                ::= { hitronHotSpotGreTunnelTerminationServersEntry 8 }
+
+        -- HotSpot SSID Setting Table
+        hitronHotSpotGreTunnelMultipleSsidSettingTable OBJECT-TYPE
+            SYNTAX      SEQUENCE OF HotSpotGreTunnelMultipleSsidSettingEntry
+            MAX-ACCESS  not-accessible
+            STATUS      current
+            DESCRIPTION
+                "A list of configuration entries for individual SSIDs
+                 Associated with the Hotspot GreTunnel."
+            ::= { hitronHotSpotGreTunnelCtrl 15 }
+
+            hitronHotSpotGreTunnelMultipleSsidSettingEntry OBJECT-TYPE
+                SYNTAX      HotSpotGreTunnelMultipleSsidSettingEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Configuration parameters for each SSID associated with the HotSpot.
+                     Only SSIDs that are associated with the Hotspot should return proper value."
+                INDEX       { hitronHotSpotGreTunnelSsidIndex }
+                ::= { hitronHotSpotGreTunnelMultipleSsidSettingTable 1 }
+
+            HotSpotGreTunnelMultipleSsidSettingEntry ::=
+                SEQUENCE {
+                    hitronHotSpotGreTunnelSsidIndex                    INTEGER,
+                    hitronHotSpotGreTunnelSsidAssociatedWithHotspot    TruthValue,
+                    hitronHotSpotGreTunnelSsidVlanTag                  Unsigned32,
+                    hitronHotSpotGreTunnelSsid                         OCTET STRING,
+                    hitronHotSpotGreTunnelSsidVlanTagEnable            TruthValue
+                }
+
+            hitronHotSpotGreTunnelSsidIndex OBJECT-TYPE
+                SYNTAX      INTEGER
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "The Hotspot Ssid Index."
+                ::= { hitronHotSpotGreTunnelMultipleSsidSettingEntry 1 }
+
+            hitronHotSpotGreTunnelSsidAssociatedWithHotspot OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-only
+                STATUS      current
+                DESCRIPTION
+                    "Indicates if this specific SSID is associated with the Hotspot or not.
+                     Setting the association is done via  hitronHotSpotGreTunnelAssociatedSsid.
+                     If the value is true, then it is associated."
+                ::= { hitronHotSpotGreTunnelMultipleSsidSettingEntry 2 }
+
+            hitronHotSpotGreTunnelSsidVlanTag OBJECT-TYPE
+                SYNTAX      Unsigned32 (1..4094)
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "VLAN ID used in the 802.1q VLAN tag inserted in the tunneled 802.3 frame.
+                     VLAN ID is configured for each SSID and is unique"
+                ::= { hitronHotSpotGreTunnelMultipleSsidSettingEntry 3 }
+
+            hitronHotSpotGreTunnelSsid OBJECT-TYPE
+                SYNTAX      OCTET STRING
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Hotspot SSID string.
+                     This OID can configure ONLY SSIDs that are associated with the hotspot
+                     (per hitronHotSpotGreTunnelAssociatedSsid )
+                     Other SSID parameters setting is still controlled by hitronWifiBssTable."
+                ::= { hitronHotSpotGreTunnelMultipleSsidSettingEntry 4 }
+
+            hitronHotSpotGreTunnelSsidVlanTagEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "The object controls whether we will insert the Vlan tag when the packets
+                     are encapsulated into tunnel traffic."
+                DEFVAL { false }
+                ::= { hitronHotSpotGreTunnelMultipleSsidSettingEntry 5 }
+
+    hitronHotSpotCommit    OBJECT IDENTIFIER  ::= { hitronRgHotSpot 3 }
+        hitronHotSpotCommitAll  OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Commit all HotSpot settings."
+            ::= { hitronHotSpotCommit 1 }
+
+END

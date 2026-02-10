@@ -1,0 +1,1009 @@
+M5T-PC20-VOIP-GW-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Unsigned32                          FROM SNMPv2-SMI
+    ifIndex                             FROM IF-MIB
+    Uri                                 FROM URI-TC-MIB
+    m5tApplications                     FROM M5T-MIB
+    TruthValue                          FROM SNMPv2-TC
+    pktcEUEDevOpIndex                   FROM CL-PKTC-EUE-DEV-MIB
+    pktcEUERSTNfBasicCallEntry,
+    pktcEUERSTNfCallFwdEntry,
+    pktcEUERSTNfMWIEntry,
+    pktcEUERSTNfEmSvcEntry              FROM CL-PKTC-EUE-RST-MIB;
+
+
+m5tPc20VoipGatewayMIB MODULE-IDENTITY
+    LAST-UPDATED "201205010000Z" -- May 1, 2012
+    ORGANIZATION "Media5 Corporation"
+    CONTACT-INFO "Media5 Corporation
+                  4229 Garlock Street
+                  Sherbrooke, Quebec
+                  J1L 2C8, Canada
+                  Tel: 1-819-829-8749
+                  Fax: 1-819-829-5100"
+    DESCRIPTION
+            "This MIB module defines the namespace organization for the
+             m5t PC2.0 VOIP gateway OID registry."
+    ::=  { m5tApplications 50 }
+
+m5tPc20VoipGatewayMIBObjects        OBJECT IDENTIFIER ::=  { m5tPc20VoipGatewayMIB 1 }
+
+sipImsGroup                         OBJECT IDENTIFIER ::=  { m5tPc20VoipGatewayMIBObjects 50 }
+telephonyFeatureGroup               OBJECT IDENTIFIER ::=  { m5tPc20VoipGatewayMIBObjects 100 }
+
+sipImsDevice                        OBJECT IDENTIFIER ::=  { sipImsGroup 1 }
+sipImsDomain                        OBJECT IDENTIFIER ::=  { sipImsGroup 50 }
+sipImsEndpoint                      OBJECT IDENTIFIER ::=  { sipImsGroup 70 }
+sipImsUser                          OBJECT IDENTIFIER ::=  { sipImsGroup 100 }
+
+sipImsCustomizationGroup            OBJECT IDENTIFIER ::=  { sipImsDevice 1 }
+sipImsCodecGroup                    OBJECT IDENTIFIER ::=  { sipImsDevice 50 }
+
+telephonyFeatureRSTExtension        OBJECT IDENTIFIER ::=  { telephonyFeatureGroup 1 }
+
+basicCall                           OBJECT IDENTIFIER ::=  { telephonyFeatureRSTExtension 1 }
+callForward                         OBJECT IDENTIFIER ::=  { telephonyFeatureRSTExtension 9 }
+messageWaitingIndicator             OBJECT IDENTIFIER ::=  { telephonyFeatureRSTExtension 14 }
+emergencyCall                       OBJECT IDENTIFIER ::=  { telephonyFeatureRSTExtension 18 }
+hotline                             OBJECT IDENTIFIER ::=  { telephonyFeatureRSTExtension 22 }
+distinctiveRing                     OBJECT IDENTIFIER ::=  { telephonyFeatureRSTExtension 50 }
+threeWayCalling                     OBJECT IDENTIFIER ::=  { telephonyFeatureRSTExtension 51 }
+callWaiting                         OBJECT IDENTIFIER ::=  { telephonyFeatureRSTExtension 52 }
+cidDisCIDCallWaiting                OBJECT IDENTIFIER ::=  { telephonyFeatureRSTExtension 53 }
+
+m5tPc20VoipGatewayVersion       OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This MIB value contains the version of the VOIP gateway."
+    ::= { m5tPc20VoipGatewayMIBObjects 1 }
+
+sipImsIMPUObtentionMethod       OBJECT-TYPE
+    SYNTAX      INTEGER {
+         explicitIMPU                   (1),
+         macBasedDiscovery              (2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Specifies how the IMPU(s) are obtained.
+
+         explicitIMPU: The IMPU(s) is explicitly specified in variable
+           pktcEUEUsrIMPUId.
+         macBasedDiscovery: The default IMPU to register is discovered
+           while registering a temporary IMPU generated from the MAC address
+           and the port number."
+    DEFVAL { explicitIMPU }
+    ::= { sipImsCustomizationGroup 1 }
+
+sipImsMacBasedDiscoveryK1                  OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "{@OWNER_BASE_CLASS=CMixOwnerOctetStringScalar@}
+         {@USER_BASE_CLASS=CMixUserOctetStringScalar@}
+         This is a secret key used to calculate the digest authentication
+         password. It is only used when sipImsIMPUObtentionMethod is configured
+         as 'macBasedDiscovery'."
+    DEFVAL { ''h }
+    ::= { sipImsCustomizationGroup 2 }
+
+sipImsUserAgent OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The user agent header value to use inside SIP packets."
+    ::= { sipImsCustomizationGroup 3 }
+
+sipImsPcscfBypassPubRepAddr            OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This is the network address that receives the call statistics report
+         from the E-DVA. Publish reports must be sent at the end of each call
+         if enabled. If not empty, this variable overrides the content of the
+         pktcEDVACodecPubRepAddr variable which does almost the same thing with
+         the exception that sipImsProxyBypassPubRepAddr bypasses the current
+         configured P-CSCF and directly sends the report to the destination.
+         Hense, bypassing the P-CSCF.
+         The address can be an FQDN or an IP address in text representation. "
+         ::= { sipImsCodecGroup 1 }
+
+sipImsDomainTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF SipImsDomainEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains IMS configuration for all available domains."
+    ::= { sipImsDomain 1 }
+
+sipImsDomainEntry       OBJECT-TYPE
+    SYNTAX      SipImsDomainEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table contains IMS configuration for a given domain."
+    INDEX { pktcEUEDevOpIndex }
+    ::= { sipImsDomainTable 1 }
+
+SipImsDomainEntryDef ::=
+    SEQUENCE {
+             sipEnableRegistrationWithMutualAuthentication      TruthValue,
+             sipImsEnableGRUU                                   TruthValue,
+             sipImsHeadersToBeRemovedFromAllSipPackets          OCTET STRING,
+             sipRegistrationContactValidationMethod             INTEGER
+             }
+
+sipEnableRegistrationWithMutualAuthentication    OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies whether the mutual authentication must be done when received 200 to REGISTER. This is enabled for the associated domain."
+    DEFVAL { true }
+    ::= { sipImsDomainEntry 1 }
+
+sipImsEnableGRUU                OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies whether the E-UE supports GRUU or not on the domain defined
+         by the row's index.  A change to this value should only be done when the
+         pktcEUEUsrIMPUAdminStat value of the IMPU associated with the domain is
+         set to false and will only take effect once the pktcEUEUsrIMPUAdminStat
+         value is set to true again."
+    REFERENCE "RFC5627"
+    DEFVAL { true }
+    ::= { sipImsDomainEntry 2 }
+
+sipImsHeadersToBeRemovedFromAllSipPackets OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "This object contains a list of comma-separated SIP header name to
+         remove from all packets sent. The case is not important.
+         Currently supported headers are Accept, Allow, Allow-events and Supported."
+    ::= { sipImsDomainEntry 3 }
+
+sipRegistrationContactValidationMethod OBJECT-TYPE
+    SYNTAX      INTEGER {
+        matchUri                        (1),
+        matchUsername                   (2),
+        matchHostPort                   (3)
+    }
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "Specifies which contact validation method will be done with contacts received in 200 to a REGISTER.
+         This setting is for the associated domain. When matchUri is set, the contact URI from the REGISTER must be exactly the same in the 200.
+         If matchUsername is set, only the username part of the URI must be identical. If matchHostPort, only the host port part of the URI must
+         be identical."
+    ::= { sipImsDomainEntry 4 }
+
+sipImsDomainPCSCFTable      OBJECT-TYPE
+    SYNTAX      SEQUENCE OF SipImsDomainPCSCFEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains PCSCF configuration for all available domains."
+    ::= { sipImsDomain 50 }
+
+sipImsDomainPCSCFEntry       OBJECT-TYPE
+    SYNTAX      SipImsDomainPCSCFEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table contains IMS configuration for a given domain."
+    INDEX { pktcEUEDevOpIndex }
+    ::= { sipImsDomainPCSCFTable 1 }
+
+SipImsDomainPCSCFEntryDef ::=
+    SEQUENCE {
+             sipImsPCSCFDiscoveryMethod                             INTEGER,
+             sipImsPCSCFDiscoveryMinRetryTime                       Unsigned32,
+             sipImsPCSCFDiscoveryMaxRetryTime                       Unsigned32,
+             sipImsPCSCFListRetryRegistrationMethod                 INTEGER,
+             sipImsPCSCFListRetryRegistrationExponentialMinDelay    Unsigned32,
+             sipImsPCSCFListRetryRegistrationExponentialMaxDelay    Unsigned32,
+             sipImsPCSCFListRetryRegistrationLinearDelay            Unsigned32,
+             sipImsPCSCFPacketSourceValidation                      INTEGER,
+             sipImsPCSCFRequestTimeoutBehavior                      INTEGER,
+             sipImsPCSCF4xxToCallOpBehaviour                        INTEGER,
+             sipImsPCSCFSessionRefreshFailureBehavior               INTEGER,
+             sipImsPCSCFRegistrationRefreshBehavior                 INTEGER,
+             sipImsPCSCFTimerF                                      Unsigned32,
+             sipImsPCSCFTimerH                                      Unsigned32
+             }
+
+sipImsPCSCFDiscoveryMethod     OBJECT-TYPE
+    SYNTAX      INTEGER {
+         explicitPCSCF                  (1),
+         resolvedFromDHCP               (2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Specifies how the P-CSCF addresses are discovered.
+
+         explicitPCSCF: The P-CSCF address(es) is explicitly specified in
+           variable pktcEUEDevPCSCFAddr.
+         resolvedFromDHCP: The P-CSCF address is obtained by DHCP. It will
+           then be resolved using DNS (for the configured transport) to one
+           to many addresses."
+    DEFVAL { explicitPCSCF }
+    ::= { sipImsDomainPCSCFEntry 1 }
+
+sipImsPCSCFDiscoveryMinRetryTime     OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Specifies the minimal amount of time to wait before retrying after a
+         failure to resolve the configured P-CSCF. The timer value will use
+         exponential back-off algorithm when consecutive failures are
+         encountered until reaching sipImsPCSCFDiscoveryMaxRetryTime where it
+         will continue with sipImsPCSCFDiscoveryMaxRetryTime. This value is only
+         used when sipImsPCSCFDiscoveryMethod is configured to
+         'resolvedFromDHCP'."
+    DEFVAL { 30 }
+    ::= { sipImsDomainPCSCFEntry 2 }
+
+sipImsPCSCFDiscoveryMaxRetryTime     OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Specifies the maximal amount of time to wait before retrying
+         after a failure to resolve the configured P-CSCF. Starting from
+         sipImsPCSCFDiscoveryMinRetryTime, the timer value will use exponential
+         back-off algorithm when consecutive failures are encountered until
+         reaching the current value where it will keep using this value.
+         This value is only used when sipImsPCSCFDiscoveryMethod is configured
+         to 'resolvedFromDHCP'."
+    DEFVAL { 1800 }
+    ::= { sipImsDomainPCSCFEntry 3 }
+
+sipImsPCSCFListRetryRegistrationMethod      OBJECT-TYPE
+    SYNTAX      INTEGER {
+        rfc5626FlowRecovery         (1),
+        exponentialBackOff          (2),
+        linear                      (3)
+    }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies how the P-CSCF list is retried after registration failed on
+         the whole P-CSCF.
+
+         rfc5626FlowRecovery: The time to wait before a retry is calculated as
+           the Flow Recovery from RFC 5626. pktcEUEDevPCSCFBaseTimeAllNotFailed,
+           pktcEUEDevPCSCFBaseTimeAllFailed and pktcEUEDevPCSCFMaxTime are used
+           to calculate the next timer.
+         exponentialBackOff: The time to wait before a retry is calculated with
+           an exponential back off until it reaches the maximal value, where it
+           keeps the maximum value. It uses
+           sipImsPCSCFListRetryRegistrationExponentialMinDelay and
+           sipImsPCSCFListRetryRegistrationExponentialMaxDelay.
+         linear: The retry time is always the same. The timer has the value
+           specified in sipImsPCSCFListRetryRegistrationLinearDelay"
+    DEFVAL { rfc5626FlowRecovery }
+    ::= { sipImsDomainPCSCFEntry 50 }
+
+sipImsPCSCFListRetryRegistrationExponentialMinDelay         OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies the minimal amount of time to wait before retrying
+         registration after the whole P-CSCF list failed registration. The
+         timer value will use exponential back-off algorithm when consecutive
+         failures are encountered until reaching
+         sipImsPCSCFListRetryRegistrationExponentialMaxDelay where it will
+         continue with sipImsPCSCFListRetryRegistrationExponentialMaxDelay. This
+         value is only used when sipImsPCSCFListRetryRegistrationMethod is
+         configured to 'exponentialBackOff'."
+    DEFVAL { 30 }
+    ::= { sipImsDomainPCSCFEntry 51 }
+
+sipImsPCSCFListRetryRegistrationExponentialMaxDelay         OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies the maximal amount of time to wait before retrying
+         registration after the whole P-CSCF list failed registration.
+         Starting from sipImsPCSCFListRetryRegistrationExponentialMinDelay, the
+         timer value will use exponential back-off algorithm when consecutive
+         failures are encountered until reaching the current value where it will
+         keep using this value. This value is only used when
+         sipImsPCSCFListRetryRegistrationMethod is configured to
+         'exponentialBackOff'."
+    DEFVAL { 1800 }
+    ::= { sipImsDomainPCSCFEntry 52 }
+
+sipImsPCSCFListRetryRegistrationLinearDelay         OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies the amount of time to wait before retrying registration
+         after the whole P-CSCF list failed registration. The time to wait
+         between registration failure on the whole list is always the same. This
+         value is only used when sipImsPCSCFListRetryRegistrationMethod is
+         configured to 'linear'."
+    DEFVAL { 1800 }
+    ::= { sipImsDomainPCSCFEntry 53 }
+
+sipImsPCSCFPacketSourceValidation                   OBJECT-TYPE
+    SYNTAX      INTEGER {
+        none                        (1),
+        rejectOODNotFromPCSCF       (2)
+    }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies if the MTA should verify the source on incoming SIP packets.
+
+         none: No verification about SIP packet source IP address. All received
+           packets will be treated.
+         rejectOODNotFromPCSCF: In this verification mode, the E-UE will only
+           process out of dialog requests received from a known P-CSCF. Requests
+           received from different sources will be rejected with a 305
+           'Use Proxy' response specifying the URI of the P-CSCF to use."
+    DEFVAL { none }
+    ::= { sipImsDomainPCSCFEntry 100 }
+
+sipImsPCSCFRequestTimeoutBehavior OBJECT-TYPE
+    SYNTAX      INTEGER {
+        default                     (1),
+        failoverToNextPCSCF         (2)
+    }
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "Specifies the behaviour to have when a SIP request times out.
+
+         default: Considers timeout as normal failure. This is the default
+           behaviour.
+         failoverToNextPCSCF: Keeps the current call active if nothing else
+           would end the call but fails the user registration over the next
+           P-CSCF. The only exception to this is session refresh for which a
+           timeout will not cause a registration failover."
+    DEFVAL { default }
+    ::= { sipImsDomainPCSCFEntry 150 }
+
+sipImsPCSCF4xxToCallOpBehaviour OBJECT-TYPE
+    SYNTAX      INTEGER {
+        default                     (1),
+        refreshRegistration         (2)
+    }
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "Specifies the behaviour to have when a 4xx SIP response is received
+           for a basic call operation (re-INVITE and UPDATE).
+
+         default: Considers 4xx as normal failure. This is the default
+           behaviour.
+         refreshRegistration: When a 4xx is received for a re-INVITE or
+           UPDATE for a call, the user refreshes its registration with the
+           P-CSCF."
+    DEFVAL { default }
+    ::= { sipImsDomainPCSCFEntry 200 }
+
+sipImsPCSCFSessionRefreshFailureBehavior OBJECT-TYPE
+    SYNTAX      INTEGER {
+        default                         (1),
+        terminateCallOn4xx              (2)
+    }
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "Specifies the behaviour to have when a call session refresh SIP
+           request (ie. INVITE or UPDATE) fails.
+
+         default: Considers a failure of a SIP request sent for call session
+           refresh as the same failure for the same request not sent for a
+           session refresh. This is the default behaviour.
+         terminateCallOn4xx: If SIP request sent for a session refresh
+           receives a 4xx response, the call for which the 4xx is received is terminated.
+           If a SIP timeout occurs, the call is not terminated until the session expires."
+    DEFVAL { default  }
+    ::= { sipImsDomainPCSCFEntry 250 }
+
+sipImsPCSCFRegistrationRefreshBehavior OBJECT-TYPE
+    SYNTAX      INTEGER {
+        default                         (1),
+        switchBackToPrimaryOnIdle       (2)
+    }
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "Specifies the behaviour to have when SIP registration must be
+           refreshed.
+
+         default: Proceeds with the refresh of the registration on the
+           current P-CSCF.
+         switchBackToPrimaryOnIdle: When a SIP registration refresh must be
+           done, there is no active call and the EUE is not registered on the
+           primary P-CSCF, the EUE tries to register on the primary P-CSCF.
+           If registration succeeds, everything switches back to the primary
+           P-CSCF. Otherwise, registration may be refreshed on the current
+           P-CSCF if the current P-CSCF is a non-primary P-CSCF or if all other
+           P-CSCFs in the list failed."
+    DEFVAL { default }
+    ::= { sipImsDomainPCSCFEntry 300 }
+
+
+sipImsPCSCFTimerF         OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies the timeout duration in milliseconds for the Timer F as
+           specified in RFC3261, section 17.1.4."
+    DEFVAL { 32000 }
+    ::= { sipImsDomainPCSCFEntry 350 }
+
+sipImsPCSCFTimerH         OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Specifies the timeout duration in milliseconds after reception of a 2XX
+           when waiting for an ACK.  This timer also corresponds to Timer L in
+           RFC6026 which didn't exist in RFC3261, hence the confusion in names."
+    DEFVAL { 32000 }
+    ::= { sipImsDomainPCSCFEntry 351 }
+
+pktcEUERSTNfBasicCallExtensionTable     OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PktcEUERSTNfBasicCallExtensionEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains the call session timers for a certain user."
+::= { basicCall 1 }
+
+pktcEUERSTNfBasicCallExtensionEntry     OBJECT-TYPE
+    SYNTAX      PktcEUERSTNfBasicCallExtensionEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table allows to set session timers for a domain."
+    AUGMENTS  { pktcEUERSTNfBasicCallEntry }
+    ::= { pktcEUERSTNfBasicCallExtensionTable 1 }
+
+PktcEUERSTNfBasicCallExtensionEntryDef ::=
+    SEQUENCE {
+             sipSessionTimersValue              Unsigned32,
+             sipSessionTimersMinSe              Unsigned32,
+             sipInbandRingbackWaitTimeoutMs     Unsigned32
+             }
+
+sipSessionTimersValue OBJECT-TYPE
+    SYNTAX      Unsigned32 (90..4294967295)
+    UNITS       "seconds"
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+        "This is the session expire value used for session timers as per
+         RFC4028. If the value is changed, the new value will only apply to
+         call done after the change."
+    REFERENCE "REQ_E-UE-SIGTP-1050 from EDVA Device Specification v1.05"
+    DEFVAL { 1800 }
+    ::= { pktcEUERSTNfBasicCallExtensionEntry 1 }
+
+sipSessionTimersMinSe OBJECT-TYPE
+    SYNTAX      Unsigned32 (90..4294967295)
+    UNITS       "seconds"
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+        "This is the session expire MIN-SE value used for session timers as per
+         RFC4028. If the value is changed, the new value will only apply to call
+         done after the change."
+    REFERENCE "REQ_E-UE-SIGTP-1050 from EDVA Device Specification v1.05"
+    DEFVAL { 90 }
+    ::= { pktcEUERSTNfBasicCallExtensionEntry 2 }
+
+sipInbandRingbackWaitTimeoutMs OBJECT-TYPE
+    SYNTAX      Unsigned32 (10..4294967295)
+    UNITS       "milliseconds"
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+        "This set the wait time for inband ringing before playing a local
+         ringtone. The Table 3, section 7.1.4.1 of PKT-SP-RSTF-I06-100120
+         mentions that if SDP is received in a 18x but no RTP is received,
+         a local ringback must be played. As there might be a delay before
+         actually receives the RTP, a timer will wait for the configured time
+         before starting to play the local ringback. In some case, this will
+         prevent hearing a double ringback."
+    REFERENCE "PKT-SP-RSTF-I06-100120"
+    DEFVAL { 200 }
+    ::= { pktcEUERSTNfBasicCallExtensionEntry 3 }
+
+-- device tables
+--    ::= { basicCall 50 }
+--
+-- domain tables
+--    ::= { basicCall 100 }
+--
+-- user tables
+--    ::= { basicCall 150 }
+--
+-- endpnt tables
+--    ::= { basicCall 200 }
+
+pktcEUERSTNfCallFwdExtensionTable           OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PktcEUERSTNfCallFwdExtensionEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains subscription information for call forward
+         on a given domain."
+    ::= { callForward 1 }
+
+pktcEUERSTNfCallFwdExtensionEntry    OBJECT-TYPE
+    SYNTAX      PktcEUERSTNfCallFwdExtensionEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table contains subscription information for call
+         forward on a given domain."
+    AUGMENTS  { pktcEUERSTNfCallFwdEntry }
+    ::= { pktcEUERSTNfCallFwdExtensionTable 1 }
+
+PktcEUERSTNfCallFwdExtensionEntryDef ::=
+    SEQUENCE {
+             callForwardSubscriptionMethod          INTEGER
+             }
+
+callForwardSubscriptionMethod       OBJECT-TYPE
+    SYNTAX      INTEGER {
+        none (1),
+        subscribed (2),
+        unsubscribed (3),
+        both (4)
+    }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The supported Call Forward notification SIP method. Subscribed and
+         Blind notify can be selected individually or in conjunction."
+    DEFVAL { subscribed }
+    ::= { pktcEUERSTNfCallFwdExtensionEntry 1 }
+
+-- device tables
+--    ::= { callForward 50 }
+--
+-- domain tables
+--    ::= { callForward 100 }
+--
+-- user tables
+--    ::= { callForward 150 }
+--
+-- endpnt tables
+--    ::= { callForward 200 }
+
+pktcEUERSTNfMWIExtensionTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PktcEUERSTNfMWIExtensionEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains subscription information for MWI on a given
+         domain."
+    ::= { messageWaitingIndicator 1 }
+
+pktcEUERSTNfMWIExtensionEntry    OBJECT-TYPE
+    SYNTAX      PktcEUERSTNfMWIExtensionEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table contains subscription information for MWI on
+         a given domain."
+    AUGMENTS  { pktcEUERSTNfMWIEntry }
+    ::= { pktcEUERSTNfMWIExtensionTable 1 }
+
+PktcEUERSTNfMWIExtensionEntryDef ::=
+    SEQUENCE {
+             mwiSubscriptionMethod          INTEGER
+             }
+
+mwiSubscriptionMethod                   OBJECT-TYPE
+    SYNTAX      INTEGER {
+        none                (1),
+        subscribed          (2),
+        unsubscribed        (3),
+        both                (4)
+    }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The supported MWI SIP method. Subscribed and Blind MWI can be selected
+         individually or in conjunction."
+    DEFVAL { subscribed }
+    ::= { pktcEUERSTNfMWIExtensionEntry 1 }
+
+-- device tables
+--    ::= { messageWaitingIndicator 50 }
+--
+-- domain tables
+--    ::= { messageWaitingIndicator 100 }
+--
+-- user tables
+--    ::= { messageWaitingIndicator 150 }
+
+endpntMwiStatusTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF MwiStatusEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains subscription information for MWI on a given
+         domain."
+    ::= { messageWaitingIndicator 200 }
+
+mwiStatusEntry    OBJECT-TYPE
+    SYNTAX      MwiStatusEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table contains subscription information for MWI on
+         a given domain."
+    INDEX  { ifIndex }
+    ::= { endpntMwiStatusTable 1 }
+
+MwiStatusEntryDef ::=
+    SEQUENCE {
+             mwiVisualStatus                    TruthValue,
+             mwiAlternateDialtoneStatus         TruthValue,
+             mwiResetStatus                     TruthValue
+             }
+
+mwiVisualStatus       OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Set to true to enable visual message waiting indicator."
+    DEFVAL { true }
+    ::= { mwiStatusEntry 1 }
+
+mwiAlternateDialtoneStatus       OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Set to true to enable stutter dial tone on off-hook transition when
+         waiting messages are indicated."
+    DEFVAL { true }
+    ::= { mwiStatusEntry 50 }
+
+mwiResetStatus OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Allows resetting the MWI status manually."
+    DEFVAL { false }
+    ::= { mwiStatusEntry 100 }
+
+-- user tables
+--    ::= { messageWaitingIndicator 200 }
+
+
+-- Emergency service extension table.
+
+pktcEUERSTNfEmSvcExtensionTable    OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PktcEUERSTNfEmSvcExtensionEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains information on emergency call
+         configuration on a given domain."
+    ::= { emergencyCall 1 }
+
+pktcEUERSTNfEmSvcExtensionEntry    OBJECT-TYPE
+    SYNTAX      PktcEUERSTNfEmSvcExtensionEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table contains information on emergency call
+         configuration on a given domain."
+    AUGMENTS  { pktcEUERSTNfEmSvcEntry }
+    ::= { pktcEUERSTNfEmSvcExtensionTable 1 }
+
+PktcEUERSTNfEmSvcExtensionEntryDef ::=
+    SEQUENCE {
+             emergencyCallIdentificationMethod                  INTEGER,
+             emergencyCallPidfLoEnabled                         TruthValue
+             }
+
+emergencyCallIdentificationMethod       OBJECT-TYPE
+    SYNTAX INTEGER {
+        paiSos                      (1),
+        priorityEmergency           (2)
+    }
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+        "This variable is used to identify if an incoming call is marked as
+         emergency.
+
+         paiSos: The incoming call must contain a P-Associated-Identity SIP
+           header with a value 'sos' sub-service URN.
+         priorityEmergency: The incoming call must contain a Priority SIP
+           header with the value emergency."
+    DEFVAL { paiSos }
+    ::= { pktcEUERSTNfEmSvcExtensionEntry 1 }
+
+emergencyCallPidfLoEnabled              OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+        "This variable is used to indicate that PidfLo must be sent."
+    DEFVAL { true }
+    ::= { pktcEUERSTNfEmSvcExtensionEntry 50 }
+
+-- device tables
+--    ::= { emergencyCall 50 }
+--
+-- domain tables
+--    ::= { emergencyCall 100 }
+--
+-- user tables
+--    ::= { emergencyCall 150 }
+--
+-- endpnt tables
+--    ::= { emergencyCall 200 }
+--
+-- device tables
+--    ::= { distinctiveRing 50 }
+--
+-- domain tables
+--    ::= { distinctiveRing 100 }
+--
+-- user tables
+--    ::= { distinctiveRing 150 }
+
+endpntDistinctiveRingPendingHeldCallTable       OBJECT-TYPE
+    SYNTAX      SEQUENCE OF DistinctiveRingPendingHeldCallEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains the URIs for held call distinctive ring on
+         a given domain."
+::= { distinctiveRing 200 }
+
+distinctiveRingPendingHeldCallEntry    OBJECT-TYPE
+    SYNTAX      DistinctiveRingPendingHeldCallEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table allows to set a distinctive ring for the held
+         call on a given domain."
+    INDEX  { ifIndex }
+    ::= { endpntDistinctiveRingPendingHeldCallTable 1 }
+
+DistinctiveRingPendingHeldCallEntryDef ::=
+    SEQUENCE {
+             distinctiveRingPendingHeldCall        Uri
+             }
+
+distinctiveRingPendingHeldCall OBJECT-TYPE
+    SYNTAX      Uri
+    MAX-ACCESS read-create
+    STATUS current
+    DESCRIPTION
+        "This MIB object specifies a distinctive ring pattern to use when the
+         phone rings because of a pending held call.
+         If there is no entry in this table for a certain user the default ring
+         is used"
+    ::= { distinctiveRingPendingHeldCallEntry 1 }
+
+-- device tables
+--    ::= { threeWayCalling 50 }
+
+-- domain tables
+--    ::= { threeWayCalling 100 }
+
+-- user tables
+--    ::= { threeWayCalling 150 }
+
+endpntThreeWayCallUserStatusTable     OBJECT-TYPE
+    SYNTAX      SEQUENCE OF EndpntThreeWayCallUserStatusEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains the telephony features status for certain
+         user."
+    ::= { threeWayCalling 200 }
+
+endpntThreeWayCallUserStatusEntry     OBJECT-TYPE
+    SYNTAX      EndpntThreeWayCallUserStatusEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table allows to set telephony features status for
+         certain user."
+    INDEX { ifIndex }
+    ::= { endpntThreeWayCallUserStatusTable 1 }
+
+EndpntThreeWayCallUserStatusEntryDef ::=
+    SEQUENCE {
+             threeWayCallUserStatus             INTEGER
+             }
+
+threeWayCallUserStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+        active                  (1),
+        inactive                (2)
+    }
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "{@PERSISTENCE_TYPE=PERSISTENT@}
+         Indicates if the feature is active or inactive."
+    ::= { endpntThreeWayCallUserStatusEntry 1 }
+
+endpntCallWaitingUserStatusTable     OBJECT-TYPE
+    SYNTAX      SEQUENCE OF EndpntCallWaitingUserStatusEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains the telephony features status for certain
+         user."
+    ::= { callWaiting 200 }
+
+endpntCallWaitingUserStatusEntry     OBJECT-TYPE
+    SYNTAX      EndpntCallWaitingUserStatusEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table allows to set telephony features status for
+         certain user."
+    INDEX { ifIndex }
+    ::= { endpntCallWaitingUserStatusTable 1 }
+
+EndpntCallWaitingUserStatusEntryDef ::=
+    SEQUENCE {
+             callWaitingUserStatus             INTEGER
+             }
+
+callWaitingUserStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+        active                  (1),
+        inactive                (2)
+    }
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "{@PERSISTENCE_TYPE=PERSISTENT@}
+         Indicates if the feature is active or inactive."
+    DEFVAL { 1 }
+    ::= { endpntCallWaitingUserStatusEntry 1 }
+
+endpntCIDDisCIDCallWaitingUserStatusTable     OBJECT-TYPE
+    SYNTAX      SEQUENCE OF EndpntCIDDisCIDCallWaitingUserStatusEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains the telephony features status for certain
+         user."
+    ::= { cidDisCIDCallWaiting 200 }
+
+endpntCIDDisCIDCallWaitingUserStatusEntry     OBJECT-TYPE
+    SYNTAX      EndpntCIDDisCIDCallWaitingUserStatusEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table allows to set telephony features status for
+         certain user."
+    INDEX { ifIndex }
+    ::= { endpntCIDDisCIDCallWaitingUserStatusTable 1 }
+
+EndpntCIDDisCIDCallWaitingUserStatusEntryDef ::=
+    SEQUENCE {
+             cidDisCIDCallWaitingUserStatus             INTEGER
+             }
+
+cidDisCIDCallWaitingUserStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+        active                  (1),
+        inactive                (2)
+    }
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "{@PERSISTENCE_TYPE=PERSISTENT@}
+         Indicates if the feature is active or inactive."
+    DEFVAL { 1 }
+    ::= { endpntCIDDisCIDCallWaitingUserStatusEntry 1 }
+
+pktcEUERSTNfHotlineTable     OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PktcEUERSTNfHotlineTableEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains the option of hotline service."
+    ::= { hotline 22 }
+
+pktcEUERSTNfHotlineTableEntry     OBJECT-TYPE
+    SYNTAX      PktcEUERSTNfHotlineTableEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains the option of hotline service."
+    INDEX { pktcEUEDevOpIndex }
+    ::= { pktcEUERSTNfHotlineTable 1 }
+
+PktcEUERSTNfHotlineTableEntryDef ::=
+    SEQUENCE {
+             hotlineDisabledFeatIDs              OCTET STRING
+             }
+
+hotlineDisabledFeatIDs OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..255))
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "This attributes represents a list of the features disabled when
+         the hotline feature is active.  The format of this list is FeatId [; FeatId] "
+    ::= { pktcEUERSTNfHotlineTableEntry 1 }
+
+
+sipImsEndpointTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF SipImsEndpointEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This data table contains IMS configuration for all available endpoint."
+    ::= { sipImsEndpoint 1 }
+
+sipImsEndpointEntry       OBJECT-TYPE
+    SYNTAX      SipImsEndpointEntryDef
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Each entry in this table contains IMS configuration for a given endpoint."
+    INDEX { ifIndex }
+    ::= { sipImsEndpointTable 1 }
+
+SipImsEndpointEntryDef ::=
+    SEQUENCE {
+             sipMacBasedRegistrationRetryAfter403             Unsigned32
+             }
+
+sipMacBasedRegistrationRetryAfter403 OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-create
+    STATUS current
+    DESCRIPTION
+        "With sipImsIMPUObtentionMethod set to macBasedDiscovery, the port goes into
+         shutdown mode if a 403 Forbidden to a REGISTER is received. In this mode, no loop
+         current is present on the line. No new REGISTER will be sent for this port. The
+         administrator must reboot the device or toggle the ifAdminStatus MIB object of
+         the port to force a new REGISTER. A new REGISTER can be sent by setting a retry time
+         (in second) in this MIB object. A REGISTER will be sent out using mac based
+         user at the specified periodic interval."
+    DEFVAL { 0 }
+    ::= { sipImsEndpointEntry 1 }
+END

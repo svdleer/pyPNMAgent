@@ -1,0 +1,195 @@
+-- vim: set ts=4, set expandtab, match Todo /\%>79v/
+-- ***********************************************************************
+-- ***********************************************************************
+--                             ROUTER
+--                      SNMP/MIB : MIB Files
+--
+--            Copyright (C) 2012 Hitron Technologies Inc.
+--                       All Rights Reserved.
+-- ***********************************************************************
+--  Filename    : HITRON-RG-UI.mib
+--  Description : User Interface MIB
+-- ***********************************************************************
+--
+
+HITRON-RG-UI-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+    , OBJECT-TYPE
+    , enterprises
+    , Integer32
+    , Unsigned32
+    , Counter32
+        FROM SNMPv2-SMI -- RFC2578
+    
+    DisplayString
+    , TruthValue
+    , DateAndTime
+        FROM SNMPv2-TC  -- RFC2579
+    
+    hitronRg
+        FROM HITRON-RG-MIB
+
+    ; -- End of IMPORTS
+
+hitronRgUi  MODULE-IDENTITY
+    LAST-UPDATED    "201210171500Z" -- Oct. 17, 2012
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "Liangfeng Wu
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8120
+        E-mail: wuliangfeng@sz.hitrontech.com
+
+        Haibo Xi
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8148
+        E-mail: xihaibo@sz.hitrontech.com"
+
+    DESCRIPTION
+        "MIB module for User Interface(UM) configuration, includes :
+            CLI - Telnet & SSH , 
+            GUI - Web Server,
+            SNMP, HNAP, TR069 and UPNP."
+
+    REVISION    "201210171500Z" -- Oct. 17, 2012
+    DESCRIPTION
+        "Add all oid"
+
+    REVISION    "201209051454Z" -- Sep. 05, 2012
+    DESCRIPTION
+        "Initial Version"
+
+    ::= { hitronRg 17 }
+
+    -- Web Server(GUI)
+    hitronUiWebs  OBJECT IDENTIFIER   ::= { hitronRgUi 1 }
+        uiWebsEnable OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Enable/Disable Web Server. "
+            ::= { hitronUiWebs 1 }
+
+    -- Telnet
+    uiTelnet OBJECT IDENTIFIER  ::= { hitronRgUi 2 }
+        uiTelnetEnable OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Enable/Disable Telnet Server. "
+            ::= { uiTelnet 1 }
+
+
+    -- SSH
+    uiSsh   OBJECT IDENTIFIER   ::= { hitronRgUi 3 }
+        uiSshEnable OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Enable/Disable Ssh Server. "
+            ::= { uiSsh 1 }
+
+
+    -- SNMP (ReadOnly!)
+    uiSnmp  OBJECT IDENTIFIER   ::= { hitronRgUi 4 }
+        uiSnmpEnable OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-only
+            STATUS      current
+            DESCRIPTION
+                "Is Snmp Agent enable or not. "
+            ::= { uiSnmp 1 }
+
+
+    -- HNAP
+    uiHnap  OBJECT IDENTIFIER   ::= { hitronRgUi 5 }
+        uiHnapEnable OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Enable/Disable Hnap Agent."
+            ::= { uiHnap 1 }
+
+
+    -- TR-069(CWMP)
+    uiTr069 OBJECT IDENTIFIER   ::= { hitronRgUi 6 }
+        uiTr069Enable OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Enable/Disable TR-069(CWMP) Server."
+            ::= { uiTr069 1 }
+
+        uiTr069AcsUrl OBJECT-TYPE
+            SYNTAX      DisplayString
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "The URL of Auto Configuration Servers (ACS)."
+            ::= { uiTr069 2 }
+
+        uiTr069AcsUser OBJECT-TYPE
+            SYNTAX      DisplayString
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "The UserName of Auto Configuration Servers (ACS)."
+            ::= { uiTr069 3 }
+
+        uiTr069AcsPassWord OBJECT-TYPE
+            SYNTAX      DisplayString
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "The Password of Auto Configuration Servers (ACS)."
+            ::= { uiTr069 4 }
+
+        uiTr069NetDevice OBJECT-TYPE
+            SYNTAX      DisplayString
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "The Interface Cwmpd Binds."
+            ::= { uiTr069 5 }
+			
+        uiTr069AllowDocsisConfig OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Allow/Ignore The TR-069(CWMP) Parameters."
+            ::= { uiTr069 6 }		
+
+    -- UPNP
+    uiUpnp OBJECT IDENTIFIER    ::= { hitronRgUi 7 }
+        uiUpnpEnable OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Enable/Disable MiniUpnp."
+            ::= { uiUpnp 1 }
+
+    uiCommit OBJECT IDENTIFIER  ::= { hitronRgUi 8 }
+        uiCommitAll OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Commit all UI settings. "
+        ::= { uiCommit 1 }
+
+END

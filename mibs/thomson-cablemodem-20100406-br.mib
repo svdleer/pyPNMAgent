@@ -1,0 +1,1254 @@
+--*****************************************************************
+--
+-- THOMSON-CABLEMODEM.MIB:  Thomson Inc.
+--
+-- Copyright (c) 2005 by Thomson Inc.
+-- All rights reserved.
+-- 
+--*****************************************************************
+
+--**************************************************************************
+--                                                                          
+--    Copyright 2003 Thomson Inc.
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--             Thomson Inc.                                   
+--             101 W 103rd St.                                   
+--             Indianapolis, IN  46290  USA                                   
+--    All information contained in this document is Thomson Inc.    
+--    company private, proprietary, and trade secret.                       
+--                                                                          
+--**************************************************************************
+--
+--    Filename:      thomson-cablemodem.mib
+--    Author:        Gary Gutknecht
+--    Creation Date: May  4th, 2006 
+--    Revision	     May 25th, 2006  Rick
+--    Revision       May 30th, 2006  Rick : Adding SSH Mgmt    
+--    Revision       June 14th, 2006 Rick : Adding Http Mgmt    
+--    Revision       Oct  25th, 2007 Rick : Adding cmHttpEmtaWebpageCtrl  
+--    Revision       Apr  9th, 2008 Luke : Adding cmHttpEmtaWebpageCtrl  
+--    Revision		 Oct  8th, 2008 Luke : Add cmMtaMibPersistencyControl
+--    Revision       Nov 11th, 2008 Luke : Add cmMtaMibStopAtMTA15 
+--    Revision       Aug 13th, 2009 Luke : Add cmMddIpModeOverride
+--    Revision       Aug 28, 2009 - simon : Add cmPasswordIdleTimeout
+--	  Revision	     Feb 11, 2010 - Luke  :	Add cmMtaDevCertificateCheck
+
+--**************************************************************************
+--
+--    Description:
+--
+--      Thomson Cable Modem MIB.
+--      
+--**************************************************************************
+
+THOMSON-CABLEMODEM-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        OBJECT-TYPE,
+        Unsigned32, Integer32
+            FROM SNMPv2-SMI 
+        DisplayString,
+        TruthValue 
+            FROM SNMPv2-TC     
+        docsDevEvText 
+            FROM DOCS-CABLE-DEVICE-MIB     
+        SnmpAdminString
+            FROM SNMP-FRAMEWORK-MIB      
+        cableModem, cableModemNotifications
+            FROM THOMSON-BROADBAND-MIB
+        DateAndTime
+            FROM SNMPv2-TC;                      
+--*****************************************************************
+--
+-- Thomson cable modem objects.
+-- 
+--*****************************************************************
+
+cableModemBase OBJECT IDENTIFIER 
+        ::= { cableModem 1 }
+
+-- --------------------------------------------------------
+-- Message Waiting Light
+-- --------------------------------------------------------       
+cmMessageWaitingLight OBJECT-TYPE
+        SYNTAX INTEGER {
+            off(1),
+            on(2),
+            flashing(3)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Determines the state of the Message Waiting Light on the
+            Thomson Inc. Digital Cable Modem front panel. Reading
+            it returns the current state of the light. Saved
+            across power cycles. Factory Setting=off.
+            "
+        ::= { cableModemBase 1 }
+                                                                            
+cmStatus OBJECT-TYPE
+        SYNTAX OCTET STRING (SIZE (1..1))
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "TCE specific Cable Modem Status bits. One byte with bits as follows
+             0x01,    // if bit = 1: CM tuned and ranged
+             0x02,    // if bit = 1: DHCP & registration complete
+             0x04,    // if bit = 1: SNMP mgr/TFTP config file permits bridging 
+             0x08,    // if bit = 1: CM in standby mode
+             0x10,    // if bit = 1: CM in ATE mode
+             0x20,    // if bit = 1: Baseline Privacy enabled"
+        ::= { cableModemBase 20 }
+-- --------------------------------------------------------
+-- Downstream Scan List Table
+-- --------------------------------------------------------       
+cmDownstreamScanListTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF CMDownstreamScanListEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Table of Downstream frequencies to scan
+            when the modem performs it's initial tuning.
+            There are always 40 rows numbered 0 to 39
+            in this table.  The rows are scanned in
+            increasing numerical order.  The modem must be
+            rebooted after changing this table for it
+            to take effect.
+            "
+        ::= { cableModemBase 25 }
+
+cmDownstreamScanListEntry OBJECT-TYPE
+        SYNTAX      CMDownstreamScanListEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            ""
+        INDEX { cmDownstreamScanListIndex  }
+        ::= {  cmDownstreamScanListTable 1 }
+
+CMDownstreamScanListEntry ::= SEQUENCE {
+            cmDownstreamScanListIndex         INTEGER,
+            cmDownstreamScanListFrequency     Unsigned32
+        }
+
+cmDownstreamScanListIndex OBJECT-TYPE
+        SYNTAX      INTEGER (0..39)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Index used to order the scan list frequencies."
+        ::= { cmDownstreamScanListEntry 1 }
+
+cmDownstreamScanListFrequency OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Downstream scan list frequency, in HZ.
+            Value of 4,294,967,295 means not set."
+        ::= { cmDownstreamScanListEntry 3 }
+
+--//uimane@2009/03/10: SWTT2920: How to check ScanList by MIB for mass production
+cmDownstreamScanListTableIsDefault OBJECT-TYPE
+    SYNTAX INTEGER {
+        false(0),
+        true(1)
+    }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+            "Return if the downstream scan list is the same as default one or not."     
+        ::= { cableModemBase 26 }
+
+		
+-- --------------------------------------------------------
+-- UDP port the snmp agent listens on
+-- --------------------------------------------------------
+cmListenPort OBJECT-TYPE
+        SYNTAX Integer32 (0..65535)  
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "This is a scalar element which controls which UDP
+             port the cable modem SNMP agent listens on.
+             Default at powerup is 161"
+        ::= { cableModemBase 30 }
+
+-- --------------------------------------------------------
+-- Upstream threshold notifications
+-- --------------------------------------------------------
+cmUpThresholdAlertPeriod OBJECT-TYPE
+        SYNTAX Unsigned32
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Period in seconds upon which the cable modem
+            will generate a cmEvLogUpThreshold Alert
+            notification. This object is stored in a
+            non-volatile manner.  To disable, set to
+            maximum value or 0."
+        DEFVAL {900 }
+        ::= { cableModemBase 32 }
+
+cmUpThresholdAlertMin OBJECT-TYPE
+        SYNTAX Unsigned32
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "Units: dBmV. Minimum value below which the cable
+             modem will generate a cmEvLogUpThresholdMinAlert
+             notification.  This object is stored in a
+             non-volatile manner.  To disable, set to value
+             lower than the physical minimum."
+        DEFVAL { 14 }
+        ::= { cableModemBase 33 }
+
+cmUpThresholdAlertMax OBJECT-TYPE
+        SYNTAX Unsigned32
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "Units: dBmV. Maximum value above which the cable
+             modem will generate a cmEvLogUpThresholdMaxAlert
+             notification.  This object is stored in a
+             non-volatile manner.  To disable, set to value
+             greater than the physical maximum."
+        DEFVAL { 52 }
+        ::= { cableModemBase 34 }
+
+-- --------------------------------------------------------
+-- Other base objects
+-- --------------------------------------------------------
+cmMaxCPECount OBJECT-TYPE
+        SYNTAX      INTEGER (0..32)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+             "The maximum number of CPEs allowed to connect behind this
+             device."
+        ::= { cableModemBase 35 }
+
+cmTodRequestPeriod OBJECT-TYPE
+        SYNTAX      Unsigned32 (600..4294967)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "Number of seconds between TOD Requests.
+             Default is every 24 hours.
+             Min value is 10 minutes."
+        DEFVAL { 86400 }
+        ::= { cableModemBase 41 }
+                
+cmHtmlBitString OBJECT-TYPE
+        SYNTAX OCTET STRING (SIZE (16))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Determines the visibility of HTTP server objects."
+        ::= { cableModemBase 50 }
+
+cmDefaultGateway OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Display the default gateway IP address of CableModem."
+        ::= { cableModemBase 51 }
+        
+cmAccessEuroChannelOnly OBJECT-TYPE
+	SYNTAX		INTEGER { EuroDOCSISorDOCSIS(0), EuroDOCSIS(1), DOCSIS(2) }
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"0 : The modem can go on EuroDOCSIS or DOCSIS frequencies.
+		1 : The modem go only on the EuroDOCSIS frequencies only.
+		2 : The modem go only on the DOCSIS frequencies only.
+		WARNING:  
+RECOMMENDED FOR USE ONLY IN WAREHOUSE EQUIPPED WITH UNINTERRUPTIBLE POWER.  
+IF POWER IS LOST WHILE CHANGING THIS MIB OBJECT, CM COULD BE DAMAGED.
+ 	"
+    DEFVAL { 0 }		
+	::= { cableModemBase 52 }
+
+cmChangeQpskForAtdma OBJECT-TYPE 
+        SYNTAX                INTEGER { QPSK0(0), QPSK1(1)} 
+        MAX-ACCESS        read-write 
+        STATUS                current 
+        DESCRIPTION 
+           "0 : Use QPSK0.
+            1 : Use QPSK1." 
+        DEFVAL { 0 } 
+        ::= { cableModemBase 53 } 
+ 	
+cmStandByButton OBJECT-TYPE 
+        SYNTAX                INTEGER { Disabled(0), Enabled(1)} 
+        MAX-ACCESS        read-write 
+        STATUS                current 
+        DESCRIPTION 
+           "0 : Disabled - Disable the function of Standby button.
+            1 : Enabled - The CMCI traffic will be isolated when the standby button has been pressed" 
+        DEFVAL { 1 } 
+        ::= { cableModemBase 54 } 
+
+cmResetToDefault OBJECT-TYPE
+    SYNTAX INTEGER {
+        false(0),
+        true(1)
+    }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+        "When set to true(1) the device will do factory defaults."
+    DEFVAL { 0 }         
+    ::= { cableModemBase 55 }  
+                               
+cmHighOutputPAEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables the support of high-output power amp mode on the CM. 
+         Once a value is set, it will take effect in next restart & persists across reboots and all types of resets.
+         
+         WARNING:  
+         RECOMMENDED FOR USE ONLY IN WAREHOUSE EQUIPPED WITH UNINTERRUPTIBLE POWER.  
+         IF POWER IS LOST WHILE CHANGING THIS MIB OBJECT, CM COULD BE DAMAGED.
+         "
+    ::= { cableModemBase 56 }
+
+cmIgpTrafficEnable OBJECT-TYPE 
+        SYNTAX INTEGER { 
+            Enabled(1), 
+            Disabled(2) 
+        } 
+        MAX-ACCESS  read-write 
+        STATUS      current 
+        DESCRIPTION 
+            "Accepting IGP protocol such as OSPF/RIP/EIGRP from RF.  Default on power up is Disabled." 
+        DEFVAL { 2 }         
+        ::= { cableModemBase 57 } 
+
+cmAckCelEnable OBJECT-TYPE 
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+        "Enables or disables Broadcom's Patent Pending AckCel technology for the CM Upstream interface.
+        Changes this value will reset modem to take effect the new setting on the next time CM registers with a CMTS."
+        ::= { cableModemBase 58 } 
+--
+--cmEthernetOperationMode OBJECT-TYPE 
+--       SYNTAX INTEGER {
+--            AutoNegotiation(0),
+--            Half-duplex-10Mbps(1),
+--            Full-duplex-10Mbps(2),
+--            Half-duplex-100Mbps(3),
+--            Full-duplex-100Mbps(4),
+--            Half-duplex-1000Mbps(5),
+--            Full-duplex-1000Mbps(6),
+--            NoEtherentCpeConnected(99)
+--        }
+--        MAX-ACCESS 	read-write
+--        STATUS 		current
+--        DESCRIPTION	
+--        		" 
+--        		Set the operation mode of ethernet ports to be :
+--        		0: AutoNegotiation(0),
+--                1: Half-duplex-10Mbps(1),
+--                2: Full-duplex-10Mbps(2),
+--                3: Half-duplex-100Mbps(3),
+--                4: Full-duplex-100Mbps(4),
+--                5: Half-duplex-1000Mbps(5),    (For selected models only)
+--                6: Full-duplex-1000Mbps(6),    (For selected models only)
+--                CM should reply NoEtherentCpeConnected(99)if there is no CPE connected on etherent ports.
+--                "
+--        ::= { cableModemBase 59 }       
+
+--//uimane@2008/07/29: TT2288: BER by (private) Mibs
+cmPrimaryDsBer OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Display the primary DS Bit Error Ratio"
+    ::= { cableModemBase 60 }  
+       
+cmLastKnownFreqMethod OBJECT-TYPE 
+        SYNTAX INTEGER { 
+            Normal(0), 
+            Lite(1) 
+        } 
+        MAX-ACCESS  read-write 
+        STATUS      current 
+        DESCRIPTION 
+            "Per TT2327, we'd like to create 'lite' LKF which 
+                a)increase the interval between two LKF sets, from 25 seconds to 120 seconds
+                b) try the LKF only 1 time at the startup before to start the scan list table.
+             For the normal one we do LKF 5 times with interval 25 seconds.
+            " 
+        DEFVAL { 0 }         
+        ::= { cableModemBase 61 }        
+
+--//Lenny@2009/06/12: TT2730 TCW710: wireless MAC LAN restrictions
+cmCpeAgingOutTimer OBJECT-TYPE
+        SYNTAX      INTEGER (0..86400)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION 
+                     "While CM is adding the CPE in the learning table, if it reaches the number of MAX CPE it will remove the existing CPE which has no upstream traffic for N seconds.
+                     Where N is the value of this MIB. N=0 means to follow original implementation. That is no CPE will be removed for any new comers."
+        DEFVAL { 0 }         
+        ::= { cableModemBase 62 }               
+
+--//luke@2009/06/04: TT2711
+cmModemReset OBJECT-TYPE 
+        SYNTAX INTEGER { 
+            ReturnValue(0), 
+            ResetWhenOnHook(1),
+            ResetNow(2) 
+        } 
+        MAX-ACCESS  read-write 
+        STATUS      current 
+        DESCRIPTION 
+            "Setting this object to 1 would delay the reset till all lines are on-hook (and UGS flows are inactive if VP-52 = KDG)
+             Setting this object to 2 would reset the modem right away.
+             Reading this object always returns 0" 
+        DEFVAL { 0 }         
+        ::= { cableModemBase 63 } 
+          
+--//luke@2009/06/011: TT2552        
+cmDhcpReleaseControl OBJECT-TYPE 
+        SYNTAX INTEGER { 
+            NoRelease(0), 
+            SendRelease(1) 
+        } 
+        MAX-ACCESS  read-write 
+        STATUS      current 
+        DESCRIPTION 
+            "This object controls whether CM/MTA sends DHCP release upon reset.
+             NoRelesae(0): CM/MTA does not send DHCP release upon reset (default)
+             SendRelease(1): CM/MTA sends DHCP release upon reset
+            " 
+        DEFVAL { 0 }         
+        ::= { cableModemBase 64 }
+
+--//Luke@2009/08/13: TT2707: cmMddIpModeOverride
+
+cmMddIpModeOverride OBJECT-TYPE
+    SYNTAX INTEGER {
+      HonorIpModeMddFromCMTS(0),
+      Ipv4Only(1),
+      Ipv6Only(2),
+      AlternateProvisioningMode(3),
+      DualStackProvisioningMode(4)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    " 0: indicates that the device MUST honor the IP Mode MDD TLV transmitted by the CMTS
+         on the access network.
+      1: indicates that the device MUST only attempt initialization IPv4 mode.
+      2: indicates that the device MUST only attempt initialization in IPv6 mode.
+      3: indicates that the device MUST attempt initialization using APM.
+      4: indicates that the device MUST attempt initialization using DPM.
+
+      Note1: Negative or null values are not be permitted.
+      Note2: This setting persist across reboot and possibly hard resets.
+      Factory resets would not alter this value.
+      "
+    ::= { cableModemBase 65 }
+	
+-- Simon, TT2718
+cmPasswordIdleTimeout OBJECT-TYPE
+        SYNTAX      INTEGER (0..86400)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+        "Timeout for entering username/password information.  This timeout
+         value applies to http, telnet, and SSH sessions.
+         0:  infinity "
+        DEFVAL { 60 }
+    ::= { cableModemBase 66 }
+
+--//Brian: TT2893 TCW750-4: HTTP LAN access mib control
+cmWebPagesLocalAccess OBJECT-TYPE
+        SYNTAX INTEGER {
+                           enabled(1),
+                           disabled(2)
+                       }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Enable/Disable the local access function of web page.(Gateway Model Only)"
+         DEFVAL { Enabled }
+         ::= { cableModemBase 67 }
+
+--Lenny, TT3213 PKE3349-39213
+cmDocsisStbEthernetModeToggle OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+
+        "Enables or disables the support of Auto Stop CM application and have USB bridges to Ethernt. 
+         Once the value is set, it will take effect in next restart & persists across reboots and all types of resets."
+    DEFVAL { false }
+
+    ::= { cableModemBase 68 }    
+    
+-- --------------------------------------------------------
+-- Telent function Group
+-- --------------------------------------------------------
+cmTelnetMgmtGroup OBJECT IDENTIFIER 
+        ::= { cableModemBase 75 }
+
+cmTelnetIpStackInterfaces OBJECT-TYPE
+    SYNTAX      BITS {
+                interface1(0),
+                interface2(1),
+                interface3(2),
+                interface4(3),
+                interface5(4),
+                interface6(5),
+                interface7(6),
+                interface8(7)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the IP stack interfaces on which a telnet server is active. 
+        The default setting should be 0x80 to only allow telnet access from the IP stack of RF interface"
+    DEFVAL { '80'h }
+    ::= { cmTelnetMgmtGroup 1 }
+
+cmTelnetUserName OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..15))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the user name which will be allowed telnet access."
+    DEFVAL { "" }
+    ::= { cmTelnetMgmtGroup 2 }
+
+cmTelnetPassword OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..15))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the password which will be allowed telnet access."
+    DEFVAL { "" }
+    ::= { cmTelnetMgmtGroup 3 }
+
+cmTelnetServerControl OBJECT-TYPE
+    SYNTAX      INTEGER {
+                stop(0),
+                start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Used to start or stop the telnet server.  When read, indicates the current state of the server."
+    ::= { cmTelnetMgmtGroup 4 }
+
+cmTelnetSessionTimeout OBJECT-TYPE
+        SYNTAX      INTEGER (0..86400)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+        "Telnet session timeout in seconds
+         0:  infinity "
+        DEFVAL { 86400 }
+        ::= { cmTelnetMgmtGroup 5 }
+
+-- --------------------------------------------------------
+-- SSH Telent function Group  
+-- --------------------------------------------------------
+cmSshTelnetMgmtGroup OBJECT IDENTIFIER 
+        ::= { cableModemBase 76 }
+
+cmSshTelnetIpStackInterfaces OBJECT-TYPE
+    SYNTAX      BITS {
+                interface1(0),
+                interface2(1),
+                interface3(2),
+                interface4(3),
+                interface5(4),
+                interface6(5),
+                interface7(6),
+                interface8(7)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the IP stack interfaces on which a SSH telnet server is active. 
+        The default setting should be 0x80 to only allow telnet access from the IP stack of RF interface"
+    DEFVAL { '80'h }
+    ::= { cmSshTelnetMgmtGroup 1 }
+
+cmSshTelnetUserName OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..15))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the user name which will be allowed SSH telnet access."
+    DEFVAL { "" }
+    ::= { cmSshTelnetMgmtGroup 2 }
+
+cmSshTelnetPassword OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..15))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the password which will be allowed SSH telnet access."
+    DEFVAL { "" }
+    ::= { cmSshTelnetMgmtGroup 3 }
+
+cmSshTelnetServerControl OBJECT-TYPE
+    SYNTAX      INTEGER {
+                stop(0),
+                start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Used to start or stop the SSH telnet server.  When read, indicates the current state of the server."
+    ::= { cmSshTelnetMgmtGroup 4 }
+
+cmSshTelnetSessionTimeout OBJECT-TYPE
+        SYNTAX      INTEGER (0..86400)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+        "SSH session timeout in seconds
+         0:  infinity "
+        DEFVAL { 86400 }
+        ::= { cmSshTelnetMgmtGroup 5 }
+
+-- --------------------------------------------------------
+-- HTTP function Group  
+-- --------------------------------------------------------
+cmHttpMgmtGroup OBJECT IDENTIFIER 
+        ::= { cableModemBase 78 }
+
+cmHttpLanAccessLevel OBJECT-TYPE
+    SYNTAX      INTEGER {
+                Off(0),
+                Basic(1),
+                Advanced(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Used to configure the Http access level from the CPE side.(end users)"
+    DEFVAL { 1 }
+    ::= { cmHttpMgmtGroup 1 }
+
+cmHttpWanAccessLevel OBJECT-TYPE
+    SYNTAX      INTEGER {
+                Off(0),
+                Basic(1),
+                Advanced(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+         "Used to configure the Http access level from the netowrking side.(MSOs)"
+    DEFVAL { 2 }
+   ::= { cmHttpMgmtGroup 2 }
+          
+-- 10/26 
+cmHttpEmtaWebpageCtrl    OBJECT-TYPE
+    SYNTAX BITS {
+       displayBatteryPage(0),              --MSB (Bit-7)
+       displayLineDiagnosisPage(1),
+       displayCallStatisticsPage(2),   
+       displayBatteryPageOnBasic(3)
+    }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "This object is used to control the webpage display
+         The webpages will appear when the corresponding bit has been set to a value of '1' "     
+       DEFVAL { '00'h }
+       ::= { cmHttpMgmtGroup 3}
+
+-- --------------------------------------------------------
+-- S/W upgrade function Group
+-- --------------------------------------------------------
+cmDevSoftwareTable OBJECT-TYPE
+     SYNTAX      SEQUENCE OF CmDevSoftwareEntry
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION
+         "This table for Thomson proprietary S/W upgrade functions."
+     ::= {  cableModemBase 80 }
+
+cmDevSoftwareEntry OBJECT-TYPE
+     SYNTAX      CmDevSoftwareEntry
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION
+         "This table for Thomson proprietary S/W upgrade functions."
+     INDEX { cmDevSwIndex  }
+     ::= {  cmDevSoftwareTable 1 }
+
+CmDevSoftwareEntry ::= SEQUENCE {
+         cmDevSwIndex				INTEGER,
+         cmDevSwReleaseCode			DisplayString,
+         cmDevSwModelName 			DisplayString,
+         cmDevSwHWVersion			DisplayString,
+         cmDevSwServer				IpAddress,
+         cmDevSwFilename			DisplayString,  
+         cmDevSwAdminStatus			INTEGER,
+         cmDevSwMfgCvcAccessStart 		DateAndTime
+     }
+
+cmDevSwIndex OBJECT-TYPE
+     SYNTAX      INTEGER (1..32)
+     MAX-ACCESS  not-accessible
+     STATUS      current
+     DESCRIPTION
+         "Index for cmDevSwTable entries."
+     ::= { cmDevSoftwareEntry 1 }
+
+cmDevSwReleaseCode OBJECT-TYPE
+     SYNTAX  	 DisplayString (SIZE (0..7))
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION
+         "S/W Release Code like ST##, if it does match device's S/W release serial number
+          then it will overwrite the following settings & process the DOCSIS S/W upgrade.
+          cmDevSwServer->			docDevSwServer
+          cmDevSwFilename-> 		docDevSwFilename
+          cmDevSwAdminStatus->		docsDevSwAdminStatus                                   
+          cmDevSwMfgCvcAccessStart->docsBpi2CodeMfgCvcAccessStart/docsBpi2CodeMfgCodeAccessStart 
+          
+          & set docsBpi2CodeDownloadStatusCode = configFileCvcVerified(1)
+          (Required)
+          "
+     ::= { cmDevSoftwareEntry 2 }   
+     
+     
+-- Modified by Luke@2009/06/16 from SIZE (0..7) to SIZE (0..15)     
+cmDevSwModelName OBJECT-TYPE
+     SYNTAX  	 DisplayString (SIZE (0..15))
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION
+         "Thomson model name (optional)
+         If this mib object presents, it must match to the device's model name. 
+         Otherwise this Thomson specified s/w upgrade won't be processed.
+         "
+     ::= { cmDevSoftwareEntry 3 }
+
+cmDevSwHWVersion OBJECT-TYPE
+     SYNTAX  	 DisplayString (SIZE (0..7))
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION
+         "H/W version (optional)
+         If this mib object presents, it must match to the device's H/W version.
+         Otherwise this Thomson specified s/w upgrade won't be processed.
+         "
+     ::= { cmDevSoftwareEntry 4 }
+
+cmDevSwServer OBJECT-TYPE
+     SYNTAX      IpAddress
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION
+         "Link to docDevSwServer.(Optional)"
+     DEFVAL { 10 }
+     ::= { cmDevSoftwareEntry 5 }
+     
+cmDevSwFilename OBJECT-TYPE
+     SYNTAX      DisplayString (SIZE (0..64))
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION
+         "Link to docDevSwFilename.(Required)"
+     ::= { cmDevSoftwareEntry 6 }
+
+cmDevSwAdminStatus OBJECT-TYPE
+     SYNTAX INTEGER {
+		unDefined(0),    
+		upgradeFromMgt(1), 
+		allowProvisioningUpgrade(2), 
+		ignoreProvisioningUpgrade(3)      }
+     MAX-ACCESS  read-write
+     STATUS      current
+     DESCRIPTION
+         "Link to docsDevSwAdminStatus.(optional)
+          Return unDefined(0) if this object doesn't exist !!" 
+     DEFVAL { 0 }
+     ::= { cmDevSoftwareEntry 7 }
+      
+cmDevSwMfgCvcAccessStart  OBJECT-TYPE 
+    SYNTAX      DateAndTime
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " When cmDevSwReleaseCode is matched, it will bypass CVC verification 
+        & just set docsBpi2CodeDownloadStatusCode = configFileCvcVerified(1).
+        
+        Then if this mib presents, it will try to overwrite docsBpi2CodeMfgCodeAccessStart
+        & docsBpi2CodeMfgCodeAccessStart if it's earlier. 
+        
+        Usually, this mib object is not necessary to be set...
+        (optional)
+        "
+    ::= { cmDevSoftwareEntry 8 }     
+    
+-- --------------------------------------------------------
+-- Last Known Freq Table
+-- --------------------------------------------------------
+    
+cmDownstreamLastKnownFreqTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF CmDownstreamLastKnownFreqEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Table of Last Known Downstream frequencies.
+            There are always 10 rows numbered 0 to 9
+            in this table."
+        ::= { cableModemBase 90 }
+
+cmDownstreamLastKnownFreqEntry OBJECT-TYPE
+        SYNTAX      CmDownstreamLastKnownFreqEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            ""
+        INDEX { cmDownstreamLastKnownFreqIndex  }
+        ::= {  cmDownstreamLastKnownFreqTable 1 }
+
+CmDownstreamLastKnownFreqEntry ::= SEQUENCE {
+            cmDownstreamLastKnownFreqIndex       INTEGER,
+            cmDownstreamLastKnownFrequency       Unsigned32            
+        }
+
+cmDownstreamLastKnownFreqIndex OBJECT-TYPE
+        SYNTAX      INTEGER (0..9)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Index used to order the last known frequencies."
+        ::= { cmDownstreamLastKnownFreqEntry 1 }
+
+cmDownstreamLastKnownFrequency OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Downstream frequency, in HZ.
+            Value of 4,294,967,295 means not set."
+        ::= { cmDownstreamLastKnownFreqEntry 2 }
+		
+cmDownstreamLastKnownFreqTableClear OBJECT-TYPE
+    SYNTAX INTEGER {
+        false(0),
+        true(1)
+    }
+    MAX-ACCESS    read-write
+    STATUS        current
+    DESCRIPTION
+            "To clear the Last Known Frequency Table."     
+        ::= { cableModemBase 91 }
+
+--//uimane: TT2919: TCM420P: cmDocsis20Capable mib
+cmDocsis20Capable OBJECT-TYPE
+	SYNTAX      TruthValue
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+         "This object is used to enable DOCSIS 2.0 ATDMA operation mode.  
+         Set to true(1) to enable DOCSIS 2.0 ATDMA operation mode.  
+         Set to false(2) to disable DOCSIS 2.0 ATDMA operation mode.
+         This object is not accessible before CM completes registration except
+         in factory mode.
+         " 
+   DEFVAL { false }		
+	::= { cableModemBase 92 }
+
+-- --------------------------------------------------------    
+-- Config file stats
+-- --------------------------------------------------------
+cmConfigFileGroup OBJECT IDENTIFIER 
+        ::= { cableModemBase 100 }
+
+cmConfigFileMIBVarBinds OBJECT-TYPE
+        SYNTAX INTEGER (-2147483648..2147483647)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Number of MIB VarBinds received via config file."
+        ::= { cmConfigFileGroup 1 }
+
+cmConfigFileTimesFailed OBJECT-TYPE
+        SYNTAX INTEGER (-2147483648..2147483647)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Number of Times processing of MIB VarBinds
+            failed."
+        ::= { cmConfigFileGroup 2 }
+
+cmConfigFileLastErrorStatus OBJECT-TYPE
+        SYNTAX INTEGER (-2147483648..2147483647)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Error-Status from SNMP reply packet on last failure.
+             Values for error_status:
+             #define NO_ERROR                 0
+             #define TOO_BIG                  1
+             #define NO_SUCH_NAME             2
+             #define BAD_VALUE                3
+             #define READ_ONLY                4
+             #define GEN_ERR                  5
+             #define NO_ACCESS                6
+             #define WRONG_TYPE               7
+             #define WRONG_LENGTH             8
+             #define WRONG_ENCODING           9
+             #define WRONG_VALUE             10
+             #define NO_CREATION             11
+             #define INCONSISTENT_VALUE      12
+             #define RESOURCE_UNAVAILABLE    13
+             #define COMMIT_FAILED           14
+             #define UNDO_FAILED             15
+             #define AUTHORIZATION_ERROR     16
+             #define NOT_WRITABLE            17
+             #define INCONSISTENT_NAME       18
+             #define LAST_ERROR              19"
+        ::= { cmConfigFileGroup 3 }
+
+cmConfigFileLastErrorIndex OBJECT-TYPE
+        SYNTAX INTEGER (-2147483648..2147483647)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Error-Index from SNMP reply packet on last failure.
+             1 = first VarBind."
+        ::= { cmConfigFileGroup 4 }
+
+cmConfigFileSize OBJECT-TYPE
+        SYNTAX Unsigned32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION          
+            "Return the size of the downloaded config file
+             in bytes."
+        ::= { cmConfigFileGroup 5 }
+
+-- --------------------------------------------------------
+-- BPI Information
+-- --------------------------------------------------------
+cmBpiGroup OBJECT IDENTIFIER ::= { cableModemBase 225 }
+
+cmBpRSA1024KeyIsValid OBJECT-TYPE
+        SYNTAX      TruthValue 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            " If true(1), BP RSA 1024 bit key pair is valid." 
+        ::= { cmBpiGroup 1 }
+
+cmBpCMCertificateIsValid OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-only
+        STATUS      current  
+        DESCRIPTION
+            "If true(1), BP CM certificate is valid."
+        ::= { cmBpiGroup 2 }
+        
+-- --------------------------------------------------------
+-- Event Log Information
+-- --------------------------------------------------------
+cmEventLogTraps    OBJECT IDENTIFIER ::= { cableModemNotifications 100 }
+cmEventLogTrapsOID OBJECT IDENTIFIER ::= { cmEventLogTraps 0 }
+
+cmEvLogUpThresholdMinAlert NOTIFICATION-TYPE
+        OBJECTS {docsDevEvText}
+        STATUS  current
+        DESCRIPTION 
+            "EVENT_THOLD_MIN_ALERT Cable Modem converged to an upstream power, 
+             %d dBmV, which is near the minimum."
+        REFERENCE
+            "PRIORITY error_EVENT
+             The Cable modem completed initial or periodic
+             ranging, but converged to a power which is
+             notably close to the minimum value."
+        ::= { cmEventLogTrapsOID 146 }
+
+cmEvLogUpThresholdMaxAlert NOTIFICATION-TYPE
+        OBJECTS {docsDevEvText}
+        STATUS  current
+        DESCRIPTION 
+            "EVENT_THOLD_MAX_ALERT Cable Modem converged to an upstream power, 
+             %d dBmV, which is near the maximum."
+        REFERENCE
+            "PRIORITY error_EVENT
+             The Cable modem completed initial or periodic
+             ranging, but converged to a power which is
+             notably close to the maximum value."
+        ::= { cmEventLogTrapsOID 147 }
+
+
+
+--
+-- Nat Firewall Control Information  ~ Rick added 2004/11/16 ~
+--
+tceDCMNatFwGroup OBJECT IDENTIFIER ::= { cableModemBase 230 } 
+
+
+tceDCMNATControl OBJECT-TYPE
+         SYNTAX INTEGER {
+            on(1),
+            off(2),
+            configFile(3)
+         }
+         MAX-ACCESS  read-write
+         STATUS current
+         DESCRIPTION
+            "This object controls the operation of the NAT feature
+             that is embedded into the cable modem. If set to
+             configFile(3) then the NAT operational state is
+             determined by the last valid config file setting.
+             If on(1) then NAT operation is determined by
+             user configuration setting from WEB page. If off(2)
+             then NAT operation is disabled."
+         DEFVAL { configFile }
+        ::= { tceDCMNatFwGroup 1 }
+
+
+tceDCMFWControl OBJECT-TYPE
+         SYNTAX INTEGER {
+            on(1),
+            off(2),
+            configFile(3)
+         }
+         MAX-ACCESS  read-write
+         STATUS current
+         DESCRIPTION
+            "This object controls the operation of the Firewall feature
+             that is embedded into the cable modem. If set to
+             configFile(3) then the Firewall operational state is
+             determined by the last valid config file setting.
+             If on(1) then Firewall operation is determined by
+             user configuration setting from WEB page. If off(2)
+             then Firewall operation is disabled."
+         DEFVAL { configFile }
+        ::= { tceDCMNatFwGroup 2 }
+
+--
+-- Nat Firewall Ruleset Information
+--
+tceDCMNatFwRulesetGroup OBJECT IDENTIFIER ::= { tceDCMNatFwGroup 10 }
+
+tceDCMTftpRulesetCmd OBJECT-TYPE
+         SYNTAX INTEGER {
+            startDownload(1),
+            noAction(2)
+         }
+         MAX-ACCESS  read-write
+         STATUS current
+         DESCRIPTION
+            "This object controls the TFTP ruleset download. If set to
+             startDownload(1) the ruleset download is initiated."
+         DEFVAL { noAction }
+        ::= { tceDCMNatFwRulesetGroup 1 }
+
+tceDCMTftpRulesetStatus OBJECT-TYPE
+         SYNTAX INTEGER {
+            success(1),
+            downloading(2),
+            noResponse(3),
+            filenameNotFound(4),
+            unknownFailure(5),
+            none(6)
+         }
+         MAX-ACCESS  read-only
+         STATUS current
+         DESCRIPTION
+            "This returns the TFTP ruleset download status.
+             success(1): the ruleset has been successfully downloaded.
+             downloading(2): the ruleset is currently being downloaded.
+             noResponse(3): the TFTP server is not responding.
+             filenameNotFound(4): the filename was not found.
+             unknownFailure(5): an undetermined error occurred.
+             none(6): no activity for ruleset downloads has occurred 
+             since reboot."
+         DEFVAL { none }
+        ::= { tceDCMNatFwRulesetGroup 2 }
+
+tceDCMTftpRulesetIpAddress OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The address of the TFTP server used for ruleset downloads.
+             If the TFTP server is unknown, return 0.0.0.0."
+        ::= { tceDCMNatFwRulesetGroup 3 }
+
+tceDCMTftpRulesetFilename OBJECT-TYPE
+        SYNTAX      SnmpAdminString (SIZE (0..64))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The file name of the ruleset to be loaded into this
+             device.  If unknown, the string '(unknown)' is 
+             returned."
+        ::= { tceDCMNatFwRulesetGroup 4 }
+
+--
+-- Nat Firewall Application Layer Gateway Information
+--
+tceDCMNatFwALGGroup OBJECT IDENTIFIER ::= { tceDCMNatFwGroup 20 }
+
+tceDCMTftpAlgCmd OBJECT-TYPE
+         SYNTAX INTEGER {
+            startDownload(1),
+            noAction(2)
+         }
+         MAX-ACCESS  read-write
+         STATUS current
+         DESCRIPTION
+            "This object controls the ALG download. If set to
+             startDownload(1) the ALG download is initiated."
+         DEFVAL { noAction }
+        ::= { tceDCMNatFwALGGroup 1 }
+
+tceDCMTftpAlgStatus OBJECT-TYPE
+         SYNTAX INTEGER {
+            success(1),
+            downloading(2),
+            noResponse(3),
+            filenameNotFound(4),
+            unknownFailure(5),
+            none(6)
+         }
+         MAX-ACCESS  read-only
+         STATUS current
+         DESCRIPTION
+            "This returns the TFTP ALG download status.
+             success(1): the ALG has been successfully downloaded.
+             downloading(2): the ALG is currently being downloaded.
+             noResponse(3): the TFTP server is not responding.
+             filenameNotFound(4): the filename was not found.
+             unknownFailure(5): an undetermined error occurred.
+             none(6): no activity for ALG downloads has occurred 
+             since reboot."
+         DEFVAL { none }
+        ::= { tceDCMNatFwALGGroup 2 }
+
+tceDCMTftpAlgIpAddress OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The address of the TFTP server used for ALG downloads.
+             If the TFTP server is unknown, return 0.0.0.0."
+        ::= { tceDCMNatFwALGGroup 3 }
+
+tceDCMTftpAlgFilename OBJECT-TYPE
+        SYNTAX      SnmpAdminString (SIZE (0..64))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The file name of the ALG to be loaded into this
+             device.  If unknown, the string '(unknown)' is 
+             returned."
+        ::= { tceDCMNatFwALGGroup 4 }
+
+
+--
+-- MTA Management Group  ~ Luke added 2008/04/08 ~
+-- Revision 2008/10/08 Luke: Add cmMtaMibPersistencyControl  
+-- Revision 2008/11/24 Luke: Add cmMtaMibStopAtMTA15
+--
+cmMtaMgmtGroup OBJECT IDENTIFIER ::= { cableModemBase 200 } 
+
+cmMtaTakeFirstDhcpOffer OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: follow PacketCable SPEC BASIC/HYBRID flow MTA provision step MTA2 (default)
+         1: Take the first DHCP Offer in MTA2 step for BASIC/HYBRID flow.
+        
+        Provision step MTA2 in PacketCable SPEC:
+        b. The MTA MUST check the value of the DHCP option122 sub-option 6 for indication 
+           of the Secure Flow. If no valid DHCP OFFER message directs the MTA to the Secure flow,
+           the MTA MUST retry the DHCP DISCOVER process (MTA-1) exponentially for 3 attempts 
+           (e.g. 2, 4, 8 second intervals). Upon failing to receive any valid DHCP OFFER indicating 
+           the Secure flow, the MTA MUST select, a valid Hybrid Flow DHCP OFFER, or a valid 
+           Basic Flow OFFER in that order.
+        "
+    DEFVAL {0 }
+    ::= { cmMtaMgmtGroup 12 }   
+
+cmMtaMibPersistencyControl OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: Value not persistent across reboot (default)
+         1: Value persistent across reboot.
+         
+         Persistency of the following three MIB objects are controlled by this MIB:
+         
+         a. ifAdminStatus.9/10
+         b. emtaSignalingEndptCtrlBoostedLoopCurrent.9/10. 
+         c. emtaSignalingEndptCtrlRingWaveform.9/10
+         
+         [note1] 0: DO NOT use value in non-vol; 1: Read from and write to non-vol
+         [note2] When set to true(1), the MIB objects listed above are 
+                 NOT expected to exist in the eMTA configuration file.
+        "
+    DEFVAL {0 }
+    ::= { cmMtaMgmtGroup 14 } 
+     
+-- Add@20081124 by Luke: For Insight (VP-52=8)
+cmMtaMibStopAtMTA15 OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: MTA goes to MTA-1 if MTA-15 failed.(PacketCable SPEC)
+         1: MTA stops at MTA-15 if failed 3 INFORM enrollment attempts (default)
+                  
+         [note1] When enable the behavior is not PacketCable compliant.
+         [note2] This MIB is valid only for VP-52=8 
+        "
+    DEFVAL {1 }
+    ::= { cmMtaMgmtGroup 15 }  
+     
+-- TT2587 THG540K invalid MTA device certificate
+-- PKE3349-39213 Only
+cmMtaDevCertificateCheck OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+          }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "0: Either contain an empty MTA certificate or invalid(no critical flash in the keyUsage) one.
+         1: Contains a correct MTA certificate
+             
+        "
+    DEFVAL {0 }
+    ::= { cmMtaMgmtGroup 21 }  
+
+END

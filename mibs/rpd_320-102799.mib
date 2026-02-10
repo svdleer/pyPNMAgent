@@ -1,0 +1,1705 @@
+RPD1000-MIB DEFINITIONS ::= BEGIN
+--
+--  FILE INFO:
+--    $Workfile:   rpd.mib  $
+--    $Revision:   1.1  $
+--    $Date:   27 Oct 1999 10:54:26  $
+--
+--IMPORTS
+--    MODULE-IDENTITY, OBJECT-TYPE, NOTIFICATION-TYPE,
+--    ObjectName, Integer32, Counter32 
+--        FROM SNMPv2-SMI
+--    DisplayString, TestAndIncr, TimeStamp
+--      FROM SNMPv2-TC
+--  MODULE-COMPLIANCE, OBJECT-GROUP
+--      FROM SNMPv2-CONF
+--  system, ifIndex
+--      FROM RFC1213-MIB
+--
+--  RPD1000-MIB MODULE-IDENTITY
+--      LAST-UPDATED "9610010000Z"
+--      ORGANIZATION "General Instrument Corporation"
+--      CONTACT-INFO "Chuck Barkley
+--                    General Instrument Corporation'
+--                    101 Tournament Drive
+--                    Horsham, PA  19044
+--
+--                    Tel: +1 215 323 1417
+--                    Fax: +1 215 323 0364
+--                    E-mail: cbarkley@gi.com"
+--
+--      DESCRIPTION  "The MIB module for the Return Path Demodulator.
+--                    The MIB tree for this MIB is shown below:
+--
+-- The objects in this MIB are organized as follows:"
+--
+-- rpdSystem
+--	rpdSystemConf
+--             	rpdSysConfNumberDemods
+--             	rpdSysConfRFslotSize
+--             	rpdSysConfSlotAccumLatency
+--             	rpdSysConfPacketSuppress
+--             	rpdSysConfDatagramSuppress
+--	    	rpdSysConfdefaultEM	
+--		rpdSysConfDestHostName
+--		rpdSysConfDestService
+--		rpdSysConfCntrlHostName
+--		rpdSysConfCntrlService
+--		rpdSysConfDemodSwapIQ
+--		rpdSysConfNoiseInterval
+--		rpdSysConfSaveConfig
+--		rpdSysConfErroredPktThreshold
+--		rpdSysConfSuppressErrdPktsFlag
+--              rpdSysConfDemodPacketLength
+--              rpdSysConfIPAddress
+--		rpdSysConfMACAddress
+--		rpdSysConfSubnetMask
+--              rpdSysConfAmpGain
+--	rpdSystemStatus
+--		rpdSysStatusLEDFault
+--		rpdSysStatusRevision
+--	rpdSystemStats
+--		rpdSysStatsClearAll
+--     		rpdStatsCurElapsedTime
+--              rpdSysStatsClearBgdNoise
+--              rpdSysStatsClearPowerLevel
+--              rpdSysStatsClearPackets
+--              rpdSysStatsClearBurstNoise
+-- rpdFEC
+--	rpdFECConf
+--		rpdFECConfFECEnable
+--		rpdFECConfRandomizerEnable
+--              rpdFECConfRandomizerSeed
+-- rpdDemod
+--	rpdDemodConf
+--              rpdDemodConfIndex
+--		rpdDemodConfMode
+--		rpdDemodConfFrequency
+--	rpdDemodStatus
+--              rpdDemodStatusIndx
+--		rpdDemodStatusLED
+--		rpdDemodStatusAlarm				
+--	rpdDemodStats
+--              rpdDemodStatsIndex
+--              rpdDemodStatsErrorPkts
+--              rpdDemodStatsCorrectedPkts
+--              rpdDemodStatsPerfectPkts
+--              rpdDemodStatsTotalPkts
+--              rpdDemodStatsPwrLowPkts
+--		rpdDemodStatsPowerMin
+--		rpdDemodStatsPowerMax
+--		rpdDemodStatsPowerLast
+--		rpdDemodStatsBackgrndNoiseMin
+--		rpdDemodStatsBackgrndNoiseMax
+--		rpdDemodStatsBackgrndNoiseAvg
+--
+--
+    IMPORTS
+        Counter, Gauge, IpAddress, TimeTicks
+	                FROM RFC1155-SMI
+        DisplayString   FROM RFC1213-MIB
+        OBJECT-TYPE     FROM RFC-1212
+	TRAP-TYPE	FROM RFC-1215
+        trapIdentifier,     
+        trapNetworkElemModelNumber,
+        trapNetworkElemSerialNum,
+        trapPerceivedSeverity,
+        trapNetworkElemOperState,
+        trapNetworkElemAlarmStatus,
+        trapNetworkElemAdminState,
+        trapNetworkElemAvailStatus, 
+        trapText,
+        trapNETrapLastTrapTimeStamp,
+        trapChangedObjectId,
+        trapAdditionalInfoInteger1, 
+        trapAdditionalInfoInteger2, 
+        trapAdditionalInfoInteger3,     
+        trapChangedValueDisplayString,  
+        trapChangedValueOID, 
+        trapChangedValueIpAddress,		       
+        trapChangedValueInteger  
+	  	      FROM NLSBBN-TRAPS-MIB
+        rpd1000       FROM NLS-BBNIDENT-MIB;
+
+                
+-- groups in the RPD MIB
+        rpdSystem	 OBJECT IDENTIFIER  ::= {rpd1000 1}	
+        rpdSystemConf	 OBJECT IDENTIFIER  ::= {rpdSystem 1 }
+        rpdSystemStatus	 OBJECT IDENTIFIER  ::= {rpdSystem 2 }
+        rpdSystemStats	 OBJECT IDENTIFIER  ::= {rpdSystem 3 }
+	
+        rpdFEC	      	OBJECT IDENTIFIER  ::= {rpd1000 2 }
+        rpdFECConf	OBJECT IDENTIFIER  ::= {rpdFEC 1 }
+        rpdFECStatus	OBJECT IDENTIFIER  ::= {rpdFEC 2 }
+        rpdFECStats	OBJECT IDENTIFIER  ::= {rpdFEC 3 }
+       
+        rpdDemod        OBJECT IDENTIFIER  ::= {rpd1000 3 }
+        rpdTraps        OBJECT IDENTIFIER  ::= {rpd1000 4 }
+        rpdAlarms       OBJECT IDENTIFIER  ::= {rpd1000 5 }
+
+
+--    RPD System Configuration Group
+
+rpdSysConfNumberDemods OBJECT-TYPE
+      	  	SYNTAX  INTEGER(1..6)
+		ACCESS	read-only
+		STATUS	mandatory  
+
+      		DESCRIPTION "The number of demodulators.  This 
+                     is determined by the RPD 1000 at startup,
+                     based on the physical hardware configuration.
+                     The value can range in value from 1 to 6."
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 1 }		
+
+rpdSysConfRFslotSize OBJECT-TYPE
+        	SYNTAX 	INTEGER(1..2048)
+		ACCESS	read-write
+		STATUS	mandatory 
+  		DESCRIPTION "The size of a slot on all RF input
+                     channels.  Slot sizes are in terms of
+                     symbols.  The slot size can range from
+                     1 to 2048.  But there is no reason to change it
+		     through SNMP. 
+
+                     A copy of this object is maintained in 
+                     non-volatile memory within the RPD 1000.
+                     This object value is normally set only 
+                     at system initialization.
+
+                     If this value is changed other than by setting this
+		     object value, a trap shall be issued to the EM1000"
+
+                REFERENCE   " -- "
+        ::= { rpdSystemConf 2 }
+
+rpdSysConfSlotAccumLatency OBJECT-TYPE
+        	SYNTAX 	INTEGER
+                    	{
+                         oneTimeSlot(1),
+                         twoTimeSlots(2),
+                         threeTimeSlots(3),
+                         fourTimeSlots(4)
+                    	}
+		ACCESS	read-write
+		STATUS	mandatory
+        	DESCRIPTION "The number of time-slots during which 						data is accumulated from the channels before 
+                     being output from the RPD 1000. 
+
+                     This object is maintained in data base
+                     of the RPD 1000. A copy of this object 
+                     is maintained in the non-volatile memory 
+                     within the RPD 1000.  This object value is 
+                     normally set only at system initialization.
+
+	             If this value is changed other than by setting this
+		     object value, a trap shall be issued to the EM1000"
+
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 3 }
+
+rpdSysConfPacketSuppress OBJECT-TYPE
+       		SYNTAX  INTEGER
+		        {
+			 no    (1),
+			 yes   (2)
+			}
+		ACCESS	read-write
+		STATUS	mandatory 
+		DESCRIPTION "This object specifies processing for
+                     all RF channels.  It indicates whether
+                     or not empty packets are to be combined
+                     into the output frame and transmitted.
+
+                     This object is maintained in data base
+                     of the RPD 1000. A copy of this object 
+                     maintained in the non-volatile memory 
+                     within the RPD 1000.  This object value is 
+                     normally set only at system initialization.
+
+                     If this value is changed other than by setting this
+		     object value, a trap shall be issued to the EM1000"
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 4 }
+
+rpdSysConfDatagramSuppress OBJECT-TYPE
+       		SYNTAX  INTEGER
+		        {
+			 no    (1),
+			 yes   (2)
+			}
+		ACCESS	read-write
+		STATUS	mandatory
+                DESCRIPTION "This object specifies processing for
+                     all RF channels.  It indicates whether
+                     or not empty datagrams are to be sent to
+                     output network element.
+
+                     This object is maintained in data base of 
+                     the RPD 1000.  A copy of this object is 
+                     maintained in the non-volatile memory within 
+                     the RPD 1000.  This object value is normally 
+                     set only at system initialization.
+
+	             If this value is changed other than by setting this
+                     object value, a trap shall be issued to the EM1000"
+
+                REFERENCE   " -- "
+        ::= { rpdSystemConf 5 }
+
+rpdSysConfdefaultEM   OBJECT-TYPE
+        	SYNTAX  OCTET STRING
+        	ACCESS  read-write
+        	STATUS  mandatory
+        	DESCRIPTION "This is the host name of the default element
+		     manager"
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 6}
+
+rpdSysConfDestHostName   OBJECT-TYPE
+        	SYNTAX  OCTET STRING
+        	ACCESS  read-write
+        	STATUS  mandatory
+                DESCRIPTION "This is the host name of the reciever of upstream 
+	             traffic. Whenever the value of this object is  changed, a
+		     trap is sent to the EM" 
+                REFERENCE   " -- "
+        ::= { rpdSystemConf 7}
+
+rpdSysConfDestService   OBJECT-TYPE
+        	SYNTAX  OCTET STRING
+        	ACCESS  read-write
+        	STATUS  mandatory
+        	DESCRIPTION "This is the destination UDP port for upstream 
+	  	     traffic. Whenever the value of this object is 
+ 		     changed, a trap is sent to the EM" 
+                REFERENCE   " -- "
+        ::= { rpdSystemConf 8}
+
+rpdSysConfCntrlHostName   OBJECT-TYPE
+        	SYNTAX  OCTET STRING
+        	ACCESS  read-write
+        	STATUS  mandatory
+        	DESCRIPTION "This is the host name of the controlling device. 				   
+		     Whenever the value of this object is  changed, a  trap
+		     is sent to the EM" 
+                REFERENCE   " -- "
+        ::= { rpdSystemConf 9}
+
+rpdSysConfCntrlService   OBJECT-TYPE
+        	SYNTAX  OCTET STRING
+        	ACCESS  read-write
+        	STATUS  mandatory
+        	DESCRIPTION "This is the destination TCP port for the control 				  
+		     channel. Whenever the value of this object is changed, a
+		     trap is sent to the EM" 
+                REFERENCE   " -- "
+        ::= { rpdSystemConf 10}
+
+rpdSysConfDemodSwapIQ    OBJECT-TYPE
+                SYNTAX  INTEGER
+		        {
+			 no    (1),
+			 yes   (2)
+			}
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This  object will enable swapping of IQ
+		     positions.  But there is no reason to change it
+		     through SNMP."
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 11}
+
+rpdSysConfNoiseInterval    OBJECT-TYPE
+                SYNTAX  INTEGER				
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "The interval in seconds for noise measurements
+		     to be made (valid for all demod channels)"
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 12}
+
+rpdSysConfSaveConfig    OBJECT-TYPE
+                SYNTAX  INTEGER
+                    	{
+                         saveNotInProgress     (1),
+                         startSaveToFlash      (2),
+                         savingConfigToFlash   (3)
+                    	}
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "Writing this object will commit the current
+		     configuration to Flash.  While a read returns the
+		     value savingConfigToFlash, the flash is being saved;
+		     the save may not have been initiated by an SNMP set"
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 13}
+
+rpdSysConfErroredPktThreshold    OBJECT-TYPE
+                SYNTAX  INTEGER(-13..19)
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "Threshold power level for detecting errored
+		     packets"
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 14}
+
+rpdSysConfSuppressErrdPktsFlag    OBJECT-TYPE
+                SYNTAX  INTEGER
+		        {
+			 no    (1),
+			 yes   (2)
+			}
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "Flag inidicating whether error packets should
+		     be sent"
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 15}
+
+rpdSysConfDemodPacketLength OBJECT-TYPE
+                SYNTAX  INTEGER(1..64)
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "This object defines the length of the 
+                     packets received on the RF channel" 
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 16 }
+
+rpdSysConfIPAddress   OBJECT-TYPE
+        	SYNTAX  IpAddress
+        	ACCESS  read-write
+        	STATUS  mandatory
+        	DESCRIPTION "This is the IP address of the RPD
+		     product.  It is used on all input UDP logical ports as
+                     well as the ACC interface."
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 17}
+
+rpdSysConfMACAddress   OBJECT-TYPE
+        	SYNTAX  DisplayString
+        	ACCESS  read-only
+        	STATUS  mandatory
+        	DESCRIPTION "This is the MAC address of the RPD
+		     product.  It is set at the factory and cannot be
+		     changed."
+        	REFERENCE   " -- "
+        ::= { rpdSystemConf 18}
+
+rpdSysConfSubnetMask   OBJECT-TYPE
+        	SYNTAX  IpAddress
+        	ACCESS  read-write
+        	STATUS  mandatory
+        	DESCRIPTION "This is subnet mask for this RPD on the 
+	  	     OAM&P net."
+                REFERENCE   " -- "
+        ::= { rpdSystemConf 19}
+
+rpdSysConfAmpGain   OBJECT-TYPE
+        	SYNTAX  INTEGER(0..30)
+        	ACCESS  read-only
+        	STATUS  mandatory
+        	DESCRIPTION "This is the gain for the amplifier on the 
+	  	     backplane of the RPD."
+                REFERENCE   " -- "
+        ::= { rpdSystemConf 20}
+
+rpdSysStatusLEDFault   OBJECT-TYPE
+                SYNTAX  INTEGER
+			{
+			 red  (1),
+		         green (2),
+			 off (3)
+			}
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "This object returns the state of the RPD's fault
+		     LED"
+                REFERENCE   " -- "
+	::= { rpdSystemStatus 1 }
+
+rpdSysStatusRevision   OBJECT-TYPE
+                SYNTAX  DisplayString
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "This object returns the current revision of the
+		     initialization parameters"
+                REFERENCE   " -- "
+        ::={ rpdSystemStatus 2 }
+
+--      RPD system status
+
+rpdSysStatsClearAll OBJECT-TYPE
+                SYNTAX  INTEGER
+		        {
+			 clear      (1),
+			 ok         (2),
+			 clearing   (3)
+			}
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This object will clear the statistics buffers for
+                     the entire RPD"
+                REFERENCE   " -- "
+        ::= { rpdSystemStats 1 }
+
+rpdSysStatsElapsedtime OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "elapsed time in seconds (including partial
+		     seconds) since the last clear"
+                REFERENCE   " -- "
+        ::= { rpdSystemStats 2 }
+
+rpdSysStatsClearBgdNoise OBJECT-TYPE
+                SYNTAX  INTEGER
+		        {
+			 clear      (1),
+			 ok         (2),
+			 clearing   (3)
+			}
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This object will clear the background noise
+		     statistics buffers for the entire RPD"
+                REFERENCE   " -- "
+        ::= { rpdSystemStats 3 }
+
+rpdSysStatsClearPowerLevel OBJECT-TYPE
+                SYNTAX  INTEGER
+		        {
+			 clear      (1),
+			 ok         (2),
+			 clearing   (3)
+			}
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This object will clear the power level statistics
+                     buffers for the entire RPD"
+                REFERENCE   " -- "
+        ::= { rpdSystemStats 4 }
+
+rpdSysStatsClearPackets OBJECT-TYPE
+                SYNTAX  INTEGER
+		        {
+			 clear      (1),
+			 ok         (2),
+			 clearing   (3)
+			}
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This object will clear the packets statistics
+                     buffers for the entire RPD"
+                REFERENCE   " -- "
+        ::= { rpdSystemStats 5 }
+
+rpdSysStatsClearBurstNoise OBJECT-TYPE
+                SYNTAX  INTEGER
+		        {
+			 clear      (1),
+			 ok         (2),
+			 clearing   (3)
+			}
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This object will clear the burst noise
+                     buffers statistics for the entire RPD"
+                REFERENCE   " -- "
+        ::= { rpdSystemStats 6 }
+
+--	FEC Processor Object entries 
+
+rpdFECConfFECEnable    OBJECT-TYPE
+                SYNTAX  INTEGER
+		        {
+			 no    (1),
+			 yes   (2)
+			}
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This  object will enable or disable FEC decoders.
+		             But there is no reason to change it through SNMP."
+        ::= { rpdFECConf 1}
+
+rpdFECConfRandomizerEnable    OBJECT-TYPE
+                SYNTAX  INTEGER
+		        {
+			 no    (1),
+			 yes   (2)
+			}
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This  object will enable or disable randomizer.
+		             But there is no reason to change it through SNMP."
+        ::= { rpdFECConf 2 }
+
+rpdFECConfRandomizerSeed    OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This  is the seed used by the randomizer.
+		             But there is no reason to change it through SNMP."
+        ::= { rpdFECConf 3 }
+
+
+--      The RPD 1000 Demod Channel Groups.
+
+rpdDemodConfTable    OBJECT-TYPE
+        	SYNTAX  SEQUENCE OF RpdDemodConfEntry
+     		ACCESS	not-accessible
+		STATUS	mandatory
+	   	DESCRIPTION "A conceptual channel Table. There will 
+                     exist one row for each channel.  There are a
+                     maximum of 6 channels in an RPD 1000."
+                REFERENCE   " -- "
+        ::= { rpdDemod 1 }
+
+rpdDemodConfEntry OBJECT-TYPE
+                SYNTAX 	RpdDemodConfEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION "An entry (conceptual row) in the RPD 1000 
+                     Channel Configuration table.  There will 
+                     exist one row for each channel.  There are a
+                     maximum of 6 channels in an RPD 1000."
+                REFERENCE   " -- "
+                INDEX  { rpdDemodConfIndex }
+        ::= { rpdDemodConfTable 1}
+ 
+RpdDemodConfEntry ::= SEQUENCE 
+       {
+       rpdDemodConfIndex         INTEGER,
+       rpdDemodConfFrequency     INTEGER,
+       rpdDemodConfMode          INTEGER
+       }
+
+rpdDemodConfIndex  OBJECT-TYPE
+                SYNTAX  INTEGER(1..6)
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION "The auxiliary variable used for identifying
+                     instances of the columnar objects in the
+                     rpdChannelTable.  A value of 1 identifies RF 
+                     input channel 1;  A value of 2 identifies RF 
+                     input channel 2; and so forth."
+                REFERENCE   " -- "
+        ::= { rpdDemodConfEntry 1 }
+
+
+rpdDemodConfMode  OBJECT-TYPE
+                SYNTAX  INTEGER
+                    {
+                    rpdChannelOFF(1),
+	            rpdDataEnabledNoiseEnabled(2),
+                    rpdDataDisabledNoiseEnabled(3),
+		    rpdDataEnabledNoiseDisabled(4)
+                    }
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This object contains the state of the referenced
+		     RF input channel. This object is maintained in data base
+                     of the RPD 1000..
+
+                     Whenever the value of this object is changed, a trap is
+		     sent to the EM "
+                REFERENCE   " -- "
+        ::= { rpdDemodConfEntry 2 }
+
+rpdDemodConfFrequency OBJECT-TYPE
+                SYNTAX  INTEGER(8096000..14816000)
+                ACCESS  read-write
+                STATUS  mandatory
+                DESCRIPTION "This object defines the frequency of the 
+                     referenced RF input channel.  Valid frequencies 
+                     are in the range of
+                          8,096,000  (8.096 MHz) to
+                         14,816,000 (14.816 MHz).
+
+                     Frequencies are set by the controlling 
+                     processor (NC 1000 or ACC 4000D).  This 
+                     object can be changed directly by the 
+                     network management system.  Changes in 
+                     frequency must be made through the controlling 
+                     processor (NC 1000 or ACC 4000D).  This ensures 
+                     that the both the controlling computer and 
+                     the RPD 1000 are synchronized.
+
+                     This object is maintained in data base
+                     of the RPD 1000.  A copy of this object is 
+                     maintained in non-volatile memory within the 
+                     RPD 1000.
+
+		     Whenever the value of this object is
+                     changed, a trap is sent to the EM"
+
+                REFERENCE   " -- "
+        ::= { rpdDemodConfEntry 3 }
+
+-- 
+--      The Demod Status Group
+--
+
+rpdDemodStatusTable OBJECT-TYPE
+        	SYNTAX  SEQUENCE OF RpdDemodStatusEntry
+     		ACCESS	not-accessible
+		STATUS	mandatory
+	   	DESCRIPTION "A conceptual channel Table. There will 
+                     exist one row for each channel.  There are a
+                     maximum of 6 channels in an RPD 1000."
+                REFERENCE   " -- "
+        ::= { rpdDemod 2 }
+
+	rpdDemodStatusEntry OBJECT-TYPE
+                SYNTAX 	RpdDemodStatusEntry
+	        ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION "An entry (conceptual row) in the RPD 1000 
+                     Channel Configuration table.  There will 
+                     exist one row for each channel.  There are a
+                     maximum of 6 channels in an RPD 1000."
+                INDEX	{ rpdDemodStatusIndx }
+        ::= { rpdDemodStatusTable 1}
+ 
+RpdDemodStatusEntry ::= SEQUENCE 
+       {
+       rpdDemodStatusIndx         INTEGER,
+       rpdDemodStatusLED          INTEGER,
+       rpdDemodStatusAlarm        INTEGER
+       }
+
+rpdDemodStatusIndx  OBJECT-TYPE
+                SYNTAX  INTEGER(1..6)
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION "The auxiliary variable used for identifying
+                     instances of the columnar objects in the
+                     rpdDemodStatusTable.  A value of 1 identifies RF 
+                     input channel 1;  A value of 2 identifies RF 
+                     input channel 2; and so forth."
+        ::= { rpdDemodStatusEntry 1 }
+
+
+rpdDemodStatusLED   OBJECT-TYPE
+                SYNTAX  INTEGER
+			{
+			 red  (1),
+		         green (2),
+			 off (3)
+			}
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "This object returns the state of the Demod's
+		       status LED"
+                REFERENCE   " -- "
+	::= { rpdDemodStatusEntry 2 }
+
+rpdDemodStatusAlarm   OBJECT-TYPE
+                SYNTAX  INTEGER
+			{
+                         ok                 (1),
+                         undetermined       (2),
+                         warning            (3),
+                         minor              (4),
+                         major              (5),
+                         critical           (6)
+                        }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "This object returns the alarm status of the
+		     demod in accordance with ISO/IEC 10164-2"
+	::= { rpdDemodStatusEntry 3 }
+
+-- 
+--      The Demod Statistics Group.
+-- 
+
+rpdDemodStatsTable OBJECT-TYPE
+        	SYNTAX  SEQUENCE OF RpdDemodStatsEntry
+     		ACCESS	not-accessible
+		STATUS	mandatory
+	   	DESCRIPTION "A conceptual channel Table. There will 
+                     exist one row for each channel.  There are a
+                     maximum of 6 channels in an RPD 1000."
+                REFERENCE   " -- "
+        ::= { rpdDemod 3 }
+
+rpdDemodStatsEntry OBJECT-TYPE
+                SYNTAX 	RpdDemodStatsEntry
+	        ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION "An entry (conceptual row) in the RPD 1000 
+                     rpdDemodStatTable.  There will exist one row for each
+		     channel.  There are a maximum of 6 channels in an RPD
+		     1000."
+                INDEX	{ rpdDemodStatsIndex }
+        ::= { rpdDemodStatsTable 1 }
+ 
+RpdDemodStatsEntry ::= SEQUENCE 
+       {
+       rpdDemodStatsIndex              INTEGER,
+       rpdDemodStatsErrorPkts          Counter,
+       rpdDemodStatsCorrectedPkts      Counter,
+       rpdDemodStatsPerfectPkts        Counter,
+       rpdDemodStatsTotalPkts          Counter,
+       rpdDemodStatsPwrLowPkts         Counter,
+       rpdDemodStatsPowerMin           DisplayString,
+       rpdDemodStatsPowerMax           DisplayString,
+       rpdDemodStatsPowerLast          DisplayString,
+       rpdDemodStatsBackgrndNoiseMin   DisplayString,
+       rpdDemodStatsBackgrndNoiseMax   DisplayString,
+       rpdDemodStatsBackgrndNoiseAvg   DisplayString
+       }
+
+rpdDemodStatsIndex  OBJECT-TYPE
+                SYNTAX  INTEGER(1..6)
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION "The auxiliary variable used for identifying
+                     instances of the columnar objects in the
+                     rpdDemodStatTable.  A value of 1 identifies RF 
+                     input channel 1;  A value of 2 identifies RF 
+                     input channel 2; and so forth."
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 1 }
+
+
+rpdDemodStatsErrorPkts OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The counter associated with the total 
+                     number of packets demodulated from this
+                     interface that had uncorrectable errors (measured 	since
+		     the last clear)"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 2 }
+
+rpdDemodStatsCorrectedPkts OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The counter associated with the total 
+                     number of packets demodulated from this interface that
+		     had correctable errors (measured since the last clear)"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 3 }
+
+rpdDemodStatsPerfectPkts OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The counter associated with the total 
+                     number of packets demodulated from this
+                     interface that were totally perfect (measured since the 
+		     last clear)"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 4 }
+
+rpdDemodStatsTotalPkts OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The counter associated with the total 
+                     number of packets demodulated from this
+                     interface (measured since the last clear)"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 5 }
+
+
+rpdDemodStatsPwrLowPkts OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The counter associated with the number 
+                     of packets for which a low-power condition
+                     was detected, that were demodulated from 
+                     this interface since the last clear"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 6 }
+
+rpdDemodStatsPowerMin OBJECT-TYPE
+                SYNTAX  DisplayString
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The minimum power level measured since the last
+		     clear"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 7 }
+
+rpdDemodStatsPowerMax OBJECT-TYPE
+                SYNTAX  DisplayString
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The minimum power level measured since the last
+		     clear"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 8 }
+
+rpdDemodStatsPowerLast OBJECT-TYPE
+                SYNTAX  DisplayString
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The last power level measured"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 9 }
+
+rpdDemodStatsBackgrndNoiseMin OBJECT-TYPE
+                SYNTAX  DisplayString
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The minimum background noise level measured
+		     since the last clear"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 10 }
+
+rpdDemodStatsBackgrndNoiseMax OBJECT-TYPE
+                SYNTAX  DisplayString
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The minimum background noise level measured
+		     since the last clear"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 11 }
+
+rpdDemodStatsBackgrndNoiseAvg OBJECT-TYPE
+                SYNTAX  DisplayString
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION "The average background noise level measured
+		     since the last clear"
+                REFERENCE   " -- "
+        ::= { rpdDemodStatsEntry 12 }
+
+-- *******************************************************************
+--  The RPD Traps Group.
+--
+--  This group contains those objects which are specifically related
+--  to trap and alarm processing by the RPD .  Trap IDs start at 1000.
+-- *******************************************************************
+
+trapInvalidDemodNumber TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+			trapAdditionalInfoInteger1, 
+	       	   	trapAdditionalInfoInteger2, 
+        	   	trapAdditionalInfoInteger3     
+              }
+              DESCRIPTION
+             " This trap is issued if an attempt is made to send a 
+               command to a demod whose number is greater than 6.
+	       The trapAdditionalInfoInteger1 contains the demod number.
+	       The trapAdditionalInfoInteger2 and
+	       trapAdditionalInfoInteger3 are not used."
+        ::= 1000
+
+trapNoDemodResponse TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+			trapAdditionalInfoInteger1, 
+	       	   	trapAdditionalInfoInteger2, 
+        	   	trapAdditionalInfoInteger3     
+              }
+              DESCRIPTION
+             " This trap is issued if a command is sent to a demod
+               and no response is received.
+	       The trapAdditionalInfoInteger1 contains the demod number.
+	       The trapAdditionalInfoInteger2 and
+	       trapAdditionalInfoInteger3 are not used."
+        ::= 1001
+
+trapBadDemodResponse TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+			trapAdditionalInfoInteger1, 
+	       	   	trapAdditionalInfoInteger2, 
+        	   	trapAdditionalInfoInteger3     
+              }
+              DESCRIPTION
+             " This trap is issued if a command is sent to a demod and a
+               bad response is received.
+	       The trapAdditionalInfoInteger1 contains the demod number.
+	       The trapAdditionalInfoInteger2 and
+	       trapAdditionalInfoInteger3 are not used."
+         ::= 1002
+
+trapDAQInputBufferFull TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+			trapAdditionalInfoInteger1, 
+	       	   	trapAdditionalInfoInteger2, 
+        	   	trapAdditionalInfoInteger3     
+              }
+              DESCRIPTION
+             " This trap is issued if a message is received from a
+               demod and there is no more room in the input buffer
+	       to store it.  The trapAdditionalInfoInteger1,
+	       trapAdditionalInfoInteger2 and trapAdditionalInfoInteger3
+	       are not used."
+         ::= 1003
+
+trapDatagramSizeExceeded TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+			trapAdditionalInfoInteger1, 
+	       	   	trapAdditionalInfoInteger2, 
+        	   	trapAdditionalInfoInteger3     
+              }
+              DESCRIPTION
+             " This trap is issued if while processing demod
+	       messages the total length of the resulting
+	       datagram exceeds the maximum allowed size. 
+	       The trapAdditionalInfoInteger1 will contain the
+	       length of the datagram.  
+	       The trapAdditionalInfoInteger2 will contain the
+	       maximum length and trapAdditionalInfoInteger3
+	       is not used." 
+         ::= 1004
+
+trapCannotSendUDPDatagram TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+			trapAdditionalInfoInteger1, 
+	       	   	trapAdditionalInfoInteger2, 
+        	   	trapAdditionalInfoInteger3     
+              }
+              DESCRIPTION
+             " This trap is issued if the DAQ task cannot
+	       send UDP datagrams to the destination address. 
+	       The trapAdditionalInfoInteger1 will contain the
+	       value returned by the sendto() routine.
+	       trapAdditionalInfoInteger2 will contain the
+	       length of the message being sent and
+	       trapAdditionalInfoInteger3 is not used." 
+        ::= 1005
+
+trapTCPAddressZero TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+			trapAdditionalInfoInteger1, 
+	       	   	trapAdditionalInfoInteger2, 
+        	   	trapAdditionalInfoInteger3     
+              }
+              DESCRIPTION
+             " This trap is issued if the TCP server address is
+	       specified as 0 and the TCP task is terminated
+	       because of that.  The trapAdditionalInfoInteger1,
+	       trapAdditionalInfoInteger2 and trapAdditionalInfoInteger3
+	       are not used."
+        ::= 1006
+
+trapTCPConnectFailed TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+			trapAdditionalInfoInteger1, 
+	       	   	trapAdditionalInfoInteger2, 
+        	   	trapAdditionalInfoInteger3     
+              }
+              DESCRIPTION
+             " This trap is issued if the RPD could not connect to
+	       the TCP server.  The trapAdditionalInfoInteger1,
+	       trapAdditionalInfoInteger2 and trapAdditionalInfoInteger3
+	       are not used."
+        ::= 1007
+
+trapTCPSendFailed TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+			trapAdditionalInfoInteger1, 
+	       	   	trapAdditionalInfoInteger2, 
+        	   	trapAdditionalInfoInteger3     
+              }
+              DESCRIPTION
+             " This trap is issued when a send via the TCP interface failed.
+	       The trapAdditionalInfoInteger1 will contain the task and
+	       Function ID.  The trapAdditionalInfoInteger2 and the
+	       trapAdditionalInfoInteger3 are not used."
+        ::= 1008
+
+trapTCPReceiveFailed TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+			trapAdditionalInfoInteger1, 
+	       	   	trapAdditionalInfoInteger2, 
+        	   	trapAdditionalInfoInteger3     
+              }
+              DESCRIPTION
+             " This trap is issued when a receive via the TCP interface
+	       failed.  The trapAdditionalInfoInteger1 will contain the
+	       task and Function ID.  The trapAdditionalInfoInteger2 and
+	       the trapAdditionalInfoInteger3 are not used."
+        ::= 1009
+
+
+-- *******************************************************************
+--  Alarm OIDs.  These OIDs correspond to traps declared above and
+--  have the same number as the trap number above.
+-- *******************************************************************
+
+alarmInvalidDemodNumber OBJECT-TYPE
+           SYNTAX      INTEGER
+     	   ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION 
+              "Alarm which occurs when an attempt is made to send a 
+               command to a demod whose number is greater than 6.
+	       This is a counter for the trap 1000."
+   ::= { rpdAlarms 1000 }
+
+alarmNoDemodResponse OBJECT-TYPE
+           SYNTAX      INTEGER
+     	   ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION 
+              "Alarm which occurs when a command is sent to a demod
+               and no response is received.
+	       This is a counter for the trap 1001."
+   ::= { rpdAlarms 1001 }
+
+alarmBadDemodResponse OBJECT-TYPE
+           SYNTAX      INTEGER
+     	   ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION 
+              "Alarm which occurs when a command is sent to a demod
+               and a bad response is received.
+	       This is a counter for the trap 1002."
+   ::= { rpdAlarms 1002 }
+
+alarmDAQInputBufferFull OBJECT-TYPE
+           SYNTAX      INTEGER
+                        {
+                         ok                 (1),
+                         undetermined       (2),
+                         warning            (3),
+                         minor              (4),
+                         major              (5),
+                         critical           (6)
+                        }
+     	   ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION 
+              "Alarm which occurs when a message is received from a
+               demod and there is no more room in the input buffer
+	       to store it."    
+   ::= { rpdAlarms 1003 }
+
+alarmDatagramSizeExceeded OBJECT-TYPE
+           SYNTAX      INTEGER
+     	   ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION 
+              "Alarm which occurs when while processing demod
+	       messages the total length of the resulting
+	       datagram exceeds the maximum allowed size.
+	       This is a counter for the trap 1004."
+   ::= { rpdAlarms 1004 }
+
+alarmCannotSendUDPDatagram OBJECT-TYPE
+           SYNTAX      INTEGER
+                        {
+                         ok                 (1),
+                         undetermined       (2),
+                         warning            (3),
+                         minor              (4),
+                         major              (5),
+                         critical           (6)
+                        }
+     	   ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION 
+              "Alarm which occurs when the DAQ task cannot
+	       send UDP datagrams to the destination address."    
+   ::= { rpdAlarms 1005 }
+
+alarmTCPAddressZero OBJECT-TYPE
+           SYNTAX      INTEGER
+     	   ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION 
+              "Alarm which occurs when the TCP server address is
+	       specified as 0 and the TCP task is terminated
+	       because of that.  This is a counter for the trap 1006."
+   ::= { rpdAlarms 1006 }
+
+alarmTCPConnectFailed OBJECT-TYPE
+           SYNTAX      INTEGER
+     	   ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION 
+              "Alarm which occurs when the RPD could not connect to
+	       the TCP server.  This is a counter for the trap 1007."
+   ::= { rpdAlarms 1007 }
+
+alarmTCPSendFailed OBJECT-TYPE
+           SYNTAX      INTEGER
+     	   ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION 
+              "Alarm which occurs when a send via the TCP interface failed.
+	       This is a counter for the trap 1008."
+   ::= { rpdAlarms 1008 }
+
+alarmTCPReceiveFailed OBJECT-TYPE
+           SYNTAX      INTEGER
+     	   ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION 
+              "Alarm which occurs when a receive via the TCP interface failed.
+	       This is a counter for the trap 1009."
+   ::= { rpdAlarms 1009 }
+
+
+-- *******************************************************************
+--  The NLSBBN Traps Group.
+--
+--  This group contains those objects which are commonly defined but
+--  the ENTERPRISE is specific to the RPD .  Trap IDs start at 1.
+-- *******************************************************************
+
+trapNewNEFound TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedValueOID
+                }
+           DESCRIPTION
+             "This trap is isssued if a Proxy Agent Detected A New NE.
+              trapPerceivedSeverity - 'indeterminate'
+              trapChangedValueOID - This  variable identifies the new
+              Network Element.  This trap is not issues by non-proxy
+              agents."
+   ::= 1
+
+
+trapNewNELost TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedValueOID
+                }
+           DESCRIPTION
+             "This trap is isssued if a Proxy Agent lost communication with
+	      NE.  trapPerceivedSeverity - 'critical'.
+              trapChangedValueOID - This  variable identifies the new
+              Network Element. This trap is not issues by non-proxy agents."
+   ::= 2
+
+
+trapConfigurationChangeInteger TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger
+                }
+           DESCRIPTION
+             "This trap is issued if configuration of a single variable
+              with integer type was changed (via ANY interface).  
+              TrapChangedValueInteger variable may contain current reading
+              of that variable.
+              trapPerceivedSeverity - 'indeterminate'"
+   ::= 3
+
+
+trapConfigurationChangeDisplayString TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueDisplayString
+               }
+           DESCRIPTION
+             "This trap is issued if configuration of a single variable
+              with DispalayString type was changed (via ANY interface).  
+              TrapChangedValueDisplayString variable may contain current
+	      reading of that variable.
+              trapPerceivedSeverity - 'indeterminate'"
+   ::= 4
+
+
+trapConfigurationChangeOID TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueOID
+               }
+           DESCRIPTION
+             "This trap is issued if configuration of a single variable
+              with OID type was changed (via ANY interface).  
+              TrapChangedValueOID variable may contain current reading
+              of that variable.
+              trapPerceivedSeverity - 'indeterminate'"
+   ::= 5
+
+trapConfigurationChangeIpAddress TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueIpAddress
+               }
+           DESCRIPTION
+             "This trap is issued if configuration of a single variable
+              with IpAddress type was changed (via ANY interface).  
+              TrapChangedValueIpAddress variable may contain current reading
+              of that variable.
+              trapPerceivedSeverity - 'indeterminate'"
+   ::= 6
+
+
+trapToBeSendQueueOverflow TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp
+               }
+           DESCRIPTION
+             "This trap is issued if SNMP agent's TrapToBeSendQueue is full.
+              trapPerceivedSeverity - 'major'
+              trapNetworkElemModelNumber - Model # of the Agent
+              trapNetworkElemSerialNum - Serial # of the Agent
+              trapNetworkElemOperState - from Ident MIB
+              trapNetworkElemAlarmStatus - from Ident MIB   
+              trapNetworkElemAdminState - from Ident MIB
+              trapNetworkElemAvailStatus - from Ident MIB"
+   ::= 7
+
+-- *******************************************************************
+--  The DNS Traps Group.
+--
+--  This group contains those objects which are commonly defined but
+--  ENTERPRISE is sepecific to RPD. Traps ID starts from 20. 
+-- *******************************************************************
+
+trapConditionNotInList TRAP-TYPE
+           ENTERPRISE rpd1000
+           VARIABLES
+               {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+            	        trapAdditionalInfoInteger2, 
+                        trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued if a condition is being cleared and
+               it is not in the condition list.
+               trapAdditionalInfoInteger1 : Task and Function ID (task
+                                            and function generates the
+                                            error condition)
+               trapAdditionalInfoInteger2 : Condition number
+               trapAdditionalInfoInteger3 : Condition severity" 
+   ::= 20
+
+trapConditionAlreadyInList TRAP-TYPE
+            ENTERPRISE rpd1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+       	                trapAdditionalInfoInteger1, 
+            	        trapAdditionalInfoInteger2, 
+                        trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued if a condition is being set and
+               it is already in the condition list.
+               trapAdditionalInfoInteger1 : Task and Function ID (task
+                                            and function generates the
+                                            error condition)
+               trapAdditionalInfoInteger2 : Condition number
+               trapAdditionalInfoInteger3 : Condition severity"
+   ::= 21
+
+trapConditionListFull TRAP-TYPE
+            ENTERPRISE rpd1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+     	                trapAdditionalInfoInteger1, 
+            	        trapAdditionalInfoInteger2, 
+      	                trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued if a condition is being set and
+               the condition list is full.
+               trapAdditionalInfoInteger1 : Task and Function ID (task
+                                            and function generates the
+                                            error condition)
+               trapAdditionalInfoInteger2 : Condition number
+               trapAdditionalInfoInteger3 : Condition servirty" 
+   ::= 22
+
+trapInvalidCaseInSwitch TRAP-TYPE
+            ENTERPRISE rpd1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+            	        trapAdditionalInfoInteger2, 
+      	                trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued when in a switch statement the
+               default case is reached.  The trapAdditionalInfoInteger1
+               will contain the task and Function ID.  The
+               trapAdditionalInfoInteger2 will contain value of the switch.
+               The trapAdditionalInfoInteger3 is not used."
+   ::= 23
+
+trapCannotCreateSemaphore TRAP-TYPE
+            ENTERPRISE rpd1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+            	        trapAdditionalInfoInteger2, 
+      	                trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued when a semaphore cannot
+               be created. The trapAdditionalInfoInteger1 will contain the
+               task and Function ID, the trapAdditionalInfoInteger2 and
+               trapAdditionalInfoInteger3 will not be used."
+   ::= 24
+
+trapCannotOpenSocket TRAP-TYPE
+            ENTERPRISE rpd1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+     	                trapAdditionalInfoInteger1, 
+            	        trapAdditionalInfoInteger2, 
+      	                trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued when a socket cannot
+               be opened. The trapAdditionalInfoInteger1 will contain the
+               task and Function ID. The trapAdditionalInfoInteger2 will
+               contain the errno returned by the call to socket(). The
+               trapAdditionalInfoInteger3 is not used."
+   ::= 25
+
+trapUnknownMessageReceived TRAP-TYPE
+            ENTERPRISE rpd1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+            	        trapAdditionalInfoInteger2, 
+      	                trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued when an unknown message
+               is received.  The trapAdditionalInfoInteger1 will contain the
+               task and Function ID. The trapAdditionalInfoInteger2 will 
+               contain the message ID and the trapAdditionalInfoInteger3 is
+               not used."
+   ::= 26
+
+trapInvalidMessageReceived TRAP-TYPE
+            ENTERPRISE rpd1000
+            VARIABLES
+                {       
+                        trapIdentifier,
+                        trapNetworkElemModelNumber,
+                        trapNetworkElemSerialNum,
+                        trapPerceivedSeverity,
+                        trapNetworkElemOperState,
+                        trapNetworkElemAlarmStatus,  
+                        trapNetworkElemAdminState,
+                        trapNetworkElemAvailStatus,
+                        trapText,
+                        trapNETrapLastTrapTimeStamp,
+                        trapChangedObjectId,
+                        trapChangedValueInteger,  
+                        trapAdditionalInfoInteger1, 
+            	        trapAdditionalInfoInteger2, 
+      	                trapAdditionalInfoInteger3     
+                }
+            DESCRIPTION
+              "This trap is issued when an invalid message
+               is received.  The trapAdditionalInfoInteger1 will contain the
+               task and Function ID. The trapAdditionalInfoInteger2 will
+               contain the message ID and the trapAdditionalInfoInteger3 is
+               not used."
+   ::= 27
+
+END
+

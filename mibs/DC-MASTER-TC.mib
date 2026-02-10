@@ -1,0 +1,76 @@
+DC-MASTER-TC DEFINITIONS ::= BEGIN
+   IMPORTS
+       MODULE-IDENTITY, Unsigned32,
+       Integer32                        FROM SNMPv2-SMI
+       TEXTUAL-CONVENTION               FROM SNMPv2-TC;
+
+  dcMasterTc MODULE-IDENTITY
+      LAST-UPDATED "200406250000Z" -- Thu Jun 25 00:00:00 GMT 2004
+      ORGANIZATION "Data Connection Ltd."
+      CONTACT-INFO
+                   "Postal: Data Connection Ltd.
+                            100 Church Street
+                            Enfield
+                            Middlesex EN2 6BQ
+                            United Kingdom
+                    Tel:    +44 20 83661177
+                    E-mail: info@dataconnection.com"
+      DESCRIPTION  "The set of common Textual Conventions for use in all DCL
+                    MIBs."
+
+  ::= { iso
+        member-body(2)
+        gb(826)
+        national(0)
+        eng-ltd(1)
+        dataConnectionLtd(1578918)
+        adg(5)
+        global(41) 1}
+
+--Common Textual Conventions
+
+AdminStatus ::= TEXTUAL-CONVENTION
+    STATUS      current
+    DESCRIPTION
+       "The desired administrative state of a MIB row."
+    SYNTAX      INTEGER {
+                  adminStatusUp(1),
+                  adminStatusDown(2)
+                }
+
+OperStatus ::= TEXTUAL-CONVENTION
+    STATUS      current
+    DESCRIPTION
+       "The current operational state of a MIB row."
+    SYNTAX      INTEGER {
+                  operStatusUp(1),       -- active
+                  operStatusDown(2),     -- inactive
+                  operStatusGoingUp(3),  -- activating
+                  operStatusGoingDown(4),-- deactivating
+                  operStatusActFailed(5) -- activation failed
+                }
+
+Unsigned32NonZero ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+       "A non-zero Unsigned32."
+    SYNTAX       Unsigned32 (1..'FFFFFFFF'h)
+
+EntityIndex ::= TEXTUAL-CONVENTION
+  STATUS      current
+  DESCRIPTION "The HAF entity index value identifying a DC software entity."
+  SYNTAX      Integer32 (1..2147483647)
+
+EntityIndexOrZero ::= TEXTUAL-CONVENTION
+  STATUS      current
+  DESCRIPTION "The HAF entity index value identifying a DC software entity, or
+               zero which is used to indicate that the entity is not present."
+  SYNTAX      Integer32 (0..2147483647)
+
+AuthUserDataString ::= TEXTUAL-CONVENTION
+  STATUS      current
+  DESCRIPTION "A string of user data that will be passed to the a0auth
+               interface."
+  SYNTAX      OCTET STRING (SIZE (0..17))
+
+END

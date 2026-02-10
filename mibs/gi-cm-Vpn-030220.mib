@@ -1,0 +1,1121 @@
+--
+-- (c) 2002, 2003 Motorola, Inc.
+--
+--
+-- CM VPN MIB
+--
+
+CM-VPN-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	enterprises, OBJECT-TYPE, MODULE-IDENTITY, Unsigned32, Counter32
+		FROM SNMPv2-SMI
+	RowStatus, DisplayString, TruthValue
+		FROM SNMPv2-TC
+	InetAddressType, InetAddress 
+		FROM INET-ADDRESS-MIB
+	MODULE-COMPLIANCE, OBJECT-GROUP
+		FROM SNMPv2-CONF
+	SnmpAdminString
+        FROM SNMP-FRAMEWORK-MIB
+	IkeAuthMethod, IkeEncryptionAlgorithm, IkeHashAlgorithm, IpsecDoiAuthAlgorithm,
+	IpsecDoiAhTransform, IpsecDoiEspTransform, IpsecDoiIpcompTransform,
+	IkeGroupDescription  
+		FROM IPSEC-ISAKMP-IKE-DOI-TC;
+
+cmVpn MODULE-IDENTITY
+	LAST-UPDATED "200302200000Z"  -- July, 15 2003
+	ORGANIZATION "Motorola Inc. BCS"
+	CONTACT-INFO
+		"
+		Greg Nakanishi
+		Motorola BCS
+		6450 Sequence Drive
+		San Diego, CA 92121
+		E-Mail: gnakanishi@motorola.com
+		Phone:  +1 858 404 2366
+		"
+	DESCRIPTION
+		"This MIB defines management objects to support Gateway VPN
+		functionality."
+	REVISION  "200401070000Z"
+	DESCRIPTION
+		"Edited by Grace Xie. 
+		Published as cmVpn.mib
+		- add VPN logging objects
+		"  
+	REVISION  "200309170000Z"
+	DESCRIPTION
+		"Edited by Grace Xie. 
+		Published as cmVpn.mib
+		- disallow AH transform to be NULL. The default for AH transform is SHA.
+		- add a comment to disallow ESP transform and authentication to be NULL at same time.
+		"             
+	REVISION  "200308120000Z"
+	DESCRIPTION
+		"Edited by Grace Xie. 
+		Published as cmVpn.mib
+		- add a new object cmVpnIpsecTunnelConnectionTest
+		- add a new object cmVpnIpsecTunnelCounterReset.
+		"             
+	REVISION  "200307150000Z"
+	DESCRIPTION
+		"Edited by Grace Xie. 
+		Published as cmVpn.mib
+		- add a new object cmVpnIpsecLocalNetworkDefaultGw
+		- rework based on the comments from Greg Nakanishi.
+		"             
+	REVISION  "200304020000Z"
+	DESCRIPTION
+		"Edited by Grace Xie. 
+		Published as cmVpn.mib
+		- add a new object cmVpnIpsecTunnelEnable
+		- change the indexes for the remoteNetwork/LocalAccessControl tables from create-read to not-accessiable.
+		"
+	REVISION  "200303190000Z"
+	DESCRIPTION
+		"Edited by Grace Xie. 
+		Published as cmVpn-08.mib.
+		Per Greg Nakanishi and Zheng Fang's request, 
+		- change object name from cmVpnIpsecTunnelOperationType to cmVpnIpsecTunnelProtocolIdSet. 
+		- change object name from cmVpnIpsecTunnelAuthAlgorithm to cmVpnIpsecTunnelESPAuthAlgorithm.
+		- update description for cmVpnIpsecTunnelTransformAH.
+		"      
+	REVISION  "200303110000Z"
+	DESCRIPTION
+		"Edited by Grace Xie. 
+		Published as cmVpn-07.mib.
+		- Major revision based on VPN engine APIs (rev1.4 - the actual software implementation version)
+		 PPTP and L2TP are not supported
+		 Certificate feature is not supported
+		 IPComp transform is not supported.
+		 PFS and DHgroup are not configurable. They are read-only objects. The configuration is for both phase 1 and 2.
+		 Addition of cmVpnIpsecLocalNetwork configuration
+		 Default values for IKE and IPSec config are derived from cw_vpn_sakm.h and cw_vpn_configuration.c
+		- Minor changes based on the Motorola VPN GUI design
+		"      
+	REVISION  "200302200000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang. 
+		Published as cmVpn-06.mib.
+		- Major revision based on VPN engine APIs (rev1.6) and IETF work-in-progress from Policy Working Group,
+		start to use IPSEC-ISAKMP-IKE-DOI-TC. Lots of changes.
+		"      
+	REVISION  "200211260000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang. 
+		Published as cmVpn-05.mib.
+		- add cmIpsecLocalSubnetMaskType and cmVpnIpsecTunnelSubnetMaskType.
+		"          
+	REVISION  "200209120000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang. 
+		Published as cmVpn-04.mib.
+		- import Unsigned32.
+		"  
+	REVISION  "200209030000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang. 
+		Published as cmVpn-03.mib.
+		- Per Raj/Lisa/Tim's request, add SetToFactory for each features.
+		"  
+	REVISION  "200208270000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang.
+		- Change INTEGER enum lable per SMIv2. 
+		"
+	REVISION  "200208220000Z"
+	DESCRIPTION
+		"Edited by Zheng Fang."	
+	::= { cm 57 }
+
+
+--
+-- Path to root
+--
+
+gi OBJECT IDENTIFIER ::= { enterprises 1166 }
+giproducts OBJECT IDENTIFIER ::= { gi 1 }
+cm OBJECT IDENTIFIER ::= { giproducts 19 }
+
+--
+-- Administrative assignments
+--
+
+cmVpnObjects OBJECT IDENTIFIER ::= { cmVpn 1 }
+cmVpnConformance OBJECT IDENTIFIER ::= { cmVpn 2 }
+
+--
+-- Object definitions
+--
+
+--
+-- Base configuration
+--
+cmVpnBaseObjects OBJECT IDENTIFIER ::= { cmVpnObjects 1 }
+
+--
+-- IPSec configuration 
+--
+cmVpnIpsecObjects OBJECT IDENTIFIER ::= { cmVpnObjects 2 }
+
+--cmVpnPptpObjects OBJECT IDENTIFIER ::= { cmVpnObjects 3 }
+--cmVpnL2tpObjects OBJECT IDENTIFIER ::= { cmVpnObjects 4 } 
+
+--
+-- Log configuration
+--
+cmVpnLogObjects OBJECT IDENTIFIER ::= { cmVpnObjects 5 }
+
+cmVpnSetToFactory OBJECT-TYPE
+	SYNTAX      TruthValue
+	MAX-ACCESS  read-write
+    STATUS     	current
+    DESCRIPTION
+		"Setting this object to true(1) causes the VPN 
+		options to be returned back to factory defaults.
+		Reading this object always returns false(2).
+                         	
+		The objects set to factory defaults(disabled) are:
+			cmVpnEnable
+			cmVpnIpsecEnable
+		
+		Values for cmVpnIpsecNegotiationId, cmVpnIpsecLocalNetworkAddress,
+		cmVpnIpsecLocalNetworkMask, and cmVpnIpsecLocalNetworkDefaultGw will be deleted.
+	
+		All entries in cmVpnIpsecTunnelConfigTable, cmVpnIpsecTunnelStatTable,
+		cmVpnIpsecTunnelRemoteNetworkConfigTable, cmVpnIpsecTunnelLocalAccessControlConfigTable,
+		will be destroyed."
+	::= { cmVpnBaseObjects 1 }
+ 
+cmVpnEnable OBJECT-TYPE
+	SYNTAX      TruthValue
+	MAX-ACCESS  read-write
+    STATUS      	current
+    DESCRIPTION
+		"Setting this object to true(1) causes the VPN engine to start.                       	
+		Setting this object to false(2) causes the VPN engine to stop.
+		
+		 This object must be maintained in the NVRAM.
+		"
+	DEFVAL { false }
+	::= { cmVpnBaseObjects 2 }
+ 
+--
+-- IPSec configuration 
+--
+
+cmVpnIpsecEnable OBJECT-TYPE
+	SYNTAX 	TruthValue
+	MAX-ACCESS 	read-write
+	STATUS 	current
+	DESCRIPTION
+		"Setting this object to true(1) causes the VPN IPSec engine to start.	
+		Setting this object to false(2) causes the VPN IPSec engine to stop.
+		
+		This object is effective only when object cmVpnEnable is true.
+		
+		This object must be maintained in the NVRAM.
+		"
+	DEFVAL { false }  
+	::= { cmVpnIpsecObjects 1 }
+
+-- On the local endpoint side, we only need to configure IPSec identity, aka Negotiation ID.
+-- The protected internal network address behind this VPN Gateway is configured via
+-- CM-GATEWAY-MIB cmGwDhcpServer.
+  
+cmVpnIpsecNegotiationId OBJECT-TYPE
+	SYNTAX SnmpAdminString
+	MAX-ACCESS 	read-write
+	STATUS 	current
+	DESCRIPTION
+	"The negotiation ID for the VPN IPSec gateway (local endpoint). 
+	This must not be an empty string.
+
+	This object must be maintained in the NVRAM."
+	DEFVAL { "" }  
+	::= { cmVpnIpsecObjects 2 }
+
+cmVpnIpsecLocalNetworkAddressType OBJECT-TYPE 
+	SYNTAX      InetAddressType 
+	MAX-ACCESS  read-write
+	STATUS      current 
+	DESCRIPTION 
+		"The type of IP address of cmVpnIpsecLocalNetworkAddress. If 
+		cmVpnIpsecLocalNetworkAddress is unassigned or unknown, then the 
+		value of this object is unknown(0).
+
+		This object must be maintained in the NVRAM."
+	DEFVAL { ipv4 }           
+	::= { cmVpnIpsecObjects 3 }
+      
+cmVpnIpsecLocalNetworkAddress OBJECT-TYPE 
+	SYNTAX      InetAddress 
+	MAX-ACCESS  read-write
+	STATUS      current 
+	DESCRIPTION 
+		"Specifies the IP address of the VPN IPsec local security group. The combination
+		 of this object and cmVpnIpsecLocalNetworkMask defines the protected local 
+		network behind the VPN IPSec gateway.
+        
+        If unspecified, this object is defaulted to the subnet IP of the Local Network.
+        
+		This object must be maintained in the NVRAM."
+	DEFVAL {""}
+	::= { cmVpnIpsecObjects 4 } 
+      
+cmVpnIpsecLocalNetworkMask OBJECT-TYPE 
+	SYNTAX      InetAddress 
+	MAX-ACCESS  read-write
+	STATUS      current 
+	DESCRIPTION 
+		"Specifies the mask of the VPN IPSec local security group. The combination
+		 of this object and cmVpnIpsecLocalNetworkAddress defines the protected local 
+		 network behind the VPN IPSec gateway. The range of this object is
+		 255.255.255.192 - 255.255.255.252.
+		 
+		If unspecified, this object is defaulted to the mask of the Local Network. 
+		
+		This object must be maintained in the NVRAM."
+	DEFVAL {""}
+	::= { cmVpnIpsecObjects 5 } 
+                               
+cmVpnIpsecLocalNetworkDefaultGw OBJECT-TYPE 
+	SYNTAX      InetAddress 
+	MAX-ACCESS  read-write
+	STATUS      current 
+	DESCRIPTION 
+		"Specifies the default gateway of the VPN IPSec local security group. 
+		
+		If unspecified, this object is defaulted to the first address in the
+		Local Network. 
+		e.g. a VPN IPSec local network 192.168.1.0, mask 255.255.255.192, 
+		the default gateway is 192.168.1.1.
+				
+		This object must be maintained in the NVRAM."
+	DEFVAL {""}
+	::= { cmVpnIpsecObjects 6 } 
+
+-- peer endpoint(s) configuration
+cmVpnIpsecTunnelConfigTable OBJECT-TYPE
+	SYNTAX SEQUENCE OF CmVpnIpsecTunnelConfigEntry
+	MAX-ACCESS not-accessible
+	STATUS 	current
+	DESCRIPTION
+		"Table of IPSec tunnel configurations.
+		
+		All entries must be maintained in the NVRAM."
+	::= { cmVpnIpsecObjects 7 }
+
+cmVpnIpsecTunnelConfigEntry OBJECT-TYPE
+	SYNTAX 	CmVpnIpsecTunnelConfigEntry
+	MAX-ACCESS 	not-accessible
+	STATUS 	current
+	DESCRIPTION
+		"Each entry configures a single IPSec tunnel."
+	INDEX { cmVpnIpsecTunnelIndex }  
+	::= { cmVpnIpsecTunnelConfigTable 1 }
+
+CmVpnIpsecTunnelConfigEntry::=
+	SEQUENCE {  
+		cmVpnIpsecTunnelIndex
+			INTEGER,
+		cmVpnIpsecTunnelId
+			SnmpAdminString,
+		cmVpnIpsecTunnelTerminationGatewayIpAddrType
+			InetAddressType,
+		cmVpnIpsecTunnelTerminationGatewayIpAddr
+			InetAddress,
+		cmVpnIpsecTunnelIkeEncryptionAlgorithm
+			IkeEncryptionAlgorithm,
+		cmVpnIpsecTunnelIkeHashAlgorithm
+			IkeHashAlgorithm,
+		cmVpnIpsecTunnelIkeAuthMethod
+			IkeAuthMethod,
+		cmVpnIpsecTunnelIkeAuthSharedSecret
+			OCTET STRING,
+		cmVpnIpsecTunnelIkeLifetimeSeconds
+			Unsigned32,
+		cmVpnIpsecTunnelIpsecType
+			INTEGER,
+		cmVpnIpsecTunnelIpsecUsePfs
+			TruthValue,
+		cmVpnIpsecTunnelIpsecDHGroup
+			IkeGroupDescription,
+		cmVpnIpsecTunnelProtocolIdSet 
+			INTEGER,
+		cmVpnIpsecTunnelTransformAH
+			IpsecDoiAhTransform,
+		cmVpnIpsecTunnelTransformESP
+			IpsecDoiEspTransform,
+		cmVpnIpsecTunnelESPAuthAlgorithm
+			IpsecDoiAuthAlgorithm,
+		cmVpnIpsecTunnelEnable
+			TruthValue,
+		cmVpnIpsecTunnelRowStatus
+			RowStatus
+      }
+
+cmVpnIpsecTunnelIndex OBJECT-TYPE 
+	SYNTAX      INTEGER (1..16)
+	MAX-ACCESS  not-accessible 
+	STATUS      current 
+	DESCRIPTION 
+		"Unique index for this IPSec tunnel entry."           
+	::= { cmVpnIpsecTunnelConfigEntry 1 }
+
+cmVpnIpsecTunnelId OBJECT-TYPE 
+	SYNTAX      SnmpAdminString  (SIZE(0..63))
+	MAX-ACCESS  read-create 
+	STATUS      current 
+	DESCRIPTION 
+		"Specifies the Tunnel ID. This can be a string of numbers and/or letters,
+		 whichever this must be unique. This must not be an empty string.
+		         
+		This can also be an IP address string, which will be converted to the IP address. 
+		When going with IP address, Main Mode will be picked for IKE phase 1 negotiation. 
+		Otherwise, Aggressive Mode will be picked."
+	DEFVAL {""}           
+	::= { cmVpnIpsecTunnelConfigEntry 2 }
+	
+cmVpnIpsecTunnelTerminationGatewayIpAddrType OBJECT-TYPE 
+	SYNTAX      InetAddressType 
+	MAX-ACCESS  read-create 
+	STATUS      current 
+	DESCRIPTION 
+		"The type of IP address of cmVpnIpsecTunnelTerminationGatewayIpAddr. If 
+		the address is unassigned or unknown, then the value of this object is unknown(0)."
+	DEFVAL { ipv4 }           
+	::= { cmVpnIpsecTunnelConfigEntry 3 }
+      
+cmVpnIpsecTunnelTerminationGatewayIpAddr OBJECT-TYPE 
+	SYNTAX      InetAddress 
+	MAX-ACCESS  read-create 
+	STATUS      current 
+	DESCRIPTION 
+		"Specifies the IP address of the remote endpoint, which is the destination IP address 
+		of the tunnel. 
+		If this endpoint is for remote access (like an IPSec client), an arbitrary address 
+		can be put here. 
+		When the other end starts IKE negotiation, the address will be updated automatically."
+	DEFVAL {""}
+	::= { cmVpnIpsecTunnelConfigEntry 4 } 
+	
+cmVpnIpsecTunnelIkeEncryptionAlgorithm OBJECT-TYPE
+	SYNTAX 	IkeEncryptionAlgorithm
+	MAX-ACCESS 	read-create
+	STATUS 	current
+	DESCRIPTION
+		"Specifies the values for encryption algorithms negotiated
+             for the ISAKMP SA by IKE in Phase I.
+		
+		Supported selections:
+			     desCbc(1)
+                       ideaCbc(2)
+                       blowfishCbc(3)
+                       rc5R16B64Cbc(4)
+                       tripleDesCbc(5)
+                       castCbc(6)"
+	DEFVAL { tripleDesCbc }
+	::= { cmVpnIpsecTunnelConfigEntry 5 }
+
+cmVpnIpsecTunnelIkeHashAlgorithm OBJECT-TYPE
+	SYNTAX 	IkeHashAlgorithm
+	MAX-ACCESS 	read-create
+	STATUS 	current
+	DESCRIPTION
+		"Specifies the values for hash algorithms negotiated
+             for the ISAKMP SA by IKE in Phase I.  
+
+		Supported selections:
+				md5(1)
+				sha(2)"
+	DEFVAL { sha }
+	::= { cmVpnIpsecTunnelConfigEntry 6 }
+
+cmVpnIpsecTunnelIkeAuthMethod OBJECT-TYPE
+	SYNTAX 	IkeAuthMethod
+	MAX-ACCESS 	read-create
+	STATUS 	current
+	DESCRIPTION
+		"Specifies the values for authentication methods negotiated
+             for the ISAKMP SA by IKE in Phase I.  
+		
+		The only option supported for this object is:
+				preSharedKey(1)"
+	DEFVAL { preSharedKey }
+	::= { cmVpnIpsecTunnelConfigEntry 7 }
+
+cmVpnIpsecTunnelIkeAuthSharedSecret OBJECT-TYPE
+	SYNTAX 	OCTET STRING (SIZE(0..31))
+	MAX-ACCESS 	read-create
+	STATUS 	current
+	DESCRIPTION
+		"Specifies the pre-shared key when the object 
+		cmVpnIpsecTunnelIkeAuthMethod is preSharedKey. This can be 
+		a string of numbers and/or letters. This must not be an 
+		empty string.
+		"
+	DEFVAL { "" }
+	::= { cmVpnIpsecTunnelConfigEntry 8 }
+	
+cmVpnIpsecTunnelIkeLifetimeSeconds OBJECT-TYPE
+	SYNTAX 	Unsigned32 (60..86400)
+	UNITS 	"seconds"
+	MAX-ACCESS 	read-create
+	STATUS 	current
+	DESCRIPTION
+		"Specifies the life duration(in seconds) for IKE.
+		If unspecified, the default value shall be assumed to be 28800 seconds (8 hours)."
+	DEFVAL { 28800 }
+	::= { cmVpnIpsecTunnelConfigEntry 9 }
+
+cmVpnIpsecTunnelIpsecType OBJECT-TYPE
+	SYNTAX 		INTEGER
+		{
+			standardIp(1),
+			motoUdpEncap(2)
+		}
+	MAX-ACCESS 	read-create
+	STATUS 		current
+	DESCRIPTION
+		"This MIB object specifies the type of IPSec tunnel.
+		
+		standardIp(1) is the standard method where AH/ESP header is right after IP header.
+
+		motoUdpEncap(2) is the Motorola proprietary method to encapsulate and decapsulate
+    		IP Encapsulated Security Payload (ESP) packets inside UDP packets
+    		for the purpose of traversing Network Address Translator."
+	DEFVAL { standardIp }
+	::= { cmVpnIpsecTunnelConfigEntry 10 }
+
+cmVpnIpsecTunnelIpsecUsePfs OBJECT-TYPE
+	SYNTAX 		TruthValue
+	MAX-ACCESS 	read-create
+	STATUS 		current
+	DESCRIPTION
+		"This MIB object specifies whether or not perfect forward
+		secrecy(PFS) should be used when refreshing keys.
+		A value of true indicates that PFS should be used.
+	
+		PFS refers to the notion that compromise of a single key will 
+		permit access to only data protected by a single key. For PFS 
+		to exist the key used to protect transmission of data MUST NOT 
+		be used to derive any additional keys, and if the key used to 
+		protect transmission of data was derived from some other keying 
+		material, that material MUST NOT be used to derive any more keys.
+
+		This object is always set to be true in the application."
+	DEFVAL { true }
+	::= { cmVpnIpsecTunnelConfigEntry 11 }
+
+cmVpnIpsecTunnelIpsecDHGroup OBJECT-TYPE
+	SYNTAX      IkeGroupDescription
+	MAX-ACCESS  read-create
+	STATUS      current
+	DESCRIPTION
+		"This object specifies the Diffie-Hellman exchange negotiated 
+		 for the IPSec in both Phase I and Phase II when perfect forward 
+		 secrecy is in use(true).
+
+		Only 'modp1024(2)' is supported and applied in the application."
+	DEFVAL { modp1024 }
+	::= { cmVpnIpsecTunnelConfigEntry 12 }
+
+cmVpnIpsecTunnelProtocolIdSet  OBJECT-TYPE
+	SYNTAX INTEGER
+		{
+			esp(1),
+			ah(2),
+			espAh(3)
+		}
+	MAX-ACCESS read-create
+	STATUS current
+	DESCRIPTION
+		"Specifies the protocol-ID set for the proposal."
+	DEFVAL { esp }
+	::= { cmVpnIpsecTunnelConfigEntry 13 }
+
+cmVpnIpsecTunnelTransformAH OBJECT-TYPE
+	SYNTAX IpsecDoiAhTransform
+	MAX-ACCESS read-create
+	STATUS current
+	DESCRIPTION
+		"Specifies the values of the IPsec DOI AH Transform Identifier
+            which identify a particular algorithm to be used to 
+		provide integrity protection for AH.  It is
+            used in the Tranform-ID field of a ISAKMP Transform
+            Payload for the IPsec DOI, when the Protocol-Id of
+            the associated Proposal Payload is 2 (AH)
+
+		This object also configures the AH authentication algorithm.
+		e.g. ahMd5(2) means AH transform using MD5 authentication algorithm.
+
+		Supported selections:
+				ahMd5(2) 	- generic AH transform using MD5 
+				ahSha(3) 	- generic AH transform using SHA-1 
+				ahDes(4) 	- generic AH transform using DES"
+	DEFVAL { ahSha }
+	::= { cmVpnIpsecTunnelConfigEntry 14 }
+
+cmVpnIpsecTunnelTransformESP OBJECT-TYPE
+	SYNTAX IpsecDoiEspTransform
+	MAX-ACCESS read-create
+	STATUS current
+	DESCRIPTION
+		"Specifies the values of the IPsec DOI ESP Transform Identifier
+      	which identify a particular algorithm to be used to provide secrecy 
+		protection for ESP.  It is used in the Tranform-ID field of a ISAKMP 
+		Transform Payload for the IPsec DOI, when cmVpnIpsecTunnelProtocolIdSet  
+		is 2 (AH), 1 (ESP), and 4 (IPCOMP - not supported now).
+
+		Supported selections:
+				none(0)	  - used in MIBs to reflect no encryption used 
+				espDes(2)	  - generic DES transform using DES-CBC 
+				esp3Des(3)	  - generic triple-DES transform 
+				espIdea(5)	  - IDEA transform 
+				espBlowfish(7)- BLOWFISH transform 
+				espRc4(10)	  - reserved for RC4
+				
+		Note that ESP Transform and Authentication can NOT be none(0) at same time."
+	DEFVAL { esp3Des }
+	::= { cmVpnIpsecTunnelConfigEntry 15 }
+
+cmVpnIpsecTunnelESPAuthAlgorithm OBJECT-TYPE
+	SYNTAX IpsecDoiAuthAlgorithm
+	MAX-ACCESS read-create
+	STATUS current
+	DESCRIPTION
+		"The ESP Authentication Algorithm used in the IPsec
+		DOI as a SA Attributes definition in the Transform
+		Payload of Phase II of an IKE negotiation.
+  
+		This set of values defines the ESP authentication algorithm, 
+		when cmVpnIpsecTunnelProtocolIdSet  of 1 (ESP).
+
+		Supported selections:
+			none(0)
+			md5(1)	    - hashed MAC using MD5
+			hmacSha(2)	- hashed MAC using SHA-1
+			desMac(3)	- DES MAC
+
+		In the MIB, a value of 0 indicates that ESP
+		has been negotiated without authentication.
+		
+		Note that ESP Transform and Authentication can NOT be none(0) at same time."
+	DEFVAL { none }
+	::= { cmVpnIpsecTunnelConfigEntry 16 }
+
+-- IPComp is not supported, however, save the spot for future. OID 17.
+
+cmVpnIpsecTunnelEnable OBJECT-TYPE
+	SYNTAX 	TruthValue
+	MAX-ACCESS 	read-write
+	STATUS 	current
+	DESCRIPTION
+		"Setting this object to true(1) enables the VPN IPSec tunnel.	
+		Setting this object to false(2) disables the VPN IPSec tunnel.
+		"
+	DEFVAL { true }  
+	::= { cmVpnIpsecTunnelConfigEntry 18 }
+
+cmVpnIpsecTunnelRowStatus OBJECT-TYPE
+	SYNTAX RowStatus
+	MAX-ACCESS read-create
+	STATUS current
+	DESCRIPTION
+		"The row status of the tunnel.
+		Set to active(1) causes to active this configured tunnel.
+		Set to notInService(2) causes to deactive this tunnel."
+	::= { cmVpnIpsecTunnelConfigEntry 19 }
+
+-- IPSec tunnel remote network configuration
+cmVpnIpsecTunnelRemoteNetworkConfigTable OBJECT-TYPE
+	SYNTAX SEQUENCE OF CmVpnIpsecTunnelRemoteNetworkConfigEntry
+	MAX-ACCESS not-accessible
+	STATUS current
+	DESCRIPTION
+		"Table of remote network for the IPSec tunnel.
+		
+		Remote network is the subnet/host behind the peer tunnel endpoint 
+		or it can be the peer tunnel endpoint itself.
+		
+		Maximum of 8 remote networks per tunnel are supported."
+	::= { cmVpnIpsecObjects 8 }
+
+cmVpnIpsecTunnelRemoteNetworkConfigEntry OBJECT-TYPE
+	SYNTAX CmVpnIpsecTunnelRemoteNetworkConfigEntry
+	MAX-ACCESS not-accessible
+	STATUS current
+	DESCRIPTION
+		"Each entry configures the remote network for the IPSec tunnel."
+	INDEX { cmVpnIpsecTunnelIndex,
+			cmVpnIpsecTunnelRemoteNetworkAddressType,
+			cmVpnIpsecTunnelRemoteNetworkAddressStart,
+			cmVpnIpsecTunnelRemoteNetworkAddressEnd  }  
+	::= { cmVpnIpsecTunnelRemoteNetworkConfigTable 1 }
+
+CmVpnIpsecTunnelRemoteNetworkConfigEntry::=
+	SEQUENCE {
+		cmVpnIpsecTunnelRemoteNetworkAddressType
+			InetAddressType,
+		cmVpnIpsecTunnelRemoteNetworkAddressStart
+			InetAddress,
+		cmVpnIpsecTunnelRemoteNetworkAddressEnd
+			InetAddress,  
+		cmVpnIpsecTunnelRemoteNetworkAddressRange
+			TruthValue,
+		cmVpnIpsecTunnelRemoteNetworkRowStatus
+			RowStatus						
+			}
+
+cmVpnIpsecTunnelRemoteNetworkAddressType OBJECT-TYPE 
+	SYNTAX      InetAddressType
+	MAX-ACCESS  not-accessible 
+	STATUS      current 
+	DESCRIPTION 
+		"The Address type of the start/end of remote network IP Addresses.
+		If the start/end IP address is unassigned or unknown. The value
+		of this object is unknow(0)."        
+	::= { cmVpnIpsecTunnelRemoteNetworkConfigEntry 1 }
+
+cmVpnIpsecTunnelRemoteNetworkAddressStart OBJECT-TYPE 
+	SYNTAX      InetAddress
+	MAX-ACCESS  not-accessible 
+	STATUS      current 
+	DESCRIPTION 
+		"Object cmVpnIpsecTunnelRemoteNetworkAddressRange determines what this object means.
+
+		When cmVpnIpsecTunnelRemoteNetworkAddressRange is set to be 'true',
+		this object specifies the starting address of the remote network. 
+
+		When cmVpnIpsecTunnelRemoteNetworkAddressRange is set to be 'false',
+		this object specifies the subnet IP address of the remote network."
+	DEFVAL { "" }           
+	::= { cmVpnIpsecTunnelRemoteNetworkConfigEntry 2 }
+
+cmVpnIpsecTunnelRemoteNetworkAddressEnd OBJECT-TYPE 
+	SYNTAX      InetAddress
+	MAX-ACCESS  not-accessible 
+	STATUS      current 
+	DESCRIPTION 
+		"Object cmVpnIpsecTunnelRemoteNetworkAddressRange determines what this object means.
+
+		When cmVpnIpsecTunnelRemoteNetworkAddressRange is set to be 'true',
+		this object specifies the ending address of the remote network. 
+
+		When cmVpnIpsecTunnelRemoteNetworkAddressRange is set to be 'false',
+		this object specifies the mask of the remote network."
+	DEFVAL { "" }           
+	::= { cmVpnIpsecTunnelRemoteNetworkConfigEntry 3 }
+
+cmVpnIpsecTunnelRemoteNetworkAddressRange OBJECT-TYPE 
+	SYNTAX      TruthValue
+	MAX-ACCESS  read-create 
+	STATUS      current 
+	DESCRIPTION 
+		"Specifies the remote network configuration type.
+		
+		Setting to 'true' indicates objects cmVpnIpsecTunnelRemoteNetworkAddressStart and
+		cmVpnIpsecTunnelRemoteNetworkAddressEnd as an address range.
+		
+		Setting to 'false' indicates objects cmVpnIpsecTunnelRemoteNetworkAddressStart and
+		cmVpnIpsecTunnelRemoteNetworkAddressEnd as the subnet-IP-address/subnet-mask."
+	DEFVAL { false }           
+	::= { cmVpnIpsecTunnelRemoteNetworkConfigEntry 4 }
+
+cmVpnIpsecTunnelRemoteNetworkRowStatus OBJECT-TYPE
+	SYNTAX RowStatus
+	MAX-ACCESS read-create
+	STATUS current
+	DESCRIPTION
+		"The row status of remote network of the tunnel."
+	::= { cmVpnIpsecTunnelRemoteNetworkConfigEntry 5 }
+
+-- IPSec tunnel local access configuration
+cmVpnIpsecTunnelLocalAccessControlConfigTable OBJECT-TYPE
+	SYNTAX SEQUENCE OF CmVpnIpsecTunnelLocalAccessControlConfigEntry
+	MAX-ACCESS not-accessible
+	STATUS current
+	DESCRIPTION
+		"Table of local network access control policy for the IPSec tunnel. 
+		
+		By default, all traffic through this configured tunnel is disallowed. 
+		To permit access, specify an access control policy for a local
+		network/ip-range. The policy for the specified local etwork/ip-range 
+		is always allowed.
+		
+		Maximum of 8 local access control policies per tunnel are supported."
+	::= { cmVpnIpsecObjects 9 }
+
+cmVpnIpsecTunnelLocalAccessControlConfigEntry OBJECT-TYPE
+	SYNTAX CmVpnIpsecTunnelLocalAccessControlConfigEntry
+	MAX-ACCESS not-accessible
+	STATUS current
+	DESCRIPTION
+		"Each entry configures the local access control policy for the IPSec tunnel."
+	INDEX { cmVpnIpsecTunnelIndex,
+			cmVpnIpsecTunnelLocalAccessControlAddressType,
+			cmVpnIpsecTunnelLocalAccessControlAddressStart,
+			cmVpnIpsecTunnelLocalAccessControlAddressEnd  }  
+	::= { cmVpnIpsecTunnelLocalAccessControlConfigTable 1 }
+
+CmVpnIpsecTunnelLocalAccessControlConfigEntry::=
+	SEQUENCE {
+		cmVpnIpsecTunnelLocalAccessControlAddressType
+			InetAddressType,
+		cmVpnIpsecTunnelLocalAccessControlAddressStart
+			InetAddress,
+		cmVpnIpsecTunnelLocalAccessControlAddressEnd
+			InetAddress,  
+		cmVpnIpsecTunnelLocalAccessControlAddressRange
+			TruthValue,
+		cmVpnIpsecTunnelLocalAccessControlRowStatus
+			RowStatus						
+			}
+
+cmVpnIpsecTunnelLocalAccessControlAddressType OBJECT-TYPE 
+	SYNTAX      InetAddressType
+	MAX-ACCESS  not-accessible 
+	STATUS      current 
+	DESCRIPTION 
+		"The Address type of the start/end of local network IP Addresses.
+		If the start/end IP address is unassigned or unknown, then the value
+		of this object is unknown(0)."
+	DEFVAL { ipv4 }                        
+	::= { cmVpnIpsecTunnelLocalAccessControlConfigEntry 1 }
+
+cmVpnIpsecTunnelLocalAccessControlAddressStart OBJECT-TYPE 
+	SYNTAX      InetAddress
+	MAX-ACCESS  not-accessible 
+	STATUS      current 
+	DESCRIPTION 
+		"Object cmVpnIpsecTunnelLocalAccessControlAddressRange determines what this object means.
+
+		When cmVpnIpsecTunnelLocalAccessControlAddressRange is set to be 'true',
+		this object specifies the starting address of the local IP range for which
+		the access control policy(allowed) is assumed. 
+
+		When cmVpnIpsecTunnelRemoteNetworkAddressRange is set to be 'false',
+		this object specifies the subnet IP address of the local network for which
+		the access control policy(allowed) is assumed."
+	DEFVAL { "" }                
+	::= { cmVpnIpsecTunnelLocalAccessControlConfigEntry 2 }
+
+cmVpnIpsecTunnelLocalAccessControlAddressEnd OBJECT-TYPE 
+	SYNTAX      InetAddress
+	MAX-ACCESS  not-accessible 
+	STATUS      current 
+	DESCRIPTION 
+		"Object cmVpnIpsecTunnelLocalAccessControlAddressRange determines what this object means.
+
+		When cmVpnIpsecTunnelLocalAccessControlAddressRange is set to be 'true',
+		this object specifies the ending address of the local IP range for which
+		the access control policy(allowed) is assumed. 
+
+		When cmVpnIpsecTunnelRemoteNetworkAddressRange is set to be 'false',
+		this object specifies the mask of the local network for which
+		the access control policy(allowed) is assumed."
+	DEFVAL { "" }                
+	::= { cmVpnIpsecTunnelLocalAccessControlConfigEntry 3 }
+
+cmVpnIpsecTunnelLocalAccessControlAddressRange OBJECT-TYPE 
+	SYNTAX      TruthValue
+	MAX-ACCESS  read-create 
+	STATUS      current 
+	DESCRIPTION 
+		"Specifies the local network access control configuration type.
+		
+		Setting to 'true' indicates objects cmVpnIpsecTunnelLocalAccessControlAddressStart and
+		cmVpnIpsecTunnelLocalAccessControlAddressEnd as an address range.
+		
+		Setting to 'false' indicates objects cmVpnIpsecTunnelLocalAccessControlAddressStart and
+		cmVpnIpsecTunnelLocalAccessControlAddressEnd as the subnet-IP-address/subnet-mask."
+	DEFVAL { false }                
+	::= { cmVpnIpsecTunnelLocalAccessControlConfigEntry 4 }
+
+cmVpnIpsecTunnelLocalAccessControlRowStatus OBJECT-TYPE
+	SYNTAX RowStatus
+	MAX-ACCESS read-create
+	STATUS current
+	DESCRIPTION
+		"The row status of local network access of the tunnel."
+	::= { cmVpnIpsecTunnelLocalAccessControlConfigEntry 5 }           
+
+-- peer endpoint(s) status
+cmVpnIpsecTunnelStatTable OBJECT-TYPE
+	SYNTAX SEQUENCE OF CmVpnIpsecTunnelStatEntry
+	MAX-ACCESS not-accessible
+	STATUS current
+	DESCRIPTION
+		"Table of IPSec tunnel status and statistics."
+	::= { cmVpnIpsecObjects 10 }
+
+cmVpnIpsecTunnelStatEntry OBJECT-TYPE
+	SYNTAX CmVpnIpsecTunnelStatEntry
+	MAX-ACCESS not-accessible
+	STATUS current
+	DESCRIPTION
+		"Each entry displays a single IPSec tunnel."
+	INDEX { cmVpnIpsecTunnelIndex }  
+	::= { cmVpnIpsecTunnelStatTable 1 }
+
+CmVpnIpsecTunnelStatEntry::=
+	SEQUENCE {  
+		cmVpnIpsecTunnelNegotiationStatus
+			INTEGER,
+		cmVpnIpsecTunnelSentBytes
+			Counter32,
+		cmVpnIpsecTunnelReceivedBytes
+			Counter32,
+		cmVpnIpsecTunnelConnectionTest
+			TruthValue,
+		cmVpnIpsecTunnelCounterReset
+		    TruthValue
+-- we need to add cmVpnIpsecStatClearCounter later.
+      }
+
+cmVpnIpsecTunnelNegotiationStatus OBJECT-TYPE 
+	SYNTAX      INTEGER
+		{
+			broken(1),
+			phase1Completed(2),
+			phase2Completed(3),
+			inProgress(4)
+		}
+	MAX-ACCESS  read-only 
+	STATUS      current 
+	DESCRIPTION 
+		"The negotiation status for this tunnel.
+		
+		broken(1)		   - no IKE negotiation has been successfully completed.
+		phase1Completed(2) - IKE Phase 1 negotiation completed successfully.
+		phase2Completed(3) - IKE Phase 2 negotiation completed successfully.
+		inProgess(4)	   - IKE negotiation is in progress."           
+	::= { cmVpnIpsecTunnelStatEntry 1 }
+
+cmVpnIpsecTunnelSentBytes OBJECT-TYPE 
+	SYNTAX      Counter32
+	MAX-ACCESS  read-only 
+	STATUS      current 
+	DESCRIPTION 
+		"The number of bytes has been sent out through this tunnel."
+	::= { cmVpnIpsecTunnelStatEntry 2 }
+
+cmVpnIpsecTunnelReceivedBytes OBJECT-TYPE 
+	SYNTAX      Counter32
+	MAX-ACCESS  read-only 
+	STATUS      current 
+	DESCRIPTION 
+		"The number of bytes has been received through this tunnel."
+	::= { cmVpnIpsecTunnelStatEntry 3 }
+
+cmVpnIpsecTunnelConnectionTest OBJECT-TYPE
+	SYNTAX      TruthValue
+	MAX-ACCESS  read-write
+    STATUS     	current
+    DESCRIPTION
+		"Setting this object to true(1) causes to invoke the IPSec tunnel.
+		Reading this object always returns false(2).
+        "     
+    DEFVAL { false }
+	::= { cmVpnIpsecTunnelStatEntry 4 }
+	
+cmVpnIpsecTunnelCounterReset OBJECT-TYPE
+	SYNTAX      TruthValue
+	MAX-ACCESS  read-write
+    STATUS     	current
+    DESCRIPTION
+		"Setting this object to true(1) causes to reset the following counters.
+		 cmVpnIpsecTunnelReceivedBytes
+		 cmVpnIpsecTunnelSentBytes
+		 
+		Reading this object always returns false(2).
+        "     
+    DEFVAL { false }
+	::= { cmVpnIpsecTunnelStatEntry 5 } 
+	
+cmVpnLogReset OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Setting this object to true(1) empties the event log.
+             All data is deleted. Reading this object always returns
+             false(2)."
+    DEFVAL { false }
+        ::= { cmVpnLogObjects 1 }
+
+cmVpnEventTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF CmVpnEventEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Contains a log of VPN events that may be
+             of interest in fault isolation and troubleshooting."
+        ::= {  cmVpnLogObjects 2 }
+
+cmVpnEventEntry OBJECT-TYPE
+        SYNTAX      CmVpnEventEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Describes sequential VPN events that may be of 
+             interest in fault isolation and troubleshooting.
+             
+             For IPSec, this event log reports messages captured
+             during a tunnel establishment.
+             
+             Maximum number of entries is 200."            
+        INDEX { cmVpnEvIndex }
+
+        ::= { cmVpnEventTable 1 }
+
+CmVpnEventEntry ::= SEQUENCE {
+            cmVpnEvIndex      INTEGER,
+            cmVpnEvTime       SnmpAdminString,
+            cmVpnEvText       SnmpAdminString
+        }
+
+cmVpnEvIndex OBJECT-TYPE
+        SYNTAX      INTEGER (1..200)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Provides relative ordering of the objects in the event
+             log. This object will always increase except when
+             (a) the log is reset via cmVpnLogReset,
+             (b) the device reboots and does not implement non-volatile
+             storage for this log, or 
+             (c) it reaches the maximum number of entries 200.
+             The next entry for all the above cases is 1."
+        ::= { cmVpnEventEntry 1 }
+
+cmVpnEvTime OBJECT-TYPE
+        SYNTAX      SnmpAdminString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The time that this entry was created."
+        ::= { cmVpnEventEntry 2 }
+
+cmVpnEvText OBJECT-TYPE
+        SYNTAX      SnmpAdminString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Provides a human-readable description of the event,
+             including all relevant context (tunnel ID, IP address,
+             etc.)."
+        ::= { cmVpnEventEntry 3 }
+
+-- Conformance 
+cmVpnCompliances OBJECT IDENTIFIER ::= { cmVpnConformance 1 }
+cmVpnGroups      OBJECT IDENTIFIER ::= { cmVpnConformance 2 }
+                                 
+-- Compliance statements
+cmVpnCompliance MODULE-COMPLIANCE
+      STATUS       current
+      DESCRIPTION "The compliance statement for devices that implement the
+                   CM VPN MIB"
+
+      MODULE       -- this module
+          MANDATORY-GROUPS { cmVpnIpsecGroup }
+
+	OBJECT  cmVpnIpsecLocalNetworkAddressType
+	     WRITE-SYNTAX INTEGER { ipv4(1) } 
+           MIN-ACCESS  read-only 
+           DESCRIPTION 
+               "Only IPv4 address type is required to be supported.  This can be
+                done by making this object read-only or only allowing the value
+                of ipv4 to be written."
+
+      OBJECT  cmVpnIpsecTunnelTerminationGatewayIpAddrType
+           WRITE-SYNTAX INTEGER { ipv4(1) } 
+           MIN-ACCESS  read-only 
+           DESCRIPTION 
+               "Only IPv4 address type is required to be supported.  This can be
+                done by making this object read-only or only allowing the value
+                of ipv4 to be written."
+
+	OBJECT  cmVpnIpsecTunnelIpsecUsePfs
+	     WRITE-SYNTAX INTEGER { true(1) } 
+           MIN-ACCESS  read-only 
+           DESCRIPTION 
+               "Only value 'true' is supported for this object in the applicaion."
+	OBJECT  cmVpnIpsecTunnelIpsecDHGroup
+	     WRITE-SYNTAX INTEGER { modp1024(2) } 
+           MIN-ACCESS  read-only 
+           DESCRIPTION 
+               "Only value 'modp1024' is supported for this object in the applicaion."
+	OBJECT  cmVpnIpsecTunnelIkeAuthMethod
+	     WRITE-SYNTAX INTEGER { preSharedKey(1) } 
+           MIN-ACCESS  read-only 
+           DESCRIPTION 
+               "The only 'preSharedKey' is supported for this object in the applicaion."
+	
+      ::= { cmVpnCompliances 1 }    
+    
+-- Units of compliance 
+cmVpnBaseGroup OBJECT-GROUP
+       OBJECTS     {
+                     cmVpnSetToFactory,
+                     cmVpnEnable
+                   }    
+       STATUS       current
+       DESCRIPTION "A collection of objects for VPN base configuration."
+       ::= { cmVpnGroups 1 }
+
+cmVpnIpsecGroup OBJECT-GROUP
+       OBJECTS     {
+       				 cmVpnIpsecEnable,
+                     cmVpnIpsecNegotiationId,
+					 cmVpnIpsecLocalNetworkAddressType,
+					 cmVpnIpsecLocalNetworkAddress,
+					 cmVpnIpsecLocalNetworkMask,
+					 cmVpnIpsecLocalNetworkDefaultGw,
+					 cmVpnIpsecTunnelId,
+					 cmVpnIpsecTunnelTerminationGatewayIpAddrType,
+			 		 cmVpnIpsecTunnelTerminationGatewayIpAddr,
+					 cmVpnIpsecTunnelIkeEncryptionAlgorithm,
+					 cmVpnIpsecTunnelIkeHashAlgorithm,
+					 cmVpnIpsecTunnelIkeAuthMethod,
+					 cmVpnIpsecTunnelIkeAuthSharedSecret,
+					 cmVpnIpsecTunnelIkeLifetimeSeconds,
+					 cmVpnIpsecTunnelIpsecType,
+					 cmVpnIpsecTunnelIpsecUsePfs,
+					 cmVpnIpsecTunnelIpsecDHGroup,
+					 cmVpnIpsecTunnelProtocolIdSet ,
+					 cmVpnIpsecTunnelTransformAH,
+					 cmVpnIpsecTunnelTransformESP,
+					 cmVpnIpsecTunnelESPAuthAlgorithm,
+					 cmVpnIpsecTunnelEnable,
+					 cmVpnIpsecTunnelRowStatus,
+					 cmVpnIpsecTunnelRemoteNetworkAddressRange,
+					 cmVpnIpsecTunnelRemoteNetworkRowStatus,
+					 cmVpnIpsecTunnelLocalAccessControlAddressRange,
+					 cmVpnIpsecTunnelLocalAccessControlRowStatus,
+					 cmVpnIpsecTunnelNegotiationStatus,
+					 cmVpnIpsecTunnelSentBytes,
+					 cmVpnIpsecTunnelReceivedBytes,
+					 cmVpnIpsecTunnelConnectionTest,
+					 cmVpnIpsecTunnelCounterReset
+				  }    
+       STATUS       current
+       DESCRIPTION "A collection of objects for IPsec configuration."
+       ::= { cmVpnGroups 2 }
+       
+cmVpnLogGroup OBJECT-GROUP
+       OBJECTS     {
+            cmVpnLogReset,
+            cmVpnEvTime,
+            cmVpnEvText
+        }
+       STATUS       current
+       DESCRIPTION "A collection of objects for VPN event log."
+       ::= { cmVpnGroups 5 }
+
+END
+
+
+

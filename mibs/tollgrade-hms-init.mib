@@ -1,0 +1,272 @@
+--***************************************************************************
+-- NOTICE:  All rights reserved.  This material contains the
+--  trade secrets and confidential information of Tollgrade Communications
+--  Inc., which embody substantial creative effort, ideas and expressions.
+--  No part of this material may be reproduced or transmitted in any form 
+--  or by any means, electronic, mechanical, optical or otherwise, 
+--  including photocopying and recording or in connection with any 
+--  information storage or retrieval system, without specific written 
+--  permission from Tollgrade Communications Inc.
+--  
+--  CopyRight Tollgrade Communications Inc. 2004. All rights reserved world-wide.
+--***************************************************************************
+--
+--  Module Name:   TLGDHMSInit.MIB
+--
+--  Description:   TLGD HMS INIT MIB
+--
+--  Notes:
+--
+--
+--***************************************************************************
+
+TOLLGRADE-HMS-INIT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	Integer32, MODULE-IDENTITY, OBJECT-TYPE, IpAddress
+		 FROM SNMPv2-SMI
+	OBJECT-GROUP, MODULE-COMPLIANCE
+		 FROM SNMPv2-CONF
+     DateAndTime, DisplayString
+         FROM SNMPv2-TC   
+     hmsinit
+         FROM TOLLGRADE-LIGHTHOUSE-TREE-MIB	 
+	;
+
+
+hmsInitIdentity MODULE-IDENTITY
+	LAST-UPDATED "200406300000Z"
+ORGANIZATION "Tollgrade Communications, Inc."
+	CONTACT-INFO 
+		"Tollgrade Communications, Inc."
+	DESCRIPTION 
+		"The MIB module is for operation with DOCSIS transponders.
+         It contains configuration data for the HMS transponder 
+         portion of the device.  The data is loaded via the 
+         DOCSIS modem config file.
+         
+         These objects can only be written to once and MUST be set via 
+         the cable modem config file.  Attempting to set them a second 
+         time results in an error."
+
+   
+    REVISION "200408130000Z"
+	DESCRIPTION 
+		"Original
+		This version published as 'TLGDHMSInit.mib'
+          This version obsoletes 'nothing'."
+
+::= { hmsinit 1 }
+
+hmsInitMIBObjects	OBJECT IDENTIFIER ::= { hmsInitIdentity 1 }
+
+hmsInitConformance  	OBJECT IDENTIFIER ::= { hmsInitIdentity 2 }
+hmsInitCompliances  	OBJECT IDENTIFIER ::= { hmsInitConformance 1 }
+hmsInitGroups       	OBJECT IDENTIFIER ::= { hmsInitConformance 2 } 
+
+
+-- **********
+-- * HMS Init
+-- **********
+
+serverIp OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Defines the Tollgrade network management software 
+         server IP address."
+    ::= { hmsInitMIBObjects 1 }
+
+todServerIp OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Defines the Time Server IP address. The 
+         server must support the NTP protocol."
+    ::= { hmsInitMIBObjects 2 }
+
+             
+discoveryCommunity OBJECT-TYPE
+	SYNTAX OCTET STRING (SIZE(0..25))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+          "Defines the SNMP community string used by 
+           Tollgrade network management software for 
+           auto discovering network elements. String 
+           is case sensitive and cannot contain spaces. 
+           25 characters maximum." 
+	::= { hmsInitMIBObjects 3 }
+
+readCommunity OBJECT-TYPE
+	SYNTAX OCTET STRING (SIZE(0..25))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+          "Defines the SNMP read community string for the 
+           HMS transponder portion of the DOCSIS transponder. 
+           String is case sensitive and cannot contain spaces. 
+           25 characters maximum." 
+	::= { hmsInitMIBObjects 4 }
+
+readWriteCommunity OBJECT-TYPE
+	SYNTAX OCTET STRING (SIZE(0..25))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+          "Defines the SNMP read/write community string for 
+           the HMS transponder portion of the DOCSIS transponder. 
+           String is case sensitive and cannot contain spaces. 
+           25 characters maximum."   
+	::= { hmsInitMIBObjects 5 }
+
+secureSNMP OBJECT-TYPE
+	SYNTAX INTEGER {
+	      enabled(1),
+          disabled(2)
+          }
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+          "Used to disable / enable secure SNMP access to the 
+           HMS transponder portion of the DOCSIS transponder. 
+           When enabled, the IP addresses defined in the 
+           secureHostsTable will be permitted SNMP access. 
+           When disabled, any IP address will be permitted SNMP access." 
+	::= { hmsInitMIBObjects 6 }
+
+
+trapDestinationTable OBJECT-TYPE
+	SYNTAX SEQUENCE OF TrapDestinationEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"A table that contains trap destination IP addresses."
+	::= { hmsInitMIBObjects 7 }
+
+trapDestinationEntry OBJECT-TYPE
+	SYNTAX 	TrapDestinationEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"Information about each Trap Server."
+	INDEX { trapDestinationIndex }
+	::= { trapDestinationTable 1 }
+
+TrapDestinationEntry ::= SEQUENCE {
+	trapDestinationIndex
+		INTEGER,
+	trapDestinationIp
+		IpAddress
+}
+             
+trapDestinationIndex OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+          "Index of trap destination IP addresses. 1..5" 
+	::= { trapDestinationEntry 1 }
+             
+             
+trapDestinationIp OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Defines the trap destination IP address 
+         for traps generated by the HMS portion of 
+         the DOCSIS transponder."
+    ::= { trapDestinationEntry 2 }
+
+             
+secureHostsTable OBJECT-TYPE
+	SYNTAX SEQUENCE OF SecureHostsEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"A table that contains secure hosts IP addresses."
+	::= { hmsInitMIBObjects 8 }
+
+secureHostsEntry OBJECT-TYPE
+	SYNTAX 	SecureHostsEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		"Information about each secure host."
+	INDEX { secureHostsIndex }
+	::= { secureHostsTable 1 }
+
+SecureHostsEntry ::= SEQUENCE {
+	secureHostsIndex
+		INTEGER,
+	secureHostsIp
+		IpAddress
+}
+             
+secureHostsIndex OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+          "Index of secure host IP addresses. 1..5" 
+	::= { secureHostsEntry 1 }
+             
+             
+secureHostsIp OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Defines the IP address of a host that is allowed 
+         SNMP access to the HMS portion of the DOCSIS transponder. 
+         When the secureSnmp object is enabled, the IP addresses 
+         defined in this table are the only hosts that will have 
+         SNMP access. When disabled, the IP addresses defined in 
+         this table will be ignored and any IP address will be 
+         permitted SNMP access"
+    ::= { secureHostsEntry 2 }
+
+
+
+-- *************
+-- * Compliance
+-- *************
+
+hmsInitCompliance  MODULE-COMPLIANCE
+	STATUS     current
+	DESCRIPTION 
+		"The compliance statement for entities which implement the Tollgrade hmsInit MIB."
+	MODULE 
+		MANDATORY-GROUPS {
+			hmsInitGroup
+			}
+	::= { hmsInitCompliances 1 }
+
+hmsInitGroup  OBJECT-GROUP
+     OBJECTS {
+	     serverIp,    
+	     todServerIp,
+	     discoveryCommunity,
+	     readCommunity,
+	     readWriteCommunity,
+	     trapDestinationIndex,
+	     trapDestinationIp,
+	     secureHostsIndex,
+	     secureHostsIp
+     }
+	STATUS     current
+	DESCRIPTION 
+		"The configuration group defines the mandatory objects in the hmsInit area."
+	::= { hmsInitGroups 1 }
+
+
+END
+--  Revision History:
+--$Log: TLGDHMSInit.mib,v $
+--Revision 1.1  2005/07/11 14:51:52  dmcgary
+--Added hmsinit.mib support to eliminate dependence on HMSINIT.INI file.
+--
+--

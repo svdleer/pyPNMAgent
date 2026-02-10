@@ -1,0 +1,424 @@
+--
+-- (c) 2002 Motorola, Inc.
+--
+-- CM Print Server MIB
+--
+
+CM-PRINT-SERVER-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+	enterprises, OBJECT-TYPE, MODULE-IDENTITY
+		FROM SNMPv2-SMI
+	TruthValue, DisplayString
+		FROM SNMPv2-TC
+    SnmpAdminString
+         FROM SNMP-FRAMEWORK-MIB
+	InetAddressType, InetAddress 
+		FROM INET-ADDRESS-MIB; 
+
+--
+-- Path to root
+--
+
+gi OBJECT IDENTIFIER ::= { enterprises 1166 }
+giproducts OBJECT IDENTIFIER ::= { gi 1 }
+cm OBJECT IDENTIFIER ::= { giproducts 19 }
+
+
+cmPrintSrv MODULE-IDENTITY
+    LAST-UPDATED "200307080000Z"  -- July 8, 2003
+	ORGANIZATION
+		"Motorola BCS"
+	CONTACT-INFO
+		"Author: Greg Nakanishi
+		Org:    Motorola BCS
+		postal: 6450 Sequence Drive
+				San Diego, CA 92121
+		email:  gnakanishi@motorola.com
+		phone:  858-404-2366
+		
+		Editor: Zheng Fang @ Horsham, PA (zhengfang@motorola.com, 215-323-2839)
+		"
+	DESCRIPTION
+		"This MIB defines management objects to configure a print server." 
+      REVISION  "200307080000Z"
+      DESCRIPTION
+        "Edited by Jason Krasnow. 
+        Published as cmPrintServer-10.mib
+		Changed text strings to SnmpAdminString from OCTET STRING.  Fixed various
+		syntactical errors that caused compile errors on strict MIB compilers. 
+		"		 
+	REVISION        "200207310000Z" -- July 31, 2002
+	DESCRIPTION
+		"
+		Published as cmPrintServer-01.mib. Edited by Zheng Fang.
+			Changes from cmPrintServer.mib include:
+		- Removed cmPrintSrvMsAdminStatus, cmPrintSrvAppleAdminStatus,
+			cmPrintSrvLpdAdminStatus and cmPrintSrvAdminStatus.
+		- Added cmPrintSrvMsSmbDelay so corresponding GUI field can be delegated by MSO.
+		- Added the range value for cmPrintSrvMsDomainName, cmPrintSrvMsSrvName, 
+			cmPrintSrvAppleZone and cmPrintSrvAppleObjType.
+		- Added taggedBinary enum to cmPrintSrvAppleCommProto.
+		- Added default value to cmPrintSrvAppleZone.
+		"
+	::= { cm 56 }
+
+
+--
+-- Administrative OID assignments
+--
+cmPrintSrvObjects OBJECT IDENTIFIER ::= { cmPrintSrv 1 }
+cmPrintSrvConformance OBJECT IDENTIFIER ::= { cmPrintSrv 2 }
+
+--
+-- Object definitions 
+--
+
+-- All objects are saved on NV.
+
+cmPrintSrvBase OBJECT IDENTIFIER ::= { cmPrintSrvObjects 1 }
+
+--
+-- Interfaces used to connect local or remote printers
+--
+-- Current implementation on SBG100 only supports parallel port interface to a local printer.
+-- We may support serial port, USB port, IEEE 1394 port interfaces to a local printer in the future.
+-- We may also support connection to network remote printers in the future. 
+--
+cmPrintSrvInterfaces OBJECT IDENTIFIER ::= { cmPrintSrvObjects 2 }
+
+--
+-- Configuration and status for supported print interpreter languages
+--
+-- Tagged binary is not specific to AppleTalk. It is one of Adobe Postscript communication protocols.
+--
+cmPrintSrvInterpreterLangs OBJECT IDENTIFIER ::= { cmPrintSrvObjects 3 }
+
+cmPrintSrvInterpreterLangPS OBJECT IDENTIFIER ::= { cmPrintSrvInterpreterLangs 1 }
+
+--
+-- Configuration and status for supported print job delivery channels
+--
+cmPrintSrvChannels OBJECT IDENTIFIER ::= { cmPrintSrvObjects 4 }
+
+cmPrintSrvChIEEE1284Port OBJECT IDENTIFIER ::= { cmPrintSrvChannels 1 }
+cmPrintSrvChServerMessageBlock OBJECT IDENTIFIER ::= { cmPrintSrvChannels 2 }
+cmPrintSrvChAppleTalk OBJECT IDENTIFIER ::= { cmPrintSrvChannels 3 }
+cmPrintSrvChLPDSrv OBJECT IDENTIFIER ::= { cmPrintSrvChannels 4 }
+
+--
+-- Base
+--
+cmPrintSrvSetToFactory OBJECT-TYPE
+	SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "Setting this object to true(1) causes the print server default 
+            options to be returned back to factory defaults. Reading this object always
+            returns false(2).
+                         	
+            The objects set to factory defaults are:      
+
+			cmPrintSrvChIEEE1284EcpEnable,
+			
+			cmPrintSrvChSMBWorkgroupName,
+			cmPrintSrvChSMBPrinterName,
+			cmPrintSrvChSMBQueueName,
+			cmPrintSrvChSMBAbortOnErrEnable,
+			cmPrintSrvChSMBResponseTime,
+			cmPrintSrvChSMBEnable,
+			
+			cmPrintSrvChAppleTalkZoneName,
+			cmPrintSrvChAppleTalkObjType,
+			cmPrintSrvChAppleTalkObjName,
+			cmPrintSrvChAppleTalkEnable,
+			
+			cmPrintSrvChLPDSrvLanIpAddrType,
+			cmPrintSrvChLPDSrvLanIpAddr,
+			cmPrintSrvChLPDSrvQueueName,
+			cmPrintSrvChLPDSrvEnable 
+
+ 			"
+    ::= { cmPrintSrvBase 1 }
+
+
+--
+-- Adobe Postscript communication protocol
+--
+cmPrintSrvIntpLangPSCommProt OBJECT-TYPE
+	SYNTAX INTEGER 
+		{
+		ascii(1),
+		binary(2),  
+		taggedBinary(3)
+		}
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+		"This object configs communication protocol for the attached Postscript printer."
+	DEFVAL { binary }
+	::= { cmPrintSrvInterpreterLangPS 1 }
+
+--
+-- IEEE 1284-1994 standard
+--
+cmPrintSrvChIEEE1284EcpEnable OBJECT-TYPE
+	SYNTAX TruthValue
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+		"Set to true to enable ECP mode negotiation.
+		Set to false to disable ECP mode negotiation."
+	DEFVAL { true }
+	::= { cmPrintSrvChIEEE1284Port 1 }
+
+--
+-- Server Message Block (SMB) service
+--
+
+cmPrintSrvChSMBWorkgroupName OBJECT-TYPE
+	SYNTAX SnmpAdminString (SIZE(0..15))
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+         "The SMB workgroup name that the printer resides on."
+	DEFVAL { "WORKGROUP" }
+	::= { cmPrintSrvChServerMessageBlock 1 }
+
+cmPrintSrvChSMBPrinterName OBJECT-TYPE
+	SYNTAX SnmpAdminString (SIZE(0..15))
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+         "The SMB printer name."
+	DEFVAL { "SBG1000" }
+	::= { cmPrintSrvChServerMessageBlock 2 }
+	
+cmPrintSrvChSMBQueueName OBJECT-TYPE
+	SYNTAX SnmpAdminString (SIZE(0..15))
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+         "The SMB printer queue name."
+	DEFVAL { "P1" }
+	::= { cmPrintSrvChServerMessageBlock 3 }
+
+cmPrintSrvChSMBAbortOnErrEnable OBJECT-TYPE
+	SYNTAX TruthValue
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+         "The object controls whether the print job is aborted if an
+          error is detected."
+	DEFVAL { false }
+	::= { cmPrintSrvChServerMessageBlock 4 }
+
+cmPrintSrvChSMBResponseTime OBJECT-TYPE
+	SYNTAX INTEGER (0..255)
+	UNITS "seconds"
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+         "The object controls SMB delayed response time in seconds."
+	DEFVAL { 0 }
+	::= { cmPrintSrvChServerMessageBlock 5 }
+          
+cmPrintSrvChSMBEnable OBJECT-TYPE
+	SYNTAX TruthValue
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+		"Set to true to enable SMB channel.
+		Set to false to disable SMB channel."
+	DEFVAL { true }
+	::= { cmPrintSrvChServerMessageBlock 6 }
+          
+--
+-- AppleTalk service
+--
+cmPrintSrvChAppleTalkZoneName OBJECT-TYPE
+	SYNTAX SnmpAdminString (SIZE(0..32))
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+         "The AppleTalk zone name that the printer resides on."
+	DEFVAL { "*" }
+	::= { cmPrintSrvChAppleTalk 1 }
+
+cmPrintSrvChAppleTalkObjType OBJECT-TYPE
+	SYNTAX SnmpAdminString (SIZE(0..32))
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+         "The AppleTalk printer object type."
+	DEFVAL { "LaserWriter" }
+	::= { cmPrintSrvChAppleTalk 2 }
+
+cmPrintSrvChAppleTalkObjName OBJECT-TYPE
+	SYNTAX SnmpAdminString (SIZE(0..32))
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+       "The AppleTalk printer object name."
+	DEFVAL { "P1" }
+	::= { cmPrintSrvChAppleTalk 3 }
+                       
+cmPrintSrvChAppleTalkEnable OBJECT-TYPE
+	SYNTAX TruthValue
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+		"Set to true to enable Apple Talk channel.
+		Set to false to disable Apple Talk channel."
+	DEFVAL { true }
+	::= { cmPrintSrvChAppleTalk 4 }
+                       
+--
+-- RFC1179 Line Printer Daemon (LPD) service
+--
+-- We may implement Wan accessiable LPD Server in the future.
+--
+cmPrintSrvChLPDSrvLanIpAddrType OBJECT-TYPE
+	SYNTAX InetAddressType
+	MAX-ACCESS read-only
+	STATUS current
+	DESCRIPTION
+         "The type of IP address of cmPrintSrvChLPDSrvLanIpAddress. 
+         It should be ipv4 for now." 
+	::= { cmPrintSrvChLPDSrv 1 }
+
+cmPrintSrvChLPDSrvLanIpAddr OBJECT-TYPE
+	SYNTAX InetAddress
+	MAX-ACCESS read-only
+	STATUS current
+	DESCRIPTION
+         "The LAN side LPR IP address. User should use this address as their WINS server.
+         This address should be 192.168.100.1." 
+	::= { cmPrintSrvChLPDSrv 2 }
+
+cmPrintSrvChLPDSrvQueueName OBJECT-TYPE
+	SYNTAX SnmpAdminString (SIZE(0..64))
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+         "The queue name of LPD server."
+	DEFVAL { "L1" }
+	::= { cmPrintSrvChLPDSrv 3 }
+
+cmPrintSrvChLPDSrvEnable OBJECT-TYPE
+	SYNTAX TruthValue
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+		"Set to true to enable LPD server channel.
+		Set to false to disable LPD server channel."
+	DEFVAL { true }
+	::= { cmPrintSrvChLPDSrv 4 }
+               
+--               
+--  Conformance
+--
+cmPrintSrvCompliances OBJECT IDENTIFIER ::= { cmPrintSrvConformance 1 }
+cmPrintSrvGroups OBJECT IDENTIFIER ::= { cmPrintSrvConformance 2 }
+                                 
+-- Compliance statements
+
+cmPrintSrvCompliance MODULE-COMPLIANCE
+	STATUS       current
+	DESCRIPTION 
+		"The compliance statement for devices that implement the CM Print Server MIB"
+	MODULE       -- this module
+    
+    MANDATORY-GROUPS 
+    	{
+		cmPrintSrvInterpreterLangPSGroup,
+		cmPrintSrvChIEEE1284PortGroup,
+		cmPrintSrvChServerMessageBlockGroup,
+		cmPrintSrvChAppleTalkGroup,
+		cmPrintSrvChLPDSrvGroup
+		} 		    	
+      
+	GROUP cmPrintSrvInterpreterLangPSGroup 
+	DESCRIPTION 
+           "cmPrintSrvInterpreterLangPS group" 
+        
+	GROUP cmPrintSrvChIEEE1284PortGroup 
+	DESCRIPTION 
+           "cmPrintSrvChIEEE1284Port group" 
+
+	GROUP cmPrintSrvChServerMessageBlockGroup 
+	DESCRIPTION 
+           "cmPrintSrvChServerMessageBlock group" 
+	
+	GROUP cmPrintSrvChAppleTalkGroup 
+	DESCRIPTION 
+           "cmPrintSrvChAppleTalk group" 
+
+   	GROUP cmPrintSrvChLPDSrvGroup 
+	DESCRIPTION 
+           "cmPrintSrvChLPDSrv group" 
+	::= { cmPrintSrvCompliances 1 }  
+
+cmPrintSrvInterpreterLangPSGroup OBJECT-GROUP
+	OBJECTS     
+		{
+		cmPrintSrvIntpLangPSCommProt
+		}
+	STATUS current
+	DESCRIPTION 
+		"cmPrintSrvInterpreterLangPSGroup objects"
+	::= { cmPrintSrvGroups 1 }
+    
+cmPrintSrvChIEEE1284PortGroup OBJECT-GROUP
+	OBJECTS     
+		{
+		cmPrintSrvChIEEE1284EcpEnable
+		}
+	STATUS current
+	DESCRIPTION 
+		"cmPrintSrvChIEEE1284PortGroup objects"
+	::= { cmPrintSrvGroups 2 }
+
+cmPrintSrvChServerMessageBlockGroup OBJECT-GROUP
+	OBJECTS     
+		{
+		cmPrintSrvChSMBWorkgroupName,
+		cmPrintSrvChSMBPrinterName,
+		cmPrintSrvChSMBQueueName,
+		cmPrintSrvChSMBAbortOnErrEnable,
+		cmPrintSrvChSMBResponseTime,
+		cmPrintSrvChSMBEnable
+		}
+	STATUS current
+	DESCRIPTION 
+		"cmPrintSrvChServerMessageBlockGroup objects"
+	::= { cmPrintSrvGroups 3 }
+
+cmPrintSrvChAppleTalkGroup OBJECT-GROUP
+	OBJECTS     
+		{
+		cmPrintSrvChAppleTalkZoneName,
+		cmPrintSrvChAppleTalkObjType,
+		cmPrintSrvChAppleTalkObjName,
+		cmPrintSrvChAppleTalkEnable
+		}
+	STATUS current
+	DESCRIPTION 
+		"cmPrintSrvChAppleTalkGroup objects"
+	::= { cmPrintSrvGroups 4 }
+
+cmPrintSrvChLPDSrvGroup OBJECT-GROUP
+	OBJECTS     
+		{
+		cmPrintSrvChLPDSrvLanIpAddrType,
+		cmPrintSrvChLPDSrvLanIpAddr,
+		cmPrintSrvChLPDSrvQueueName,
+		cmPrintSrvChLPDSrvEnable 
+		}
+	STATUS current
+	DESCRIPTION 
+		"cmPrintSrvChLPDSrvGroup objects"
+	::= { cmPrintSrvGroups 5 }
+
+END
+

@@ -1,0 +1,244 @@
+-- ****************************************************************************
+-- *  Copyright (c) 1996,  Tollgrade Communications, Inc.  All Rights Reserved.
+-- ****************************************************************************
+-- *
+-- *  Module Name:   TLGDTREE.MIB
+-- *
+-- *  Description:   Defines MIB Tree for Tollgrade Head End Controller
+-- *
+-- *  Notes:
+-- *
+-- *  Revision History:
+-- *
+-- *     $Log: TLGDTREE.MIB,v $
+-- *     Revision 1.13  2009/11/12 16:46:39  jpfaff
+-- *     Description: Implement the CTLP-DOWNLOAD-MIB for downloading firmware to node modules
+-- *     Bug Numbers : 9264
+-- *
+-- *     Revision 1.12  2008/12/09 16:44:19  dmcgary
+-- *     Description : Added BTD branch
+-- *     Developer : DRM
+-- *     Bug Number :
+-- *
+-- *     Revision 1.11  2008/11/17 18:38:13  dmcgary
+-- *     Developer : DRM
+-- *     Description : Allow last good channel data to be cleared for CIPS testing.
+-- *     Bug Number : 8700
+-- *
+-- *     Revision 1.10  2008/06/17 18:16:02  analepa
+-- *     Description: Added Generic I/O and Mat Heater support
+-- *     Developer: AEN
+-- *     Bug Number:
+-- *
+-- *     Revision 1.9  2007/11/01 14:58:19  jostrosky
+-- *     Add cableRFMeasurements and channels
+-- *
+-- *     Revision 1.8  2007/07/25 14:13:51  jostrosky
+-- *     Add QAM branch
+-- *
+-- *     Revision 1.7  2007/05/31 13:21:08  dpanseri
+-- *     Description: Added httpMgmt
+-- *     Developer: Dave Panseri
+-- *     Bug Number:7280, 7580, 7194
+-- *     Tester Comments:
+-- *
+-- *     Revision 1.6  2007/05/03 19:22:45  jostrosky
+-- *     Added wireless
+-- *
+-- *     Revision 1.5  2007/02/09 18:52:22  dmcgary
+-- *     Description: Modifications to populate sysObjectID based on personality.
+-- *                         Includes ability (for ECMM) to retreive the personality
+-- *                         number from the TlgdDeviceCfgNonVolSettings object.
+-- *     Developer: DRM
+-- *     Bug Number:
+-- *     Tester Comments:
+-- *
+-- *     Revision 1.2  2006/05/12 15:26:57  dmcgary
+-- *     Incorrect (old) versions of these files were initially ported to CxC code base.
+-- *     These don't directly affect the build.  They are used for compiling MIB's.
+-- *
+-- *     Revision 1.2  2005/07/11 14:51:52  dmcgary
+-- *     Added hmsinit.mib support to eliminate dependence on HMSINIT.INI file.
+-- *
+-- *    Rev 5.7   08 Jul 2005 08:40:14   JOstrosky
+-- * Create a docsis branch, move hmsinit under it.
+-- *
+-- *    Rev 5.6   05 Jul 2005 07:51:00   JOstrosky
+-- * Added branch hmsinit for DOCSIS transponders
+-- *
+-- *    Rev 5.5   12 Oct 2004 10:23:32   JOstrosky
+-- * Change ccms to cheetahXD
+-- * Add voip branch
+-- *
+-- *    Rev 5.4   Nov 14 2003 13:33:04   JOstrosky
+-- * Updated to show digitest branch; added ccms
+-- * for "Cheetah Cable Management System"
+-- *
+-- *    Rev 5.3   Oct 23 2002 14:12:30   JOstrosky
+-- * Added server sub-id.
+-- *
+-- *    Rev 5.2   Aug 28 2002 13:12:16   CBrewer
+-- * Corrected conflict in tlgdtree.mib with hms definitions:
+-- * Modified tlgdtree.mib to match the hms version.  Moved
+-- * HEC-specific defines to TlgdtreeHec.mib where
+-- * "TOLLGRADE-LIGHTHOUSE-TREE-HEC-MIB" is now defined.
+-- * Modified all legacy mibs to import from this instead of
+-- * TOLLGRADE-LIGHTHOUSE-TREE-MIB.
+-- *
+-- *    Rev 5.1   Aug 22 2001 10:08:18   CBrewer
+-- * add definition for autoLeveling.
+-- *
+-- *    Rev 5.0   Jun 28 2001 11:05:22   CBrewer
+-- * Initial V5 (SCTE) check in.
+-- *
+-- *    Rev 2.14   May 15 2001 09:12:52   CBrewer
+-- * Modified Copyright statement.
+-- *
+-- *    Rev 2.13   May 07 2001 10:49:36   CBrewer
+-- * add hms definition.
+-- *
+-- *    Rev 2.12   Feb 15 2001 14:58:56   CBrewer
+-- * (HPR1180) add testEngNE branch (req'd for new Test Eng commands.
+-- *
+-- *    Rev 2.11   Jun 03 1999 17:11:30   JOstrosky
+-- * Fixed some minor errors that the MCG
+-- * compiler caught.  Updated HEC agent
+-- * text.
+-- *
+-- *    Rev 2.10   May 25 1999 10:56:18   HWhitefield
+-- *
+-- *    Rev 2.9   Jan 11 1999 15:04:42   HWhitefield
+-- * Updated file to remove cable labs reference
+-- *
+-- *    Rev 2.8.1.0   Nov 16 1998 11:30:22   HWhitefield
+-- * Changes to support renaming of files, and removal
+-- * of CableLabs from text.
+-- *
+-- *    Rev 2.8   Nov 02 1998 10:50:00   HWhitefield
+-- * Added Phasor to the list of vendors.
+-- *
+-- *    Rev 2.7   Sep 08 1998 14:12:22   HWhitefield
+-- * Modified comment that shows tree structure to reflect most recent
+-- * changes to fiber node, power supply and line amp mibs.
+-- *
+-- *    Rev 2.6   Sep 03 1998 16:49:28   HWhitefield
+-- * 80 character line formatting.
+-- *
+-- *    Rev 2.5   Sep 01 1998 11:11:56   HWhitefield
+-- * Changed tree placeholder tgCableLabs to tlgdCableLabs.
+-- * Made a comment change for accuracy.
+-- *
+-- *    Rev 2.4   Jul 30 1998 15:08:06   HWhitefield
+-- * Added vendor OID placeholders.
+-- *
+-- *    Rev 2.3   Jul 17 1998 15:39:34   HWhitefield
+-- * Changed cableLabs tree placeholder to tgCableLabs to reflect
+-- * the fact that this is a temporary tree under tollgradeNE until
+-- * the CableLabs MIBs are firmed up. Also changed tollgradeNE
+-- * back to #2 under networkElement. CableLabsNE will become
+-- * #1 under networkElement when the CableLabs MIBs are finalized.
+-- *
+-- *    Rev 2.2   Jul 15 1998 11:38:24   HWhitefield
+-- * First cut at new MIB architecture. All files
+-- * successfully compiled.
+-- *
+-- *    Rev 2.0   Jul 14 1998 10:42:00   HWhitefield
+-- * Initial creation of tree file.
+-- *
+-- *    Rev 1.18   Jun 19 1998 15:37:56   HWhitefield
+-- * Added definition for INTEGER syntax
+-- * Boolean.
+-- *
+-- * Reproduction of this document is authorized on condition that this
+-- * copyright notice is included.  This SNMP MIB Specification
+-- * embodies proprietary intellectual property.  The copyright
+-- * retains all title and ownership in the specification, including any
+-- * revisions.
+-- *
+-- * This specification is supplied "AS IS," and no
+-- * warranty, either express or implied, as to the use, operation,
+-- * condition, or performance of the specification, is made.
+-- *
+-- * The right to change this MIB without notification is retained.
+-- *
+-- * Agents supporting this MIB: Tollgrade Head End Controller, Software Rev: 2.xxx
+-- *
+-- ****************************************************************************
+
+TOLLGRADE-LIGHTHOUSE-TREE-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+     enterprises
+          FROM RFC1155-SMI
+     ;
+
+--*****************************************************************************
+--**                                                                         **
+--**  Define enterprise tree                                                 **
+--**                                                                         **
+--**  ** 2082 assigned by Internet Assigned Numbers Authority.               **
+--**  ** ** IT CANNOT BE ALTERED!! ** **                                     **
+--**                                                                         **
+--*****************************************************************************
+
+tollgrade OBJECT IDENTIFIER             ::= { enterprises 2082 }
+
+lighthouse OBJECT IDENTIFIER            ::= { tollgrade 1 }
+
+digitest OBJECT IDENTIFIER              ::= { tollgrade 2 }
+
+cheetahXD OBJECT IDENTIFIER             ::= { tollgrade 3 }
+
+voip OBJECT IDENTIFIER                  ::= { tollgrade 4 }
+
+docsis OBJECT IDENTIFIER                ::= { tollgrade 5 }
+
+loopcare OBJECT IDENTIFIER              ::= { tollgrade 6 }
+
+cableModemProducts OBJECT IDENTIFIER    ::= { tollgrade 7 }
+
+cableRFMeasurements OBJECT IDENTIFIER   ::= { tollgrade 8 }
+
+btd OBJECT IDENTIFIER                   ::= { tollgrade 9 }
+
+--* lighthouse branch
+
+headend OBJECT IDENTIFIER               ::= { lighthouse 1 }
+
+networkElement OBJECT IDENTIFIER        ::= { lighthouse 2 }
+
+hms OBJECT IDENTIFIER                   ::= { lighthouse 3 }
+
+server OBJECT IDENTIFIER                ::= { lighthouse 4 }
+
+--* docsis branch (DOCSIS is a registered trademark of CableLabs)
+
+hmsinit OBJECT IDENTIFIER               ::= { docsis 1 }
+
+statusmonitor   OBJECT IDENTIFIER       ::= { docsis 2}
+
+ipTests OBJECT IDENTIFIER               ::= {docsis 3}
+
+wireless OBJECT IDENTIFIER              ::= { docsis 4 }
+
+httpMgmt OBJECT IDENTIFIER              ::= { docsis 5 }
+
+qam OBJECT IDENTIFIER                   ::= { docsis 6 }
+
+genericIO OBJECT IDENTIFIER             ::= { docsis 7 }
+
+matHeater OBJECT IDENTIFIER             ::= { docsis 8 }
+
+startup OBJECT IDENTIFIER               ::= { docsis 9 }
+
+download OBJECT IDENTIFIER              ::= { docsis 10 }
+
+--* loopcare branch
+
+loopcareNMS OBJECT IDENTIFIER           ::= { loopcare 1 }
+
+--* cableRFMeasurements branch
+
+channels OBJECT IDENTIFIER              ::= { cableRFMeasurements 1 }
+
+END

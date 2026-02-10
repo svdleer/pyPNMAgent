@@ -1,0 +1,1003 @@
+--**************************************************************************
+--
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:                                                
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+--
+--
+--
+--**************************************************************************
+--    Filename: Ntgr-wifi-mgmt.mib
+--    Creation Date: Mar 13, 2013
+--
+--**************************************************************************
+--    Description:
+--
+--      private MIB for cable gateway management
+--
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+NETGEAR-WIFI-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,
+	Integer32,
+	NOTIFICATION-TYPE       FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION      FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP      FROM SNMPv2-CONF
+	SnmpAdminString         FROM SNMP-FRAMEWORK-MIB
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6         FROM INET-ADDRESS-MIB
+    ifIndex                 FROM IF-MIB
+    PositiveInteger         FROM UPS-MIB
+    cableMgmt               FROM NETGEAR-CABLEMGMT-SMI;
+
+---
+--- Netgear Group
+---
+
+--
+-- groups in NETGEAR-CABLE-MIB
+--
+
+ntgrWiFiMgmt MODULE-IDENTITY
+	LAST-UPDATED    "1004120000Z" -- Apr 10, 2012
+    ORGANIZATION    "Netgear, Inc"
+    CONTACT-INFO
+		""
+    DESCRIPTION
+            	"This is the MIB Module for Netgear Cable Gateway device."
+    REVISION "1004120000Z"
+    DESCRIPTION
+            "First Version: Apr 10, 2012"
+        ::= { cableMgmt 3 }
+
+
+--
+-- Object Definitions
+--
+
+--
+-- MIB objects
+--
+
+
+cableWifiBase OBJECT IDENTIFIER ::= { ntgrWiFiMgmt 1 }
+
+wifiTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF WifiEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of settings used to configure all primary wi-fi interfaces."
+    ::= { cableWifiBase 1 }
+
+wifiEntry OBJECT-TYPE
+    SYNTAX      WifiEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry describing the configuration of a primary wi-fi interface.
+
+         An entry exists in this table for each entry in the ifTable with an
+         ifType value of ieee80211(71), and which is designated as a primary 
+         wi-fi interface.
+
+         Note that non-primary interfaces (such as MBSS interfaces) are not 
+         represented in this table."
+    INDEX   { ifIndex }
+    ::= { wifiTable 1 }
+
+WifiEntry ::= 
+    SEQUENCE    {
+        wifiCurrentChannel      Unsigned32,
+        wifiBeaconInterval      Unsigned32,
+        wifiDTIMInterval        Unsigned32,
+        wifiFragThresh          Unsigned32,
+        wifiRTSThresh           Unsigned32,
+        wifiShortRetryLimit     Unsigned32,
+        wifiLongRetryLimit      Unsigned32,
+        wifiRate                INTEGER,
+        wifiOutputPower         INTEGER,
+        wifiRadioEnable         TruthValue,
+        wifiWMMEnable           TruthValue
+    }
+
+wifiCurrentChannel OBJECT-TYPE
+    SYNTAX      Unsigned32 (0..216)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the current channel number (802.11g) or
+	     control channel (802.11n) for this interface.
+
+         If set to (0), the AP will be put in auto-channel mode where
+	     it automatically scans for the least-crowded channel.
+
+         For 802.11g cards, available channels are 1-14.
+	     For 802.11n cards, available channels are 34-216.
+
+         Channel selection is also subject to restrictions based on the selected
+	     country code."
+    ::= { wifiEntry 2 }
+
+wifiBeaconInterval OBJECT-TYPE
+    SYNTAX      Unsigned32  (0..65535)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the beacon interval for this interface."
+    ::= { wifiEntry 3 }
+
+wifiDTIMInterval OBJECT-TYPE
+    SYNTAX      Unsigned32  (1..255)
+    UNITS       "milliseconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the DTIM interval for this interface."
+    ::= { wifiEntry 4 }
+
+wifiFragThresh OBJECT-TYPE
+    SYNTAX      Unsigned32  (256..2346)
+    UNITS       "bytes"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the fragmentation threshold for this interface."
+    ::= { wifiEntry 5 }
+
+wifiRTSThresh OBJECT-TYPE
+    SYNTAX      Unsigned32  (0..2347)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the RTS threshold for this interface."
+    ::= { wifiEntry 6 }
+
+wifiShortRetryLimit OBJECT-TYPE
+    SYNTAX      Unsigned32  (1..255)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the short retry limit for this interface."
+    ::= { wifiEntry 7 }
+    
+wifiLongRetryLimit OBJECT-TYPE
+    SYNTAX      Unsigned32  (1..255)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the long retry limit for this interface."
+    ::= { wifiEntry 8 }
+
+wifiRate OBJECT-TYPE
+    SYNTAX      INTEGER {
+                mbits-54(1),
+                mbits-145(2),
+                mbits-300(3),
+                mbits-217(4),
+                mbits-450(5)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Forces the transmission rate for the AP to a particular speed."
+    ::= { wifiEntry 9 }
+
+wifiOutputPower OBJECT-TYPE
+    SYNTAX      INTEGER {
+                percent25(25),
+                percent50(50),
+                percent75(75),
+                percent100(100)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the output power relative to the hardware's maximum capability."
+    DEFVAL { percent100 }
+    ::= { wifiEntry 10 }
+
+wifiRadioEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the state of Wifi Radio on the select Card.  
+		 If set to true(1), the AP will turn on the wifi Radio for that card.
+		 Set to false(2) to disable the WIFI radio for card."
+    ::= { wifiEntry 12 }
+
+wifiWMMEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the state of WiFi WMM on the select Card.  
+         If set to true(1), the AP will turn on the WiFi WMM for that card.
+         Set to false(2) to disable the WiFi WMM for card."
+    ::= { wifiEntry 13}
+
+wifiButtonActive OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+     "Controls and reflects the state of Wifi button activation.  
+		 If set to true(1), the Wifi button is actived.
+		 Set to false(2) to disable the Wifi button."
+    ::= { cableWifiBase 2 }
+
+wpsButtonActive OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+     "Controls and reflects the state of Wps button activation.  
+		 If set to true(1), the Wps button is actived.
+		 Set to false(2) to disable the Wps button.
+     Note that Wps button is workable when the Wifi is enabled."
+    ::= { cableWifiBase 3 }
+
+cableWifiMbssBase OBJECT IDENTIFIER ::= { ntgrWiFiMgmt 2 }
+
+wifiMbssTable   OBJECT-TYPE
+    SYNTAX      SEQUENCE OF WifiMbssEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of interfaces in an MBSS system."
+    ::= { cableWifiMbssBase 1}
+    
+wifiMbssEntry OBJECT-TYPE
+    SYNTAX      WifiMbssEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry describing the characteristics of an individual BSS.  An
+         entry exists in this table for each entry of type ieee80211 (71) in
+         the ifTable.  The table includes both primary and MBSS interfaces."
+    INDEX   { ifIndex }
+    ::= { wifiMbssTable 1 }
+
+WifiMbssEntry ::= 
+    SEQUENCE    {
+        wifiMbssId                      PhysAddress,
+        wifiMbssEnable                  TruthValue,
+        wifiMbssSsid                    OCTET STRING,
+        wifiMbssNetworkBridge           INTEGER,
+        wifiMbssSecurityMode            INTEGER,
+        wifiMbssClosedNetwork           TruthValue,
+        wifiMbssAccessMode              INTEGER,
+        wifiMbssWepDefaultKey           Unsigned32,
+        wifiMbssWepSharedKeyMode        INTEGER,
+        wifiMbssWepPassPhrase           DisplayString,
+        wifiMbssWpaAlgorithm            INTEGER,
+        wifiMbssWpaPreSharedKey         OCTET STRING,
+        wifiMbssWpaGroupRekeyInterval   Unsigned32,
+        wifiMbssRadiusAddressType       InetAddressType,
+        wifiMbssRadiusAddress           InetAddress,
+        wifiMbssRadiusPort              Unsigned32,
+        wifiMbssRadiusKey               DisplayString,
+        wifiMbssRadiusReAuthInterval    Unsigned32,
+        wifiMbssIsolated                TruthValue,
+        wifiMbssGuest2Local             TruthValue,
+        wifiMbssLanDhcp125Option        TruthValue,
+        wifiMbssLanClientLimtNum        Unsigned32
+    }
+    
+wifiMbssId OBJECT-TYPE
+    SYNTAX      PhysAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The physical address associated with this service set."
+    ::= { wifiMbssEntry 1 }
+    
+wifiMbssEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables this service set."
+    ::= { wifiMbssEntry 2 }
+
+wifiMbssSsid OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the service set identifier for this BSS."
+    ::= { wifiMbssEntry 3 }
+    
+wifiMbssNetworkBridge OBJECT-TYPE
+    SYNTAX      INTEGER {
+                lan(1),
+                guest(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If set to lan(1), this service set will be authorized as a member of
+         the local area network.  If set to guest(2), this service set will
+         have access to the wide area internet, but will have restricted access
+         to the local area network."
+    ::= { wifiMbssEntry 4 }
+
+wifiMbssSecurityMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                disabled(0),
+                wep64(1),
+                wep128(2),
+                wpaPsk(3),
+                wpa2Psk(4),
+                wpaEnterprise(5),
+                wpa2Enterprise(6),
+                radiusWep64(7),
+                radiusWep128(8),
+                wpaWpa2Psk(9),
+                wpaWpa2Enterprise(10)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Security mode may be chosen from Disable, WEP, WPA-PSK, WPA2-PSK,
+         WPA-Enterprise, WPA2-Enterprise or RADIUS-WEP.  All devices on the 
+         network must use the same security mode in order to communicate.
+
+         If set to disabled(0):
+            Open system. No authentication or encryption.
+
+         If set to wep64(1) then the following parameters must be set:
+            Default Transmit Key (wifiMbssWepDefaultKey):
+                Choose which Key to use.
+            Passphrase (wifiMbssWepPassPhrase):
+                Enter a passphrase consisting of any keyboard character
+                to be used to generate a hex WEP key.
+            Key 1-4 (wifiMbssWep64BitKeyTable or wifiMbssWep128BitKeyTable):
+                Enter a WEP key manually. Must use only hex character (0-9 and A-F).
+                64-bit WEP requires 10 hex characters, 128-Bit WEP requires the use of
+                26 hex characters.
+
+         If set to wep128(2) then the following parameters must be set:
+            Default Transmit Key (wifiMbssWepDefaultKey):
+                Choose which Key to use.
+            Passphrase (wifiMbssWepPassPhrase):
+                Enter a passphrase consisting of any keyboard character
+                to be used to generate a hex WEP key.
+            Key 1-4 (wifiMbssWep64BitKeyTable or wifiMbssWep128BitKeyTable):
+                Enter a WEP key manually. Must use only hex character (0-9 and A-F).
+                64-bit WEP requires 10 hex characters, 128-Bit WEP requires the use of
+                26 hex characters.
+                
+         If set to wpaPsk(3) then the following parameters must be set:
+            WPA Algorithm (wifiMbssWpaAlgorithm):
+                TKIP or AES.
+            WPA Pre-Shared Key (wifiMbssWpaPreSharedKey):
+                Choose a unique key to authenticate with other devices on the network.
+                The Pre-Shared Key must be between 8 and 63 characters in length.
+            Group Key Renewal (wifiMbssWpaGroupRekeyInterval):
+                This settingss determines how often the group key changes.
+
+         If set to wpa2Psk(4) then the following parameters must be set:
+            WPA2 Algorithm (wifiMbssWpaAlgorithm):
+                AES or TKIP+AES.
+            WPA2 Pre-Shared Key (wifiMbssWpaPreSharedKey):
+                Choose a unique key to authenticate with other devices on the network.
+                The Pre-Shared Key must be between 8 and 63 characters in length.
+            Group Key Renewal (wifiMbssWpaGroupRekeyInterval):
+                This settingss determines how often the group key changes.
+                
+         If set to wpaEnterprise(5) then the following parameters must be set:
+            WPA Algorithm (wifiMbssWpaAlgorithm):
+                TKIP or AES.
+            RADIUS Server Address (wifiMbssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (wifiMbssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (wifiMbssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Key Renewal Timeout (wifiMbssRadiusReAuthInterval):
+                Determines how often the keys should be renened.
+                
+         If set to wpa2Enterprise(6) then the following parameters must be set:
+            WPA2 Algorithm (wifiMbssWpaAlgorithm):
+                AES or TKIP+AES.
+            RADIUS Server Address (wifiMbssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (wifiMbssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (wifiMbssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Key Renewal Timeout (wifiMbssRadiusReAuthInterval):
+                Determines how often the keys should be renened.
+                
+         If set to radiusWep64(7) then the following parameters must be set:
+            RADIUS Server Address (wifiMbssRadiusAddressType / wifiMbssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (wifiMbssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (wifiMbssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Default Transmit Key (wifiMbssWepDefaultKey):
+                Choose which Key to use.
+            Passphrase (wifiMbssWepPassPhrase):
+                Enter a passphrase consisting of any keyboard character
+                to be used to generate a hex WEP key.
+            Key 1-4 (wifiMbssWep64BitKeyTable or wifiMbssWep128BitKeyTable):
+                Enter a WEP key manually. Must use only hex character (0-9 and A-F).
+                64-bit WEP requires 10 hex characters, 128-Bit WEP requires the use of
+                26 hex characters.
+
+         If set to radiusWep128(8) then the following parameters must be set:
+            RADIUS Server Address (wifiMbssRadiusAddressType / wifiMbssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (wifiMbssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (wifiMbssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Default Transmit Key (wifiMbssWepDefaultKey):
+                Choose which Key to use.
+            Passphrase (wifiMbssWepPassPhrase):
+                Enter a passphrase consisting of any keyboard character
+                to be used to generate a hex WEP key.
+            Key 1-4 (wifiMbssWep64BitKeyTable or wifiMbssWep128BitKeyTable):
+                Enter a WEP key manually. Must use only hex character (0-9 and A-F).
+                64-bit WEP requires 10 hex characters, 128-Bit WEP requires the use of
+                26 hex characters.
+
+         If set to wpaWpa2Psk(9) then the following parameters must be set:
+            WPA Algorithm (dot11MbssWpaAlgorithm):
+                TKIP or AES.
+            WPA Pre-Shared Key (dot11MbssWpaPreSharedKey):
+                Choose a unique key to authenticate with other devices on the network.
+                The Pre-Shared Key must be between 8 and 63 characters in length.
+            Group Key Renewal (dot11MbssWpaGroupRekeyInterval):
+                This settingss determines how often the group key changes.
+
+         If set to wpaWpa2Enterprise(10) then the following parameters must be set:
+            WPA Algorithm (dot11MbssWpaAlgorithm):
+                TKIP or AES.
+            RADIUS Server Address (dot11MbssRadiusAddress):
+                The IP address of the RADIUS server.
+            RADIUS Server Port (dot11MbssRadiusPort):
+                The port the RADIUS server uses.
+            RADIUS Shared Secret (dot11MbssRadiusKey):
+                The shared secret set on the RADIUS server.
+            Key Renewal Timeout (dot11MbssRadiusReAuthInterval):
+                Determines how often the keys should be renened."
+    ::= { wifiMbssEntry 5 }
+    
+wifiMbssClosedNetwork OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls whether the device will operate in closed network mode.  If
+         set to true(1), then the network mode is closed and the SSID will not
+         be broadcast in beacon packets.  If set to false(2), then the network
+         mode is open and the SSID will be broadcast in beacon packets."
+    ::= { wifiMbssEntry 6 }
+
+wifiMbssAccessMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                allowAny(1),
+                allowList(2),
+                denyList(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls what stations will be given access to the device.  If set to
+         allowAny(1), then any station will be allowed to connect.  If set
+         to restrictToList(2), then only stations whose MAC address appears in
+         the wifiMbssAccessTable will be allowed to connect.  If set to 
+         denyList(3), any station will be allowed to connect except those in 
+         the wifiMbssAccessTable."
+    ::= { wifiMbssEntry 7 }
+
+wifiMbssWepDefaultKey OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the default key which will be used when 64 or
+         128 bit encryption is enabled.  Indicates the entry from the 
+         wifiMbssWep64BitKeyTable if wifiEncryptionMode is set to wep64(1), or
+         the entry from the wifiMbssWep128BitKeyTable if wifiMbssSecurityMode 
+         is set to wep128(2).
+         
+         This object may only be set to indicate an active row in the 
+         wifiMbssWep64BitKeyTable or wifiMbssWep128BitKeyTable.  If the value 
+         corresponds to a row which does not exist or a row which is not
+         active, the set will be rejected with an inconsistentValue error."
+    ::= { wifiMbssEntry 8 }
+    
+wifiMbssWepSharedKeyMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                automatic(1),
+                sharedKey(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Selects the WEP authentication mode used by this service set."
+    ::= { wifiMbssEntry 9 }
+
+wifiMbssWepPassPhrase OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The passphrase used for WEP security."
+    ::= { wifiMbssEntry 10 }
+
+wifiMbssWpaAlgorithm OBJECT-TYPE
+    SYNTAX      INTEGER {
+                tkip(1),
+                aes(2),
+                tkipPlusAes(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the WPA encryption mode used by the service set.  
+         The WPA algorithm for WPA-PSK and WPA-Enterprise security mode is aes(2).
+        
+         The WPA algorithm for WPA2-PSK and WPA2-Enterprise security mode is 
+         either aes(2) or tkipPlusAes(3)."
+    ::= { wifiMbssEntry 11 }
+    
+wifiMbssWpaPreSharedKey OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (8..64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPA Pre-Shared Key (PSK) used by this service set.  This 
+         value MUST be either a 64 byte hexadecimal number, OR an 8 to 63 
+         character ASCII string."
+    ::= { wifiMbssEntry 12 }
+    
+wifiMbssWpaGroupRekeyInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPA Group Rekey Interval for this service set. If set to zero, 
+         periodic rekeying is disabled for this service set."
+    ::= { wifiMbssEntry 13 }
+
+wifiMbssRadiusAddressType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The type of internet address used for wifiMbssRadiusAddress."
+    ::= { wifiMbssEntry 14 }
+    
+wifiMbssRadiusAddress OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The internet address of the RADIUS server for this service set."
+    ::= { wifiMbssEntry 15 }
+    
+wifiMbssRadiusPort OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The UDP port used to communicate with the RADIUS server for this 
+         service set."
+    ::= { wifiMbssEntry 16 }
+    
+wifiMbssRadiusKey OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The RADIUS key."
+    ::= { wifiMbssEntry 17 }
+    
+wifiMbssRadiusReAuthInterval OBJECT-TYPE
+    SYNTAX      Unsigned32
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The network re-authentication interval.  If set to zero, no
+         re-authentication will be performed."
+    ::= { wifiMbssEntry 18 }
+
+wifiMbssIsolated OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables wireless isolation, 
+         Once the wireless isolation is enabled,
+         the wireless client only can access internet."
+    ::= { wifiMbssEntry 19 }
+
+wifiMbssGuest2Local OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables wireless guest network client can access 
+         LAN or primary network."
+    ::= { wifiMbssEntry 20 }
+
+wifiMbssLanDhcp125Option OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Add option125 to dhcp discovery and request packet."
+    ::= { wifiMbssEntry 21 }
+
+wifiMbssLanClientLimtNum OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Limited the number of connected clients in this interface.
+         If wifiMbssLanClientLimtNum = 0, it is unlimit."
+    ::= { wifiMbssEntry 22 }
+
+--
+-- wifiMbssSecurity contains objects used to configure security options
+-- of each service set.
+--    
+
+-- Objects used to control WEP based security modes
+
+
+wifiMbssWep64BitKeyTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF WifiMbssWep64BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of 40 bit key values used when operating in WEP 64 mode."
+    ::= { cableWifiMbssBase 2 }
+    
+wifiMbssWep64BitKeyEntry OBJECT-TYPE
+    SYNTAX      WifiMbssWep64BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A key to be used by the row in the wifiMbssTable identified by the 
+         value of ifIndex in the row index."
+    INDEX   { ifIndex, wifiMbssWep64BitKeyIndex }
+    ::= { wifiMbssWep64BitKeyTable 1 }
+    
+WifiMbssWep64BitKeyEntry ::= 
+    SEQUENCE    {
+        wifiMbssWep64BitKeyIndex           Integer32,
+        wifiMbssWep64BitKeyValue           OCTET STRING,
+        wifiMbssWep64BitKeyStatus          RowStatus
+    }
+    
+wifiMbssWep64BitKeyIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..4)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Identifies an instance of a key among those used by the service set 
+         identified by the value of ifIndex in the row index."
+    ::= { wifiMbssWep64BitKeyEntry 1 }
+    
+wifiMbssWep64BitKeyValue OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(5))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A 40 bit key to be used when the corresponding instance of
+         wifiMbssSecurityMode is set to wep(1) and the corresponding instance
+         of wifiMbssWepEncryptionMode is set to wep64(1)."
+    ::= { wifiMbssWep64BitKeyEntry 2 }
+    
+wifiMbssWep64BitKeyStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         wifiMbssAccessStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of wifiMbssWep64BitKeyValue has been set.
+         
+         Only rows with a status of active(1) will be applied.
+         
+         This object may not be set to a value of notInService(2) or destroy(6)
+         if the corresponding instance of wifiMbssWepDefaultKey identifies
+         this row as they current key in use.  Such an attempt will be rejected
+         with an inconsistentValue error."
+    ::= { wifiMbssWep64BitKeyEntry 3 }
+    
+    
+wifiMbssWep128BitKeyTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF WifiMbssWep128BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of 104 bit key values used when operating in WEP 128 mode."
+    ::= { cableWifiMbssBase 3 }
+    
+wifiMbssWep128BitKeyEntry OBJECT-TYPE
+    SYNTAX      WifiMbssWep128BitKeyEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A key to be used by the row in the wifiMbssTable identified by the 
+         value of ifIndex in the row index."
+    INDEX   { ifIndex, wifiMbssWep128BitKeyIndex }
+    ::= { wifiMbssWep128BitKeyTable 1 }
+    
+WifiMbssWep128BitKeyEntry ::= 
+    SEQUENCE    {
+        wifiMbssWep128BitKeyIndex           Integer32,
+        wifiMbssWep128BitKeyValue           OCTET STRING,
+        wifiMbssWep128BitKeyStatus          RowStatus
+    }
+    
+wifiMbssWep128BitKeyIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..4)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Identifies an instance of a key among those used by the service set 
+         identified by the value of ifIndex in the row index."
+    ::= { wifiMbssWep128BitKeyEntry 1 }
+    
+wifiMbssWep128BitKeyValue OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(13))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A 104 bit key to be used when the corresponding instance of
+         wifiMbssSecurityMode is set to wep(1) and the corresponding instance
+         of wifiMbssWepEncryptionMode is set to wep128(128)."
+    ::= { wifiMbssWep128BitKeyEntry 2 }
+    
+wifiMbssWep128BitKeyStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         wifiMbssAccessStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of wifiMbssWep128BitKeyValue has been set.
+         
+         Only rows with a status of active(1) will be applied.
+         
+         This object may not be set to a value of notInService(2) or destroy(6)
+         if the corresponding instance of wifiMbssWepDefaultKey identifies
+         this row as they current key in use.  Such an attempt will be rejected
+         with an inconsistentValue error."
+    ::= { wifiMbssWep128BitKeyEntry 3 }
+
+
+--
+-- wifiMbssAccess contains objects used to configure access restrictions
+-- of each service set.
+--
+
+
+wifiMbssAccessTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF WifiMbssAccessEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of MAC addresses which defines the MAC address based access 
+         restrictions for the system."
+    ::= { cableWifiMbssBase 4 }
+    
+wifiMbssAccessEntry OBJECT-TYPE
+    SYNTAX      WifiMbssAccessEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A row in the table which specifies a single MAC address for a given
+         service set."
+    INDEX   { ifIndex, wifiMbssAccessIndex }
+    ::= { wifiMbssAccessTable 1 }
+    
+WifiMbssAccessEntry ::= 
+    SEQUENCE    {
+        wifiMbssAccessIndex       Integer32,
+        wifiMbssAccessStation     PhysAddress,
+        wifiMbssAccessStatus      RowStatus
+    }
+    
+wifiMbssAccessIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..16)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Indicates the instance of this table row."
+    ::= { wifiMbssAccessEntry 1 }
+    
+wifiMbssAccessStation OBJECT-TYPE
+    SYNTAX      PhysAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "A MAC address of a station which will be allowed to connect to the 
+         service set if wifiMbssAccessMode is set to restrictToList(2), or
+         forbidden if wifiMbssAccessMode is set to denyList(3)."
+    ::= { wifiMbssAccessEntry 2 }
+    
+wifiMbssAccessStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The status of this conceptual row.
+
+         To create a row in this table, a manager must set this object to 
+         either createAndGo(4) or createAndWait(5).
+
+         Until instances of all corresponding columns are appropriately 
+         configured, the value of the corresponding instance of the 
+         wifiMbssAccessStatus column is 'notReady'.
+
+         In particular, a newly created row cannot be made active until the 
+         corresponding instance of wifiMbssAccessStation has been set.
+         
+         Only rows with a status of active(1) will be applied."
+    ::= { wifiMbssAccessEntry 3 }
+    
+cableWifiWps OBJECT IDENTIFIER ::= { ntgrWiFiMgmt 3 }
+
+wifiWpsMode	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup Enable/Disalbe Control"
+	DEFVAL { 1 }
+	::= { cableWifiWps 1 }
+
+wifiWpsConfigState	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				configed (1),
+				unconfiged (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Set the WPS config state to configed/unconfiged state"
+	DEFVAL { 1 }
+	::= { cableWifiWps 2 }
+
+wifiWpsDevicePin OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(8))
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup device PIN code"
+	::= { cableWifiWps 3 }
+
+wifiWpsStart OBJECT-TYPE
+	SYNTAX	INTEGER {
+				start (1),
+				stop (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup process control"
+	DEFVAL { 1 }
+	::= { cableWifiWps 4 }
+
+wifiWpsMethod OBJECT-TYPE
+	SYNTAX	INTEGER {
+				pushbutton (1),
+				pincode (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup method control"
+	DEFVAL { 1 }
+	::= { cableWifiWps 5 }
+    
+wifiWpsStaPin OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(8))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup STA PIN code"
+	::= { cableWifiWps 6 }
+
+wifiWpsStatus OBJECT-TYPE
+	SYNTAX	INTEGER {
+				idle (0),
+				inProgress (1),
+				success (2),
+				error(3)
+
+			}
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup current status"
+	DEFVAL { 0 }
+	::= { cableWifiWps 7 }
+
+wifiWpsDevicePinStats	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup device PIN code Enable/Disalbe Control"
+	DEFVAL { 1 }
+	::= { cableWifiWps 8 }
+
+
+wifiApplySettings OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If set to true(1), the current configuration set in this MIB 
+    	 will be written to non-volatile storage, and the wi-fi driver will
+    	 be restarted using this configuration.  This object may be used to
+    	 invoke an immediate reconfiguration of the wi-fi system without 
+         requiring a full reboot.  
+
+         Unless this object is explicitly set to true(1), any settings made via 
+         other objects in this MIB may be lost if a reboot occurs.  
+
+         Always returns false(2) when read."
+    ::= { ntgrWiFiMgmt 100 }
+
+END

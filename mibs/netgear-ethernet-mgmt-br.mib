@@ -1,0 +1,103 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-ethernet-mgmt.mib
+--    Creation Date: August 09, 2013
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--      private MIB for ethernet management
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-ETHERNET-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, MODULE-IDENTITY, 
+	enterprises FROM SNMPv2-SMI 
+	TruthValue
+		FROM SNMPv2-TC
+	cableMgmt
+		FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrEthernetMgmt MODULE-IDENTITY
+	LAST-UPDATED "201308090000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"This is the MIB Module for Netgear Cable Gateway device."
+::= { cableMgmt 22 }
+
+
+-- -
+-- - Netgear Group
+-- -
+
+
+-- August 09, 2013
+-- 
+-- Object Definitions
+-- 
+-- 
+-- MIB objects
+-- 
+
+etherSwitchTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF EtherSwitchEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEthernetMgmt 1 }
+
+etherSwitchEntry  OBJECT-TYPE
+	SYNTAX 	EtherSwitchEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { etherIndex }
+	::= { etherSwitchTable 1 }
+
+EtherSwitchEntry ::= SEQUENCE {
+	etherSwitchPortEnable
+		TruthValue
+}
+etherIndex OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Was undefined index"
+    ::= { etherSwitchEntry 9999 }
+
+etherSwitchPortEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"If set to false(0), the ethernet switch port will shutdown."
+	::= { etherSwitchEntry 1 }
+END

@@ -1,0 +1,81 @@
+UBEE-CM-PRODUCTS-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+        FROM SNMPv2-SMI
+    AGENT-CAPABILITIES
+        FROM SNMPv2-CONF
+    enterprises
+        FROM SNMPv2-SMI;
+
+ubee OBJECT IDENTIFIER ::= { enterprises 4684 }
+cableModemMib   OBJECT IDENTIFIER ::= { ubee 2 }
+
+ubeeCmProducts MODULE-IDENTITY
+    LAST-UPDATED    "200810060000Z"
+    ORGANIZATION    "Ubee Interactive Corporation"
+    CONTACT-INFO    "web site: www.ubeeinteractive.com"
+
+    DESCRIPTION
+        "Ubee proprietary MIB which identifies the product IDs for various
+         cablemodem products.  These objects identifiers are the
+         default values returned for sysObjectID in the unmodified reference
+         design software."
+    REVISION      "200702050000Z"
+    DESCRIPTION
+        "Module description was updated."
+    REVISION      "200402110000Z"
+    DESCRIPTION
+            "Initial version of this MIB module."
+    ::= { cableModemMib 1 }
+
+cablemodem OBJECT IDENTIFIER ::= { ubeeCmProducts 6 }
+DDM3500     OBJECT IDENTIFIER ::= { ubeeCmProducts 7 }
+DVM3203B    OBJECT IDENTIFIER ::= { ubeeCmProducts 8 }
+TID30CM   OBJECT IDENTIFIER ::= { ubeeCmProducts 9 }
+DVM2210     OBJECT IDENTIFIER ::= { ubeeCmProducts 10 }
+EVM320B     OBJECT IDENTIFIER ::= { ubeeCmProducts 11 }
+EVM3206     OBJECT IDENTIFIER ::= { ubeeCmProducts 12 }
+DVW2201     OBJECT IDENTIFIER ::= { ubeeCmProducts 13 }
+TID30EMTA OBJECT IDENTIFIER ::= { ubeeCmProducts 14 }
+TID30RG   OBJECT IDENTIFIER ::= { ubeeCmProducts 15 }
+TID30TRIO OBJECT IDENTIFIER ::= { ubeeCmProducts 16 }
+DDW2603     OBJECT IDENTIFIER ::= { ubeeCmProducts 17 }
+DDC2703     OBJECT IDENTIFIER ::= { ubeeCmProducts 18 }
+EVW3206     OBJECT IDENTIFIER ::= { ubeeCmProducts 19 }
+EVM320D     OBJECT IDENTIFIER ::= { ubeeCmProducts 20 }
+EVW320E     OBJECT IDENTIFIER ::= { ubeeCmProducts 21 }
+EVW3204     OBJECT IDENTIFIER ::= { ubeeCmProducts 22 }
+DVW3213     OBJECT IDENTIFIER ::= { ubeeCmProducts 23 }
+DDW2608     OBJECT IDENTIFIER ::= { ubeeCmProducts 24 }
+DVW2100     OBJECT IDENTIFIER ::= { ubeeCmProducts 25 }
+DVW2207     OBJECT IDENTIFIER ::= { ubeeCmProducts 26 }
+DVW3201     OBJECT IDENTIFIER ::= { ubeeCmProducts 27 }
+EVM323B     OBJECT IDENTIFIER ::= { ubeeCmProducts 28 }
+DDC3703     OBJECT IDENTIFIER ::= { ubeeCmProducts 29 }
+DDW3600     OBJECT IDENTIFIER ::= { ubeeCmProducts 30 }
+EVM323D     OBJECT IDENTIFIER ::= { ubeeCmProducts 31 }
+EVM3236     OBJECT IDENTIFIER ::= { ubeeCmProducts 32 }
+EVW320B     OBJECT IDENTIFIER ::= { ubeeCmProducts 33 }
+DDM3513     OBJECT IDENTIFIER ::= { ubeeCmProducts 34 }
+DVW2107     OBJECT IDENTIFIER ::= { ubeeCmProducts 35 }
+DVW2110     OBJECT IDENTIFIER ::= { ubeeCmProducts 36 }
+DVM3220     OBJECT IDENTIFIER ::= { ubeeCmProducts 37 }
+DVW2210     OBJECT IDENTIFIER ::= { ubeeCmProducts 38 }
+DVW2220B    OBJECT IDENTIFIER ::= { ubeeCmProducts 39 }
+EVW321B     OBJECT IDENTIFIER ::= { ubeeCmProducts 40 }
+EVW322E     OBJECT IDENTIFIER ::= { ubeeCmProducts 41 }
+EVM325D     OBJECT IDENTIFIER ::= { ubeeCmProducts 42 }
+EVM325H     OBJECT IDENTIFIER ::= { ubeeCmProducts 43 }
+EVW320H     OBJECT IDENTIFIER ::= { ubeeCmProducts 44 }
+EVW320D     OBJECT IDENTIFIER ::= { ubeeCmProducts 45 }
+EVM3256     OBJECT IDENTIFIER ::= { ubeeCmProducts 46 }
+EVW321D     OBJECT IDENTIFIER ::= { ubeeCmProducts 47 }
+EVW3216     OBJECT IDENTIFIER ::= { ubeeCmProducts 48 }
+DDW3651     OBJECT IDENTIFIER ::= { ubeeCmProducts 49 }
+DVW3261B    OBJECT IDENTIFIER ::= { ubeeCmProducts 50 }
+DVW3231B    OBJECT IDENTIFIER ::= { ubeeCmProducts 51 }
+DDW3641     OBJECT IDENTIFIER ::= { ubeeCmProducts 52 }
+DVW328      OBJECT IDENTIFIER ::= { ubeeCmProducts 53 }
+DDW366      OBJECT IDENTIFIER ::= { ubeeCmProducts 54 }
+END

@@ -1,0 +1,447 @@
+NETGEAR-COMCAST-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,	
+	Integer32,
+	NOTIFICATION-TYPE
+							FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION              
+							FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP
+							FROM SNMPv2-CONF
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6
+							FROM INET-ADDRESS-MIB
+  	cableGatewayDev
+              FROM NETGEAR-CG-MIB
+  SnmpAdminString         FROM SNMP-FRAMEWORK-MIB;
+
+cableGatewayConfigrationComcastGroup       OBJECT IDENTIFIER ::= { cableGatewayDev 102 }
+
+
+-- **********************************************************************
+-- *    cableGatewayConfigrationComcastGroup  TABLE
+-- **********************************************************************
+
+snmpUdpPort OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the UDP port which will be listened for
+         as the destination port on received SNMP packets and used as the 
+         source port on subsequent SNMP replies.
+         
+         Setting this object will result in an immediate change of the SNMP
+         port number, although the SNMP reply to the set request which modifies
+         this value will still be sent using the port on which it was received.
+         This prevents the sending SNMP manager from receiving a timeout on the 
+         set request.  
+         
+         This value is NOT stored to non-volatile storage and will revert to the 
+         default value on system reboot."
+    DEFVAL { 161 }
+    ::= { cableGatewayConfigrationComcastGroup 1 }
+
+snmpNotifyUdpPort OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..65535)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the UDP port which will be used as the 
+         destination port in SNMP notify packets, including traps and informs.
+         
+         This value is NOT stored to non-volatile storage and will revert to 
+         the default value on system reboot."
+    DEFVAL { 162 }
+    ::= { cableGatewayConfigrationComcastGroup 2 }
+
+ackcelEnable	OBJECT-TYPE
+	SYNTAX		INTEGER {
+				disabled(0),
+				enabled(1)
+				}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Accessors for the Patent Pending AckCel technology enable setting."
+  DEFVAL { 0 }
+	::= { cableGatewayConfigrationComcastGroup 3 }
+
+rgeRouterInitialIpMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                         disabled(1), 
+                         ipv4(2), 
+                         ipv6(3), 
+                         dual(4), 
+                         ipv4RG(5)
+              }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Toggles ip provisioning modes for eRouter."
+	::= { cableGatewayConfigrationComcastGroup 4 }
+
+des3PodSeed 	OBJECT-TYPE
+	SYNTAX	OCTET STRING (SIZE(0..16))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Triple DES POD seed.
+		"
+	::= { cableGatewayConfigrationComcastGroup 5 }
+
+natForwardEntryNumber OBJECT-TYPE 
+    SYNTAX      INTEGER 
+    MAX-ACCESS  read-only
+    STATUS      current 
+    DESCRIPTION  
+            "Return current use of NAT forward session entry"
+    ::= { cableGatewayConfigrationComcastGroup 6 }  
+
+cableNATsessionLimit OBJECT-TYPE 
+    SYNTAX      INTEGER 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "configure NAT sessoin table limit"
+    DEFVAL { 10000 }
+      ::= { cableGatewayConfigrationComcastGroup 12 }
+
+
+natDeleteTimeValue  OBJECT-TYPE
+    SYNTAX      INTEGER 
+    MAX-ACCESS  read-write
+    STATUS      current 
+    DEFVAL { 200 }
+    DESCRIPTION  
+            "Set nat clean up timeout value. When clean process starts, it will delete session timeout less than equal to this value. Default is 200 seconds"
+    ::= { cableGatewayConfigrationComcastGroup 13 }  
+
+natDelecteRecord  OBJECT-TYPE
+    SYNTAX      INTEGER 
+    MAX-ACCESS  read-write
+    STATUS      current 
+    DEFVAL { 0 }
+    DESCRIPTION  
+            "Set number of session record we like to delete.
+            When clean process starts, it will delete session entry until we reach this value. Default 0 means clear all records matches to natDeleteTimeValue"
+    ::= { cableGatewayConfigrationComcastGroup 14 }  
+
+natSessionPad  OBJECT-TYPE
+    SYNTAX      INTEGER 
+    MAX-ACCESS  read-write
+    STATUS      current 
+    DEFVAL { 2000 }
+    DESCRIPTION  
+            "Set number of session record we like to start clean up process.
+            When session records reaches to cableNATsessionLimit-natSessionPad, it will start clean up process. Default is 2000 records"
+    ::= { cableGateway 15 }  
+
+ 
+        
+cableGateway OBJECT IDENTIFIER ::= { cableGatewayConfigrationComcastGroup 7 }
+
+comcastRGMacFilterTable OBJECT-TYPE                
+       SYNTAX      SEQUENCE OF ComcastRGMacFilterEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               ""
+    ::= { cableGateway 1 } 
+    
+comcastRGMacFilterEntry OBJECT-TYPE 
+    SYNTAX      ComcastRGMacFilterEntry 
+    MAX-ACCESS  not-accessible 
+    STATUS      current 
+    DESCRIPTION 
+            "" 
+    INDEX { comcastRGMacFilterIndex } 
+    ::= { comcastRGMacFilterTable 1 } 
+    
+ComcastRGMacFilterEntry ::= SEQUENCE {
+    comcastRGMacFilterIndex                 INTEGER,
+    comcastRGMacFilterDeviceName            DisplayString,
+    comcastRGMacFilterMacAddress            MacAddress, 
+    comcastRGMacFilterByWeek                BITS,
+    comcastRGMacFilterByTimeOfDayHourFrom   INTEGER,
+    comcastRGMacFilterByTimeOfDayMinFrom    INTEGER,
+    comcastRGMacFilterByTimeOfDayHourTo     INTEGER,
+    comcastRGMacFilterByTimeOfDayMinTo      INTEGER,
+    comcastRGMacFilterEnabled               TruthValue,
+    comcastRGMacFilterRowStatus             RowStatus
+    } 
+
+    
+comcastRGMacFilterIndex OBJECT-TYPE 
+    SYNTAX      INTEGER (1..30) 
+    MAX-ACCESS  read-only 
+    STATUS      current 
+    DESCRIPTION 
+            ""
+    ::= { comcastRGMacFilterEntry 1 }  
+
+comcastRGMacFilterDeviceName OBJECT-TYPE 
+    SYNTAX      DisplayString(SIZE(0..80)) 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            ""
+    ::= { comcastRGMacFilterEntry 2 }  
+
+configrationComcastRGMacFilterMacAddress OBJECT-TYPE 
+    SYNTAX      MacAddress 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Required to create a row."
+    ::= { comcastRGMacFilterEntry 3 } 
+
+comcastRGMacFilterByWeek OBJECT-TYPE 
+    SYNTAX BITS {
+       sunday(0),
+       monday(1),
+       tuesday(2),
+       wednesday(3),
+       thursday(4),
+       friday(5),
+       saturday(6)
+    }
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Default is all week."
+    ::= { comcastRGMacFilterEntry 4 }  
+
+comcastRGMacFilterByTimeOfDayHourFrom OBJECT-TYPE 
+    SYNTAX      INTEGER (0..23) 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Default is 0."
+    DEFVAL { 0 }
+    ::= { comcastRGMacFilterEntry 5 }  
+
+comcastRGMacFilterByTimeOfDayMinFrom OBJECT-TYPE 
+    SYNTAX      INTEGER (0..60) 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Default is 0."
+    DEFVAL { 0 }
+    ::= { comcastRGMacFilterEntry 6 }  
+
+comcastRGMacFilterByTimeOfDayHourTo OBJECT-TYPE 
+    SYNTAX      INTEGER (0..23) 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Default is 23."
+    DEFVAL { 23 }
+    ::= { comcastRGMacFilterEntry 7 }  
+
+comcastRGMacFilterByTimeOfDayMinTo OBJECT-TYPE 
+    SYNTAX      INTEGER (0..60) 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Default is 59."
+    DEFVAL { 59 }
+    ::= { comcastRGMacFilterEntry 8 }  
+
+comcastRGMacFilterEnabled OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        ""
+    DEFVAL { true }
+    ::= { comcastRGMacFilterEntry 9 }
+
+comcastRGMacFilterRowStatus OBJECT-TYPE 
+    SYNTAX      RowStatus 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION 
+            "This object is used to create new rows in this
+             table, modify existing rows, and to delete
+             existing rows."
+    ::= { comcastRGMacFilterEntry 10 }
+
+cableModem OBJECT IDENTIFIER ::= { cableGatewayConfigrationComcastGroup 8 }        
+
+cableTodRequestPeriod OBJECT-TYPE
+        SYNTAX      Unsigned32 (600..4294967)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+             "Number of seconds between TOD Requests.
+             Default is every 24 hours.
+             Min value is 10 minutes."
+        DEFVAL { 86400 }
+        ::= { cableModem 1 }	
+
+---/* #UnihanBU6#, jack, 20101008, implement Dhcp force renew mib */
+cableVoiceGatewaySystemMgtDhcpForceRenew  OBJECT-TYPE
+    SYNTAX INTEGER {
+        ipstack1(1),
+        ipstack3(3),
+        ipstack6(6)
+    }
+
+    MAX-ACCESS    read-write
+    STATUS    current
+    DESCRIPTION
+        "Force renew specific ip Stack. "
+      DEFVAL { 0 }
+      ::= { cableModem 2 }
+
+---/* #UnihanBU6#, Jeff, 20101025, Added reset to default MIB for emta, rg and wifi. TD114 */
+cableVoiceGatewaySystemMgtRgDefault  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS    read-write
+    STATUS    current
+    DESCRIPTION
+        "Restore RG settings to factory default "
+      DEFVAL { false }
+      ::= { cableModem 3 }
+cableVoiceGatewaySystemMgtWifiDefault  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS    read-write
+    STATUS    current
+    DESCRIPTION
+        "Restore Wifi settings to factory default "
+      DEFVAL { false }
+      ::= { cableModem 4 }
+cableVoiceGatewaySystemMgtEmtaDefault  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS    read-write
+    STATUS    current
+    DESCRIPTION
+        "Restore Emta settings to factory default "
+      DEFVAL { false }
+      ::= { cableModem 5 }
+
+
+cableVoiceGatewaySystemMgtWanAccessControl	OBJECT-TYPE
+	SYNTAX	INTEGER {
+	      disabled (0),
+	      enabled (1)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This function is to enable/disable HTTP access through WAN interface"
+	DEFVAL { 1 }
+	::= { cableModem 6}
+
+
+cableVoiceGatewaySystemMgtDeviceReset  OBJECT-TYPE
+    SYNTAX INTEGER {
+       router(1),
+       wifi(2),
+       eMTA(3)
+    }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "To reset Router, Wifi, eMTA. Router reset will require system reboot to take effect"
+       ::= { cableModem 7}
+
+telnetIpStackInterfaces OBJECT-TYPE
+    SYNTAX      BITS {
+                interface1(0),
+                interface2(1),
+                interface3(2),
+                interface4(3),
+                interface5(4),
+                interface6(5),
+                interface7(6),
+                interface8(7)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the IP stack interfaces on which a telnet server
+         is active."
+    DEFVAL { '00'h }
+    ::= { cableModem 8 }
+
+telnetServerControl OBJECT-TYPE
+   SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Remote Telnet Access Control"
+	DEFVAL { 2 }
+    ::= { cableModem 9 }
+
+sshIpStackInterfaces OBJECT-TYPE
+    SYNTAX      BITS {
+                interface1(0),
+                interface2(1),
+                interface3(2),
+                interface4(3),
+                interface5(4),
+                interface6(5),
+                interface7(6),
+                interface8(7)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the IP stack interfaces on which a ssh server
+         is active."
+    DEFVAL { '00'h }
+    ::= { cableModem 10 }
+
+sshServerControl OBJECT-TYPE
+    SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Remote Telnet Access Control"
+	DEFVAL { 1 }
+    ::= { cableModem 11 }
+
+tftpBlockSize OBJECT-TYPE
+  SYNTAX	INTEGER 
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"[REQ_CM-101] [3.0] The device MUST support two TFTP block size settings for the
+		downloading of device firmware: one for when the device is operating in
+		IPv4 mode and the other when the device in IPv6 mode. The TFTP
+		block size settings MUST be persistently configurable via SNMP to the
+		maximum supported size as defined in [RFC-2348]. The behavior of
+		TFTP block size negotiation MUST comply with [RFC-1350], [RFC-
+		1782], and [RFC-2348]. If the TFTP block size setting for IPv4 or IPv6
+		is set to 0, then TFTP Block size negotiation MUST not occur for that
+		protocol (i.e. the default block size from the server must be used by the
+		device). Default block size setting in IPv4 mode MUST be 1448; for
+		IPv6 mode it MUST be 1428."
+	DEFVAL { 0 }
+    ::= { cableModem 12 }
+
+END
+

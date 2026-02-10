@@ -1,0 +1,169 @@
+-- ****************************************************************************
+-- *  Copyright © 1996,  Tollgrade Communications, Inc.  All Rights Reserved.
+-- ****************************************************************************
+-- *
+-- *  Module Name:   TLGDDEFS.MIB
+-- *
+-- *  Description:   Implements MIB datatype definitions for Head End 
+-- *                 Controller
+-- *
+-- *  Notes:
+-- *
+-- *  Revision History:
+-- *
+-- *     $Log: TLGDDEFS.MIB,v $
+-- *     Revision 1.1  2004/08/11 21:44:15  fshimer
+-- *     Description: Added to support firmware download
+-- *     Developer: Frank Shimer
+-- *     PTR: N/A
+-- *     Tester Comments: N/A
+-- *
+-- * 
+-- *    Rev 5.3   Sep 17 2001 14:03:26   CBrewer
+-- * (HPR1249) add notPresent state to ModemAlarms.
+-- * 
+-- *    Rev 5.2   Sep 14 2001 15:20:06   CBrewer
+-- * update types for ModemAlarms & HecAlarms.
+-- * 
+-- *    Rev 5.1   Sep 06 2001 15:56:00   CBrewer
+-- * TransponderStatus - updated bit definitions for bit 0 and bit 5.
+-- * 
+-- *    Rev 5.0   Jun 28 2001 11:05:22   CBrewer
+-- * Initial V5 (SCTE) check in.
+-- * 
+-- *    Rev 2.13   May 15 2001 09:12:52   CBrewer
+-- * Modified Copyright statement.
+-- * 
+-- *    Rev 2.12   Nov 09 1999 10:48:58   CBrewer
+-- * TransponderStatus - updated description.
+-- * 
+-- *    Rev 2.11   Oct 27 1999 10:24:52   CBrewer
+-- * added HecAlarms definition to support hec traps (lockpolling)
+-- * 
+-- *    Rev 2.10   Jun 03 1999 17:11:28   JOstrosky
+-- * Fixed some minor errors that the MCG
+-- * compiler caught.  Updated HEC agent
+-- * text.
+-- * 
+-- *    Rev 2.9   Nov 02 1998 11:14:50   HWhitefield
+-- * Removed ReceiveLine, AlarmEnable, Int8 and Int16 from definitions
+-- * list. These types were only used once in the mibs, or not at all.
+-- * 
+-- *    Rev 2.8   Oct 20 1998 11:59:12   HWhitefield
+-- * Added DisplayString as a local definition, rather than importing it.
+-- * 
+-- *    Rev 2.7   Sep 03 1998 16:51:18   HWhitefield
+-- * 80 character line formatting.
+-- * 
+-- *    Rev 2.6   Sep 01 1998 11:38:32   HWhitefield
+-- * Changed ModemAddress range maximum from 15 to 12.
+-- * Added bit definitions for TransponderStatus octet string in comments.
+-- * Added AttenuationLevel syntax definition.
+-- * 
+-- *    Rev 2.5   Aug 14 1998 15:56:46   HWhitefield
+-- * Removed PowerLevel syntax range definition.
+-- * 
+-- *    Rev 2.4   Jul 30 1998 15:14:36   HWhitefield
+-- * Added Uint32 and Int32 SYNTAX variables.
+-- * 
+-- *    Rev 2.3   Jul 17 1998 16:26:50   HWhitefield
+-- * Added a couple of SYNTAX variables (Uint8, Uint16, Int8, 
+-- * Int16).
+-- * 
+-- *    Rev 2.2   Jul 15 1998 11:38:24   HWhitefield
+-- * First cut at new MIB architecture. All files
+-- * successfully compiled.
+-- * 
+-- *    Rev 2.1   Jul 14 1998 11:36:12   HWhitefield
+-- * Still trying to correct comment prefix for 
+-- * revision information.
+-- *    
+-- *    Rev 2.0   Jul 14 1998 10:52:14   HWhitefield
+-- * Initial creations of definitions file.
+-- * 
+-- *    Rev 1.18   Jun 19 1998 15:37:56   HWhitefield
+-- * Added definition for INTEGER syntax 
+-- * Boolean.
+-- * 
+-- *
+-- * Reproduction of this document is authorized on condition that this
+-- * copyright notice is included.  This SNMP MIB Specification
+-- * embodies proprietary intellectual property.  The copyright
+-- * retains all title and ownership in the specification, including any
+-- * revisions. 
+-- * 
+-- * This specification is supplied "AS IS," and no
+-- * warranty, either express or implied, as to the use, operation,
+-- * condition, or performance of the specification, is made.
+-- * 
+-- * The right to change this MIB without notification is retained.
+-- * 
+-- * 
+-- * Agents supporting this MIB: Tollgrade Head End Controller, Software Rev: 2.xxx
+-- * 
+-- ****************************************************************************
+
+TOLLGRADE-LIGHTHOUSE-MIB DEFINITIONS ::= BEGIN
+
+
+Percent             ::= INTEGER ( 0..100 )
+
+NEAddress           ::= OCTET STRING ( SIZE ( 6 ) )
+
+ModemAddress        ::= INTEGER ( 1..12 )
+
+TransponderStatus   ::= OCTET STRING ( SIZE ( 1 ) )  
+                        -- Bit definitions are as follows
+                        -- Bit 0: Transponder Reset occurred
+                        -- Bit 1: Minor Alarms exist
+                        -- Bit 2: Major Alarms exist
+                        -- Bit 3: New alarms exist and should be retrieved
+                        -- Bit 4: Lost forward path
+                        -- Bit 5: Autonomous reporting disabled
+                        -- Bit 6: Transponder has valid time
+                        -- Bit 7: Reserved
+
+Digital             ::= INTEGER { off(1), on(2) }
+
+Boolean             ::= INTEGER { false(1), true(2) }
+
+DisplayString       ::= OCTET STRING
+
+GeneralAlarmStatus  ::= INTEGER { normal(1), fault(2) }
+
+Frequency           ::= INTEGER ( 5000000..900000000 )
+
+Temperature         ::= INTEGER ( -200..200 )
+
+ModemAlarms         ::= INTEGER { dead(1), 
+                                  alive(2), 
+                                  notPresent(3),
+                                  crcErrors(10), 
+                                  lostXmitLock1(11), 
+                                  lostXmitLock2(12), 
+                                  uartFailure(13), 
+                                  badEEPROM(14),
+                                  calibFail(15), 
+                                  crcErrorsReturn(20),
+                                  calibFailReturn(21),
+                                  incorrectFirmware(22) }
+
+HecAlarms 	        ::= INTEGER { nePollingLocked(50),  
+                                  nePollingUnlocked(51),
+                                  hecHeartbeat(52),
+                                  hecNeServiceModeChange(55),
+                                  hecNePowerLevel(56) }
+
+AttenuationLevel    ::= INTEGER { noAttenuation(1), 
+                                  lowAttenuation(2), 
+                                  highAttenuation(3) }
+
+Uint8               ::= INTEGER ( 0..255 )
+
+Uint16              ::= INTEGER ( 0..65535 )
+
+Uint32              ::= INTEGER ( 0..4294967295 )
+
+Int32               ::= INTEGER ( -2147483648..2147483647 )
+
+END

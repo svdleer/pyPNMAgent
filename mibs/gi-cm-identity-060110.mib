@@ -1,0 +1,317 @@
+--
+-- (c) 2002 Motorola, Inc.
+--
+--
+-- cmIdentity MIB
+--
+
+CM-IDENTITY-MIB DEFINITIONS ::= BEGIN
+
+   IMPORTS
+      enterprises, OBJECT-IDENTITY, MODULE-IDENTITY
+         FROM SNMPv2-SMI;
+ 
+   cmIdentity MODULE-IDENTITY
+      LAST-UPDATED "201006010000Z"  -- June 1, 2010
+      ORGANIZATION
+         "Motorola BCS"
+      CONTACT-INFO
+         "Author: Greg Nakanishi
+          Org:    Motorola BCS
+          postal: 6450 Sequence Drive
+                  San Diego, CA 92121
+          email:  gnakanishi@motorola.com
+          phone:  858-404-2366"
+      DESCRIPTION
+          "This MIB defines identifiers for objects used in IPCG products"
+
+      ::= {cm 30}
+
+
+--
+-- Path to root
+--
+
+   gi OBJECT IDENTIFIER ::= {enterprises 1166}
+   giproducts OBJECT IDENTIFIER ::= {gi 1}
+   cm OBJECT IDENTIFIER ::= {giproducts 19}
+
+-- Administrative assignments ----------------------
+
+   cmIdentityObjects OBJECT IDENTIFIER ::= { cmIdentity 1 }
+   cmIdentityConformance OBJECT IDENTIFIER ::= { cmIdentity 2 }
+
+--
+-- GUI Object definitions ------------------------------
+--
+  
+   cmGui OBJECT IDENTIFIER ::= {cmIdentityObjects 1}
+
+-- CM Gateway GUI Objects
+   
+   cmgGui OBJECT IDENTIFIER ::= {cmGui 1} 
+
+cmgGuiTop OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The entire CMG GUI"
+   ::= {cmgGui 1}
+
+-- Cable section
+
+cmgGuiCable OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Cable section of the CMG GUI"
+   ::= {cmgGuiTop 1}
+
+cmgGuiCableStatus OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Cable Status tab of the CMG GUI"
+   ::= {cmgGuiCable 1}
+   
+cmgGuiCableSignal OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Cable Signal tab of the CMG GUI"
+   ::= {cmgGuiCable 2}
+   
+   cmgGuiCableAddress OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Cable Addresses tab of the CMG GUI"
+   ::= {cmgGuiCable 3}
+   
+   cmgGuiCableConfig OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Cable Configuration tab of the CMG GUI"
+   ::= {cmgGuiCable 4}
+   
+   cmgGuiCableLog OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Cable Log tab of the CMG GUI"
+   ::= {cmgGuiCable 5}
+
+-- Gateway section
+   
+cmgGuiGateway OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Gateway section of the CMG GUI"
+   ::= {cmgGuiTop 2}
+
+cmgGuiGatewayStatus OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Gateway status tab of the CMG GUI"
+   ::= {cmgGuiGateway 1}
+
+cmgGuiGatewayWan OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Gateway WAN tab of the CMG GUI"
+   ::= {cmgGuiGateway 2}
+
+cmgGuiGatewayLan OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Gateway LAN tab of the CMG GUI"
+   ::= {cmgGuiGateway 3}
+   
+cmgGuiGatewayVirtualServer OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Gateway Virtual Server tab of the CMG GUI"
+   ::= {cmgGuiGateway 4}
+
+cmgGuiGatewayPortTrigger OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Gateway Port Trigger tab of the CMG GUI"
+   ::= {cmgGuiGateway 5}
+   
+cmgGuiGatewayLog OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Gateway Log tab of the CMG GUI"
+   ::= {cmgGuiGateway 6}
+                         
+-- Router section
+
+cmgGuiRouter OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Router section of the CMG GUI"
+   ::= {cmgGuiTop 3}
+
+-- Wireless section
+
+cmgGuiWireless OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Wireless section of the CMG GUI"
+   ::= {cmgGuiTop 4}
+
+cmgGuiWirelessStatus OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Wireless Status tab of the CMG GUI"
+   ::= {cmgGuiWireless 1}
+
+cmgGuiWirelessNetwork OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Wireless Network tab of the CMG GUI"
+   ::= {cmgGuiWireless 2}
+
+cmgGuiWirelessSecurity OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Wireless Security tab of the CMG GUI"
+   ::= {cmgGuiWireless 3}
+
+cmgGuiWirelessStats OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Wireless Statistics tab of the CMG GUI"
+   ::= {cmgGuiWireless 4}
+ 
+-- Firewall section
+
+cmgGuiFirewall OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Firewall section of the CMG GUI"
+   ::= {cmgGuiTop 5}
+
+cmgGuiFirewallPolicy OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Firewall Policy tab of the CMG GUI"
+   ::= {cmgGuiFirewall 1}
+
+cmgGuiFirewallAlert OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Firewall Alert tab of the CMG GUI"
+   ::= {cmgGuiFirewall 2}
+
+cmgGuiFirewallLogs OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Firewall Logs tab of the CMG GUI"
+   ::= {cmgGuiFirewall 3}
+
+cmgGuiFirewallLogsConfig OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Firewall Logs Configuration sub-tab of the CMG GUI"
+   ::= {cmgGuiFirewallLogs 1}
+
+cmgGuiFirewallLogsBlock OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Firewall Blocking Log sub-tab of the CMG GUI"
+   ::= {cmgGuiFirewallLogs 2}
+
+cmgGuiFirewallLogsSession OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Firewall Session Log sub-tab of the CMG GUI"
+   ::= {cmgGuiFirewallLogs 3}
+
+cmgGuiFirewallLogsIntrusion OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Firewall Intrusion Log sub-tab of the CMG GUI"
+   ::= {cmgGuiFirewallLogs 4}
+   
+-- VPN section
+
+cmgGuiVpn OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The VPN section of the CMG GUI"
+   ::= {cmgGuiTop 6}
+
+cmgGuiVpnIpsec OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The VPN IPsec tab of the CMG GUI"
+   ::= {cmgGuiVpn 1}
+
+cmgGuiVpnPptp OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The VPN PPTP tab of the CMG GUI"
+   ::= {cmgGuiVpn 2}
+
+cmgGuiVpnL2tp OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The VPN L2TP tab of the CMG GUI"
+   ::= {cmgGuiVpn 3}
+
+-- Printer section
+
+cmgGuiPrinter OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Printer section of the CMG GUI"
+   ::= {cmgGuiTop 7}
+
+cmgGuiPrinterBasic OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Printer Basic tab of the CMG GUI"
+   ::= {cmgGuiPrinter 1}
+
+cmgGuiPrinterSmb OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Printer SMB tab of the CMG GUI"
+   ::= {cmgGuiPrinter 2}
+
+cmgGuiPrinterApple OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Printer AppleTalk tab of the CMG GUI"
+   ::= {cmgGuiPrinter 3}
+
+cmgGuiPrinterLpr OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Printer LPR tab of the CMG GUI"
+   ::= {cmgGuiPrinter 4}
+
+cmgGuiAdmin OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Administrative section of the CMG GUI"
+   ::= {cmgGuiTop 8}
+
+cmgGuiHelp OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Help section of the CMG GUI"
+   ::= {cmgGuiTop 9}
+
+cmgGuiInfo OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Info section of the CMG GUI"
+   ::= {cmgGuiTop 10}
+
+cmgGuiReboot OBJECT-IDENTITY
+   STATUS current
+   DESCRIPTION
+      "The Reboot button on the CMG GUI main page"
+   ::= {cmgGuiTop 11}
+               
+END   
+
+
+

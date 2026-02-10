@@ -1,0 +1,107 @@
+
+--****************************************************************************
+--    Filename: THOMSON-ACG-TEST-MIB.txt 
+--    Author: Vivien Chappelier
+--    Creation Date: 2008/03
+--
+--**************************************************************************
+--    Description:
+--
+--		private MIB for testing of the ACG.
+--		
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+THOMSON-ACG-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Integer32
+        FROM SNMPv2-SMI
+    broadband
+    	FROM THOMSON-MIB
+    TEXTUAL-CONVENTION
+        FROM SNMPv2-TC;
+
+broadbandTss MODULE-IDENTITY
+    LAST-UPDATED "200803200000Z"
+    ORGANIZATION "Thomson"
+    CONTACT-INFO
+        "	E-mail: "
+    DESCRIPTION
+        "Thomson private MIB for testing of the ACG."      
+    REVISION      "200803200000Z"
+    DESCRIPTION
+        "Initial version of this MIB module."
+    ::= {broadband  200 } 
+
+
+acgTest MODULE-IDENTITY
+    LAST-UPDATED "200803200000Z"
+    ORGANIZATION "Thomson"
+    CONTACT-INFO
+        "	E-mail: "
+    DESCRIPTION
+        "Thomson private MIB for testing of the ACG."      
+    REVISION      "200803200000Z"
+    DESCRIPTION
+        "Initial version of this MIB module."
+    ::= {broadbandTss  3 } 
+
+--              
+-- Textual Conventions
+--
+
+NetworkingMode ::= TEXTUAL-CONVENTION
+    STATUS      current
+    DESCRIPTION
+	"Networking Mode
+		router : the default state
+		bridge : for Docsis testing"
+    SYNTAX INTEGER  { 
+     		router(0),
+     		bridge(1)
+		}
+
+--
+-- Networking mode
+--
+
+networkingMode OBJECT-TYPE
+    SYNTAX      NetworkingMode
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+	"Set the networking mode of the ACG"
+    ::= { acgTest 1 }
+
+--
+-- DECT RF
+--
+
+dectRadioKill OBJECT-TYPE
+    SYNTAX	Integer32
+    MAX-ACCESS  read-write
+    STATUS	current
+    DESCRIPTION
+	"Enable(0)/Disable(1) the DECT radio"
+    ::= { acgTest 2 }
+
+--
+-- Board Temperature
+--
+
+boardTemperature OBJECT-TYPE
+   SYNTAX     Integer32
+   UNITS      "degrees Centigrade"
+   MAX-ACCESS read-only
+   STATUS     current
+   DESCRIPTION
+           "The ambient temperature on mainboard. Thermistor RP56"
+    ::= { acgTest 3 }
+
+
+END

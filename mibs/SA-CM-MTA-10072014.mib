@@ -1,0 +1,338 @@
+--**************************************************************************
+--                                                                          
+--    Copyright 2011 Cisco Systems, Inc.                                   
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any
+--    form without the written permission of:                                                
+--             Cisco Systems Inc.                                           
+--             170 West Tasman Dr.                                    
+--             San Jose, CA 95134                                    
+--             USA                                                             
+--**************************************************************************
+
+SA-CM-MTA-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+        MODULE-IDENTITY, 
+        OBJECT-TYPE,enterprises, 
+        Integer32
+                FROM SNMPv2-SMI
+        SnmpAdminString 
+                FROM SNMP-FRAMEWORK-MIB
+        TruthValue
+                FROM SNMPv2-TC ;
+                
+sa           OBJECT IDENTIFIER ::= { enterprises 1429 }
+saVoip       OBJECT IDENTIFIER ::= { sa 78 }
+
+saCmMta MODULE-IDENTITY
+        LAST-UPDATED    "201106150000Z"
+        ORGANIZATION    "Cisco Systems, Inc."
+        CONTACT-INFO    "http://support.cisco.com"
+        DESCRIPTION
+            "Controls the behavior of the Cable Modem
+             functional block in Embedded MTA devices.  
+             This MIB is active only at the Cable Modem IP address"
+
+        -- History
+        REVISION "201106150000Z"
+        DESCRIPTION 
+        		 "Changed description of saCmMtaCliAccessType to exclude option 5 
+        		 (enableTelnetPermanentViaWebpage) for D3.0 and D2.0 R2 model modems. -17559"
+        		   
+        REVISION "201010250000Z"
+        DESCRIPTION 
+        		 "Added saCmMtaProvSnmpSetCommunityString -17276"
+
+        REVISION "201005250000Z"
+        DESCRIPTION 
+        		 "Added saCmMtaGracefulReload Tree -15175"
+        		                       
+        REVISION	"200902050000Z"
+        DESCRIPTION
+        	"Added  saCmMtaPingTestInterval 
+    				saCmMtaPingTestFailEMTAThreshold 
+    				saCmMtaPingTestFailCMThreshold   
+    			Objects  - CR5752"
+        	
+        REVISION     "200807080000Z"
+        DESCRIPTION
+            "Added saCmMtaProvState (2012)" 
+
+        REVISION     "200804230000Z"
+        DESCRIPTION
+            "Added saCmMtaDhcpOptionSixty (2468)"
+
+        REVISION     "200804070000Z"
+        DESCRIPTION
+            "Added saCmMtaDhcpRebindRule (2452)"
+
+        REVISION     "200803170000Z"
+        DESCRIPTION
+            "Added saCmMtaIcmpReplyEnable (5660)"
+
+        REVISION     "200711160000Z"
+        DESCRIPTION
+            "Added enableTelnetPermanentViaWebpage(5) to saCmMtaCliAccessType (1988)"
+
+        REVISION     "200706010000Z"
+        DESCRIPTION
+            "Added webPage(6) to saCmMtaProvisioningMode (1528)"
+
+        REVISION     "200703150000Z"
+        DESCRIPTION
+            "Added saCmMtaDhcpReleaseOnRngAbort (5501)"
+
+        REVISION     "200610300000Z"
+        DESCRIPTION
+            "Added saCmMtaAltCertChain (1076,5372)"
+
+        REVISION     "200610020000Z"
+        DESCRIPTION
+            "Changed description of saCmMtaCliAccessPassword"
+
+        REVISION     "200609050000Z"
+        DESCRIPTION
+            "Changed description and defval of saCmMtaProvSnmpInformCommunityString"
+
+        REVISION     "200607110000Z"
+        DESCRIPTION
+            "Added values 4 and 5 to saCmMtaProvisioningMode (786)"
+
+        REVISION     "200606210000Z"
+        DESCRIPTION
+            "Changed saCmMtaSpinLockInit access to read-only
+             Changed description of saCmMtaCliAccessType
+                     to remove VSIFs 105 to 108"
+
+        REVISION     "200603170000Z"
+        DESCRIPTION
+            "Changed saCmMtaTelnetAccess status to obsolete
+             Added saCmMtaCliAccess tree"
+
+        REVISION     "200602130000Z"
+        DESCRIPTION
+            "Added enableSsh(2) to saCmMtaTelnetAccess"
+
+        REVISION     "200601230000Z" -- 2006/01/23
+        DESCRIPTION
+            "Added saCmMtaSpinLockInit"
+
+        REVISION     "200601200000Z" -- 2006/01/20
+        DESCRIPTION
+            "Added saCmMtaSwUpgradeControlTimer"
+
+        ::= { saVoip 1 }
+
+saCmMtaDevice OBJECT-TYPE
+    SYNTAX INTEGER {
+          disable(0),
+          enable(1)
+	}
+    MAX-ACCESS 	  read-only
+    STATUS        current
+    DESCRIPTION	
+        "Control embedded MTA. 
+         If disable(0), MTA will not send out DHCP DISCOVER message.
+         If DHCP option 122.1 is missing, MTA is disabled and MIB is set to disable(0).
+         Note:  Equivalent of VSIF 54.
+         Note:  This object can be set via the CM configuration file ONLY."
+    ::= { saCmMta 1 }
+
+saCmMtaCountMtaAsCpe OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+        }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "MTA in Max-Count of CPEs (Max number of CPE
+         in CM config file), default per eDOCSIS spec.
+         This setting is used to control counting MTA in Max-Count of CPEs.
+         0: Do not count MTA as a CPE
+         1: Count MTA as a CPE
+         Note:  Equivalent of VSIF 69
+         Note:  This object can be set via the CM configuration file ONLY."
+    DEFVAL    { 1 }
+    ::= { saCmMta 2 }
+
+-- ===========
+-- TELNET TREE
+
+saCmMtaCliAccess OBJECT IDENTIFIER ::= { saCmMta 1001 }
+
+saCmMtaCliAccessType OBJECT-TYPE
+    SYNTAX INTEGER {
+          disable(0),
+          enableTelnetPermanent(1),
+          enableTelnetSingleSession(2),
+          enableSshPermanent(3),
+          enableSshSingleSession(4),
+          enableTelnetPermanentViaWebpage(5)
+          }
+    MAX-ACCESS       read-write
+    STATUS        current
+    DESCRIPTION    
+        "Controls telnet/SSH access to the CM IP Address.
+          
+         When username and password are specified, the value of this
+         object can be modified to control telnet/SSH access. In this
+         case, the object returns the current value when read
+         (disable(0) by default).
+
+         Single session enables the session and once a user logs out,
+         the access gets disabled. Permanent session does not disable
+         the access after a user logs out.
+         
+         * Note: Option 5 enableTelnetPermanentViaWebpage(5) is only 
+         available in legacy D2.0 modem software. It has been deprecated 
+         in Docsis 3.0 and Docsis 2.0 R2 modem software. In these models 
+         it will return an error if set."
+    DEFVAL { 0 }
+    ::= { saCmMtaCliAccess 1 }
+
+saCmMtaCliAccessInterface OBJECT-TYPE
+    SYNTAX      BITS {
+                docsis(0),
+                emta(1),
+                cpe(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the IP stack interfaces on which a telnet server
+         is active."
+    DEFVAL { '00'h }
+    ::= { saCmMtaCliAccess 2 }
+
+saCmMtaCliAccessUsername OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Username string"
+    ::= { saCmMtaCliAccess 3 }
+
+saCmMtaCliAccessPassword OBJECT-TYPE
+    SYNTAX SnmpAdminString
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Password string. When using a plain-text string, this object is encoded
+         as an ascii string.  When using the MD5 or password of the day types,
+         this object should be encoded as a hex string."
+    ::= { saCmMtaCliAccess 4 }
+
+saCmMtaCliAccessPasswordType OBJECT-TYPE
+    SYNTAX INTEGER {
+        plain(0),
+        md5(1),
+        pod(2)
+    }
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Password type"
+    DEFVAL { 0 }
+    ::= { saCmMtaCliAccess 5 }
+
+saCmMtaCliAccessSessionInProgress OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates whether or not a telnet session is currently in progress."
+    ::= { saCmMtaCliAccess 6 }
+
+saCmMtaCliAccessForceUserLogout OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If a telnet session is currently in progress, setting this object
+         to true(1) will terminate the session.  Setting to false(2) has
+         no effect.  Always returns false(2) when read."
+    ::= { saCmMtaCliAccess 7 }
+
+saCmMtaCliAccessSessionAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "This object gives the address of the most recently connected device.  
+         If no session has taken place since the last reboot, this object will 
+         report an empty string."
+    ::= { saCmMtaCliAccess 8 }
+
+saCmMtaCliAccessBadAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The address of an device which has last unsuccessfully attempted to log in 
+         to this station."
+    ::= { saCmMtaCliAccess 9 }
+
+
+saCmMtaCliAccessTriesToLock OBJECT-TYPE
+    SYNTAX      INTEGER (0..32)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Defines number of unsuccessful access atempts before disconneting
+         the session. Access is blocked for duration specified in
+         saCmMtaCliAccessUnlockTime.
+         If 0 is specified, session is never dropped."
+    DEFVAL { 3 }
+    ::= { saCmMtaCliAccess 10 }
+
+saCmMtaCliAccessUnlockTime OBJECT-TYPE
+    SYNTAX  INTEGER
+    UNITS "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Time to unlock the access. If 0 is specified only reboot unlocks
+         the access."
+    DEFVAL { 30 }
+    ::= { saCmMtaCliAccess 11 }
+
+saCmMtaCliAccessNoActivityTimeout OBJECT-TYPE
+    SYNTAX  INTEGER
+    UNITS "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Timeout for a session if no activity (no input) is present.
+         If 0, session will not timeout."
+    DEFVAL { 0 }
+    ::= { saCmMtaCliAccess 12 }
+
+saCmMtaCliAccessConnectBanner OBJECT-TYPE
+    SYNTAX  SnmpAdminString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Banner when user connects to session."
+    ::= { saCmMtaCliAccess 13 }
+
+saCmMtaCliAccessGoodLogin OBJECT-TYPE
+    SYNTAX  SnmpAdminString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Banner when user successfully logs in."
+    ::= { saCmMtaCliAccess 14 }
+
+saCmMtaCliAccessBadBanner OBJECT-TYPE
+    SYNTAX  SnmpAdminString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Banner when user is disconnected after trying loging in with
+         bad credentials."
+    ::= { saCmMtaCliAccess 15 }
+
+-- END OF TELNET TREE  
+
+END

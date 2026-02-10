@@ -1,0 +1,4613 @@
+----------------------------------------------------------------------------
+--
+--  Copyright (c) 2011  NETGEAR, Inc.
+--  All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--  written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+----------------------------------------------------------------------------
+NETGEAR-CG-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,	
+	Integer32,
+	NOTIFICATION-TYPE
+							FROM SNMPv2-SMI  
+        SnmpAdminString
+        FROM SNMP-FRAMEWORK-MIB								
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+   	TEXTUAL-CONVENTION              
+							FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP
+							FROM SNMPv2-CONF
+	
+	InetAddressType,
+	InetAddress,
+	InetAddressIPv4,
+	InetAddressIPv6
+							FROM INET-ADDRESS-MIB
+
+    ifIndex                 FROM IF-MIB;
+
+--
+-- Netgear Group
+-- version 1.0.2
+--
+
+netgear			OBJECT IDENTIFIER ::= { enterprises 4526 }
+carrierProducts		OBJECT IDENTIFIER ::= { netgear 3 }
+
+
+cableGatewayDev MODULE-IDENTITY
+	LAST-UPDATED    "0507040000Z" -- May 7, 2004
+        	ORGANIZATION    "Netgear, Inc"
+        	CONTACT-INFO
+		"Tak Cheung
+             	Postal: Netgear, Inc
+                     		4500 Great America Parkway
+                     		Santa Clara, CA 95054
+                     		U.S.A.
+             	Phone:  +1 408 907 8062
+             	E-mail: tcheung@netgear.com"
+        	DESCRIPTION
+            	"This is the MIB Module for Netgear Cable Gateway device."
+        	REVISION "0507040000Z"
+        DESCRIPTION
+            "Third Version: May 7, 2004"
+        REVISION		"1201120000Z" -- 2012/01/12
+    		DESCRIPTION
+        "Add Mib SePageAccessControl to control SE Pages Enabled or Disabled" 
+        ::= { carrierProducts 1 }
+
+--
+-- groups in NETGEAR-CG-MIB
+--
+
+cableGatewayWirelessGroup	        OBJECT IDENTIFIER ::= { cableGatewayDev 1 }
+cableGatewayRemoteMgntGroup	        OBJECT IDENTIFIER ::= { cableGatewayDev 2 }
+cableGatewayStdWirelessGroup	    OBJECT IDENTIFIER ::= { cableGatewayDev 3 }
+cableGatewayConnectedDevicesGroup	OBJECT IDENTIFIER ::= { cableGatewayDev 4 }
+cableGatewayGUIGroup		        OBJECT IDENTIFIER ::= { cableGatewayDev 5 }
+cableGatewayConfigrationGroup       OBJECT IDENTIFIER ::= { cableGatewayDev 6 }
+-- cableGatewayTwcGroup       			OBJECT IDENTIFIER ::= { cableGatewayDev 101 }
+
+--
+-- Wireless Access
+--
+
+-- Control
+
+wirelessAccessControl	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Wireless Access Control"
+	DEFVAL { 2 }
+	::= { cableGatewayWirelessGroup 1 }
+
+-- Wireless Access Connected Devices Table
+  
+wirelessAccessConnectedDevsTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF WirelessAccessConnectedDevsEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Wireless Access Connected Devices Table Object"
+	::= { cableGatewayWirelessGroup 2 }
+
+wirelessAccessConnectedDevsEntry	OBJECT-TYPE
+	SYNTAX		WirelessAccessConnectedDevsEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Wireless Access Connected Devices Table"
+	INDEX	{ wirelessAccessConnectedDevsIndex }
+	::= { wirelessAccessConnectedDevsTable 1 }
+
+WirelessAccessConnectedDevsEntry ::=
+	SEQUENCE {
+		wirelessAccessConnectedDevsIndex		Integer32,
+		wirelessAccessConnectedDevsName			OCTET STRING,
+		wirelessAccessConnectedDevsIpAddr		IpAddress,
+		wirelessAccessConnectedDevsMacAddr		MacAddress,
+		wirelessAccessConnectedDevsRowStatus	RowStatus
+	}
+
+wirelessAccessConnectedDevsIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..253)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Wireless Access Connected Devices Table Index"
+	::= { wirelessAccessConnectedDevsEntry 1 }
+
+wirelessAccessConnectedDevsName	OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"Wireless Device Name that is currently connected to the cable gateway"
+	::= { wirelessAccessConnectedDevsEntry 2 }
+
+wirelessAccessConnectedDevsIpAddr		OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"Connected Wireless Device IP Address"
+	::= { wirelessAccessConnectedDevsEntry 3 }
+
+wirelessAccessConnectedDevsMacAddr		OBJECT-TYPE
+	SYNTAX		MacAddress
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"Connected Wireless Device Mac Address"
+	::= { wirelessAccessConnectedDevsEntry 4 }
+
+wirelessAccessConnectedDevsRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+	   active (1),
+	   notReady (3),
+	   destroy (6)
+	}
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"Wirelss Access Connected Devices Table Entry Row Status"
+	::= { wirelessAccessConnectedDevsEntry 5 }
+
+-- Wireless Access Device Table
+
+wirelessAccessDevsTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF WirelessAccessDevsEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Wireless Access Device Table Object"
+	::= { cableGatewayWirelessGroup 3 }
+
+wirelessAccessDevsEntry	OBJECT-TYPE
+	SYNTAX		WirelessAccessDevsEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Wireless Access Device Table"
+	INDEX	{ wirelessAccessDevsIndex }
+	::= { wirelessAccessDevsTable 1 }
+
+WirelessAccessDevsEntry ::=
+	SEQUENCE {
+		wirelessAccessDevsIndex		Integer32,
+		wirelessAccessDevsName		OCTET STRING,
+		wirelessAccessDevsMacAddr	MacAddress,
+		wirelessAccessDevsRowStatus	INTEGER
+	}
+
+wirelessAccessDevsIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..253)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Wireless Access Connected Devices Table Index"
+	::= { wirelessAccessDevsEntry 1 }
+
+wirelessAccessDevsName	OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Wireless Device Name that will have access to the wireless network when 
+		wirelessAccessControl is enabled"
+	::= { wirelessAccessDevsEntry 2 }
+
+wirelessAccessDevsMacAddr		OBJECT-TYPE
+	SYNTAX		MacAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Wireless Device Mac Address that will have access to the wireless network when
+		 wirelessAccessControl is enabled"
+	::= { wirelessAccessDevsEntry 3 }
+
+wirelessAccessDevsRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+	  active (1),
+	  notReady (3),
+	  destroy (6)
+	}
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"Wirelss Access Devices Table Entry Row Status"
+	::= { wirelessAccessDevsEntry 4 }
+
+-- wireless Basic settings
+wirelessBasicConfiguration	OBJECT IDENTIFIER ::= { cableGatewayWirelessGroup 4 }
+
+wirelessBandwidth OBJECT-TYPE
+    	SYNTAX      INTEGER {
+                bandwidth20(20),
+                bandwidth40(40)
+    	}
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"Select Wireless Bandwidth in 802.11n mode"
+	::= { wirelessBasicConfiguration 1 }
+
+wirelessEnable OBJECT-TYPE
+		SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+		}
+		MAX-ACCESS	read-write
+		STATUS	current
+		DESCRIPTION
+		"Enable Wireless function"
+		::= { wirelessBasicConfiguration 2 }
+
+wirelessClosedNetwork OBJECT-TYPE
+		SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+		}
+		MAX-ACCESS	read-write
+		STATUS	current
+		DESCRIPTION
+		"Hide the ssid"
+		::= { wirelessBasicConfiguration 3 }
+
+wirelessForceWiFiTo40MHZ OBJECT-TYPE
+		SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+		}
+		MAX-ACCESS	read-write
+		STATUS	current
+		DESCRIPTION
+		"Force WiFi at 40MHz (n_protect = off and obss_coex - disable)"
+		::= { wirelessBasicConfiguration 4 }
+
+-- wireless security settings
+wirelessSecurityConfiguration	OBJECT IDENTIFIER ::= { cableGatewayWirelessGroup 5 }
+
+wirelessEncryptionMode OBJECT-TYPE
+		SYNTAX	INTEGER {
+				none     (1),
+				wep64    (2),
+		        wep128   (3),
+		        wpapsk   (4),
+		        wpa2-psk (5),
+		        tkipPlusAes (6),
+		        wpa      (7),
+		        wpa2     (8)
+		        wpaPlusWpa2 (9)
+		}
+		MAX-ACCESS	read-write
+		STATUS	current
+		DESCRIPTION
+		"Wireless Encryption Mode"
+		::= { wirelessSecurityConfiguration 1 }
+
+wirelessWepPassPhrase OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(1..64))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Wireless Wep PassPhrase"
+	::= { wirelessSecurityConfiguration 2 }
+
+wirelessRadiusServer OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Wireless Radius Server Ip address"
+	::= { wirelessSecurityConfiguration 3 }
+
+wirelessRadiusPort OBJECT-TYPE
+	SYNTAX	INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Wireless Radius Port number"
+	DEFVAL { 80 }
+	::= { wirelessSecurityConfiguration 4 }
+
+wirelessRadiusKey OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(1..64))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Wireless Radius Key"
+	::= { wirelessSecurityConfiguration 5 }
+
+wirelessWpaPreSharedKey OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(8..63))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Wireless Wpa PreShared Key"
+	::= { wirelessSecurityConfiguration 6 }
+
+
+-- WMM Control
+wirelessWMMConfiguration	OBJECT IDENTIFIER ::= { cableGatewayWirelessGroup 6 }
+
+wirelessWMMSupportControl	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Wifi Multimedia Support Control"
+	DEFVAL { 1 }
+	::= { wirelessWMMConfiguration 1 }
+
+wirelessWMMNoAckControl	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Wifi Multimedia No Acknowledgement Control"
+	DEFVAL { 1 }
+	::= { wirelessWMMConfiguration 2 }
+
+wirelessWMMPowersaveControl	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Wifi Multimedia Powersave Control"
+	DEFVAL { 1 }
+	::= { wirelessWMMConfiguration 3 }
+
+-- WPS Control
+wirelessWPSConfiguration	OBJECT IDENTIFIER ::= { cableGatewayWirelessGroup 7 }
+
+wirelessWPSControl	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup Enable/Disalbe Control"
+	DEFVAL { 1 }
+	::= { wirelessWPSConfiguration 1 }
+
+wirelessWPSDeviceName OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(1..32))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup Device Name"
+	::= { wirelessWPSConfiguration 2 }
+
+wirelessWPSPinCode OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(8))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup PIN code"
+	::= { wirelessWPSConfiguration 3 }
+
+wirelessWPSMethod OBJECT-TYPE
+	SYNTAX	INTEGER {
+				pushbutton (1),
+				pincode (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup method control"
+	DEFVAL { 1 }
+	::= { wirelessWPSConfiguration 4 }
+
+wirelessWPSStart OBJECT-TYPE
+	SYNTAX	INTEGER {
+				start (1),
+				stop (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup process control"
+	DEFVAL { 1 }
+	::= { wirelessWPSConfiguration 5 }
+
+wirelessWPSStatus OBJECT-TYPE
+	SYNTAX	INTEGER {
+				idle (0),
+				inProgress (1),
+				success (2),
+				error(3)
+
+			}
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"WiFi Protected Setup current status"
+	DEFVAL { 1 }
+	::= { wirelessWPSConfiguration 6 }
+
+-- Power Control configuration
+wirelessPowerControlConfiguration	OBJECT IDENTIFIER ::= { cableGatewayWirelessGroup 8 }
+
+wirelessPowerControl OBJECT-TYPE
+    	SYNTAX      INTEGER {
+                powerlevel1(1),
+                powerlevel2(2),
+				powerlevel3(3),
+				powerlevel4(4)
+    	}
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"Select Wireless Powerlevel, Powerlevel 1 is maximum
+			 Powerlevel 1 = 100.0%
+			 Powerlevel 2 =  50.0%
+			 Powerlevel 3 =  25.0%
+			 Powerlevel 4 =  12.5%
+			 deafault Powerlevel is 100.0%"
+	::= { wirelessPowerControlConfiguration 1 }
+
+--Primary ifIndex
+wirelessPrimaryifIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..65535)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Wireless Primary ifIndex control"
+	DEFVAL { 32 }
+	::= { cableGatewayWirelessGroup 11 }
+--
+-- Remote Management
+--
+
+-- Control
+remoteWebAccessControl	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Remote Web Access Control"
+	DEFVAL { 1 }
+	::= { cableGatewayRemoteMgntGroup 1 }
+
+remoteWebAccessPortNumber	OBJECT-TYPE
+	SYNTAX	INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"TCP Port number for HTTP access"
+	DEFVAL { 80 }
+	::= { cableGatewayRemoteMgntGroup 2 }
+
+remoteWebAccessPassword OBJECT-TYPE
+	SYNTAX	OCTET STRING (SIZE(4..16))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Password for remote access, which will be different from 
+		the subscribers password" 
+	::= { cableGatewayRemoteMgntGroup 3 }
+
+-- Telnet Control
+remoteTelnetAccessControl	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Remote Telnet Access Control"
+	DEFVAL { 1 }
+	::= { cableGatewayRemoteMgntGroup 5 }
+
+remoteTelnetAccessPassword OBJECT-TYPE
+	SYNTAX	OCTET STRING (SIZE(4..16))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Password for telnet remote access, which will be different from 
+		the subscribers password" 
+	::= { cableGatewayRemoteMgntGroup 7 }
+
+remoteTelnetAccessUsername OBJECT-TYPE
+	SYNTAX	OCTET STRING (SIZE(4..16))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Username for remote access, which will be different from 
+		the subscribers user" 
+	::= { cableGatewayRemoteMgntGroup 6 }
+	
+SePageAccessControl OBJECT-TYPE
+    SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "SE Page Access Control."
+    DEFVAL { 1 }
+    ::= { cableGatewayRemoteMgntGroup  8 }
+		
+ACSPolicyIndex OBJECT-TYPE
+    SYNTAX  INTEGER {
+			default (0),
+			legacy (1),
+			intf (2),
+--br			intf_busy (3),
+			intfBusy (3),
+			optimized (4),
+			optimized1 (5),
+			optimized2 (6),
+			user (7)
+            
+    }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Set Automatic Channel Scan Policy Index"
+	DEFVAL { 3 }
+	::= { cableGatewayRemoteMgntGroup 9 }
+
+remoteSSHAccessControl	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Remote SSH Access Control"
+	DEFVAL { 1 }
+	::= { cableGatewayRemoteMgntGroup 10 }
+
+DlnaServiceUsedCount	OBJECT-TYPE
+	SYNTAX	OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"The used count of DLNA service" 
+	::= { cableGatewayRemoteMgntGroup 11 }
+
+remoteWebAccessUserControlTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF RemoteWebAccessUserControlEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"User Remote Access Control Table Object"
+	::= { cableGatewayRemoteMgntGroup 4 }
+
+remoteWebAccessUserControlEntry	OBJECT-TYPE
+	SYNTAX		RemoteWebAccessUserControlEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for User Remote Access Control Table"
+	INDEX	{ remoteWebAccessUserControlIndex }
+	::= { remoteWebAccessUserControlTable 1 }
+
+RemoteWebAccessUserControlEntry ::=
+	SEQUENCE {
+		remoteWebAccessUserControlIndex		    Integer32,
+		remoteWebAccessUserControlEnable		INTEGER,
+		remoteWebAccessUserControlPort      	Integer32,
+		remoteWebAccessUserControlName			OCTET STRING,
+		remoteWebAccessUserControlPassword		OCTET STRING,
+		remoteWebAccessUserControlRowStatus 	RowStatus
+	}
+
+remoteWebAccessUserControlIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..255)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"User Remote Access Control Table Index"
+	::= { remoteWebAccessUserControlEntry 1 }
+
+remoteWebAccessUserControlEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"User Remote Web Access Control"
+	DEFVAL { 2 }
+	::= { remoteWebAccessUserControlEntry 2 }
+
+remoteWebAccessUserControlPort	OBJECT-TYPE
+	SYNTAX	Integer32 (1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"User Remote Web Access Control Port"
+	DEFVAL { 8080 }
+	::= { remoteWebAccessUserControlEntry 3 }
+
+remoteWebAccessUserControlName OBJECT-TYPE
+	SYNTAX	OCTET STRING (SIZE(4..16))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"User name for user remote access, which will be different from 
+		the subscribers user name" 
+	::= { remoteWebAccessUserControlEntry 4 }
+
+remoteWebAccessUserControlPassword OBJECT-TYPE
+	SYNTAX	OCTET STRING (SIZE(4..16))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Password for user remote access, which will be different from 
+		the subscribers password" 
+	::= { remoteWebAccessUserControlEntry 5 }
+
+remoteWebAccessUserControlRowStatus	OBJECT-TYPE
+	SYNTAX		RowStatus
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"User Remote Access Control Table Entry Row Status"
+	::= { remoteWebAccessUserControlEntry 6 }
+
+--
+-- subset 0f IEEE 802.11 MIB 
+--
+
+-- 
+--   Textual conventions from 802 definitions
+-- 
+WEPKeytype ::= TEXTUAL-CONVENTION
+    STATUS current
+    DESCRIPTION
+           "WEP key type as defined in the 802 definitions"
+    SYNTAX OCTET STRING (SIZE (5))
+
+
+dot11PrivacyOptionImplemented OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+
+            "This attribute, when true, shall indicate that the IEEE
+             802.11 WEP option is implemented.  The default value of
+             this attribute shall be false."
+
+    ::= { cableGatewayStdWirelessGroup 1 }
+
+dot11DesiredSSID OBJECT-TYPE
+		SYNTAX OCTET STRING (SIZE(0..32))
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This attribute reflects the Service Set ID used
+			in the DesiredSSID parameter of the most recent
+			MLME_Scan.request.  This value may be modified
+			by an external management entity and used by the
+			local SME to make decisions about the Scanning process."
+	::= { cableGatewayStdWirelessGroup 2 }
+
+dot11OperationalRateSet OBJECT-TYPE
+		SYNTAX OCTET STRING (SIZE(1..126))
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This attribute shall specify the set of data rates
+			 at which the station may transmit data.  Each octet
+                contains a value representing a rate.  Each rate
+			 shall be within the range from 2 to 127,
+			 corresponding to data rates in increments of
+			 500 kb/s from 1 Mb/s to 63.5 Mb/s, and shall be
+			 supported (as indicated in the supported rates
+			 table) for receiving data. This value is reported in
+			 transmitted Beacon, Probe Request, Probe Response,
+			 Association Request, Association Response,
+			 Reassociation Request, and Reassociation Response
+			 frames, and is used to determine whether a BSS
+			 with which the station desires to synchronize is
+			 suitable. It is also used when starting a BSS,
+			 as specified in  10.3."
+	::= { cableGatewayStdWirelessGroup 3 }
+
+dot11BeaconPeriod OBJECT-TYPE
+		SYNTAX INTEGER (1..65535)
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This attribute shall specify the number of TU that a
+			 station shall use for scheduling Beacon transmissions.
+			 This value is transmitted in Beacon and Probe Response
+			 frames."
+	::= { cableGatewayStdWirelessGroup 4 }
+
+dot11DTIMPeriod OBJECT-TYPE
+		SYNTAX INTEGER(1..255)
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This attribute shall specify the number of beacon
+			 intervals that shall elapse between transmission of
+			 Beacons frames containing a TIM element whose DTIM
+			 Count field is 0. This value is transmitted in
+			 the DTIM Period field of Beacon frames."
+	::= { cableGatewayStdWirelessGroup 5 }
+
+-- 
+--    AuthenticationAlgorithms  TABLE
+-- 
+
+dot11AuthenticationAlgorithmsTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF Dot11AuthenticationAlgorithmsEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "This (conceptual) table of attributes shall be a set of
+            all the authentication algorithms supported by the
+            stations.  The following are the default values and the
+            associated algorithm:
+                Value = 1: Open System
+                Value = 2: Shared Key"
+        REFERENCE "IEEE Std 802.11-1997, 7.3.1.1"
+    ::= { cableGatewayStdWirelessGroup 6 }
+
+dot11AuthenticationAlgorithmsEntry OBJECT-TYPE
+        SYNTAX Dot11AuthenticationAlgorithmsEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+
+            "An Entry (conceptual row) in the Authentication
+            Algorithms Table.  
+
+            ifIndex - Each 802.11 interface is represented by an
+            ifEntry.  Interface tables in this MIB module are indexed
+            by ifIndex."
+
+        INDEX { ifIndex,
+              dot11AuthenticationAlgorithmsIndex}
+    ::= {  dot11AuthenticationAlgorithmsTable  1 }
+
+Dot11AuthenticationAlgorithmsEntry ::= SEQUENCE {
+            dot11AuthenticationAlgorithmsIndex	Integer32,
+            dot11AuthenticationAlgorithm      	INTEGER,
+	    dot11AuthenticationAlgorithmsEnable	TruthValue }
+
+
+dot11AuthenticationAlgorithmsIndex OBJECT-TYPE
+        SYNTAX Integer32
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "The auxiliary variable used to identify instances
+            of the columnar objects in the Authentication Algorithms Table."
+    ::= {  dot11AuthenticationAlgorithmsEntry 1 }
+
+dot11AuthenticationAlgorithm OBJECT-TYPE
+        SYNTAX INTEGER {  openSystem (1),   sharedKey (2) }
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+
+        "This attribute shall be a set of all the authentication
+        algorithms supported by the STAs. The following are the
+        default values and the associated algorithm.  
+        Value = 1: Open System 
+        Value = 2: Shared Key"
+
+    ::= {  dot11AuthenticationAlgorithmsEntry 2 }
+
+dot11AuthenticationAlgorithmsEnable  OBJECT-TYPE
+        SYNTAX TruthValue
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+        "This attribute, when true at a station, shall enable the 	  acceptance of the authentication algorithm described in the 	  corresponding table entry in authentication frames received by 	  the station that have odd authentication sequence numbers.  The 	  default value of this attribute shall be 1 for the Open System 	  table entry and 2 for all other table entries."
+    ::= {  dot11AuthenticationAlgorithmsEntry 3 }
+
+-- 
+--     WEPDefaultKeys  TABLE
+-- 
+dot11WEPDefaultKeysTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF Dot11WEPDefaultKeysEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+
+            "Conceptual table for WEP default keys.  This table shall
+            contain the four WEP default secret key values
+            corresponding to the four possible KeyID values.  The WEP
+            default secret keys are logically WRITE-ONLY.  Attempts to
+            read the entries in this table shall return unsuccessful
+            status and values of null or zero.  The default value of
+            each WEP default key shall be null."
+
+        REFERENCE "IEEE Std 802.11-1997, 8.3.2"
+    ::= { cableGatewayStdWirelessGroup 7 }
+
+dot11WEPDefaultKeysEntry OBJECT-TYPE
+        SYNTAX Dot11WEPDefaultKeysEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An Entry (conceptual row) in the WEP Default Keys Table.
+
+            ifIndex - Each 802.11 interface is represented by an
+            ifEntry.  Interface tables in this MIB module are indexed
+            by ifIndex."
+
+       INDEX {ifIndex, dot11WEPDefaultKeyIndex}
+    ::= {  dot11WEPDefaultKeysTable  1 }
+
+Dot11WEPDefaultKeysEntry ::= SEQUENCE {
+            dot11WEPDefaultKeyIndex     INTEGER,
+            dot11WEPDefaultKeyValue     OCTET STRING}
+
+dot11WEPDefaultKeyIndex OBJECT-TYPE
+        SYNTAX INTEGER (1..4)
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "The auxiliary variable used to identify instances
+            of the columnar objects in the WEP Default Keys Table.
+           The value of this variable is equal to the WEPDefaultKeyID + 		1"
+    ::= {  dot11WEPDefaultKeysEntry 1 }
+
+dot11WEPDefaultKeyValue OBJECT-TYPE
+        SYNTAX OCTET STRING (SIZE (5 |13))
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "A WEP default secret key value."
+    ::= {  dot11WEPDefaultKeysEntry 2 }
+
+-- 
+--     dot11PrivacyTable  TABLE
+-- 
+dot11PrivacyTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF Dot11PrivacyEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "Group containing attributes concerned with IEEE 802.11
+            Privacy.  Created as a table to allow multiple
+            instantiations on an agent."
+    ::= { cableGatewayStdWirelessGroup 8 }
+
+dot11PrivacyEntry OBJECT-TYPE
+        SYNTAX Dot11PrivacyEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the dot11PrivacyTable Table.
+            ifIndex - Each 802.11 interface is represented by an
+            ifEntry.  Interface tables in this MIB module are indexed
+            by ifIndex."
+        INDEX {ifIndex}
+    ::= {  dot11PrivacyTable 1 }
+
+Dot11PrivacyEntry ::= SEQUENCE {
+             dot11PrivacyInvoked                INTEGER,
+             dot11WEPDefaultKeyID               INTEGER}
+
+dot11PrivacyInvoked OBJECT-TYPE
+        SYNTAX INTEGER {
+            disable(0),
+            wep64bit(1),
+            wep128bit(2)
+        }
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+        "When this attribute is one ore two, it shall indicate that the 
+        IEEE 802.11 WEP mechanism is used for transmitting frames of type
+        Data. The default value of this attribute shall be false."
+    ::= {  dot11PrivacyEntry 1 }
+
+dot11WEPDefaultKeyID  OBJECT-TYPE
+        SYNTAX INTEGER (0..3)
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "This attribute shall indicate the use of the first,
+            second, third, or fourth element of the WEPDefaultKeys
+            array when set to values of zero, one, two, or three.  The
+            default value of this attribute shall be 0."
+        REFERENCE "IEEE Std 802.11-1997, 8.3.2"
+    ::= {  dot11PrivacyEntry 2 }
+
+-- 
+--  dot11MultiDomainCapability TABLE
+-- 
+
+dot11MultiDomainCapabilityTable OBJECT-TYPE
+	SYNTAX SEQUENCE OF Dot11MultiDomainCapabilityEntry
+	MAX-ACCESS not-accessible
+	STATUS current
+	DESCRIPTION
+	"This (conceptual) table of attributes for cross-domain 	mobility."
+	::= { cableGatewayStdWirelessGroup 9 }
+
+dot11MultiDomainCapabilityEntry OBJECT-TYPE
+	SYNTAX Dot11MultiDomainCapabilityEntry
+	MAX-ACCESS not-accessible
+	STATUS current
+	DESCRIPTION
+	"An entry (conceptual row) in the Multiple Domain Capability 	Table.
+	IfIndex - Each 802.11 interface is represented by an ifEntry. 
+	Interface tables in this MIB are indexed by ifIndex."
+	INDEX	{ ifIndex,
+		dot11MultiDomainCapabilityIndex}
+	::= {dot11MultiDomainCapabilityTable 1}
+	
+Dot11MultiDomainCapabilityEntry ::=
+	SEQUENCE {	 
+	dot11MultiDomainCapabilityIndex		Integer32,
+	dot11FirstChannelNumber			Integer32,
+	dot11NumberofChannels			Integer32}
+
+dot11MultiDomainCapabilityIndex OBJECT-TYPE
+	SYNTAX Integer32
+	MAX-ACCESS not-accessible
+	STATUS current
+	DESCRIPTION
+	"The auxiliary variable used to identify instances of the 	columnar objects in the Multi Domain Capability Table."
+	::= { dot11MultiDomainCapabilityEntry 1}
+
+dot11FirstChannelNumber OBJECT-TYPE
+	SYNTAX Integer32
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+	"This attribute shall indicate the value of the lowest channel 	number in the subband for the associated domain country string. 	The default value of this attribute shall be zero."
+	::= { dot11MultiDomainCapabilityEntry 2}
+
+dot11NumberofChannels OBJECT-TYPE
+	SYNTAX Integer32
+	MAX-ACCESS read-write
+	STATUS current
+	DESCRIPTION
+	"This attribute shall indicate the value of the total number of 	channels allowed in the subband for the associated domain country 	string. The default value of this attribute shall be zero."
+	::= { dot11MultiDomainCapabilityEntry 3}
+
+-- **********************************************************************
+-- *    dot11OperationTable  TABLE
+-- **********************************************************************
+dot11OperationTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF Dot11OperationEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "Group contains MAC attributes pertaining to the operation
+            of the MAC.  This has been implemented as a table in order
+            to allow for multiple instantiations on an agent."
+    ::= { cableGatewayStdWirelessGroup 10 }
+
+dot11OperationEntry OBJECT-TYPE
+        SYNTAX Dot11OperationEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the dot11OperationEntry Table.
+
+            ifIndex - Each 802.11 interface is represented by an
+            ifEntry.  Interface tables in this MIB module are indexed
+            by ifIndex."
+        INDEX {ifIndex}
+    ::= {  dot11OperationTable 1 }
+
+Dot11OperationEntry ::= SEQUENCE {
+            dot11MACAddress                 MacAddress,
+            dot11RTSThreshold               INTEGER,
+            dot11ShortRetryLimit            INTEGER,
+            dot11LongRetryLimit             INTEGER,
+            dot11FragmentationThreshold     INTEGER,
+            dot11ManufacturerID             DisplayString,
+            dot11ProductID                  DisplayString}
+
+
+dot11MACAddress OBJECT-TYPE
+        SYNTAX MacAddress
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "Unique MAC Address assigned to the STA."
+    ::= {  dot11OperationEntry 1 }
+
+dot11RTSThreshold OBJECT-TYPE
+        SYNTAX INTEGER (0..2347)
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+
+        "This attribute shall indicate the number of octets in an MPDU,
+        below which an RTS/CTS handshake shall not be performed. An
+        RTS/CTS handshake shall be performed at the beginning of any
+        frame exchange sequence where the MPDU is of type Data or
+        Management, the MPDU has an individual address in the Address1
+        field, and the length of the MPDU is greater than
+        this threshold. (For additional details, refer to Table 21 in
+        9.7.) Setting this attribute to be larger than the maximum
+        MSDU size shall have the effect of turning off the RTS/CTS
+        handshake for frames of Data or Management type transmitted by
+        this STA. Setting this attribute to zero shall have the effect
+        of turning on the RTS/CTS handshake for all frames of Data or
+        Management type transmitted by this STA. The default value of
+        this attribute shall be 2347."
+
+    ::= {  dot11OperationEntry 2 }
+
+dot11ShortRetryLimit OBJECT-TYPE
+        SYNTAX INTEGER (1..255)
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+
+        "This attribute shall indicate the maximum number of
+        transmission attempts of a frame, the length of which is less
+        than or equal to dot11RTSThreshold, that shall be made before a
+        failure condition is indicated. The default value of this
+        attribute shall be 7."
+
+    ::= {  dot11OperationEntry 3 }
+
+dot11LongRetryLimit OBJECT-TYPE
+        SYNTAX INTEGER (1..255)
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+
+        "This attribute shall indicate the maximum number of
+        transmission attempts of a frame, the length of which is
+        greater than dot11RTSThreshold, that shall be made before a
+        failure condition is indicated. The default value of this
+        attribute shall be 4."
+
+    ::= {  dot11OperationEntry 4 }
+
+dot11FragmentationThreshold OBJECT-TYPE
+        SYNTAX INTEGER (256..2346)
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+
+        "This attribute shall specify the current maximum size, in
+        octets, of the MPDU that may be delivered to the PHY. An MSDU
+        shall be broken into fragments if its size exceeds the value
+        of this attribute after adding MAC headers and trailers. An
+	  MSDU
+        or MMPDU shall be fragmented when the resulting frame has an
+        individual address in the Address1 field, and the length of the
+        frame is larger than this threshold. The default value for this
+        attribute shall be the lesser of 2346 or the aMPDUMaxLength of
+        the attached PHY and shall never exceed the lesser of 2346 or
+        the  aMPDUMaxLength of the attached PHY. The value of this
+        attribute shall never be less than 256. "
+
+    ::= {  dot11OperationEntry 5 }
+
+dot11ManufacturerID OBJECT-TYPE
+        SYNTAX DisplayString (SIZE(0..128))
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The ManufacturerID shall include, at a minimum, the name
+            of the manufacturer.  It may include additional
+            information at the manufacturer's discretion.  The default
+            value of this attribute shall be null."
+    ::= {  dot11OperationEntry 6 }
+
+dot11ProductID OBJECT-TYPE
+        SYNTAX DisplayString (SIZE(0..128))
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The ProductID shall include, at a minimum, an identifier
+            that is unique to the manufacturer.  It may include
+            additional information at the manufacturer's discretion.
+            The default value of this attribute shall be null."
+    ::= {  dot11OperationEntry 7 }
+
+-- 
+--     dot11Counters TABLE
+-- 
+dot11CountersTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF Dot11CountersEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "Group containing attributes that are MAC counters.
+            Implemented as a table to allow for multiple
+            instantiations on an agent."
+
+    ::= { cableGatewayStdWirelessGroup 11 }
+
+dot11CountersEntry OBJECT-TYPE
+        SYNTAX Dot11CountersEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the dot11CountersEntry Table.
+
+            ifIndex - Each 802.11 interface is represented by an
+            ifEntry.  Interface tables in this MIB module are indexed
+            by ifIndex."
+        INDEX {ifIndex}
+    ::= {  dot11CountersTable 1 }
+
+Dot11CountersEntry ::= SEQUENCE {
+            dot11TransmittedFragmentCount       Counter32,
+            dot11MulticastTransmittedFrameCount Counter32,
+            dot11FailedCount                    Counter32,
+            dot11RetryCount                     Counter32,
+            dot11MultipleRetryCount             Counter32,
+            dot11FrameDuplicateCount            Counter32,
+            dot11RTSSuccessCount                Counter32,
+            dot11RTSFailureCount                Counter32,
+            dot11ACKFailureCount                Counter32,
+            dot11ReceivedFragmentCount          Counter32,
+            dot11MulticastReceivedFrameCount    Counter32,
+            dot11FCSErrorCount                  Counter32,
+	    dot11TransmittedFrameCount          Counter32,
+	    dot11WEPUndecryptableCount          Counter32 }
+
+dot11TransmittedFragmentCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "This counter shall be incremented for an acknowledged MPDU
+            with an individual address in the address 1 field or an 		MPDU
+            with a multicast address in the address 1 field of type 		Data
+            or Management."
+    ::= {  dot11CountersEntry 1 }
+
+dot11MulticastTransmittedFrameCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            " This counter shall increment only when the multicast bit
+            is set in the destination MAC address of a successfully
+            transmitted MSDU.  When operating as a STA in an ESS, where
+            these frames are directed to the AP, this implies having
+            received an acknowledgment to all associated MPDUs. "
+    ::= {  dot11CountersEntry 2 }
+
+dot11FailedCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+        "This counter shall increment when an MSDU is not transmitted
+        successfully due to the number of transmit attempts exceeding
+        either the  dot11ShortRetryLimit or dot11LongRetryLimit. "
+    ::= {  dot11CountersEntry 3 }
+
+dot11RetryCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "This counter shall increment when an MSDU is successfully
+            transmitted after one or more retransmissions."
+    ::= {  dot11CountersEntry 4 }
+
+dot11MultipleRetryCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "This counter shall increment when an MSDU is successfully
+            transmitted after more than one retransmission."
+    ::= {  dot11CountersEntry 5 }
+
+dot11FrameDuplicateCount  OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "This counter shall increment when a frame is received
+            that the Sequence Control field indicates is a
+            duplicate."
+    ::= {  dot11CountersEntry 6 }
+
+dot11RTSSuccessCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "This counter shall increment when a CTS is received in
+            response to an RTS."
+        ::= {  dot11CountersEntry 7 }
+
+dot11RTSFailureCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+        "This counter shall increment when a CTS is not received in
+        response to an RTS."
+    ::= { dot11CountersEntry 8 }
+
+dot11ACKFailureCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "This counter shall increment when an ACK is not received
+            when expected."
+    ::= {  dot11CountersEntry 9 }
+
+dot11ReceivedFragmentCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "This counter shall be incremented for each successfully
+            received MPDU of type Data or Management."
+    ::= {  dot11CountersEntry 10 }
+
+dot11MulticastReceivedFrameCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "This counter shall increment when a MSDU is received
+            with the multicast bit set in the destination
+            MAC address."
+    ::= {  dot11CountersEntry 11 }
+
+dot11FCSErrorCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "This counter shall increment when an FCS error is
+            detected in a received MPDU."
+    ::= {  dot11CountersEntry 12 }
+
+dot11TransmittedFrameCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"This counter shall increment for each successfully 			transmitted MSDU."
+    ::= {  dot11CountersEntry 13 }
+
+dot11WEPUndecryptableCount OBJECT-TYPE
+        SYNTAX Counter32
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+        "This counter shall increment when a frame is received with
+        the WEP subfield of the Frame Control field set to one and the
+        WEPOn value for the key mapped to the TA's MAC address
+        indicates that the frame should not have been encrypted or
+        that frame is discarded due to the receiving STA not
+        implementing the privacy option."
+    ::= { dot11CountersEntry 14 }
+
+-- 
+--     dot11PhyOperation  TABLE
+-- 
+dot11PhyOperationTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF Dot11PhyOperationEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+        "PHY level attributes concerned with
+        operation.  Implemented as a table indexed on
+        ifIndex to allow for multiple instantiations on an
+        Agent."
+    ::= { cableGatewayStdWirelessGroup 12 }
+
+dot11PhyOperationEntry OBJECT-TYPE
+        SYNTAX Dot11PhyOperationEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the dot11PhyOperation Table.
+
+            ifIndex - Each 802.11 interface is represented by an
+            ifEntry.  Interface tables in this MIB module are indexed
+            by ifIndex."
+        INDEX {ifIndex}
+    ::= {  dot11PhyOperationTable 1 }
+
+Dot11PhyOperationEntry ::= SEQUENCE {
+            dot11PHYType            INTEGER,
+            dot11CurrentRegDomain   Integer32,
+            dot11TempType           INTEGER }
+
+dot11PHYType OBJECT-TYPE
+        SYNTAX INTEGER {fhss(1), dsss(2), irbaseband(3), ofdm(4),
+			hrdsss(5)}
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+
+        "This is an 8-bit integer value that identifies the PHY type
+        supported by the attached PLCP and PMD. Currently defined
+        values and their corresponding PHY types are:
+
+        FHSS 2.4 GHz = 01 , DSSS 2.4 GHz = 02, IR Baseband = 03,
+	OFDM 5GHz = 04, HRDSSS = 05 "
+    ::= {  dot11PhyOperationEntry 1 }
+
+dot11CurrentRegDomain OBJECT-TYPE
+        SYNTAX Integer32
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "The current regulatory domain this instance of the PMD is
+            supporting.  This object corresponds to one of the
+            RegDomains listed in dot11RegDomainsSupported."
+    ::= {   dot11PhyOperationEntry 2 }
+
+dot11TempType OBJECT-TYPE
+        SYNTAX INTEGER {tempType1(1), tempType2(2) }
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+        "There are different operating temperature requirements
+        dependent on the anticipated environmental conditions. This
+        attribute describes the current PHY's operating temperature
+        range capability. Currently defined values and their
+        corresponding temperature ranges are:
+
+        Type 1 = X'01'-Commercial range of 0 to 40 degrees C,
+
+        Type 2 = X'02'-Industrial range of -30 to 70 degrees C."
+    ::= {   dot11PhyOperationEntry 3 }
+
+-- **********************************************************************
+-- *    dot11PhyTxPower  TABLE
+-- **********************************************************************
+dot11PhyTxPowerTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF Dot11PhyTxPowerEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "Group of attributes for dot11PhyTxPowerTable.  Implemented
+            as a table indexed on STA ID to allow for multiple
+            instances on an Agent."
+    ::= { cableGatewayStdWirelessGroup 13 }
+
+dot11PhyTxPowerEntry OBJECT-TYPE
+        SYNTAX Dot11PhyTxPowerEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the dot11PhyTxPower Table.
+
+            ifIndex - Each 802.11 interface is represented by an
+            ifEntry.  Interface tables in this MIB module are indexed
+            by ifIndex."
+        INDEX {ifIndex}
+    ::= {  dot11PhyTxPowerTable 1 }
+
+Dot11PhyTxPowerEntry ::= SEQUENCE {
+            dot11NumberSupportedPowerLevels  INTEGER,
+            dot11TxPowerLevel1               INTEGER,
+            dot11TxPowerLevel2               INTEGER,
+            dot11TxPowerLevel3               INTEGER,
+            dot11TxPowerLevel4               INTEGER,
+            dot11TxPowerLevel5               INTEGER,
+            dot11TxPowerLevel6               INTEGER,
+            dot11TxPowerLevel7               INTEGER,
+            dot11TxPowerLevel8               INTEGER,
+            dot11CurrentTxPowerLevel         INTEGER}
+
+dot11NumberSupportedPowerLevels OBJECT-TYPE
+        SYNTAX INTEGER (1..8)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The number of power levels supported by the PMD.
+            This attribute can have a value of 1 to 8."
+    ::= {  dot11PhyTxPowerEntry 1 }
+
+dot11TxPowerLevel1 OBJECT-TYPE
+        SYNTAX INTEGER (0..10000)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The transmit output power for LEVEL1 in mW.
+            This is also the default power level."
+    ::= {   dot11PhyTxPowerEntry 2 }
+
+dot11TxPowerLevel2 OBJECT-TYPE
+        SYNTAX INTEGER (0..10000)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The transmit output power for LEVEL2 in mW."
+    ::= {   dot11PhyTxPowerEntry 3 }
+
+dot11TxPowerLevel3 OBJECT-TYPE
+        SYNTAX INTEGER (0..10000)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The transmit output power for LEVEL3 in mW."
+    ::= {   dot11PhyTxPowerEntry 4 }
+
+dot11TxPowerLevel4 OBJECT-TYPE
+        SYNTAX INTEGER (0..10000)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The transmit output power for LEVEL4 in mW."
+    ::= {   dot11PhyTxPowerEntry 5 }
+
+dot11TxPowerLevel5 OBJECT-TYPE
+        SYNTAX INTEGER (0..10000)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The transmit output power for LEVEL5 in mW."
+    ::= {   dot11PhyTxPowerEntry 6 }
+
+dot11TxPowerLevel6 OBJECT-TYPE
+        SYNTAX INTEGER (0..10000)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The transmit output power for LEVEL6 in mW."
+    ::= {   dot11PhyTxPowerEntry 7 }
+
+dot11TxPowerLevel7 OBJECT-TYPE
+        SYNTAX INTEGER (0..10000)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The transmit output power for LEVEL7 in mW."
+    ::= {   dot11PhyTxPowerEntry 8 }
+
+dot11TxPowerLevel8 OBJECT-TYPE
+        SYNTAX INTEGER (0..10000)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "The transmit output power for LEVEL8 in mW."
+    ::= {   dot11PhyTxPowerEntry 9 }
+
+dot11CurrentTxPowerLevel OBJECT-TYPE
+        SYNTAX INTEGER (1..8)
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "The TxPowerLevel N currently being used to transmit data.
+            Some PHYs also use this value to determine the receiver
+            sensitivity requirements for CCA."
+    ::= {   dot11PhyTxPowerEntry 10 }
+
+-- 
+--     dot11PhyFHSS  TABLE
+--	implement only one object in this table currently
+-- 
+
+dot11CurrentChannelNumber OBJECT-TYPE
+        SYNTAX INTEGER (0..99)
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+        "The current channel number of the frequency output by the RF
+        synthesizer"
+    ::= { cableGatewayStdWirelessGroup 14 }
+
+-- 
+--     dot11TOS TABLE
+--  
+
+dot11NetgearWifiTOSTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF Dot11NetgearWifiTOSEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "Group of attributes for dot11NetgearWifiTOSTable.  Implemented
+            as a table indexed on STA ID to allow for multiple
+            instances on an Agent."
+    ::= { cableGatewayStdWirelessGroup 15 }
+
+dot11NetgearWifiTOSEntry OBJECT-TYPE
+        SYNTAX Dot11NetgearWifiTOSEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the dot11NetgearWifiTOS Table.
+
+            ifIndex - Each 802.11 interface is represented by an
+            ifEntry.  Interface tables in this MIB module are indexed
+            by ifIndex."
+        INDEX {ifIndex}
+    ::= {  dot11NetgearWifiTOSTable 1 }
+
+Dot11NetgearWifiTOSEntry ::= SEQUENCE {
+            dot11NetgearWifiTOSIndex  INTEGER,
+            dot11NetgearWifiTOSEnable TruthValue,
+            dot11NetgearWifiTOSValue  INTEGER}
+            
+dot11NetgearWifiTOSIndex OBJECT-TYPE
+    SYNTAX INTEGER
+    MAX-ACCESS not-accessible
+    STATUS     current
+    DESCRIPTION "The index represent the TOS ID of dot11NetgearWifiTOSTable."
+    ::= { dot11NetgearWifiTOSEntry 1 }
+    
+dot11NetgearWifiTOSEnable OBJECT-TYPE
+    SYNTAX TruthValue
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION "Implement the QOS function by utilizing TOS bits.
+    Through dot11NetgearWifiTOSEnable mib to enable TOS function."
+    ::= { dot11NetgearWifiTOSEntry 2 }   
+
+dot11NetgearWifiTOSValue OBJECT-TYPE
+    SYNTAX INTEGER
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION "Can set the TOS bits value by dot11NetgearWifiTOSValue to achieve wifi to wan QOS."
+    ::= { dot11NetgearWifiTOSEntry 3 }
+
+--
+--	Connected Devices Table
+--
+
+connectedDevicesTable OBJECT-TYPE
+	SYNTAX	SEQUENCE OF ConnectedDevicesEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"Connected Devices Table."
+	::= { cableGatewayConnectedDevicesGroup 1 }
+
+connectedDevicesEntry OBJECT-TYPE
+	SYNTAX	ConnectedDevicesEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"DHCP LAN IP Traffic Table Object entry"
+	INDEX { connectedDevicesIndex }
+	::= { connectedDevicesTable 1 }
+
+ConnectedDevicesEntry ::= SEQUENCE {
+	connectedDevicesIndex			INTEGER,
+	connectedDevicesMacAddr			PhysAddress,	
+	connectedDevicesName			DisplayString,
+	connectedDevicesIpAddr			InetAddress,
+	connectedDevicesInterfaceType		INTEGER
+	}
+
+connectedDevicesIndex	OBJECT-TYPE
+	SYNTAX	INTEGER
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"Index for Connected Devices"
+	::= { connectedDevicesEntry 1 }
+			
+connectedDevicesMacAddr	OBJECT-TYPE
+	SYNTAX	PhysAddress
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"MAC Address of the IP Device"
+	::= { connectedDevicesEntry 2 }
+
+connectedDevicesName OBJECT-TYPE
+	SYNTAX	DisplayString
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Name associated to the IP Device, same as Computer Name"
+	::= { connectedDevicesEntry 3 }
+
+connectedDevicesIpAddr OBJECT-TYPE
+	SYNTAX	InetAddress
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION	
+		"IP Address assiged by the PS."
+	::= { connectedDevicesEntry 4 }	
+
+connectedDevicesInterfaceType OBJECT-TYPE
+	SYNTAX	INTEGER {
+				ethernet (1),
+				wireless (2),
+				usb (3)
+			}
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION	
+		"The interface type of the device Ethernet (1), Wireless (2), USB (3)."
+	::= { connectedDevicesEntry 5 }
+
+
+--
+-- Customized GUI group
+--
+
+webGUIControl	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Web GUI Control
+		enabled = enable CH GUI completely
+		diaabled = disable CH GUI completely"
+	DEFVAL { 1 }
+	::= { cableGatewayGUIGroup 1 }
+
+webAccessUserPasswordTable OBJECT-TYPE
+       SYNTAX SEQUENCE OF WebAccessUserPasswordTableEntry
+       MAX-ACCESS not-accessible
+       STATUS current
+       DESCRIPTION
+		"The user's password table for your local access"
+       ::= { cableGatewayGUIGroup 2 }
+webAccessUserPasswordEntry OBJECT-TYPE
+       SYNTAX WebAccessUserPasswordTableEntry
+       MAX-ACCESS not-accessible
+       STATUS current
+       DESCRIPTION
+		"An Entry (conceptual row) in the user's password table"
+       INDEX {ifIndex, webAccessUserPasswordIndex}
+       ::= {  webAccessUserPasswordTable  1 }
+
+WebAccessUserPasswordTableEntry ::= SEQUENCE {
+            webAccessUserPasswordIndex		INTEGER,
+            webAccessUserName	        	OCTET STRING,
+            webAccessUserPassword	        OCTET STRING}
+
+webAccessUserPasswordIndex OBJECT-TYPE
+        SYNTAX INTEGER (1..2)
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The auxiliary variable used to identify instances
+		of the columnar objects in the user's password table."
+       ::= {  webAccessUserPasswordEntry 1 }
+
+webAccessUserName OBJECT-TYPE
+        SYNTAX OCTET STRING (SIZE (2..16))
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+            "user name: 1.MSO 2.Admin"
+       ::= {  webAccessUserPasswordEntry 2 }
+
+webAccessUserPassword OBJECT-TYPE
+        SYNTAX OCTET STRING (SIZE (4..16))
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "user password"
+       ::= {  webAccessUserPasswordEntry 3 }
+
+txtConfigFileDloadServerAddress	OBJECT-TYPE
+	SYNTAX	IpAddress
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Text Configuration File Download Server IP Address"
+	::= { cableGatewayConfigrationGroup 1 }
+
+txtConfigFileDloadFileName	OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..64))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Text Configuration File Name"
+	::= { cableGatewayConfigrationGroup 2 }
+
+txtConfigFileDloadEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Text Configuration File Download Enable
+		enabled = enable text configuration file download
+		diaabled = disable text configuration file download
+		Please note that you have to specify txtConfigFileDloadServerAddress and txtConfigFileDloadFileName first"
+	DEFVAL { 1 }
+	::= { cableGatewayConfigrationGroup 3 }
+
+cableGatewayDsScanPlan OBJECT-TYPE
+    SYNTAX      INTEGER {
+                VendorSpec(0),
+                NA(1),
+                EuroHybrid(2),
+                Euro(3),
+                NTSCJapan(4),
+                DualMode(5),
+                UserSpec(6)
+    }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION	
+		"Configure Downstream Scan Plan   (For Dual-Docsis feature only):
+		    0 : Vendor Specific   
+		    1 : North America (NTSC) Plan 
+		    2 : European Hybrid (PAL-I, PAL-G,  NTSC and 1 MHz step routine)
+		    3 : Euro-DOCSIS Plan
+		    4 : NTSC Japan
+		    5 : Dual mode
+		    6 : User Specific"
+	::= { cableGatewayConfigrationGroup 4 }
+
+cableGatewayBpiDualMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                auto(1),
+                euro(2),
+                na(3)
+    }
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION	
+        "Setting this objects to control the BPI dual mode.
+ 	        auto(1)- depend on annex mode lock by DS. 
+ 	            This will lead to load the default BPI Non-Vol --- Euro BPI.
+ 	        euro(2)- force to use Euro mode(The default BPI).
+ 	        na(3)  - force to use North American mode.
+ 	        Note: 1. This object can only set via CM configuration file.
+ 	        2. Only useful for which have dual-mode feature models"
+ 	DEFVAL { 1 }
+	::= { cableGatewayConfigrationGroup 5 }
+	
+cableGatewayCfgMaxCpe OBJECT-TYPE
+    SYNTAX  INTEGER (1..16)
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION	
+        "Reading maximum number of CPEs from configure file"
+	::= { cableGatewayConfigrationGroup 6 }
+
+cableGatewayCfgTwcRGMode	OBJECT-TYPE
+	SYNTAX  INTEGER { Residential(0), Commercial(1) }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"To config the device to Residential or Commercial mode"
+	DEFVAL { 0 }
+	::= { cableGatewayConfigrationGroup 7 }
+
+cableGatewayTwcRgDot11Antenna	OBJECT-TYPE
+--br	SYNTAX  INTEGER { bg_mode(1), g_only(2),  bgn_mode(3)}
+	SYNTAX  INTEGER { bgMode(1), gOnly(2),  bgnMode(3)}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"To config the Wifi antenna mode"
+	DEFVAL { 1 }
+	::= { cableGatewayConfigrationGroup 8 }
+
+twcRgDeviceConfigFilename	OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..64))
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Twc Configuration File Name"
+	::= { cableGatewayConfigrationGroup 9 }
+
+twcRgDeviceConfigStatus	OBJECT-TYPE
+	SYNTAX  INTEGER {	notSpecified(1),
+ 						inProgress(2),
+						success(3), 
+						errorServer(4), 
+						errorFileNotFound(5), 
+						errorBadFile(6),
+						download(7)}
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"To config the management of the lan"
+	DEFVAL { 1 }
+	::= { cableGatewayConfigrationGroup 10 }
+
+
+cableGatewayDeviceHybridMode	OBJECT-TYPE
+	SYNTAX  INTEGER {	Docsis(1),
+						EuroDocsis(2)}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"To config the HybridMode. Docsis(1), EuroDocsis(2)"
+	DEFVAL { 1 }
+	::= { cableGatewayConfigrationGroup 11 }
+
+cableGatewayDocsisSettingResetDefaults	OBJECT-TYPE
+    SYNTAX TruthValue
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"To reset the Docsis settings to the factory defaults.
+		Set 1 to make the Docsis Settings reset to dafaults."
+	DEFVAL { 1 }
+	::= { cableGatewayConfigrationGroup 12 }
+
+cableGatewaySSHManagement	OBJECT-TYPE
+	SYNTAX  TruthValue { enable(1), disable(2) }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"To management the SSH service."
+	DEFVAL { TRUE }
+	::= { cableGatewayConfigrationGroup 13 }
+
+cableGatewayTwcRgIpMgmtLanMode	OBJECT-TYPE
+	SYNTAX  INTEGER { Mode0(0), Mode1(1) }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"To config the management of the lan"
+	DEFVAL { 1 }
+	::= { cableGatewayConfigrationGroup 14 }
+
+cableGatewayNATStatus	OBJECT-TYPE
+	SYNTAX  TruthValue { enable(1), disable(2) }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+        "Setting this objects to control the NAT mode.
+ 	        enabled(1)- it means DUT in RG mode.
+ 	        disabled(2)- it means DUT enter Bridge mode"
+	DEFVAL { 1 }
+	::= { cableGatewayConfigrationGroup 19 } 
+
+cableGatewayAdminAccountStatus	OBJECT-TYPE
+	SYNTAX  TruthValue { enable(1), disable(2) }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+        "Setting this objects to control the admin account status.
+ 	        enabled(1)- it means DUT can be accessed by admin account.
+ 	        disabled(2)- it means DUT can not be accessed by admin account."
+	DEFVAL { 2 }
+	::= { cableGatewayConfigrationGroup 20 }
+
+cableGatewayHybridFrequencyScan	OBJECT-TYPE
+	SYNTAX  TruthValue { enable(1), disable(2) }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+        "Setting this objects to control Hybrid mode frequency scan.
+ 	        enabled(1)- EuroDOCSIS and DOCSIS.
+ 	        disabled(2)- EuroDOCSIS only"
+	DEFVAL { 2 }
+	::= { cableGatewayConfigrationGroup 21 }
+
+cableGatewayConsolePortStatus	OBJECT-TYPE
+	SYNTAX  TruthValue { enable(1), disable(2) }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+        "Setting this objects to control Hybrid mode frequency scan.
+ 	        enabled(1)- Enable.
+ 	        disabled(2)- Disable"
+	DEFVAL { 2 }
+	::= { cableGatewayConfigrationGroup 22 }
+
+cableGatewayFirewallStatus	OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..7))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+        "Setting this objects base on the following bitmask to control Firewall options.
+
+         Firewall Enable = 0x0001 
+         Ipsec PassThrough = 0x0002 
+         PPTP PassThrough = 0x0004
+         Multicast = 0x0008
+         Port Scan Detection = 0x0010
+         IP Flood Detection = 0x0020
+         Filtro Proxy = 0x0040
+         Filtro Cookies = 0x0080
+         Filtro Applets Java = 0x0100
+         Filtro ActiveX = 0x0200
+         Filter Popup Windows = 0x0400
+         Block Fragmented IP Packets = 0x0800
+         WAN Block = 0x1000
+         ApplyAndReboot = 0x2000 
+    "
+	DEFVAL { 2 }
+	::= { cableGatewayConfigrationGroup 23 }
+
+cableGatewayChannelBondingStatus	OBJECT-TYPE
+	SYNTAX  TruthValue { enable(1), disable(2) }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+        "Enables or disables the support of channel bonding.  Note that this
+         setting will only have any effect if the hardware and firmware
+         support channel bonding.
+
+ 	     enabled(1)- Enable.
+ 	     disabled(2)- Disable"
+	DEFVAL { 2 }
+	::= { cableGatewayConfigrationGroup 24 }
+
+cableGatewayCmAckCelEnable  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enables or disables Broadcom's Patent Pending AckCel technology for
+         the CM Upstream interface.  Changes to this value take effect the next 
+         time the CM registers with a CMTS."
+    ::= {  cableGatewayConfigrationGroup 41}
+
+  
+cableGatewayCPULoadingTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CableGatewayCPULoadingTable
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table of recording momnth day which record the time that CPU loading is over threshold value"
+    ::= { cableGatewayConfigrationGroup 42 }
+    
+
+
+cableGatewayCPULoadingEntry OBJECT-TYPE
+    SYNTAX      CableGatewayCPULoadingTable
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "cableGatewayCPULoadingEntry"
+    INDEX   { cableGatewayCPULoadingRecordDay }    
+    ::= { cableGatewayCPULoadingTable 1 }
+    
+CableGatewayCPULoadingTable ::= 
+    SEQUENCE    {
+    						cableGatewayCPULoadingRecordDay Unsigned32,
+                cableGatewayCPULoadingPercent   Unsigned32,
+                cableGatewayCPULoadingLastTime  TimeTicks
+    }
+
+cableGatewayCPULoadingRecordDay OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     accessible-for-notify
+    STATUS         current
+    DESCRIPTION
+        "The month day for recoding the evnet of over CPU loading threshold."
+    ::= { cableGatewayCPULoadingEntry 1 }
+        
+cableGatewayCPULoadingPercent OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "cableGatewayCPULoadingPercent is the value of CPU Loading performance."
+    ::= { cableGatewayCPULoadingEntry 2 }
+    
+cableGatewayCPULoadingLastTime OBJECT-TYPE
+    SYNTAX         TimeTicks
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "cableGatewayCPULoadingLastTime."
+    ::= { cableGatewayCPULoadingEntry 3 }
+
+--
+-- Notifications, aka traps.
+--
+
+CPULoadingTrap OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 43 }
+    
+CPULoadingOverThresholdTrap NOTIFICATION-TYPE
+    OBJECTS {
+    					cableGatewayCPULoadingRecordDay, 
+              cableGatewayCPULoadingPercent,
+              cableGatewayCPULoadingLastTime
+            }
+    STATUS current
+    DESCRIPTION
+        "CPULoadingOverThresholdTrap."
+    ::= { CPULoadingTrap 1 }    
+
+cableGatewaySettingResetDefaults	OBJECT-TYPE
+    SYNTAX  TruthValue { enable(1), disable(2) }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"To reset the All settings to the factory defaults.
+		Set enable(1) to make the All Settings reset to dafaults. Always return false(2)"
+	DEFVAL { 2 }
+	::= { cableGatewayConfigrationGroup 44 }
+    
+cableGatewayRemoteControlGroup       OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 45 }	
+-- 
+--     RG cableGatewayRemoteControlGroup TABLE
+--                             
+
+cableGatewayWanRemoteWebAccessControl OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (0)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Set Wan Remte Managemet Web Control 0:disable; 1:enable."
+	DEFVAL { 0 }
+	::= { cableGatewayRemoteControlGroup 1 }
+
+cableGatewayWanRemoteTelnetAccessControl OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (0)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Set Wan Remte Managemet Telnet Control 0:disable; 1:enable."
+	DEFVAL { 0 }
+	::= { cableGatewayRemoteControlGroup 2 }
+
+cableGatewayWanRemoteSSHAccessControl OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (0)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Set Wan Remte Managemet SSH Control 0:disable; 1:enable."
+	DEFVAL { 0 }
+	::= { cableGatewayRemoteControlGroup 3 }
+  
+cableGatewayIgnoreMaxCpe	OBJECT-TYPE
+    SYNTAX  TruthValue
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Ignore Max Cpe. Default is false. "
+	DEFVAL { false }
+	::= { cableGatewayConfigrationGroup 46 }
+  
+cableGatewayNtgrCmCpeMacAging  	OBJECT-TYPE
+	SYNTAX	INTEGER(0..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This MIB set to non-zero value makes CM to keep track of 
+     the inactivity timer per entry in the MAC bridging table. 
+     If the MAC entry was silent for more than configured threshold, 
+     it will be removed from the table."
+	DEFVAL { 60 }
+	::= { cableGatewayConfigrationGroup 47 }    
+    
+cableGatewayNtgrIpFloodControl  	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (0)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This MIB set firewall ip flood feature to enable/disable. Default is read from non-vol, witch is true"
+	DEFVAL { 1 }
+	::= { cableGatewayConfigrationGroup 48 }
+
+twcRgDeviceWanRenewInterval  	OBJECT-TYPE
+	SYNTAX	INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"PRD-7.2.15.4. Once initialized with the last known good configuration the 
+    gateway MUST periodically renew its DHCP lease and retry the XML download. 
+    This will insure that the configuration server IP address is current and that 
+    the gateway will continue to attempt to acquire a valid configuration file.
+    Default is 60 minute."
+	DEFVAL { 60 }
+	::= { cableGatewayConfigrationGroup 49 }
+  
+twcXMLParserControl  	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (0)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This MIB set TWC XML Parser feature to enable/disable. Default is read from non-vol, which is false"
+	DEFVAL { 0 }
+	::= { cableGatewayConfigrationGroup 50 }       
+
+cableVoiceGatewayWanBackupOption OBJECT-TYPE
+    SYNTAX       INTEGER
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION " The settings of Wan Backup Mode.
+                0 means No Wan Backup
+                3 means EthWan Backup
+                4 means 3G Backup Mode
+                "
+    ::= { cableGatewayConfigrationGroup 51 }
+
+cableGatewayWanSnmpAccessControl  	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (0)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This MIB is to control SNMP access through WAN IP."
+	DEFVAL { 1 }
+	::= { cableGatewayConfigrationGroup 52 }  
+
+cableGatewayComcastTftpBlockSize  OBJECT-TYPE
+  SYNTAX	INTEGER 
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Comcast [REQ_CM-101] [3.0] The device MUST support two TFTP block size settings for the
+		downloading of device firmware: one for when the device is operating in
+		IPv4 mode and the other when the device in IPv6 mode. The TFTP
+		block size settings MUST be persistently configurable via SNMP to the
+		maximum supported size as defined in [RFC-2348]. The behavior of
+		TFTP block size negotiation MUST comply with [RFC-1350], [RFC-
+		1782], and [RFC-2348]. If the TFTP block size setting for IPv4 or IPv6
+		is set to 0, then TFTP Block size negotiation MUST not occur for that
+		protocol (i.e. the default block size from the server must be used by the
+		device). Default block size setting in IPv4 mode MUST be 1448; for
+		IPv6 mode it MUST be 1428."
+	DEFVAL { 0 }
+    ::= { cableGatewayConfigrationGroup 54  }	 
+
+
+-- 
+--     CWMP TABLE
+--  
+cableGatewayCWMPConfiguration	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 53 }
+
+cableGatewayCWMPCfgTR069Enable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Enable TR069."
+	DEFVAL { 1 }
+	::= { cableGatewayCWMPConfiguration 1 }
+
+cableGatewayCWMPCfgAcsUrl	OBJECT-TYPE
+SYNTAX   OCTET STRING (SIZE(0..128))
+MAX-ACCESS	read-write
+STATUS	current
+DESCRIPTION
+	"Set the ACS URL."
+::= { cableGatewayCWMPConfiguration 2 }	
+
+cableGatewayCWMPCfgAcsUserName	OBJECT-TYPE
+SYNTAX   OCTET STRING (SIZE(0..63))
+MAX-ACCESS	read-write
+STATUS	current
+DESCRIPTION
+	"Set the ACS username."
+::= { cableGatewayCWMPConfiguration 3 }	
+
+cableGatewayCWMPCfgAcsPassword	OBJECT-TYPE
+SYNTAX   OCTET STRING (SIZE(0..63))
+MAX-ACCESS	read-write
+STATUS	current
+DESCRIPTION
+	"Set the ACS password."
+::= { cableGatewayCWMPConfiguration 4 }	
+
+cableGatewayCWMPCfgCrUserName	OBJECT-TYPE
+SYNTAX   OCTET STRING (SIZE(0..63))
+MAX-ACCESS	read-write
+STATUS	current
+DESCRIPTION
+	"Set the connection request username"
+::= { cableGatewayCWMPConfiguration 5 }	
+
+cableGatewayCWMPCfgCrPassword	OBJECT-TYPE
+SYNTAX   OCTET STRING (SIZE(0..63))
+MAX-ACCESS	read-write
+STATUS	current
+DESCRIPTION
+	"Set the connection request password."
+::= { cableGatewayCWMPConfiguration 6 }	
+
+cableGatewayCWMPCfgInfEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Enable or disable periodic inform."
+	DEFVAL { 1 }
+	::= { cableGatewayCWMPConfiguration 7 }
+	
+cableGatewayCWMPCfgPerInfInterval  	OBJECT-TYPE
+	SYNTAX	INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Sets periodic inform interval (in seconds)."
+	::= { cableGatewayCWMPConfiguration 8 }
+-- 
+--     RG SNTP Server TABLE
+--  
+
+cableGatewaySNTPServerTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF CableGatewaySNTPServerEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "Group of attributes for NTP Server Control"
+    ::= { cableGatewayConfigrationGroup 15 }
+
+cableGatewaySNTPServerEntry OBJECT-TYPE
+        SYNTAX CableGatewaySNTPServerEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the cableGatewaySNTPServer Table."
+        INDEX {ifIndex}
+    ::= {  cableGatewaySNTPServerTable 1 }
+
+CableGatewaySNTPServerEntry ::= SEQUENCE {
+            cableGatewayNTPServerEnable INTEGER,
+            cableGatewayNTPServerAddress1 OCTET STRING,
+            cableGatewayNTPServerAddress2 OCTET STRING,
+            cableGatewayNTPServerAddress3 OCTET STRING}
+    
+cableGatewayNTPServerEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"NTP Server Control"
+	DEFVAL { 1 }
+	::= { cableGatewaySNTPServerEntry 1 }
+
+cableGatewayNTPServerAddress1	OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"1st NTP Server IP Address"
+	::= { cableGatewaySNTPServerEntry 2 }
+
+cableGatewayNTPServerAddress2	OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"2nd NTP Server IP Address"
+	::= { cableGatewaySNTPServerEntry 3 }
+
+cableGatewayNTPServerAddress3	OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"3rd NTP Server IP Address"
+	::= { cableGatewaySNTPServerEntry 4 }
+
+cableGatewayAdvRemoteManagementGroup       OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 16 }	
+-- 
+--     RG RemoteManagement TABLE
+--                             
+
+cableGatewayAdvRemoteManagementTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF CableGatewayAdvRemoteManagementEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+        "Group of attributes for advance remote management table." 
+    ::= { cableGatewayAdvRemoteManagementGroup 1 }
+
+-- 
+--     RG RemoteManagement Apply
+--      
+
+cableGatewayAdvRemoteManagementApplySetting OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If set to true(1), then all settings from this MIB will be applied to
+         the hardware for on-the-fly reconfiguration.  Note that any settings
+         made are stored to non-volatile storage ONLY unless this object is
+         subsequently set to true(1).  Always returns false(2) when read."
+    ::= { cableGatewayAdvRemoteManagementGroup 2 }
+
+
+cableGatewayAdvRemoteManagementACLTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF CableGatewayAdvRemoteManagementACLEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "Group of attributes for advance remote management ACL table." 
+    ::= { cableGatewayAdvRemoteManagementGroup 3 }
+
+cableGatewayAdvRemoteManagementACLEntry OBJECT-TYPE
+        SYNTAX CableGatewayAdvRemoteManagementACLEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the advance remote management ACL table."
+        INDEX {ifIndex}
+    ::= {  cableGatewayAdvRemoteManagementACLTable 1 }
+
+CableGatewayAdvRemoteManagementACLEntry ::= SEQUENCE {
+            cableGatewayAdvRemoteManagementACLMode INTEGER,
+            cableGatewayAdvRemoteManagementStartIPAddress1  IpAddress,
+            cableGatewayAdvRemoteManagementEndIPAddress1    IpAddress,
+            cableGatewayAdvRemoteManagementStartIPAddress2  IpAddress,
+            cableGatewayAdvRemoteManagementEndIPAddress2    IpAddress,
+            cableGatewayAdvRemoteManagementStartIPAddress3  IpAddress,
+            cableGatewayAdvRemoteManagementEndIPAddress3    IpAddress}
+
+cableGatewayAdvRemoteManagementACLMode	OBJECT-TYPE
+	SYNTAX	INTEGER {
+--br				allow_all (1),
+				allowAll (1),
+--br				single/range (2)
+				singleRange (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This is ACL mode for remote management access control."
+
+	DEFVAL { 0 }
+	::= { cableGatewayAdvRemoteManagementACLEntry 1 }
+
+cableGatewayAdvRemoteManagementStartIPAddress1 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "1st ACL rule start address"
+       ::= { cableGatewayAdvRemoteManagementACLEntry 2 }
+
+cableGatewayAdvRemoteManagementEndIPAddress1 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "1st ACL rule end address"
+       ::= { cableGatewayAdvRemoteManagementACLEntry 3 }
+
+cableGatewayAdvRemoteManagementStartIPAddress2 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "2nd ACL rule start address"
+       ::= { cableGatewayAdvRemoteManagementACLEntry 4 }
+
+cableGatewayAdvRemoteManagementEndIPAddress2 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "2nd ACL rule end address"
+       ::= { cableGatewayAdvRemoteManagementACLEntry 5 }
+
+cableGatewayAdvRemoteManagementStartIPAddress3 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "3rd ACL rule start address"
+       ::= { cableGatewayAdvRemoteManagementACLEntry 6 }
+
+cableGatewayAdvRemoteManagementEndIPAddress3 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "3rd ACL rule end address"
+       ::= { cableGatewayAdvRemoteManagementACLEntry 7 }
+  
+    
+cableGatewayAdvRemoteManagementEntry OBJECT-TYPE
+        SYNTAX CableGatewayAdvRemoteManagementEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the advance remote management Table."
+        INDEX {cableGatewayAdvRemoteManagementIndex}
+    ::= {  cableGatewayAdvRemoteManagementTable 1 }     
+
+CableGatewayAdvRemoteManagementEntry ::= SEQUENCE {
+            cableGatewayAdvRemoteManagementIndex  Integer32,
+            cableGatewayAdvRemoteManagementUserLevel  INTEGER,
+            cableGatewayAdvRemoteManagementType  INTEGER,
+            cableGatewayAdvRemoteManagementCmStatus  INTEGER,
+            cableGatewayAdvRemoteManagementCmPort  INTEGER, 
+            cableGatewayAdvRemoteManagementWanStatus   INTEGER,
+            cableGatewayAdvRemoteManagementWanPort    INTEGER,
+            cableGatewayAdvRemoteManagementLanStatus   INTEGER,
+            cableGatewayAdvRemoteManagementLanPort    INTEGER}     
+            
+cableGatewayAdvRemoteManagementIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..255)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"User Remote Access Control Table Index"
+	::= { cableGatewayAdvRemoteManagementEntry 2 }
+	
+cableGatewayAdvRemoteManagementUserLevel	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				MSO (1),
+				Superuser (2),
+				Admin (3)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"User Remote Web Access Control"
+	DEFVAL { 1 }
+	::= { cableGatewayAdvRemoteManagementEntry 3 }
+	
+cableGatewayAdvRemoteManagementType	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				HTTP (1),
+				HTTPS (2),
+				SSH (3),
+				Telnet (4)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"User Remote Web Access Control"
+	DEFVAL { 1 }
+	::= { cableGatewayAdvRemoteManagementEntry 4 }
+	
+cableGatewayAdvRemoteManagementCmStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),    
+				disabled (2)
+				}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"User Remote Web Access Control"
+	DEFVAL { 2 }
+	::= { cableGatewayAdvRemoteManagementEntry 5 }
+	
+cableGatewayAdvRemoteManagementCmPort	OBJECT-TYPE
+	SYNTAX	INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"TCP Port number for HTTP access"
+	DEFVAL { 80 }
+	::= { cableGatewayAdvRemoteManagementEntry 6 }
+	
+cableGatewayAdvRemoteManagementWanStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),    
+				disabled (2)
+				}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"User Remote Web Access Control"
+	DEFVAL { 2 }
+	::= { cableGatewayAdvRemoteManagementEntry 7 }
+	
+cableGatewayAdvRemoteManagementWanPort	OBJECT-TYPE
+	SYNTAX	INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"TCP Port number for HTTP access"
+	DEFVAL { 80 }
+	::= { cableGatewayAdvRemoteManagementEntry 8 }
+	
+cableGatewayAdvRemoteManagementLanStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),    
+				disabled (2)
+				}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"User Remote Web Access Control"
+	DEFVAL { 2 }
+	::= { cableGatewayAdvRemoteManagementEntry 9 }
+	
+cableGatewayAdvRemoteManagementLanPort	OBJECT-TYPE
+	SYNTAX	INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"TCP Port number for HTTP access"
+	DEFVAL { 80 }
+	::= { cableGatewayAdvRemoteManagementEntry 10 }
+	
+-- 
+--     RG RIPv2 TABLE
+--  
+
+cableGatewayRIPv2Table OBJECT-TYPE
+        SYNTAX SEQUENCE OF CableGatewayRIPv2Entry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "Group of attributes for RIPv2 Control"
+    ::= { cableGatewayConfigrationGroup 17 }
+
+cableGatewayRIPv2Entry OBJECT-TYPE
+        SYNTAX CableGatewayRIPv2Entry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the cableGatewayRIPv2 Table."
+        INDEX {ifIndex}
+    ::= {  cableGatewayRIPv2Table 1 }
+
+CableGatewayRIPv2Entry ::= SEQUENCE {
+            cableGatewayRIPv2ConfEnable INTEGER,
+            cableGatewayRIPv2ConfReportingInterval INTEGER, 
+            cableGatewayRIPv2ConfDestIPAddress IpAddress,
+            cableGatewayRIPv2ConfAuthType INTEGER,
+            cableGatewayRIPv2ConfAuthKey OCTET STRING,
+            cableGatewayRIPv2ConfSrcIf INTEGER,
+            cableGatewayRIPv2ConfRoutedSubnetIPAddress1 IpAddress,
+            cableGatewayRIPv2ConfRoutedSubnetMask1 IpAddress,
+            cableGatewayRIPv2ConfRoutedSubnetIPAddress2 IpAddress,
+            cableGatewayRIPv2ConfRoutedSubnetMask2 IpAddress,      
+            cableGatewayRIPv2ConfRoutedSubnetIPAddress3 IpAddress,
+            cableGatewayRIPv2ConfRoutedSubnetMask3 IpAddress,
+            cableGatewayRIPv2ConfAuthID INTEGER,
+            cableGatewayRIPv2ApplySettings INTEGER}
+    
+cableGatewayRIPv2ConfEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Enable/Disable RIPv2 Control. If this value is changed, then all settings from this MIB will be applied to
+ 	the RIPv2 protocol for on-the-fly reconfiguration."
+	DEFVAL { 0 }
+	::= { cableGatewayRIPv2Entry 1 }
+	
+cableGatewayRIPv2ConfReportingInterval	OBJECT-TYPE
+	SYNTAX   INTEGER ( 1..65535 )
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"RIP Reporting Interval"
+	DEFVAL { 1 }
+	::= { cableGatewayRIPv2Entry 2 }	
+	
+cableGatewayRIPv2ConfDestIPAddress OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "RIP Destination IP Address"
+       ::= { cableGatewayRIPv2Entry 3 }	
+	
+cableGatewayRIPv2ConfAuthType	OBJECT-TYPE
+	SYNTAX	INTEGER {
+                    noAuthentication (1),
+                    md5 (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The type of Authentication used"
+	DEFVAL { 1 }		
+	::= { cableGatewayRIPv2Entry 4 }	
+	
+cableGatewayRIPv2ConfAuthKey	OBJECT-TYPE
+	SYNTAX   OCTET STRING (SIZE(0..16))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The value to be used as the Authentication Key"
+	::= { cableGatewayRIPv2Entry 5 }		
+	
+cableGatewayRIPv2ConfSrcIf	OBJECT-TYPE
+	SYNTAX	INTEGER {
+                    Cpe (1),
+                    Cable (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"RIPv2 routing interface"
+	DEFVAL { 1 }
+	::= { cableGatewayRIPv2Entry 6 }	
+	
+cableGatewayRIPv2ConfRoutedSubnetIPAddress1 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "1st Routed Subnet IP Address"
+       ::= { cableGatewayRIPv2Entry 7 }		
+       
+cableGatewayRIPv2ConfRoutedSubnetMask1 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "1st Routed Subnet Mask"
+       ::= { cableGatewayRIPv2Entry 8 }  
+       
+cableGatewayRIPv2ConfRoutedSubnetIPAddress2 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "2nd Routed Subnet IP Address"
+       ::= { cableGatewayRIPv2Entry 9 }		
+       
+cableGatewayRIPv2ConfRoutedSubnetMask2 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "2nd Routed Subnet Mask"
+       ::= { cableGatewayRIPv2Entry 10 }      
+       
+cableGatewayRIPv2ConfRoutedSubnetIPAddress3 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "3rd Routed Subnet IP Address"
+       ::= { cableGatewayRIPv2Entry 11 }		
+       
+cableGatewayRIPv2ConfRoutedSubnetMask3 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "3rd Routed Subnet Mask"
+       ::= { cableGatewayRIPv2Entry 12 }
+       
+cableGatewayRIPv2ConfAuthID	OBJECT-TYPE
+	SYNTAX   INTEGER ( 0..65535 )
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"This key ID will correspond to an identical setting on the CMTS router used in MD5 authentication."
+	DEFVAL { 0 }
+	::= { cableGatewayRIPv2Entry 13 }
+       
+cableGatewayRIPv2ApplySettings	OBJECT-TYPE
+	SYNTAX   INTEGER ( 1..2 )
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"If set to true(1), then all settings from this MIB will be applied to
+ 	the RIPv2 protocol for on-the-fly reconfiguration."
+	DEFVAL { 1 }
+	::= { cableGatewayRIPv2Entry 20 }      
+	
+-- 
+--     RG L2TPv2 Cleint TABLE
+--  
+
+cableGatewayL2TPv2ClientTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF CableGatewayL2TPv2ClientEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "Group of attributes for cableGatewayL2TPv2Client Control"
+    ::= { cableGatewayConfigrationGroup 18 }
+
+cableGatewayL2TPv2ClientEntry OBJECT-TYPE
+        SYNTAX CableGatewayL2TPv2ClientEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in the cableGatewayL2TPv2Client Table."
+        INDEX {ifIndex}
+    ::= {  cableGatewayL2TPv2ClientTable 1 }
+
+CableGatewayL2TPv2ClientEntry ::= SEQUENCE {
+            cableGatewayL2TPv2ConfEnable INTEGER,
+            cableGatewayL2TPv2ConfOperMode INTEGER, 
+            cableGatewayL2TPv2ConfPppUserName OCTET STRING,
+            cableGatewayL2TPv2ConfPppPassword OCTET STRING,
+            cableGatewayL2TPv2ConfServerIP OCTET STRING, 
+            cableGatewayL2TPv2ConfStaticIPAddress IpAddress,
+            cableGatewayL2TPv2ConfStaticIPMask IpAddress,
+            cableGatewayL2TPv2ConfDefaultGateway  IpAddress,
+            cableGatewayL2TPv2ConfDNSIPAddress1  IpAddress,
+            cableGatewayL2TPv2ConfDNSIPAddress2  IpAddress,
+            cableGatewayL2TPv2ConfDNSIPAddress3  IpAddress,
+            cableGatewayL2TPv2ApplySettings INTEGER}
+    
+cableGatewayL2TPv2ConfEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Enable/Disable RIPv2 Control. If this value is changed, then all settings from this MIB will be applied to
+ 	the L2TPv2 protocol for on-the-fly reconfiguration."
+	DEFVAL { 0 }
+	::= { cableGatewayL2TPv2ClientEntry 1 }
+	
+cableGatewayL2TPv2ConfOperMode	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				L2TP-DHCP (1),
+				L2TP-STATIC (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"If set to L2TP DHCP(1) then the L2TP client will be enabled.
+		 
+		 If set to L2TP STATIC(2) then the L2TP client will be enabled with static WAN IP address.		 
+		 "
+	DEFVAL { 1 }
+	::= { cableGatewayL2TPv2ClientEntry 2 }
+	
+cableGatewayL2TPv2ConfPppUserName	OBJECT-TYPE
+	SYNTAX   OCTET STRING (SIZE(0..25))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The value will be used for doing L2TPv2 client authentication"
+	::= { cableGatewayL2TPv2ClientEntry 3 }	
+	
+cableGatewayL2TPv2ConfPppPassword	OBJECT-TYPE
+	SYNTAX   OCTET STRING (SIZE(0..25))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The value will be used for doing L2TPv2 client authentication"
+	::= { cableGatewayL2TPv2ClientEntry 4 }
+	
+cableGatewayL2TPv2ConfServerIP	OBJECT-TYPE
+	SYNTAX   OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The value will use as L2TPv2 server IP address (Hostname or IP)"
+	::= { cableGatewayL2TPv2ClientEntry 5 }	
+	
+cableGatewayL2TPv2ConfStaticIPAddress OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "Static WAN IP address"
+       ::= { cableGatewayL2TPv2ClientEntry 6 }	
+       
+cableGatewayL2TPv2ConfStaticIPMask OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "Static WAN IP mask"
+       ::= { cableGatewayL2TPv2ClientEntry 7 }
+       
+cableGatewayL2TPv2ConfDefaultGateway OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "Default Gateway"
+       ::= { cableGatewayL2TPv2ClientEntry 8 }    
+       
+cableGatewayL2TPv2ConfDNSIPAddress1 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "Static 1st DNS IP address"
+       ::= { cableGatewayL2TPv2ClientEntry 10 }
+       
+cableGatewayL2TPv2ConfDNSIPAddress2 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "Static 2nd DNS IP address"
+       ::= { cableGatewayL2TPv2ClientEntry 11 }
+       
+cableGatewayL2TPv2ConfDNSIPAddress3 OBJECT-TYPE
+    SYNTAX   IpAddress
+    MAX-ACCESS   read-create
+    STATUS   current
+    DESCRIPTION
+        "Static 3rd DNS IP address"
+       ::= { cableGatewayL2TPv2ClientEntry 12 }             
+	
+cableGatewayL2TPv2ApplySettings	OBJECT-TYPE
+	SYNTAX   INTEGER ( 1..2 )
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"If set to true(1), then all settings from this MIB will be applied to
+ 	the L2TPv2 protocol for on-the-fly reconfiguration."
+	DEFVAL { 1 }
+	::= { cableGatewayL2TPv2ClientEntry 20 }
+
+cableGatewayFirewallConfiguration	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 25}
+
+cableGatewayCfgService	OBJECT IDENTIFIER ::= { cableGatewayFirewallConfiguration 1 }
+
+cableGatewayCfgFirewallEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For Firewall Enable
+		enabled = enable Firewall
+		diaabled = disable Firewall"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgService 1 }
+
+cableGatewayCfgIPsecPassthroughEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For IPsec Passthrough Enable
+		enabled = enable PPTP Passthrough
+		diaabled = disable PPTP Passthrough"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgService 2 }
+
+cableGatewayCfgPPTPPassthroughEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For PPTP Passthrough Enable
+		enabled = enable PPTP Passthrough
+		diaabled = disable PPTP Passthrough"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgService 3 }
+
+cableGatewayCfgMulticastPassthroughEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For Multicast Passthrough Enable
+		enabled = enable Multicast Passthrough
+		diaabled = disable Multicast Passthrough"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgService 4 }
+
+cableGatewayCfgProxyFilterEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For Proxy Filter Enable
+		enabled = enable Proxy Filter
+		diaabled = disable Proxy Filter"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgService 5 }
+
+cableGatewayCfgCookiesFilterEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For Cookies Filter Enable
+		enabled = enable Cookies Filter
+		diaabled = disable Cookies Filter"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgService 6 }
+
+cableGatewayCfgJavaAppletFilterEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For JavaApplet Filter Enable
+		enabled = enable JavaApplet Filter
+		diaabled = disable JavaApplet Filter"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgService 7 }
+
+cableGatewayCfgActiveXFilterEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For ActiveX Filter Enable
+		enabled = enable ActiveX Filter
+		diaabled = disable ActiveX Filter"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgService 8 }
+
+cableGatewayCfgPopupWindowFilterEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For PopupWindow Filter Enable
+		enabled = enable PopupWindow Filter
+		diaabled = disable PopupWindow Filter"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgService 9 }
+
+cableGatewayCfgFragFilterEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For Fragment Filter Enable
+		enabled = enable Fragment Filter
+		diaabled = disable Fragment Filter"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgService 10 }
+
+--GUIContentFilterGroup
+cableGatewayCfgContentFilter	OBJECT IDENTIFIER ::= { cableGatewayFirewallConfiguration 2 }
+
+cableGatewayCfgKeywordBlockingEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For Keyword Blocking Enable
+		enabled = enable Keyword Blocking Action
+		diaabled = disable Keyword Blocking Action"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgContentFilter 1 }
+
+cableGatewayCfgKeywordListTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF KeywordListEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Keyword List Table Object"
+	::= { cableGatewayCfgContentFilter 2 }
+
+keywordListEntry	OBJECT-TYPE
+	SYNTAX		KeywordListEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Content Filter Keyword List Table"
+	INDEX	{ keywordListIndex }
+	::= { cableGatewayCfgKeywordListTable 1 }
+
+KeywordListEntry ::=
+	SEQUENCE {
+		keywordListIndex		Integer32,
+		keywordListArgument     OCTET STRING,
+		keywordListRowStatus	INTEGER
+	}
+
+keywordListIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..50)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Keyword List Table Index"
+	::= { keywordListEntry 1 }
+
+keywordListArgument	OBJECT-TYPE
+    SYNTAX		OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Keyword List Argument"
+	::= { keywordListEntry 2 }
+
+keywordListRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		active (1),
+	  notReady (3),
+	   destroy (6)
+	}
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"Keyword List Table Entry Row Status"
+	::= { keywordListEntry 3 }
+
+cableGatewayCfgDomainBlockingEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For Domain Blocking Enable
+		enabled = enable Domain Blocking Action
+		diaabled = disable Domain Blocking Action"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgContentFilter 3 }
+
+cableGatewayCfgDomainListTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF DomainListEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Domain List Table Object"
+	::= { cableGatewayCfgContentFilter 4 }
+
+domainListEntry	OBJECT-TYPE
+	SYNTAX		DomainListEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Content Filter Domain List Table"
+	INDEX	{ domainListIndex }
+	::= { cableGatewayCfgDomainListTable 1 }
+
+DomainListEntry ::=
+	SEQUENCE {
+		domainListIndex		    Integer32,
+		domainListArgument      OCTET STRING,
+		domainListRowStatus	    INTEGER
+	}
+
+domainListIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..16)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Domain List Table Index"
+	::= { domainListEntry 1 }
+
+domainListArgument	OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..64))
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Domain List Argument"
+	::= { domainListEntry 2 }
+
+domainListRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		active (1),
+	  notReady (3),
+	   destroy (6)
+	}
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"Domain List Table Entry Row Status"
+	::= { domainListEntry 3 }
+
+--GUIMacFilterGroup
+cableGatewayMACFilterDevsTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CableGatewayMACFilterDevsTableDevsEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"MAC filter device table"
+	::= { cableGatewayConfigrationGroup 26 }
+
+cableGatewayMACFilterDevsEntry	OBJECT-TYPE
+	SYNTAX		CableGatewayMACFilterDevsTableDevsEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for the MAC filter device table"
+	INDEX	{ cableGatewayMACFilterDevsIndex }
+	::= { cableGatewayMACFilterDevsTable 1 }
+
+CableGatewayMACFilterDevsTableDevsEntry ::=
+	SEQUENCE {
+		cableGatewayMACFilterDevsIndex		Integer32,
+		cableGatewayMACFilterDevsName		OCTET STRING,
+		cableGatewayMACFilterDevsMacAddr		MacAddress,
+		cableGatewayMACFilterDevsRowStatus		INTEGER}
+
+cableGatewayMACFilterDevsIndex OBJECT-TYPE
+	SYNTAX		Integer32 (1..255)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"MAC filter devices table index"
+	::= { cableGatewayMACFilterDevsEntry 1 }
+
+cableGatewayMACFilterDevsName OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Name associated to the Device, same as Computer Name"
+	::= { cableGatewayMACFilterDevsEntry 2 }
+
+cableGatewayMACFilterDevsMacAddr OBJECT-TYPE
+	SYNTAX		MacAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Mac Address associated to the Device."
+	::= { cableGatewayMACFilterDevsEntry 3 }
+
+cableGatewayMACFilterDevsRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		active (1),
+	  notReady (3),
+	   destroy (6)
+	}
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"MAC filter devices table entry Row Status"
+	::= { cableGatewayMACFilterDevsEntry 4 }
+
+--GUIPortBlockingTable
+cableGatewayPortBlockingTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CableGatewayPortBlockingTableEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Port blocking table"
+	::= { cableGatewayConfigrationGroup 27 }
+
+cableGatewayPortBlockingTableEntry	OBJECT-TYPE
+	SYNTAX		CableGatewayPortBlockingTableEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for the port blocking table"
+	INDEX	{ cableGatewayPortBlkingIndex }
+	::= { cableGatewayPortBlockingTable 1 }
+
+CableGatewayPortBlockingTableEntry ::=
+	SEQUENCE {
+		cableGatewayPortBlkingIndex		INTEGER,
+		cableGatewayPortBlkingName		OCTET STRING,
+		cableGatewayPortBlkingStartPort		INTEGER,
+		cableGatewayPortBlkingEndPort		INTEGER,
+		cableGatewayPortBlkingProtocol		INTEGER,
+		cableGatewayPortBlkingIPAddr		InetAddress,
+		cableGatewayPortBlkingRowStatus	INTEGER}
+
+cableGatewayPortBlkingIndex OBJECT-TYPE
+	SYNTAX		INTEGER (1..254)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"The index of the prot blocking table entry"
+	::= { cableGatewayPortBlockingTableEntry 1 }
+
+cableGatewayPortBlkingName OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..16))
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Name associated to the service protocol"
+	::= { cableGatewayPortBlockingTableEntry 2 }
+
+cableGatewayPortBlkingStartPort OBJECT-TYPE
+	SYNTAX		INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The starting port of the prot blocking table entry"
+	DEFVAL { 1 }
+	::= { cableGatewayPortBlockingTableEntry 3 }
+
+cableGatewayPortBlkingEndPort OBJECT-TYPE
+	SYNTAX		INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The ending port of the prot blocking table entry"
+	DEFVAL { 1 }
+	::= { cableGatewayPortBlockingTableEntry 4 }
+
+cableGatewayPortBlkingProtocol OBJECT-TYPE
+	SYNTAX		INTEGER{
+					tcp(6),
+					udp(17),
+					both(255)}
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Service Protocol -- 6:TCP, 17:UDP, 255:BOTH"
+	DEFVAL { 255 }
+	::= { cableGatewayPortBlockingTableEntry 5 }
+
+cableGatewayPortBlkingIPAddr OBJECT-TYPE
+	SYNTAX		InetAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The IP address of the CPE"
+	::= { cableGatewayPortBlockingTableEntry 6 }
+
+cableGatewayPortBlkingRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		active (1),
+	  notReady (3),
+	   destroy (6)
+	}
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The Row Status of the prot blocking table entry"
+	::= { cableGatewayPortBlockingTableEntry 7 }
+
+--GUIPortForwardingTable
+cableGatewayPortForwardingTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CableGatewayPortForwardingTableEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Port forwarding table"
+	::= { cableGatewayConfigrationGroup 28 }
+
+cableGatewayPortForwardingTableEntry	OBJECT-TYPE
+	SYNTAX		CableGatewayPortForwardingTableEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for the port forwarding table"
+	INDEX	{ cableGatewayPortFwdingIndex }
+	::= { cableGatewayPortForwardingTable 1 }
+
+CableGatewayPortForwardingTableEntry ::=
+	SEQUENCE {
+		cableGatewayPortFwdingIndex		INTEGER,
+		cableGatewayPortFwdingName		OCTET STRING,
+		cableGatewayPortFwdingStartPort		INTEGER,
+		cableGatewayPortFwdingEndPort		INTEGER,
+		cableGatewayPortFwdingProtocol		INTEGER,
+		cableGatewayPortFwdingIPAddr		InetAddress,
+		cableGatewayPortFwdingRowStatus	INTEGER,
+		cableGatewayPortFwdingIntStartPort	INTEGER,
+		cableGatewayPortFwdingIntEndPort	INTEGER }
+
+cableGatewayPortFwdingIndex OBJECT-TYPE
+	SYNTAX		INTEGER (1..254)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"The index of the prot forwarding table entry"
+	::= { cableGatewayPortForwardingTableEntry 1 }
+
+cableGatewayPortFwdingName OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..16))
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Name associated to the service protocol"
+	::= { cableGatewayPortForwardingTableEntry 2 }
+
+cableGatewayPortFwdingStartPort OBJECT-TYPE
+	SYNTAX		INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The starting port of the prot forwarding table entry"
+	DEFVAL { 1 }
+	::= { cableGatewayPortForwardingTableEntry 3 }
+
+cableGatewayPortFwdingEndPort OBJECT-TYPE
+	SYNTAX		INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The ending port of the prot forwarding table entry"
+	DEFVAL { 1 }
+	::= { cableGatewayPortForwardingTableEntry 4 }
+
+cableGatewayPortFwdingProtocol OBJECT-TYPE
+	SYNTAX		INTEGER{
+					tcp(6),
+					udp(17),
+					both(255)}
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Service Protocol -- 6:TCP, 17:UDP, 255:BOTH"
+	DEFVAL { 255 }
+	::= { cableGatewayPortForwardingTableEntry 5 }
+
+cableGatewayPortFwdingIPAddr OBJECT-TYPE
+	SYNTAX		InetAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The IP address of the CPE"
+	::= { cableGatewayPortForwardingTableEntry 6 }
+
+cableGatewayPortFwdingRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		active (1),
+	  notReady (3),
+	   destroy (6)
+	}
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The Row Status of the prot forwarding table entry"
+	::= { cableGatewayPortForwardingTableEntry 7 }
+
+cableGatewayPortFwdingStartPort OBJECT-TYPE
+	SYNTAX		INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The starting port of the prot forwarding table entry"
+	DEFVAL { 1 }
+	::= { cableGatewayPortForwardingTableEntry 8 }
+
+cableGatewayPortFwdingEndPort OBJECT-TYPE
+	SYNTAX		INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The ending port of the prot forwarding table entry"
+	DEFVAL { 1 }
+	::= { cableGatewayPortForwardingTableEntry 9 }
+
+--GUIPortTriggeringTable
+cableGatewayPortTriggeringTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CableGatewayPortTriggeringTableEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Port triggering table"
+	::= { cableGatewayConfigrationGroup 29 }
+
+cableGatewayPortTriggeringTableEntry	OBJECT-TYPE
+	SYNTAX		CableGatewayPortTriggeringTableEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for the port triggering table"
+	INDEX	{ cableGatewayPortTrigIndex }
+	::= { cableGatewayPortTriggeringTable 1 }
+
+CableGatewayPortTriggeringTableEntry ::=
+	SEQUENCE {
+		cableGatewayPortTrigIndex			INTEGER,
+		cableGatewayPortTrigSrcStartPort		INTEGER,
+		cableGatewayPortTrigSrcEndPort		INTEGER,
+		cableGatewayPortTrigDstStartPort		INTEGER,
+		cableGatewayPortTrigDstEndPort		INTEGER,
+		cableGatewayPortTrigProtocol		INTEGER,
+		cableGatewayPortTrigEnable			INTEGER,
+		cableGatewayPortTrigRowStatus		INTEGER}
+
+cableGatewayPortTrigIndex	OBJECT-TYPE
+	SYNTAX		INTEGER (1..254)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"The index of the prot triggering table entry"
+	::= { cableGatewayPortTriggeringTableEntry 1 }
+
+cableGatewayPortTrigSrcStartPort	OBJECT-TYPE
+	SYNTAX		INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The starting port of the source"
+	DEFVAL { 1 }
+	::= { cableGatewayPortTriggeringTableEntry 2 }
+
+cableGatewayPortTrigSrcEndPort	OBJECT-TYPE
+	SYNTAX		INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The ending port of the source"
+	DEFVAL { 1 }
+	::= { cableGatewayPortTriggeringTableEntry 3 }
+
+cableGatewayPortTrigDstStartPort	OBJECT-TYPE
+	SYNTAX		INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The starting port of the target"
+	DEFVAL { 1 }
+	::= { cableGatewayPortTriggeringTableEntry 4 }
+
+cableGatewayPortTrigDstEndPort	OBJECT-TYPE
+	SYNTAX		INTEGER(1..65535)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The ending port of the target"
+	DEFVAL { 1 }
+	::= { cableGatewayPortTriggeringTableEntry 5 }
+
+cableGatewayPortTrigProtocol	OBJECT-TYPE
+	SYNTAX		INTEGER{
+					tcp(6),
+					udp(17),
+					both(255)}
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Service Protocol -- 6:TCP, 17:UDP, 255:BOTH"
+	DEFVAL { 255 }
+	::= { cableGatewayPortTriggeringTableEntry 6 }
+
+cableGatewayPortTrigEnable	OBJECT-TYPE
+	SYNTAX		INTEGER{
+					enable(1),
+					disable(2)}
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Enable/Disable the service -- 1:Enable, 2:Disable"
+	DEFVAL { 1 }
+	::= { cableGatewayPortTriggeringTableEntry 7 }
+
+cableGatewayPortTrigRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		active (1),
+	  notReady (3),
+	   destroy (6)
+	}
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The Row Status of the prot triggering table entry -- 1:Active, 6:Destroy"
+	::= { cableGatewayPortTriggeringTableEntry 8 }
+
+--GUIRipGroup
+cableGatewayRipConfiguration	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 30 }
+
+cableGatewayCfgRipEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For RIP Enable
+		enabled = enable RIP Action
+		diaabled = disable RIP Action"
+	DEFVAL { 1 }
+	::= { cableGatewayRipConfiguration 1 }
+
+cableGatewayCfgRipReportingInterval	OBJECT-TYPE
+	SYNTAX	INTEGER(0..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"RIP Porting Interval"
+	DEFVAL { 30 }
+	::= { cableGatewayRipConfiguration 2 }
+
+cableGatewayCfgRipDestIpAddress	OBJECT-TYPE
+	SYNTAX	IpAddress
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"RIP Destination IP Address"
+	::= { cableGatewayRipConfiguration 3 }
+
+cableGatewayCfgRipAuthEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For RIP MD5 Authentic Enable
+		enabled = enable RIP MD5 Authentic
+		diaabled = disable RIP MD5 Authentic"
+	DEFVAL { 1 }
+	::= { cableGatewayRipConfiguration 4 }
+
+cableGatewayCfgRipAuthKey	OBJECT-TYPE
+	SYNTAX OCTET STRING (SIZE(0..64))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"RIP MD5 Authentic Key"
+	::= { cableGatewayRipConfiguration 5 }
+
+cableGatewayCfgRipAuthKeyId	OBJECT-TYPE
+	SYNTAX	INTEGER(0..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"RIP MD5 Authentic Key ID"
+	::= { cableGatewayRipConfiguration 6 }
+
+cableGatewayCfgRipRoutedSubnetEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For RIP Route Subnet Enable
+		enabled = enable RIP Route Subnet
+		diaabled = disable RIP Route Subnet"
+	DEFVAL { 1 }
+	::= { cableGatewayRipConfiguration 7 }
+
+ripRoutedSubnetTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF RipRoutedSubnetEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Rip Route Subnet Table Object"
+	::= { cableGatewayRipConfiguration 8 }
+
+ripRoutedSubnetEntry	OBJECT-TYPE
+	SYNTAX		RipRoutedSubnetEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Rip Route Subnet Table"
+	INDEX	{ ripRoutedSubnetIndex }
+	::= { ripRoutedSubnetTable 1 }
+
+RipRoutedSubnetEntry ::=
+	SEQUENCE {
+		ripRoutedSubnetIndex		Integer32,
+		ripRoutedSubnetGwIp			IpAddress,
+		ripRoutedSubnetMaskIp		IpAddress,
+		ripRoutedSubnetRowStatus	INTEGER
+	}
+
+ripRoutedSubnetIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..253)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Rip Route Subnet Table Index"
+	::= { ripRoutedSubnetEntry 1 }
+
+ripRoutedSubnetGwIp	OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Rip Route Subnet Gateway Ipaddress"
+	::= { ripRoutedSubnetEntry 2 }
+
+ripRoutedSubnetMaskIp	OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Rip Route Subnet IP Mask"
+	::= { ripRoutedSubnetEntry 3 }
+
+ripRoutedSubnetRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		active (1),
+	  notReady (3),
+	   destroy (6)
+	}
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"Rip Route Subnet Table Entry Row Status"
+	::= { ripRoutedSubnetEntry 4 }
+
+--GUIDmzGroup
+cableGatewayDmzConfiguration	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 31 }
+
+cableGatewayCfgDmzRespondPingEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For DMZ Host Respond Ping To Wan Enable
+		enabled = enable DMZ Respond
+		diaabled = disable DMZ Respond"
+	DEFVAL { 1 }
+	::= { cableGatewayDmzConfiguration 1 }
+
+cableGatewayCfgDmzIpAddr	OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"IP Address of DMZ Setting"
+	::= { cableGatewayDmzConfiguration 2 }
+
+
+--GUIDdnsGroup
+cableGatewayDdnsConfiguration	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 32 }
+
+cableGatewayCfgDdnsEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For DDNS Enable
+		enabled = enable DDNS
+		diaabled = disable DDNS"
+	DEFVAL { 1 }
+	::= { cableGatewayDdnsConfiguration 1 }
+
+cableGatewayCfgDdnsUserName	OBJECT-TYPE
+	SYNTAX OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Descibe DDNS User's Name"
+	::= { cableGatewayDdnsConfiguration 2 }
+
+cableGatewayCfgDdnsPassword	OBJECT-TYPE
+	SYNTAX OCTET STRING (SIZE(0..32))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Descibe DDNS User's Password"
+	::= { cableGatewayDdnsConfiguration 3 }
+
+cableGatewayCfgDdnsHostName	OBJECT-TYPE
+	SYNTAX OCTET STRING (SIZE(0..128))
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Descibe DDNS Host Name"
+	::= { cableGatewayDdnsConfiguration 4 }
+
+--GUIDdhcpGroup
+cableGatewayDhcpConfiguration	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 33 }
+
+cableGatewayCfgDhcpServerIpAddr	OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"DHCP Server IP Address"
+	::= { cableGatewayDhcpConfiguration 1 }
+
+cableGatewayCfgDhcpSubnetMask	OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"DHCP Server Subnet Mask"
+	::= { cableGatewayDhcpConfiguration 2 }
+
+cableGatewayCfgDhcpEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For DHCP Enable
+		enabled = enable DHCP
+		diaabled = disable DHCP"
+	DEFVAL { 1 }
+	::= { cableGatewayDhcpConfiguration 3 }
+
+cableGatewayCfgDhcpStartingIpAddr	OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"DHCP Starting IP Address"
+	::= { cableGatewayDhcpConfiguration 4 }
+
+cableGatewayCfgDhcpEndingIpAddr	OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"DHCP Ending IP Address"
+	::= { cableGatewayDhcpConfiguration 5 }
+
+cableGatewayCfgDhcpResvTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CableGatewayCfgDhcpResvEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"DHCP Reservation Table Object"
+	::= { cableGatewayDhcpConfiguration 6 }
+
+cableGatewayCfgDhcpResvEntry	OBJECT-TYPE
+	SYNTAX		CableGatewayCfgDhcpResvEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for DHCP Reservation Table"
+	INDEX	{ cableGatewayCfgDhcpResvIndex }
+	::= { cableGatewayCfgDhcpResvTable 1 }
+
+CableGatewayCfgDhcpResvEntry ::=
+	SEQUENCE {
+		cableGatewayCfgDhcpResvIndex			Integer32,
+		cableGatewayCfgDhcpResvIpAddr			IpAddress,
+		cableGatewayCfgDhcpResvMacAddr			MacAddress,
+		cableGatewayCfgDhcpResvRowStatus		INTEGER
+	}
+
+cableGatewayCfgDhcpResvIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..253)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"DHCP Reservation Table Index"
+	::= { cableGatewayCfgDhcpResvEntry 1 }
+
+cableGatewayCfgDhcpResvIpAddr	OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"IP Address of the DHCP Reservation Entry"
+	::= { cableGatewayCfgDhcpResvEntry 2 }
+
+cableGatewayCfgDhcpResvMacAddr OBJECT-TYPE
+	SYNTAX		MacAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"MAC Address of the DHCP Reservation Entry"
+	::= { cableGatewayCfgDhcpResvEntry 3 }
+
+cableGatewayCfgDhcpResvRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		active (1),
+	  notReady (3),
+	   destroy (6)
+	}
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"DHCP Reservation Table Entry Row Status"
+	::= { cableGatewayCfgDhcpResvEntry 4 }
+
+cableGatewayCfgDhcpConnectedDeviceList	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CableGatewayCfgDhcpConnectedDeviceEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Connected Device Table Object"
+	::= { cableGatewayDhcpConfiguration 7 }
+
+cableGatewayCfgDhcpConnectedDeviceEntry	OBJECT-TYPE
+	SYNTAX		CableGatewayCfgDhcpConnectedDeviceEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Connected Device List"
+	INDEX	{ cableGatewayCfgDhcpConnectedDeviceIndex }
+	::= { cableGatewayCfgDhcpConnectedDeviceList 1 }
+
+CableGatewayCfgDhcpConnectedDeviceEntry ::=
+	SEQUENCE {
+		cableGatewayCfgDhcpConnectedDeviceIndex			Integer32,
+		cableGatewayCfgDhcpConnectedDeviceMacAddr		MacAddress,
+		cableGatewayCfgDhcpConnectedDeviceIpAddr		IpAddress,
+		cableGatewayCfgDhcpConnectedDeviceLease			OCTET STRING,
+		cableGatewayCfgDhcpConnectedDeviceRowStatus		RowStatus
+	}
+
+cableGatewayCfgDhcpConnectedDeviceIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..253)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Connected Device List Index"
+	::= { cableGatewayCfgDhcpConnectedDeviceEntry 1 }
+
+cableGatewayCfgDhcpConnectedDeviceMacAddr OBJECT-TYPE
+	SYNTAX		MacAddress
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"MAC Address of the Connected Device Entry"
+	::= { cableGatewayCfgDhcpConnectedDeviceEntry 2 }
+
+cableGatewayCfgDhcpConnectedDeviceIpAddr OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"IP Address of the Connected Device Entry"
+	::= { cableGatewayCfgDhcpConnectedDeviceEntry 3 }
+
+cableGatewayCfgDhcpConnectedDeviceLease	OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..30))
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"Lease Time of the Connected Device"
+	::= { cableGatewayCfgDhcpConnectedDeviceEntry 4 }
+
+cableGatewayCfgDhcpConnectedDeviceRowStatus OBJECT-TYPE
+	SYNTAX		RowStatus
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"Connected Device Entry Row Status"
+	::= { cableGatewayCfgDhcpConnectedDeviceEntry 5 }
+
+cableGatewayCfgDhcpLeaseClear	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Apply to Clear all DHCP Lease
+		enabled = enable to clear dhcp lease
+		diaabled = do nothing"
+	DEFVAL { 1 }
+	::= { cableGatewayDhcpConfiguration 8 }
+
+--GUIUpnpGroup
+cableGatewayUpnpConfiguration	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 34 }
+
+cableGatewayCfgUpnpEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For Upnp Enable
+		enabled = enable Upnp
+		diaabled = disable Upnp"
+	DEFVAL { 1 }
+	::= { cableGatewayUpnpConfiguration 1 }
+
+cableGatewayCfgUpnpAdvertPeriod	OBJECT-TYPE
+	SYNTAX	INTEGER(0..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Upnp Advertisement Period"
+	DEFVAL { 30 }
+	::= { cableGatewayUpnpConfiguration 2 }
+
+cableGatewayCfgUpnpAdvertTTL	OBJECT-TYPE
+	SYNTAX	INTEGER(0..65535)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Upnp Advertisement TTL"
+	DEFVAL { 4 }
+	::= { cableGatewayUpnpConfiguration 3 }
+
+cableGatewayCfgUpnpPortmapTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CableGatewayCfgUpnpPortmapEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Upnp Portmap Table Object"
+	::= { cableGatewayUpnpConfiguration 4 }
+
+cableGatewayCfgUpnpPortmapEntry	OBJECT-TYPE
+	SYNTAX		CableGatewayCfgUpnpPortmapEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Upnp Portmap Table"
+	INDEX	{ cableGatewayCfgUpnpPortmapIndex }
+	::= { cableGatewayCfgUpnpPortmapTable 1 }
+
+CableGatewayCfgUpnpPortmapEntry ::=
+	SEQUENCE {
+		cableGatewayCfgUpnpPortmapIndex			Integer32,
+		cableGatewayCfgUpnpPortmapActive		INTEGER,
+		cableGatewayCfgUpnpPortmapProtocol		OCTET STRING,
+		cableGatewayCfgUpnpPortmapIntPort		Integer32,
+		cableGatewayCfgUpnpPortmapExtPort		Integer32,
+		cableGatewayCfgUpnpPortmapIpAddr		IpAddress,
+		cableGatewayCfgUpnpPortmapRowStatus		RowStatus
+	}
+
+cableGatewayCfgUpnpPortmapIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..253)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Upnp Portmap Table Index"
+	::= { cableGatewayCfgUpnpPortmapEntry 1 }
+
+cableGatewayCfgUpnpPortmapActive	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Description For Entry Active"
+	DEFVAL { 1 }
+	::= { cableGatewayCfgUpnpPortmapEntry 2 }
+
+cableGatewayCfgUpnpPortmapProtocol	OBJECT-TYPE
+	SYNTAX OCTET STRING (SIZE(0..10))
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Protocol of the Upnp Portmap Entry"
+	::= { cableGatewayCfgUpnpPortmapEntry 3 }
+
+cableGatewayCfgUpnpPortmapIntPort	OBJECT-TYPE
+	SYNTAX		Integer32 (1..253)
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"Internal Port of the Upnp Portmap Entry"
+	::= { cableGatewayCfgUpnpPortmapEntry 4 }
+
+cableGatewayCfgUpnpPortmapExtPort	OBJECT-TYPE
+	SYNTAX		Integer32 (1..253)
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"External Port of the Upnp Portmap Entry"
+	::= { cableGatewayCfgUpnpPortmapEntry 5 }
+
+cableGatewayCfgUpnpPortmapIpAddr	OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"IP Address of the Upnp Portmap Entry"
+	::= { cableGatewayCfgUpnpPortmapEntry 6 }
+
+cableGatewayCfgUpnpPortmapRowStatus	OBJECT-TYPE
+	SYNTAX		RowStatus
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"Upnp Portmap Table Entry Row Status"
+	::= { cableGatewayCfgUpnpPortmapEntry 7 }
+
+
+--Diagnostics
+cableGatewayDiagnosticsConfiguration	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 35 }
+
+cableGatewayDiagnosticsAction OBJECT-TYPE
+		SYNTAX	INTEGER {
+				startDiagnostics    (1),
+				 stopDiagnostics    (2),
+		         waitDiagnostics    (3)
+		}
+		MAX-ACCESS	read-write
+		STATUS	current
+		DESCRIPTION
+		"Diagnostics Action.(1)To start diagnostics.(2)To stop diagnostics."
+		DEFVAL { 3 }
+		::= { cableGatewayDiagnosticsConfiguration 1 }
+
+cableGatewayDiagnosticsIpAddress OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Diagnostics Ip Address"
+	::= { cableGatewayDiagnosticsConfiguration 2 }
+
+cableGatewayDiagnosticsPacketSize OBJECT-TYPE
+	SYNTAX	INTEGER(1..1518)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Diagnostics Packet Size"
+	::= { cableGatewayDiagnosticsConfiguration 3 }
+
+cableGatewayDiagnosticsTimes OBJECT-TYPE
+	SYNTAX	INTEGER(1..64)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Diagnostics Times"
+	::= { cableGatewayDiagnosticsConfiguration 4 }
+
+cableGatewayDiagnosticsInterval OBJECT-TYPE
+	SYNTAX	INTEGER(1..100)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Diagnostics Interval Time"
+	::= { cableGatewayDiagnosticsConfiguration 5 }
+
+cableGatewayDiagnosticsSendNum OBJECT-TYPE
+	SYNTAX		INTEGER
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Sent ICMP Packet Number"
+	::= { cableGatewayDiagnosticsConfiguration 6 }
+
+cableGatewayDiagnosticsRcvNum OBJECT-TYPE
+	SYNTAX		INTEGER
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Received ICMP Packet Number"
+	::= { cableGatewayDiagnosticsConfiguration 7 }
+
+cableGatewayDiagnosticsLossNum OBJECT-TYPE
+	SYNTAX		INTEGER
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Loss ICMP Packet Number"
+	::= { cableGatewayDiagnosticsConfiguration 8 }
+
+cableGatewayDiagnosticsMaxRoundTripTime OBJECT-TYPE
+	SYNTAX		INTEGER
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Max Round Trip Time of ICMP Packet"
+	::= { cableGatewayDiagnosticsConfiguration 9 }
+
+cableGatewayDiagnosticsMinRoundTripTime OBJECT-TYPE
+	SYNTAX		INTEGER
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Minimum Round Trip Time of ICMP Packet"
+	::= { cableGatewayDiagnosticsConfiguration 10 }
+
+cableGatewayDiagnosticsAvgRoundTripTime OBJECT-TYPE
+	SYNTAX		INTEGER
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Average Round Trip Time of ICMP Packet"
+	::= { cableGatewayDiagnosticsConfiguration 11 }
+
+--WanBasicSetup
+cableGatewayWanBasicSetupConfiguration	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 36 }
+
+cableGatewayCfgWanDhcpEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				dhcp (1),
+				static (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For type of Gateway Network
+		dhcp = DHCP
+		static = Static IP"
+	DEFVAL { 1 }
+	::= { cableGatewayWanBasicSetupConfiguration 1 }
+
+cableGatewayCfgWanStaticIpAddress	OBJECT-TYPE
+	SYNTAX	IpAddress
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Static WAN IP Address"
+	::= { cableGatewayWanBasicSetupConfiguration 2 }
+
+cableGatewayCfgWanStaticIpMask	OBJECT-TYPE
+	SYNTAX	IpAddress
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Static WAN Mask IP Address"
+	::= { cableGatewayWanBasicSetupConfiguration 3 }
+
+cableGatewayCfgWanStaticGateway	OBJECT-TYPE
+	SYNTAX	IpAddress
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Static WAN Gateway IP Address"
+	::= { cableGatewayWanBasicSetupConfiguration 4 }
+
+cableGatewayCfgWanStaticPrimaryDNS	OBJECT-TYPE
+	SYNTAX	IpAddress
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Static WAN Primary DNS IP Address"
+	::= { cableGatewayWanBasicSetupConfiguration 5 }
+
+cableGatewayCfgWanStaticSecondaryDNS	OBJECT-TYPE
+	SYNTAX	IpAddress
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Static WAN Secondary DNS IP Address"
+	::= { cableGatewayWanBasicSetupConfiguration 6 }
+
+cableGatewayCfgWanCableHome11DhcpOption	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"CableHome1.1 option for WAN DHCP discover/request"
+	DEFVAL { 2 }
+	::= { cableGatewayWanBasicSetupConfiguration 7 }
+
+--EthernetStatus
+cableGatewayEthernetConfiguration	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 37 }
+
+cableGatewayEthernetTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CableGatewayEthernetEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Ethernet Connection Object"
+	::= { cableGatewayEthernetConfiguration 1 }
+
+cableGatewayEthernetEntry	OBJECT-TYPE
+	SYNTAX		CableGatewayEthernetEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Ethernet Status"
+	INDEX	{ cableGatewayEthernetIndex }
+	::= { cableGatewayEthernetTable 1 }
+
+CableGatewayEthernetEntry ::=
+	SEQUENCE {
+		cableGatewayEthernetIndex		    Integer32,
+		cableGatewayEthernetPowerStatus     INTEGER,
+		cableGatewayEthernetLinkStatus      INTEGER
+	}
+
+cableGatewayEthernetIndex	OBJECT-TYPE
+	SYNTAX		Integer32 (1..253)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Ethernet Table Index"
+	::= { cableGatewayEthernetEntry 1 }
+
+cableGatewayEthernetPowerStatus	OBJECT-TYPE
+	SYNTAX  INTEGER {
+                up(1),
+                down(2)
+            }
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"In this mib you can set the selected ethernet port to be power up or down."
+	::= { cableGatewayEthernetEntry 2 }
+	
+cableGatewayEthernetLinkStatus	OBJECT-TYPE
+	SYNTAX  INTEGER {
+                up(1),
+                down(2)
+            }
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"In this mib you can check whether the ethernet port link status is up or down."
+	::= { cableGatewayEthernetEntry 3 }
+
+--GUIRouteRedistributionGroup
+cableGatewayRouteRedistributionGroup	OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 38 }
+
+cableGatewayRouteRedistributionEnable	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				enabled (1),
+				disabled (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Configuration For Route Redistribution.
+		enabled = enable Route Redistribution
+		diabled = disable Route Redistribution"
+	DEFVAL { 1 }
+	::= { cableGatewayRouteRedistributionGroup 1 }
+
+cableGatewayRouteRedistributionDefaultPlicy	OBJECT-TYPE
+	SYNTAX	INTEGER {
+				AllowAll (1),
+				DenyAll (2)
+			}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Policy Configuration For Route Redistribution.
+		DenyAll = Deny All Route Redistribution
+		AllowAll = Allow All Route Redistribution"
+	DEFVAL { 1 }
+	::= { cableGatewayRouteRedistributionGroup 2 }
+
+
+cableGatewayRouteRedistributionTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CableGatewayRouteRedistributionTableEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Route Map Table Object"
+	::= { cableGatewayRouteRedistributionGroup 3 }
+
+CableGatewayRouteRedistributionTableEntry	OBJECT-TYPE
+	SYNTAX		CableGatewayRouteRedistributionTableEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for Route Map Table"
+	INDEX	{ cableGatewayRouteRedistributionIndex }
+	::= { cableGatewayRouteRedistributionTable 1 }
+
+CableGatewayRouteRedistributionTableEntry ::=
+	SEQUENCE {
+		cableGatewayRouteRedistributionIndex					Integer32,
+		cableGatewayRouteRedistributionIpAddr					IpAddress,
+		cableGatewayRouteRedistributionSubnetMask			IpAddress,
+		cableGatewayRouteRedistributionNextHop				IpAddress,
+		cableGatewayRouteRedistributionSourcIp				IpAddress,
+		cableGatewayRouteRedistributionMetricSet			INTEGER,
+		cableGatewayRouteRedistributionMetricValue		INTEGER,
+		cableGatewayRouteRedistributionAction					INTEGER,
+		cableGateWayRouteRedistributionRowStatus     	RowStatus										
+	}
+
+cableGatewayRouteRedistributionIndex	OBJECT-TYPE
+	SYNTAX		Integer32
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		""
+	::= { CableGatewayRouteRedistributionTableEntry 1 }
+
+cableGatewayRouteRedistributionIpAddr OBJECT-TYPE 
+    SYNTAX      IpAddress 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Required to create a row.
+             Base on the IP address to find out corresponding destination IP of RIP to do redistribution."
+    ::= { CableGatewayRouteRedistributionTableEntry 2 } 
+
+cableGatewayRouteRedistributionSubnetMask OBJECT-TYPE 
+    SYNTAX      IpAddress 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Required to create a row
+             Base on the subnet mask to find out corresponding subnet mask of RIP to do redistribution."
+    ::= { CableGatewayRouteRedistributionTableEntry 3 } 
+
+cableGatewayRouteRedistributionNextHop OBJECT-TYPE 
+    SYNTAX      IpAddress 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Required to create a row.
+             Base on the next hop to find out corresponding next hop of RIP to do redistribution."
+    ::= { CableGatewayRouteRedistributionTableEntry 4 }     
+
+cableGatewayRouteRedistributionSourcIp OBJECT-TYPE 
+    SYNTAX      IpAddress 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Required to create a row.
+             Base on the source IP to find out corresponding  source IP of RIP to do redistribution."
+    ::= { CableGatewayRouteRedistributionTableEntry 5} 
+
+cableGatewayRouteRedistributionMetricSet	OBJECT-TYPE
+    SYNTAX      INTEGER {
+        Set(1),
+        unSet(2)
+        } 
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"Required to create a row.
+     Determine whether to apply the Metric value."
+	::= { CableGatewayRouteRedistributionTableEntry 6 }    
+	
+cableGatewayRouteRedistributionMetricValue OBJECT-TYPE 
+    SYNTAX      INTEGER 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION  
+            "Required to create a row.
+            If the corresponding RIP entry is found and cableGatewayRouteRedistributionMetricSet is set, 
+            the existing metric value of the corresponding RIP entry would be changed"
+    ::= { CableGatewayRouteRedistributionTableEntry 7 } 
+
+cableGatewayRouteRedistributionAction	OBJECT-TYPE
+    SYNTAX      INTEGER {
+        Allow(1),
+        Deny(2)
+        } 
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"Required to create a row.
+		 Deny/Allow a policy."
+	::= { CableGatewayRouteRedistributionTableEntry 8 } 
+	
+	
+cableGateWayRouteRedistributionRowStatus OBJECT-TYPE 
+    SYNTAX      RowStatus 
+    MAX-ACCESS  read-create 
+    STATUS      current 
+    DESCRIPTION 
+            "This object is used to create new rows in this
+             table, modify existing rows, and to delete
+             existing rows."
+    ::= { CableGatewayRouteRedistributionTableEntry 9 }     
+
+--GUI Static Route Table
+cableGatewayStaticRouteTable	OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CableGatewayStaticRouteTableEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"Static Routes table"
+	::= { cableGatewayConfigrationGroup 39 }     
+
+cableGatewayStaticRouteTableEntry	OBJECT-TYPE
+	SYNTAX		CableGatewayStaticRouteTableEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"An entry containing information for the static routes table"
+	INDEX	{ cableGatewayStaticRouteIndex }
+	::= { cableGatewayStaticRouteTable 1 }
+
+CableGatewayStaticRouteTableEntry ::=
+	SEQUENCE {
+		cableGatewayStaticRouteIndex		INTEGER,
+		cableGatewayStaticRouteName		OCTET STRING,
+	 	cableGatewayStaticRouteDestIPAddr		IpAddress,
+	 	cableGatewayStaticRouteMaskIPAddr		IpAddress,
+		cableGatewayStaticRouteGatewayIPAddr		IpAddress,
+		cableGatewayStaticRouteRowStatus	INTEGER}	    
+
+cableGatewayStaticRouteIndex OBJECT-TYPE
+	SYNTAX		INTEGER (1..254)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"The index of the static routes table entry"
+	::= { cableGatewayStaticRouteTableEntry 1 }
+		 
+cableGatewayStaticRouteName OBJECT-TYPE
+	SYNTAX		OCTET STRING (SIZE(0..16))
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"Name associated to the static routes Rules"
+	::= { cableGatewayStaticRouteTableEntry 2 }		
+	
+cableGatewayStaticRouteDestIPAddr OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The IP address of the static route destination"
+	::= { cableGatewayStaticRouteTableEntry 3 }
+
+cableGatewayStaticRouteMaskIPAddr OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The IP address of the static route Mask"
+	::= { cableGatewayStaticRouteTableEntry 4 }
+
+cableGatewayStaticRouteGatewayIPAddr OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The IP address of the static route gateway"
+	::= { cableGatewayStaticRouteTableEntry 5 }
+	
+cableGatewayStaticRouteRowStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		active (1),
+	  notReady (3),
+	   destroy (6)
+	}
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"The Row Status of the static route table entry"
+	::= { cableGatewayStaticRouteTableEntry 6 }
+      
+-- cableGatewayImageBootloaderConfiguration: bootloader information and control objects
+cableGatewayImageBootloaderConfiguration OBJECT IDENTIFIER ::= { cableGatewayConfigrationGroup 40 }
+
+cableGatewayImageBootloaderVersion  OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Identifies the version of the bootloader."
+    ::= { cableGatewayImageBootloaderConfiguration 1 }
+
+cableGatewayImageBootloaderSignature  OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Identifies the signature that the bootloader uses to validate
+         downloaded firmware images.  The signature in the image must match
+         this signature or the image will not be run.  Note that if a bootloader
+         is not built with an image signature, then it will return the board's
+         chip ID."
+    ::= { cableGatewayImageBootloaderConfiguration 2 }
+
+cableGatewayImageBootloaderIncompatibleImageCheckEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects whether the bootloader will perform a compatible
+         image check prior to executing an image.  If set to true(1), an image
+         will not be executed if its compression type and signature are deemed
+         to be incompatible with the system.  If set to false(2), these checks
+         are not performed and only CRC and HCS checks are done."
+    DEFVAL { true }
+    ::= { cableGatewayImageBootloaderConfiguration 3 }
+
+cableGatewayImageBootloaderVersionImageCheckEnabled  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Check the Version Number (2.3.0betaX), If X is larger than
+         Current Bootloader Version, then download bootloader. true
+         (1), check version, false(2), all version can be used."
+    DEFVAL { true }
+    ::= { cableGatewayImageBootloaderConfiguration 4 }
+    
+cableGatewayImageBootloaderDloadTftpServer  OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the IP address of a TFTP server from which a
+         new bootloader will be downloaded if cableGatewayImageBootloaderDloadNow is set to
+         true(1)"
+    ::= { cableGatewayImageBootloaderConfiguration 5 }
+    
+cableGatewayImageBootloaderDloadTftpPath  OBJECT-TYPE
+    SYNTAX      SnmpAdminString
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Controls and reflects the path of a file on a TFTP server from which a
+         new bootloader will be downloaded if cableGatewayImageBootloaderDloadNow is set to
+         true(1)"
+    ::= { cableGatewayImageBootloaderConfiguration 6 }
+
+cableGatewayImageBootloaderDloadNow  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If set to true(1), a new bootloader will be downloaded from the IP
+         address specified by cableGatewayImageBootloaderDloadTftpServer, the file to download
+         having been specified by cableGatewayImageBootloaderDloadTftpPath."
+    ::= { cableGatewayImageBootloaderConfiguration 7 }
+    
+cableGatewayImageBootloaderDloadStatus  OBJECT-TYPE
+    SYNTAX      INTEGER {
+                failure(0),
+                success(1),
+                inProgress(2),
+                other(3)
+    }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Indicates the status of the last bootloader download attempt."
+    ::= { cableGatewayImageBootloaderConfiguration 8 }
+      
+END
+
+

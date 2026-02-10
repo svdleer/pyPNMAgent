@@ -1,0 +1,264 @@
+HEARTBEAT-MIB DEFINITIONS ::= BEGIN
+
+
+IMPORTS
+        MODULE-IDENTITY,
+        IpAddress,
+        NOTIFICATION-TYPE,
+        Integer32,
+        OBJECT-TYPE
+                                FROM SNMPv2-SMI
+
+        giproducts              FROM BCS-IDENT-MIB
+
+        trapSequenceId,
+        trapNetworkElemAlarmStatus,
+        trapNetworkElemAvailStatus,
+        trapAdditionalInfoInteger1,
+        trapAdditionalInfoInteger2,
+        trapAdditionalInfoInteger3
+                                FROM BCS-TRAPS-MIB;
+
+heartbeat MODULE-IDENTITY
+        LAST-UPDATED "200602090000Z"
+
+        ORGANIZATION "Motorola Connected Home Solutions"
+        CONTACT-INFO "Motorola Technical Response Center
+                      Inside USA     1-888-944-HELP (1-888-944-4357)
+                      Outside USA    1-215-323-0044
+                      TRC Hours:
+                      Monday through Friday 8am - 7pm Eastern Standard Time
+                      Saturdays            10am - 5pm Eastern Standard Time"
+
+        DESCRIPTION  "The MIB module for the heartbeat mechanism."
+
+        REVISION    "200309120000Z"
+        DESCRIPTION "Revision Number 1.3; September 12, 2003
+                    - Updated MIB to be compatible with WindRiver MIB compiler."
+
+        REVISION    "200309300000Z"
+        DESCRIPTION "Revision Number 1.4; September 30, 2003
+                    - Updated Heartbeat trap with Virt. Device ID and Priority."
+
+        REVISION    "200401290000Z"
+        DESCRIPTION "Revision Number 1.5; January 29, 2004
+                    - Updated default value for Priority."
+ 
+        REVISION    "200602090000Z"
+        DESCRIPTION "Revision Number 1.6; February 9, 2006
+                    - Updated Contact Information."
+
+         ::= {giproducts 12}
+
+
+
+-- ------------------------------------------------------------------------------
+-- REUSABLE TYPE DEFINITIONS
+--
+
+EnableDisableTYPE ::=  INTEGER
+   {
+    disabled (1),
+    enabled  (2)
+   }
+
+--
+-- HEARTBEAT MIB STRUCTURE
+--
+   hbConfig                                OBJECT IDENTIFIER ::= {heartbeat 1}
+   hbTraps                                 OBJECT IDENTIFIER ::= {heartbeat 0}
+   hbTrapElements                          OBJECT IDENTIFIER ::= {heartbeat 2}
+
+
+-- ------------------------------------------------------------------------------
+--
+-- Heartbeat Control Parameters 
+--
+
+hbSendHeartbeatControl OBJECT-TYPE
+    SYNTAX EnableDisableTYPE
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "This controls whether sending of heartbeats are enabled.  Only when
+         this parameter is enabled and one or more destination receiver
+         addresses have been configured should the device sent heartbeats. The
+         default value is disabled.
+
+         Once written, the change to this parameter will take immediate
+         effect.  However, in order for the change to persist through
+         subsequent reboots or power cycles, the change must be saved."
+    DEFVAL { disabled }
+::= { hbConfig 1}
+
+hbSendHeartbeatPeriod OBJECT-TYPE
+    SYNTAX Integer32(1..3000)
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "Specifies how often, i.e. the interval or periodicity, heartbeats are
+         sent.  This parameter is specified in tenths of seconds and can
+         range from 0.1 seconds to 5 minutes (respectively values ranging
+         from 1 through 3000). The default value is 0.5 seconds.
+
+         Once written, the change to this parameter will take immediate
+         effect.  However, in order for the change to persist through
+         subsequent reboots or power cycles, the change must be saved."
+   DEFVAL { 5 }
+::= { hbConfig 2}
+
+
+-- ------------------------------------------------------------------------------
+--
+-- hbReceiverAddressTable: Heartbeat Destination Receiver Address Table 
+--
+
+hbReceiverAddressTable OBJECT-TYPE
+    SYNTAX SEQUENCE OF HBReceiverAddressEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "This table contains a list of destinations receiver addresses where
+         heartbeats should be sent."
+::= { hbConfig 3}
+
+hbReceiverAddressEntry OBJECT-TYPE
+    SYNTAX HBReceiverAddressEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "Heartbeat Destination Receiver Address Table Entry."
+    INDEX {hbReceiverIndex}
+::= { hbReceiverAddressTable 1}
+
+HBReceiverAddressEntry ::= SEQUENCE
+    {
+     hbReceiverIndex                 Integer32,
+     hbReceiverAddress               IpAddress
+    }
+
+hbReceiverIndex OBJECT-TYPE
+    SYNTAX Integer32(1..4)
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "The index of Heartbeat Destination Receiver Address.  Not all devices
+         may support all destination receiver addresses.  Some devices may
+         only support 1 receiver address, while others may support 2
+         receiver addresses."
+::= { hbReceiverAddressEntry 1}
+
+hbReceiverAddress OBJECT-TYPE
+    SYNTAX IpAddress
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "The IP Address of the destination receiver address.  This parameter may
+         contain either a valid Unicast or Multicast IP address.  Additionally,
+         a value of 0.0.0.0 indicates that no destination receiver address has
+         been defined for the corresponding index and if all entries have a
+         value of 0.0.0.0, no heartbeat will be sent.
+
+         Once written, the change to this parameter will take immediate
+         effect.  However, in order for the change to persist through
+         subsequent reboots or power cycles, the change must be saved."
+::= { hbReceiverAddressEntry 2}
+
+
+-- ------------------------------------------------------------------------------
+--
+-- Heartbeat Event Parameters
+--
+
+trapHbVirtualDeviceId OBJECT-TYPE
+    SYNTAX          INTEGER (0..255)
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION 
+        "Identifies the virtual device sending the heartbeat.  The virtual
+         device ID should be unique for each of the primary devices that share
+         a common backup device or set of backup devices.  This virtual device
+         ID uniquely identifies the sending device's configuration, so that other
+         devices in the redundancy pool know which virtual device is represented
+         by this heartbeat.   After the failure of a primary device, a backup
+         device will assume an active roll, taking on that failed device's
+         configuration, and will send heartbeats with the same virtual device ID
+         that had been associated with the failed device.
+
+         A value of 0 (zero) indicates that no virtual device ID has been
+         assigned, i.e. the virtual device ID is not applicable."
+    DEFVAL { 0 }     
+::= { hbTrapElements 1 }
+
+trapHbPriority OBJECT-TYPE
+    SYNTAX          INTEGER (0..255)
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION 
+        "Identifies the priority of the device where the higher values
+         indicate a higher priority.  The highest allowed priority is 255, the
+         lowest is 0.  This field is used to arbitrate between multiple devices
+         that may be attempting to assume the active role for a particular
+         virtual device.  In general, each device in the redundancy pool is
+         configured with a unique priority, to ensure that all possible cases of
+         contention can be resolved.  A priority of 0 is a special case, and is
+         used by a primary device to signal to the backup device(s) that an
+         immediate failover is desired." 
+    DEFVAL { 254 }     
+::= { hbTrapElements 2 }
+  
+
+-- ------------------------------------------------------------------------------
+--
+-- Heartbeat Event
+--
+
+trapHeartbeatMessage NOTIFICATION-TYPE
+    OBJECTS
+    {
+     trapSequenceId,
+     trapNetworkElemAlarmStatus,
+     trapNetworkElemAvailStatus,
+     trapHbVirtualDeviceId,
+     trapHbPriority,
+     trapAdditionalInfoInteger1,
+     trapAdditionalInfoInteger2,
+     trapAdditionalInfoInteger3
+    }
+    STATUS current
+    DESCRIPTION
+        "When enabled, the heartbeat is sent to each configured destination
+         receiver address at a specified interval.  See the corresponding MIB
+         entries for configuring the heartbeat.
+
+         The trapSequenceId is incremented by 1 for each heartbeat sent.  Moreover,
+         the following varbinds are used to convey overall health of the device.
+            trapNetworkElemAlarmStatus - is used to convey the overall alarm
+               summary of the device when the heartbeat was sent.  The varbind
+               should be set to one of the following values:
+                       cleared(1),
+                       indeterminate(2),
+                       warning(3),
+                       minor(4),
+                       major(5),
+                       critical(6)
+            trapNetworkElemAvailStatus - is used to indicate a devices'
+               availability; in other words, whether the device is functional.
+               The varbind should be set to one of the following values:
+                       failed(2),
+                       degraded(7),
+                       available(10)
+
+         The 3 additional integer varbinds (trapAdditionalInfoInteger1..3) can
+         be used to convey additional information as defined by the device sending
+         the heartbeat.
+
+         In a system having a backup device, the heartbeat can be used to decide
+         whether to switch to the backup device.  The agent receiving this
+         heartbeat can use either the Alarm Status (trapNetworkElemAlarmStatus),
+         the Availability Status (trapNetworkElemAvailStatus) or both to
+         determine whether to switch to the backup device."
+::= { hbTraps 100 }
+
+-- ------------------------------------------------------------------------------
+END

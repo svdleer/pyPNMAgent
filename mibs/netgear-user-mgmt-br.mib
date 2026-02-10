@@ -1,0 +1,331 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-user-mgmt.mib
+--    Creation Date: June 1, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--		private MIB for user management.
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-USER-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE,
+	enterprises,
+	IpAddress,
+	Counter32,
+	Integer32,
+	NOTIFICATION-TYPE       FROM SNMPv2-SMI
+	TruthValue,
+	DisplayString,
+	MacAddress,
+	PhysAddress,
+	RowStatus,
+ 	DateAndTime,
+  TEXTUAL-CONVENTION      FROM SNMPv2-TC
+	OBJECT-GROUP,
+	MODULE-COMPLIANCE,
+	NOTIFICATION-GROUP      FROM SNMPv2-CONF
+	SnmpAdminString         FROM SNMP-FRAMEWORK-MIB
+  ifIndex                 FROM IF-MIB
+  PositiveInteger         FROM UPS-MIB
+  cableMgmt               FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- Netgear Group
+-- 
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrUserMgmt MODULE-IDENTITY
+	LAST-UPDATED "201205100000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"Initial version of this MIB module."
+::= { cableMgmt 5 }
+
+userBase             OBJECT IDENTIFIER ::= { ntgrUserMgmt 1 }
+consoleService       OBJECT IDENTIFIER ::= { userBase 3 }
+
+userTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF UserEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { userBase 1 }
+
+userEntry  OBJECT-TYPE
+	SYNTAX 	UserEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { userIndex }
+	::= { userTable 1 }
+
+UserEntry ::= SEQUENCE {
+	userName
+		SnmpAdminString,
+	userPassword
+		SnmpAdminString,
+	userLevel
+		Integer32
+}
+userIndex OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Was undefined index"
+    ::= { userEntry 9999 }
+
+userName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString (SIZE (1..1024))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Set user name"
+	::= { userEntry 1 }
+
+userPassword  OBJECT-TYPE
+	SYNTAX     SnmpAdminString (SIZE (1..1024))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Set user password"
+	::= { userEntry 2 }
+
+userLevel  OBJECT-TYPE
+	SYNTAX     Integer32 {
+	        userBoth(0),
+	        adminBoth(1),
+          userLocalOnly(2),
+	        adminLocalOnly(3),
+          userRemoteOnly(4),
+	        adminRemoteOnly(5),
+          userRemoteCMOnly(6),
+	        adminRemoteCMOnly(7),
+          userRemoteWANOnly(8),
+	        adminRemoteWANOnly(9),
+          userLocalAndCMOnly(10),
+          adminLocalAndCMOnly(11),
+          userLocalAndWANOnly(12),
+          adminLocalAndWANOnly(13)
+	    }
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Set user account level
+         UserBoth             : User Level and can login from local and remote site
+         AdminBoth            : Admin Level and can login from local and remote site
+         UserLocalOnly        : User Level and can only login from local site    (LAN and Management IP interface)
+         AdminLocalOnly       : Admin Level and can only login from local site   (LAN and Management IP interface)
+         UserRemoteOnly       : User Level and can only login from remote site   (CM and WAN interface)
+         AdminRemoteOnly      : Admin Level and can only login from remote site  (CM and WAN interface)
+         UserRemoteCMOnly     : User Level and can only login from remote site   (CM interface)
+	       AdminRemoteCMOnly    : Admin Level and can only login from remote site  (CM interface)
+         UserRemoteWANOnly    : User Level and can only login from remote site   (WAN interface)
+	       AdminRemoteWANOnly   : Admin Level and can only login from remote site  (WAN interface)
+         UserLocalAndCMOnly   : User Level and can only login from LAN and remote site   (CM interface)
+	       AdminLocalAndCMOnly  : Admin Level and can only login from LAN and remote site  (CM interface)
+         UserLocalAndWANOnly  : User Level and can only login from LAN and remote site   (WAN interface)
+	       AdminLocalAndWANOnly : Admin Level and can only login from LAN remote site  (WAN interface)
+     PS: User level and Admin level are only different in the http/https services. (User and Admin level account may have different GUI for some MSO)
+     As for others services, there are not different between User and Admin level (only reserved for future)"
+	::= { userEntry 3 }
+
+serviceTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF ServiceEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { userBase 2 }
+
+serviceEntry  OBJECT-TYPE
+	SYNTAX 	ServiceEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { serviceIndex }
+	::= { serviceTable 1 }
+
+ServiceEntry ::= SEQUENCE {
+	servicePort1
+		Integer32,
+	servicePort2
+		Integer32,
+	servicePort3
+		Integer32,
+	servicePort5
+		Integer32,
+	serviceIpStackEnableBitmask
+		Integer32,
+	serviceUserEnableBitmask
+		Integer32,
+	serviceIpStackEnableStringBitmask
+		SnmpAdminString,
+    serviceUserEnableStringBitmask
+		SnmpAdminString		
+}
+serviceIndex OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Was undefined index"
+    ::= { serviceEntry 9999 }
+
+servicePort1  OBJECT-TYPE
+	SYNTAX     Integer32 (1..65535)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Set services port number on the ip stack 1"
+	::= { serviceEntry 1 }
+
+servicePort2  OBJECT-TYPE
+	SYNTAX     Integer32 (1..65535)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Set services port number on the ip stack 2"
+	::= { serviceEntry 2 }
+
+servicePort3  OBJECT-TYPE
+	SYNTAX     Integer32 (1..65535)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Set services port number on the ip stack 3"
+	::= { serviceEntry 3 }
+
+servicePort5  OBJECT-TYPE
+	SYNTAX     Integer32 (1..65535)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Set services port number on the ip stack 5"
+	::= { serviceEntry 5 }
+
+serviceIpStackEnableBitmask  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Deciding which ip stack is working for that service (enable or disable services). 
+     This OID use bit mask to represent the working status of services. For example, 
+     if bit 0 and bit 4 are 1, the service will work on the ip stack 1 and 5."
+	::= { serviceEntry 9 }
+
+serviceUserEnableBitmask  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Set who is allowed for using this service. (which user can login this service).
+     This OID use bit mask to represent the allowed user for the service. For example, 
+     if bit 0 and bit 1 are 1, USER1 and USER2 account of the UserTable can access this service."
+	::= { serviceEntry 10 }
+
+serviceIpStackEnableStringBitmask  OBJECT-TYPE
+	SYNTAX     SnmpAdminString (SIZE (5))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Like 'serviceIpStackEnableBitmask' OID, it provides a way to configure which ip stack is working for that service (enable or disable services). 
+     Moreover, this OID provides a more flexible way to configure. 
+     0 bits : ip stack 1,  0: disable,  1: enable,   x: keep original settings
+     1 bits : ip stack 2,  0: disable,  1: enable,   x: keep original settings
+     2 bits : ip stack 3,  0: disable,  1: enable,   x: keep original settings
+     3 bits : not used
+     4 bits : ip stack 5,  0: disable,  1: enable,   x: keep original settings 
+     For example, if you just want to enable the service on the ip stack 1 and 5, and keeping original settings for the rest ip stacks.
+     You can set this OID to '1xxx1'. In this way, the ip stack 2 and 3 will keep previous settings."
+	::= { serviceEntry 11 }
+
+serviceUserEnableStringBitmask  OBJECT-TYPE
+	SYNTAX     SnmpAdminString (SIZE (8))
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+     "Like 'serviceIpStackEnableBitmask' OID, it provides a way to configure who is allowed for using this service. (which user can login this service). 
+     Moreover, this OID provides a more flexible way to configure. 
+     0 bits : user account 1,  0: not allow,  1: allow,   x: keep original settings
+     1 bits : user account 2,  0: not allow,  1: allow,   x: keep original settings
+     ............................................................................
+     7 bits : user account 8,  0: not allow,  1: allow,   x: keep original settings
+     For example, if you just want that USER1 and USER2 account of the UserTable can access this service, and keeping original settings for the rest USER account.
+     You can set this OID to 'xxxxxxxxxxxxxx11'."
+	::= { serviceEntry 12 }
+
+consoleServiceEnableAuth  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Enable/disable console authentication."
+	::= { consoleService 1 }
+  
+consoleServiceUserEnableBitmask  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Set who is allowed for using console service.
+     This OID use bit mask to represent the allowed user for console service. For example, 
+     if bit 0 and bit 1 are 1, USER1 and USER2 account of the UserTable can access console service."
+	::= { consoleService 2 }
+
+consoleServiceIdleTimeout  OBJECT-TYPE
+	SYNTAX     Integer32 (0..60)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"Sets the number of seconds after which a login console session will be 
+     timeout if there is no activity.  Setting to 0 (the default) results in 
+     the session never being timeout."
+	::= { consoleService 3 }
+
+userApplySettings  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"If set to true(1), the current configuration set in this MIB 
+ 	   will be written to non-volatile storage, and the services will
+ 	   be restarted using this configuration. This object may be used to
+ 	   invoke an immediate reconfiguration of services without 
+ 	   requiring a full reboot."
+
+	::= { userBase 100 }
+
+
+END
+

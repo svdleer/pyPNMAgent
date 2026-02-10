@@ -1,0 +1,435 @@
+--****************************************************************************
+--
+-- Copyright (c) 2011 Broadcom Corporation
+--
+-- This program is the proprietary software of Broadcom Corporation and/or
+-- its licensors, and may only be used, duplicated, modified or distributed
+-- pursuant to the terms and conditions of a separate, written license
+-- agreement executed between you and Broadcom (an "Authorized License").
+-- Except as set forth in an Authorized License, Broadcom grants no license
+-- (express or implied), right to use, or waiver of any kind with respect to
+-- the Software, and Broadcom expressly reserves all rights in and to the
+-- Software and all intellectual property rights therein.  IF YOU HAVE NO
+-- AUTHORIZED LICENSE, THEN YOU HAVE NO RIGHT TO USE THIS SOFTWARE IN ANY WAY,
+-- AND SHOULD IMMEDIATELY NOTIFY BROADCOM AND DISCONTINUE ALL USE OF THE
+-- SOFTWARE.  
+--
+-- Except as expressly set forth in the Authorized License,
+--
+-- 1.     This program, including its structure, sequence and organization,
+-- constitutes the valuable trade secrets of Broadcom, and you shall use all
+-- reasonable efforts to protect the confidentiality thereof, and to use this
+-- information only in connection with your use of Broadcom integrated circuit
+-- products.
+--
+-- 2.     TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED
+-- "AS IS" AND WITH ALL FAULTS AND BROADCOM MAKES NO PROMISES, REPRESENTATIONS
+-- OR WARRANTIES, EITHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, WITH
+-- RESPECT TO THE SOFTWARE.  BROADCOM SPECIFICALLY DISCLAIMS ANY AND ALL
+-- IMPLIED WARRANTIES OF TITLE, MERCHANTABILITY, NONINFRINGEMENT, FITNESS FOR
+-- A PARTICULAR PURPOSE, LACK OF VIRUSES, ACCURACY OR COMPLETENESS, QUIET
+-- ENJOYMENT, QUIET POSSESSION OR CORRESPONDENCE TO DESCRIPTION. YOU ASSUME
+-- THE ENTIRE RISK ARISING OUT OF USE OR PERFORMANCE OF THE SOFTWARE.
+--
+-- 3.     TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL BROADCOM
+-- OR ITS LICENSORS BE LIABLE FOR (i) CONSEQUENTIAL, INCIDENTAL, SPECIAL,
+-- INDIRECT, OR EXEMPLARY DAMAGES WHATSOEVER ARISING OUT OF OR IN ANY WAY
+-- RELATING TO YOUR USE OF OR INABILITY TO USE THE SOFTWARE EVEN IF BROADCOM
+-- HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES; OR (ii) ANY AMOUNT IN
+-- EXCESS OF THE AMOUNT ACTUALLY PAID FOR THE SOFTWARE ITSELF OR U.S. $1,
+-- WHICHEVER IS GREATER. THESE LIMITATIONS SHALL APPLY NOTWITHSTANDING ANY
+-- FAILURE OF ESSENTIAL PURPOSE OF ANY LIMITED REMEDY.
+--
+--****************************************************************************
+--    Filename: brcm-wifi-factory.mib
+--    Author:   Kevin O'Neal
+--    Creation Date: July 18, 2011
+--
+--**************************************************************************
+--    Description:
+--
+--    private MIB for factory configuration of 802.11 (Wi-Fi) settings.
+--		
+--**************************************************************************
+--    Revision History:
+--
+--**************************************************************************
+
+BRCM-WIFI-FACTORY-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Unsigned32,
+    Integer32
+        FROM SNMPv2-SMI
+    TruthValue,
+    DisplayString
+        FROM SNMPv2-TC
+    SnmpAdminString
+        FROM SNMP-FRAMEWORK-MIB
+    cableDataFactory
+        FROM BRCM-CABLEDATA-FACTORY-MIB
+    ifIndex
+        FROM IF-MIB;    --  RFC 2863
+                
+wifiFactory MODULE-IDENTITY
+    LAST-UPDATED "201109230000Z"
+    ORGANIZATION "Broadcom Corporation"
+    CONTACT-INFO
+        "	BANANA-CABLEDATA
+                (cableData branch of the
+                Broadcom Assigned Numbers and Naming Authority)
+                Broadcom Corporation
+
+        Postal: 4385 River Green Parkway
+                Duluth, GA  30096
+                USA
+
+           Tel: +1 770 232-0018
+
+        E-mail: banana-cabledata@broadcom.com"
+    DESCRIPTION
+            "Broadcom proprietary MIB for factory management and configuration
+             of objects related to the wi-fi network interface.
+
+             This MIB replaces the deprecated BRCM-80211-FACTORY-MIB, which was
+             not designed to accomodate multiple wi-fi interfaces."
+    REVISION      "201109230000Z"
+    DESCRIPTION
+            "Fixed several minor compiler issues."
+    REVISION      "201107180000Z"
+    DESCRIPTION
+            "Initial version of this MIB module."
+    ::= { cableDataFactory 10 }
+
+--
+-- Textual Conventions
+--
+
+--
+-- Object Definitions
+--
+
+wifiFactoryNotifications  OBJECT IDENTIFIER ::= { wifiFactory 0 }
+
+wifiFactoryMIBObjects OBJECT IDENTIFIER ::= { wifiFactory 1 }
+
+wifiFactoryConformance OBJECT IDENTIFIER ::= { wifiFactory 2 }
+
+--
+-- Notifications - placeholder - none defined
+-- 
+
+--
+-- MIB objects
+--
+
+-- dot11FactoryCfg: configure 802.11 setup objects
+wifiFactoryCfg OBJECT IDENTIFIER ::= { wifiFactoryMIBObjects 1 }
+
+wifiCfgTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF WifiCfgEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table allowing configuration of various settings for all primary 
+         wi-fi interfaces."
+    ::= { wifiFactoryCfg 1 }
+
+wifiCfgEntry OBJECT-TYPE
+    SYNTAX      WifiCfgEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry allowing configuration of various settings for a primary wi-fi 
+         interface.
+
+         An entry exists in this table for each entry in the ifTable with an
+         ifType value of ieee80211(71), and which is designated as a primary 
+         wi-fi interface.
+
+         Note that non-primary interfaces (such as MBSS interfaces) are not 
+         represented in this table."
+    INDEX   { ifIndex }
+    ::= { wifiCfgTable 1 }
+
+WifiCfgEntry ::= 
+    SEQUENCE    {
+        wifiCountry             INTEGER,
+        wifiSromWrite           OCTET STRING,
+        wifiSromRead            OCTET STRING,
+        wifiIsoCountry          OCTET STRING,
+        wifiRegulatoryRev       Integer32,
+        wifiRegOverrideEnable   TruthValue
+    }
+
+wifiCountry OBJECT-TYPE
+    SYNTAX      INTEGER {
+                worldWide(0),
+                thailand(1),
+                israel(2),
+                jordan(3),
+                china(4),
+                japan(5),
+                usa(6),
+                europe(7),
+                allChannels(8)
+    }
+    MAX-ACCESS  read-write
+    STATUS      deprecated
+    DESCRIPTION
+        "Restricts the channel set based on country requirements."
+    ::= { wifiCfgEntry 1 }
+
+wifiSromWrite OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets Srom parameter in Wifi Permanent Nonvol. Syntax is offset/value 
+         pairing with the offset (into SROM) being a word (two bytes) and the 
+         value being a multiple of words. When read, this object will always 
+         return an empty string."
+    ::= { wifiCfgEntry 2 }
+
+wifiSromRead OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Read Srom parameters in Wifi Permanent Nonvol. Syntax on a write is 
+         offset/length pairing with the offset (into the SROM) being a word 
+         (two bytes) and the length being a multiple of words. A read of this 
+         object will return the Srom values that were specifed by offset/length 
+         paring from the last write of this object."
+    ::= { wifiCfgEntry 3 }
+
+wifiIsoCountry OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets country code in ISO 3166 format."
+    ::= { wifiCfgEntry 4 }
+
+wifiRegulatoryRev OBJECT-TYPE
+    SYNTAX      Integer32 (0..99)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets 802.11 Regulatory Revision Number."
+    ::= { wifiCfgEntry 5 }
+
+wifiRegOverrideEnable OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Enable/Disable Regulatory Override Capability. When enabled, the country 
+         code and regulatory revision number in the WiFi Card SROM will be 
+         overridden with corresponding values in NonVol."
+    ::= { wifiCfgEntry 6 }
+
+-- dot11FactoryWPSSettings: various objects for 802.11 WPS Configurations Settings
+wifiFactoryWPSSettings OBJECT IDENTIFIER ::= { wifiFactoryMIBObjects 2 }
+
+wifiWpsTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF WifiWpsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table allowing configuration of WPS settings for all primary wi-fi 
+         interfaces."
+    ::= { wifiFactoryWPSSettings 1 }
+
+wifiWpsEntry OBJECT-TYPE
+    SYNTAX      WifiWpsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry allowing configuration of WPS settings for a primary wi-fi 
+         interface.
+
+         An entry exists in this table for each entry in the ifTable with an
+         ifType value of ieee80211(71), and which is designated as a primary 
+         wi-fi interface.
+
+         Note that non-primary interfaces (such as MBSS interfaces) are not 
+         represented in this table."
+    INDEX   { ifIndex }
+    ::= { wifiWpsTable 1 }
+
+WifiWpsEntry ::= 
+    SEQUENCE    {
+        wifiWpsBoardNum         SnmpAdminString,
+        wifiWpsDeviceName       SnmpAdminString,
+        wifiWpsDevicePin        SnmpAdminString,
+        wifiWpsMfgName          SnmpAdminString,
+        wifiWpsModelName        SnmpAdminString,
+        wifiWpsModelNum         SnmpAdminString,
+        wifiWpsUUID             SnmpAdminString
+    }
+
+wifiWpsBoardNum OBJECT-TYPE
+    SYNTAX      SnmpAdminString (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPS Board  Serial Number"
+    ::= { wifiWpsEntry 1 }
+ 
+wifiWpsDeviceName OBJECT-TYPE
+    SYNTAX      SnmpAdminString (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPS Device Name"
+    ::= { wifiWpsEntry 2 }
+
+wifiWpsDevicePin OBJECT-TYPE
+    SYNTAX      SnmpAdminString (SIZE(8))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPS Device Pin, must be ascii numerical characters"
+    ::= { wifiWpsEntry 3 }
+
+wifiWpsMfgName OBJECT-TYPE
+    SYNTAX      SnmpAdminString (SIZE(0..64))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPS Manufacturer Name"
+    ::= { wifiWpsEntry 4 }
+
+wifiWpsModelName OBJECT-TYPE
+    SYNTAX      SnmpAdminString (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPS Model Name"
+    ::= { wifiWpsEntry 5 }
+
+wifiWpsModelNum OBJECT-TYPE
+    SYNTAX      SnmpAdminString (SIZE(0..32))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets the WPS Model Number"
+    ::= { wifiWpsEntry 6 }
+
+wifiWpsUUID OBJECT-TYPE
+    SYNTAX      SnmpAdminString (SIZE(0..16))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets WPS Universal Unique Identifier"
+    ::= { wifiWpsEntry 7 }
+
+-- dot11FactoryDiagnostics: various objects for 802.11 diagnostics
+wifiFactoryDiagnostics OBJECT IDENTIFIER ::= { wifiFactoryMIBObjects 3 }
+
+wifiDiagnosticTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF WifiDiagnosticEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table providing diagnostic information for each primary wi-fi 
+         interface."
+    ::= { wifiFactoryDiagnostics 3 }
+
+wifiDiagnosticEntry OBJECT-TYPE
+    SYNTAX      WifiDiagnosticEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry providing diagnostic information for a primary wi-fi 
+         interface.
+
+         An entry exists in this table for each entry in the ifTable with an
+         ifType value of ieee80211(71), and which is designated as a primary 
+         wi-fi interface.
+
+         Note that non-primary interfaces (such as MBSS interfaces) are not 
+         represented in this table."
+    INDEX   { ifIndex }
+    ::= { wifiDiagnosticTable 1 }
+
+WifiDiagnosticEntry ::= 
+    SEQUENCE    {
+        wifiDiagChannel             Unsigned32,
+        wifiDiagAntennaDiversity    INTEGER,
+        wifiDiagTxMode              INTEGER,
+        wifiDiagTxPowerLevel        Integer32,
+        wifiDiagWirelessLanCmd      DisplayString,
+        wifiDiagWirelessLanOutput   DisplayString
+    }
+
+wifiDiagChannel OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..14)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets test channel number. Obeys regulatory domain restrictions - step 
+         through regulatory domains to cover all channels."
+    ::= { wifiDiagnosticEntry 1 }
+    
+wifiDiagAntennaDiversity OBJECT-TYPE
+    SYNTAX      INTEGER {
+                diversityDisabledAntenna0(0),
+                diversityDisabledAntenna1(1),
+                diversityEnabledAntenna1(2),
+                diversityEnabledAntenna0(3)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "If diversity is disabled, then this value indicates the antenna used
+         for transmission and reception. If diversity is enabled, then this
+         value controls the initial antenna used when written, and when read
+         indicates the antenna on which the most recent packet was received."
+    ::= { wifiDiagnosticEntry 2 }
+    
+wifiDiagTxMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                cw(0),
+                evm(1),
+                normal(2)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "cw(0) is used for frequency accuracy test, evm(1) is used for error 
+         vector test. When set to normal(2), 802.11 STAs will once again be 
+         able to associate with the DUT."
+    ::= { wifiDiagnosticEntry 3 }
+    
+wifiDiagTxPowerLevel OBJECT-TYPE
+    SYNTAX      Integer32 (1..1000)
+    UNITS       "milliwatts"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sets TX test power level as permitted by regulatory domain 
+         restrictions."
+    ::= { wifiDiagnosticEntry 4 }
+
+wifiDiagWirelessLanCmd OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Sends commands to the 802.11 diagnostic and manufacturing utility.
+         When read, reports the last command issued."
+    ::= { wifiDiagnosticEntry 5 }
+    
+wifiDiagWirelessLanOutput OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Reports the console output (if any) generated by the last set of the 
+         dot11DiagWirelessLanCmd object."
+    ::= { wifiDiagnosticEntry 6 }
+END

@@ -1,0 +1,2155 @@
+-- vim: set ts=4, set expandtab, match Todo /\%>79v/
+-- ***********************************************************************
+-- ***********************************************************************
+--                             ROUTER
+--                      SNMP/MIB : MIB Files
+--
+--            Copyright (C) 2012 Hitron Technologies Inc.
+--                       All Rights Reserved.
+-- ***********************************************************************
+--  Filename    : HITRON-RG-FIREWALL.mib
+--  Description : Firewall MIB
+-- ***********************************************************************
+--
+
+HITRON-RG-FW-MIB  DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY
+    , OBJECT-TYPE
+    , NOTIFICATION-TYPE
+    , enterprises
+    , Integer32
+    , IpAddress
+    , Unsigned32
+    , Counter32
+        FROM SNMPv2-SMI -- RFC2578
+
+    DisplayString
+    , MacAddress
+    , TruthValue
+    , RowStatus
+    , TimeStamp
+    , DateAndTime
+        FROM SNMPv2-TC  -- RFC2579
+
+    InetAddressType
+    , InetAddress
+    , InetAddressPrefixLength
+    , InetPortNumber
+    , InetVersion
+        FROM INET-ADDRESS-MIB -- RFC4001
+
+    hitronRg
+    , LanIfType
+    , LanAddrTitle
+    , WanAddrTitle
+    , TransportProtocolType
+    , FirewallControlTetrad
+        FROM HITRON-RG-MIB
+
+    ; -- End of IMPORTS
+
+hitronRgFw  MODULE-IDENTITY
+    LAST-UPDATED    "201301091639Z" -- Jan. 09, 2013
+    ORGANIZATION    "Hitron Technologies, Inc."
+    CONTACT-INFO
+        "Liangfeng Wu
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8120
+        E-mail: wuliangfeng@sz.hitrontech.com
+
+        Haibo Xi
+        Hitron Technologies, Inc.
+        B1,11/F International Science Park,
+        No.1355, JinJi Lake Avenue, Suzhou Industrial Park, 215123
+        P.R.C.
+        Phone:  +86-512-62653066 Ext.8148
+        E-mail: xihaibo@sz.hitrontech.com"
+
+    DESCRIPTION
+        "MIB module for Firewall configuration, the 'Firewall' concept here is
+        very general, involves most of the functions that will inspect or
+        modify the network packets. And they are divided into three categories:
+            NAT, Filter, and RemoteManagement. "
+    
+    REVISION    "201309262019Z" -- Sep. 26, 2013
+    DESCRIPTION
+        "Add fwNatSource."
+
+    REVISION    "201301091639Z" -- Jan. 09, 2013
+    DESCRIPTION
+        "Change fwFilterLevelCusRulesType's MAX-ACCESS to read-only."
+
+    REVISION    "201209051532Z" -- Sep. 05, 2012
+    DESCRIPTION
+        "Initial Version"
+
+    ::= { hitronRg 19 }
+
+    -- NAT
+    fwNat   OBJECT IDENTIFIER ::= { hitronRgFw 1 }
+        
+        fwNatEnable OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Enable/disbale all the NAT function."
+            ::= { fwNat 1 }
+
+        -- DMZ
+        fwNatDmz  OBJECT IDENTIFIER ::= { fwNat 2 }
+
+            fwNatDmzEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/disable DMZ."
+                ::= { fwNatDmz 1 }
+
+            fwNatDmzHost    OBJECT-TYPE
+                SYNTAX      IpAddress
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Configure the DMZ host."
+                ::= { fwNatDmz 2 }
+
+        -- Port Forwarding
+        fwNatPortForwarding OBJECT IDENTIFIER ::= { fwNat 3 }
+
+            fwNatPFEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable Port Forwarding."
+                ::= { fwNatPortForwarding 1 }
+
+            -- Clear all the port forwarding rules in current Table.
+            fwNatPFRulesClear  OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Set true to clear all the rules in current table.
+                     Set false will do nothing."
+                DEFVAL      { false }
+                ::= { fwNatPortForwarding 2 }
+
+            -- Port forwarding rules table
+            fwNatPFRulesTable   OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwNatPFRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Port forwarding rules table."
+                ::= { fwNatPortForwarding 3 }
+
+                fwNatPFRulesEntry OBJECT-TYPE
+                    SYNTAX      FwNatPFRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwNatPFRulesTable."
+                    INDEX       { fwNatPFRulesIndex }
+                    ::= { fwNatPFRulesTable 1 }
+
+                FwNatPFRulesEntry ::=
+                    SEQUENCE {
+                        fwNatPFRulesIndex             Integer32,
+                        fwNatPFRulesRowStatus         RowStatus,
+                        fwNatPFRulesEnable            TruthValue,
+                        fwNatPFRulesDescription       DisplayString,
+                        fwNatPFRulesProtocol          TransportProtocolType,
+                        fwNatPFRulesRemoteHostStart   IpAddress,
+                        fwNatPFRulesRemoteHostEnd     IpAddress,
+                        fwNatPFRulesPubPortStart      InetPortNumber,
+                        fwNatPFRulesPubPortEnd        InetPortNumber,
+                        fwNatPFRulesLocalHost         IpAddress,
+                        fwNatPFRulesPrivPortStart     InetPortNumber,
+                        fwNatPFRulesPrivPortEnd       InetPortNumber,
+                        fwNatPFRulesMappingType       INTEGER
+                    }
+
+                fwNatPFRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules"
+                    ::= { fwNatPFRulesEntry 1 }
+
+                fwNatPFRulesRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row. "
+                    ::= { fwNatPFRulesEntry 2 }
+
+                fwNatPFRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "This value indicates whether this rule is active."
+                    DEFVAL      { true }
+                    ::= { fwNatPFRulesEntry 3 }
+
+                fwNatPFRulesDescription OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "A simple description to this rule."
+                    ::= { fwNatPFRulesEntry 4 }
+
+                fwNatPFRulesProtocol OBJECT-TYPE
+                    SYNTAX      TransportProtocolType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Protocol type, could be tcp(1), udp(2) and
+                         tcpudp(3)."
+                    DEFVAL      { tcp }
+                    ::= { fwNatPFRulesEntry 5 }
+
+                fwNatPFRulesRemoteHostStart OBJECT-TYPE
+                    SYNTAX      IpAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Combined with fwNatPFRulesRemoteHostEnd to
+                         represent the host range that allowed to this
+                         port forwarding rule, value '0.0.0.0' indicates
+                         any host."
+                    ::= { fwNatPFRulesEntry 6 }
+
+                fwNatPFRulesRemoteHostEnd OBJECT-TYPE
+                    SYNTAX      IpAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Combined with fwNatPFRulesRemoteHostStart to
+                         represent the host range that allowed to this
+                         port forwarding rule, value '0.0.0.0' indicates
+                         single host that set in fwNatPFRulesRemoteHostStart."
+                    ::= { fwNatPFRulesEntry 7 }
+
+                fwNatPFRulesPubPortStart OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start number of the public port."
+                    ::= { fwNatPFRulesEntry 8 }
+
+                fwNatPFRulesPubPortEnd OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End number of the public port."
+                    ::= { fwNatPFRulesEntry 9 }
+
+                fwNatPFRulesLocalHost OBJECT-TYPE
+                    SYNTAX      IpAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "The local destination host."
+                    ::= { fwNatPFRulesEntry 10 }
+
+                fwNatPFRulesPrivPortStart OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start number of the private port."
+                    ::= { fwNatPFRulesEntry 11 }
+
+                fwNatPFRulesPrivPortEnd OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End number of the private port. set 0 or same
+                         value as start port to indicate single port."
+                    ::= { fwNatPFRulesEntry 12 }
+
+                fwNatPFRulesMappingType OBJECT-TYPE
+                    SYNTAX      INTEGER {
+                                    random(0),
+                                    range(1),
+                                    n-to-1(2)
+                                }
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "The port mapping type."
+                    DEFVAL      { range }
+                    ::= { fwNatPFRulesEntry 13 }
+
+        -- IP2IP Mapping
+        fwNatIp2IpMapping OBJECT IDENTIFIER ::= { fwNat 4 }
+
+            fwNatIp2IpEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable IP2IP Mapping."
+                ::= { fwNatIp2IpMapping 1 }
+
+            -- Clear all the IP2IP mapping rules in current Table.
+            fwNatIp2IpRulesClear  OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Set true to clear all the rules in current table.
+                     Set false will do nothing."
+                DEFVAL      { false }
+                ::= { fwNatIp2IpMapping 2 }
+
+            -- IP2IP mapping rules table
+            fwNatIp2IpRulesTable   OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwNatIp2IpRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "IP2IP mapping rules table."
+                ::= { fwNatIp2IpMapping 3 }
+
+                fwNatIp2IpRulesEntry OBJECT-TYPE
+                    SYNTAX      FwNatIp2IpRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwNatIp2IpRulesTable."
+                    INDEX       { fwNatIp2IpRulesIndex }
+                    ::= { fwNatIp2IpRulesTable 1 }
+
+                FwNatIp2IpRulesEntry ::=
+                    SEQUENCE {
+                        fwNatIp2IpRulesIndex                Integer32,
+                        fwNatIp2IpRulesRowStatus            RowStatus,
+                        fwNatIp2IpRulesEnable               TruthValue,
+                        fwNatIp2IpRulesPublicIp             IpAddress,
+                        fwNatIp2IpRulesPrivateIp            IpAddress,
+                        fwNatIp2IpRulesPrivateIpPrefixLen   Integer32
+                    }
+
+                fwNatIp2IpRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules"
+                    ::= { fwNatIp2IpRulesEntry 1 }
+
+                fwNatIp2IpRulesRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row. "
+                    ::= { fwNatIp2IpRulesEntry 2 }
+
+                fwNatIp2IpRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "This value indicates whether this rule is active."
+                    DEFVAL      { true }
+                    ::= { fwNatIp2IpRulesEntry 3 }
+
+                fwNatIp2IpRulesPublicIp OBJECT-TYPE
+                    SYNTAX      IpAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Public IP address."
+                    ::= { fwNatIp2IpRulesEntry 4 }
+
+                fwNatIp2IpRulesPrivateIp OBJECT-TYPE
+                    SYNTAX      IpAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Private IP address. Format is A.B.C.D[/prefix]."
+                    ::= { fwNatIp2IpRulesEntry 5 }
+
+                fwNatIp2IpRulesPrivateIpPrefixLen OBJECT-TYPE
+                    SYNTAX      Integer32 (24..32)
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Prefix length of private IP address."
+                    ::= { fwNatIp2IpRulesEntry 6 }
+
+        -- Port Triggering
+        fwNatPortTriggering  OBJECT IDENTIFIER ::= { fwNat 5 }
+
+            fwNatPTGEnable  OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/Disable Port Triggering.
+
+                     Port triggering is a configuration option on a
+                     NAT-enabled router that allows a host machine to
+                     dynamically and automatically forward a specific port
+                     back to itself. Port triggering opens an incoming port
+                     when your computer is using a specified outgoing port
+                     for specific traffic."
+                ::= { fwNatPortTriggering 1 }
+
+            -- Clear all the port triggering rules in current Table.
+            fwNatPTGRulesClear  OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Set true to clear all the rules in current table.
+                     Set false will do nothing."
+                DEFVAL      { false }
+                ::= { fwNatPortTriggering 2 }
+
+            -- Port Triggering Rules Table
+            fwNatPTGRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwNatPTGRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Port triggering rules table."
+                ::= { fwNatPortTriggering 3 }
+
+                fwNatPTGRulesEntry OBJECT-TYPE
+                    SYNTAX      FwNatPTGRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwNatPTGRulesTable."
+                    INDEX       { fwNatPTGRulesIndex }
+                    ::= { fwNatPTGRulesTable 1 }
+
+                FwNatPTGRulesEntry ::=
+                    SEQUENCE {
+                        fwNatPTGRulesIndex           Integer32,
+                        fwNatPTGRulesRowStatus       RowStatus,
+                        fwNatPTGRulesEnable          TruthValue,
+                        fwNatPTGRulesDescription     DisplayString,
+                        fwNatPTGRulesProtocol        TransportProtocolType,
+                        fwNatPTGRulesTrigPortStart   InetPortNumber,
+                        fwNatPTGRulesTrigPortEnd     InetPortNumber,
+                        fwNatPTGRulesTargPortStart   InetPortNumber,
+                        fwNatPTGRulesTargPortEnd     InetPortNumber,
+                        fwNatPTGRulesTimeout         Unsigned32,
+                        fwNatPTGRulesAllowThird      TruthValue
+                    }
+
+               fwNatPTGRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwNatPTGRulesEntry 1 }
+
+                fwNatPTGRulesRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwNatPTGRulesEntry 2 }
+
+                fwNatPTGRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicate whether this rule is active."
+                    DEFVAL      { true }
+                    ::= { fwNatPTGRulesEntry 3 }
+
+                fwNatPTGRulesDescription OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Description for this rule."
+                    ::= { fwNatPTGRulesEntry 4 }
+
+                fwNatPTGRulesProtocol OBJECT-TYPE
+                    SYNTAX      TransportProtocolType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Protocol type, could be tcp(1), udp(2) and
+                         tcpudp(3)."
+                    ::= { fwNatPTGRulesEntry 5 }
+
+                fwNatPTGRulesTrigPortStart OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start number of the triggering ports."
+                    ::= { fwNatPTGRulesEntry 6 }
+
+                fwNatPTGRulesTrigPortEnd OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End number of the triggering ports."
+                    ::= { fwNatPTGRulesEntry 7 }
+
+                fwNatPTGRulesTargPortStart OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start number of the target inbound ports."
+                    ::= { fwNatPTGRulesEntry 8 }
+
+                fwNatPTGRulesTargPortEnd OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End number of the target inbound ports."
+                    ::= { fwNatPTGRulesEntry 9 }
+
+                fwNatPTGRulesTimeout OBJECT-TYPE
+                    SYNTAX      Unsigned32 (50..30000)
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "The Timeout of this rule."
+                    ::= { fwNatPTGRulesEntry 10 }
+
+                fwNatPTGRulesAllowThird OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is allowed
+                         a third host to join in."
+                    ::= { fwNatPTGRulesEntry 11 }
+        
+        -- NAT Source
+        fwNatSource OBJECT-TYPE
+            SYNTAX      INTEGER {
+                    natOnDhcp(0),
+                    natOnStatic(1)
+            }
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION 
+                "Select the IP address used to perform NAT, two options:  
+                 - 'natOnDhcp(0)': Perform NAT on the IP address obtained
+                        via DHCP;
+                 - 'natOnStatic(1)': Perform NAT on the Static IP address
+                        assigned manually."
+            ::= { fwNat 6 }
+
+    -- Filter
+    fwFilter OBJECT IDENTIFIER ::= { hitronRgFw 2 }
+
+        fwFilterEnable OBJECT-TYPE
+            SYNTAX      FirewallControlTetrad
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "disable(1)     Disable the whole filter module.
+                 ipv4-only(2)   Enable the IPv4 filter module.
+                 ipv6-only(3)   Enable the IPv6 filter module.
+                 both(4)        Enable the whole filter module."
+            DEFVAL      { both }
+            ::= { fwFilter 1 }
+
+        -- Public DMZ, IP Hole..
+        fwFilterDmz OBJECT IDENTIFIER ::= { fwFilter 2 }
+
+            fwFilterDmzEnable OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Disable the whole Public DMZ(IP Hole) filter.
+                     ipv4-only(2)   Enable the IPv4 Public DMZ filter.
+                     ipv6-only(3)   Enable the IPv6 Public DMZ filter.
+                     both(4)        Enable the whole Public DMZ filter."
+                DEFVAL      { both }
+                ::= { fwFilterDmz 1 }
+
+            -- Clear all the rules in current Table.
+            fwFilterDmzRulesClear  OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Do nothing.
+                     ipv4-only(2)   Clear all the IPv4 rules.
+                     ipv6-only(3)   Clear all the IPv6 rules.
+                     both(4)        Clear all the rules in current table."
+                DEFVAL      { disable }
+                ::= { fwFilterDmz 2 }
+
+            -- Rules Table
+            fwFilterDmzRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwFilterDmzRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Public DMZ rules table."
+                ::= { fwFilterDmz 3 }
+
+                fwFilterDmzRulesEntry OBJECT-TYPE
+                    SYNTAX      FwFilterDmzRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwFilterDmzRulesTable."
+                    INDEX       { fwFilterDmzRulesIndex }
+                    ::= { fwFilterDmzRulesTable 1 }
+
+                FwFilterDmzRulesEntry ::=
+                    SEQUENCE {
+                        fwFilterDmzRulesIndex       Integer32,
+                        fwFilterDmzRulesRowStatus   RowStatus,
+                        fwFilterDmzRulesEnable      TruthValue,
+                        fwFilterDmzRulesAddrType    InetAddressType,
+                        fwFilterDmzRulesAddr        InetAddress
+                    }
+
+                fwFilterDmzRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwFilterDmzRulesEntry 1 }
+
+                fwFilterDmzRulesRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwFilterDmzRulesEntry 2 }
+
+                fwFilterDmzRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is active."
+                    ::= { fwFilterDmzRulesEntry 3 }
+
+                fwFilterDmzRulesAddrType OBJECT-TYPE
+                    SYNTAX      InetAddressType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Public IPv4 address or IPv6 address."
+                    ::= { fwFilterDmzRulesEntry 4 }
+
+                fwFilterDmzRulesAddr OBJECT-TYPE
+                    SYNTAX      InetAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "The Internet address value of the DMZ host."
+                    ::= { fwFilterDmzRulesEntry 5 }
+
+        -- IDS
+        fwFilterIds OBJECT IDENTIFIER ::= { fwFilter 3 }
+
+            fwFilterIdsEnable OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Disable the whole IDS filter.
+                     ipv4-only(2)   Enable the IPv4 IDS filter.
+                     ipv6-only(3)   Enable the IPv6 IDS filter.
+                     both(4)        Enable the whole IDS filter."
+                DEFVAL      { both }
+                ::= { fwFilterIds 1 }
+
+        -- Port filter
+        fwFilterPort OBJECT IDENTIFIER ::= { fwFilter 4 }
+
+            -- External Port Allow
+            fwFilterPortExt OBJECT IDENTIFIER ::= { fwFilterPort 1 }
+
+                fwFilterPortExtEnable OBJECT-TYPE
+                    SYNTAX      FirewallControlTetrad
+                    MAX-ACCESS  read-only
+                    STATUS      current
+                    DESCRIPTION
+                        "Get WAN-side Port filter status. Can't be set,
+                         otherwise the SNMP will block itself."
+                    DEFVAL      { both }
+                    ::= { fwFilterPortExt 1 }
+
+                -- Rules Table
+                fwFilterPortExtRulesTable OBJECT-TYPE
+                    SYNTAX      SEQUENCE OF FwFilterPortExtRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "External port allow rules table."
+                    ::= { fwFilterPortExt 2 }
+
+                    fwFilterPortExtRulesEntry OBJECT-TYPE
+                        SYNTAX      FwFilterPortExtRulesEntry
+                        MAX-ACCESS  not-accessible
+                        STATUS      current
+                        DESCRIPTION
+                            "Entry of the fwFilterPortExtRulesTable."
+                        INDEX       { fwFilterPortExtRulesIndex }
+                        ::= { fwFilterPortExtRulesTable 1 }
+
+                    FwFilterPortExtRulesEntry ::=
+                        SEQUENCE {
+                            fwFilterPortExtRulesIndex      Integer32,
+                            fwFilterPortExtRulesEnable     TruthValue,
+                            fwFilterPortExtRulesVersion    INTEGER,
+                            fwFilterPortExtRulesProtocol   TransportProtocolType,
+                            fwFilterPortExtRulesPort       InetPortNumber
+                        }
+
+                    fwFilterPortExtRulesIndex OBJECT-TYPE
+                        SYNTAX      Integer32
+                        MAX-ACCESS  not-accessible
+                        STATUS      current
+                        DESCRIPTION
+                            "Index of the rules."
+                        ::= { fwFilterPortExtRulesEntry 1 }
+
+                    fwFilterPortExtRulesEnable OBJECT-TYPE
+                        SYNTAX      TruthValue
+                        MAX-ACCESS  read-only
+                        STATUS      current
+                        DESCRIPTION
+                            "Bool value indicates whether this rule is active."
+                        ::= { fwFilterPortExtRulesEntry 2 }
+
+                    fwFilterPortExtRulesVersion OBJECT-TYPE
+                        SYNTAX      INTEGER {
+                                        unknown(0),
+                                        ipv4(1),
+                                        ipv6(2),
+                                        both(3)
+                                    }
+                        MAX-ACCESS  read-only
+                        STATUS      current
+                        DESCRIPTION
+                            "A value representing a version of the IP protocol.
+                             unknown(0)  An unknown or unspecified version
+                                         of the IP protocol.
+                             ipv4(1)     The IPv4 protocol as defined in
+                                         RFC 791 (STD 5).
+                             ipv6(2)     The IPv6 protocol as defined in
+                                         RFC 2460.
+                             both(3)     Both IPv4 and IPv6 protocol."
+                        ::= { fwFilterPortExtRulesEntry 3 }
+
+                    fwFilterPortExtRulesProtocol OBJECT-TYPE
+                        SYNTAX      TransportProtocolType
+                        MAX-ACCESS  read-only
+                        STATUS      current
+                        DESCRIPTION
+                            "Protocol type, could be tcp(1), udp(2) and
+                             tcpudp(3)."
+                        ::= { fwFilterPortExtRulesEntry 4 }
+
+                    fwFilterPortExtRulesPort OBJECT-TYPE
+                        SYNTAX      InetPortNumber
+                        MAX-ACCESS  read-only
+                        STATUS      current
+                        DESCRIPTION
+                            "Filter port number."
+                        ::= { fwFilterPortExtRulesEntry 5 }
+
+            -- Internal Port Block
+            fwFilterPortInt OBJECT IDENTIFIER ::= { fwFilterPort 2 }
+
+                fwFilterPortIntEnable OBJECT-TYPE
+                    SYNTAX      FirewallControlTetrad
+                    MAX-ACCESS  read-only
+                    STATUS      current
+                    DESCRIPTION
+                        "Get LAN-side Port filter status."
+                    DEFVAL      { disable }
+                    ::= { fwFilterPortInt 1 }
+
+                -- Rules Table
+                fwFilterPortIntRulesTable OBJECT-TYPE
+                    SYNTAX      SEQUENCE OF FwFilterPortIntRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Internal Port Block rules table."
+                    ::= { fwFilterPortInt 2 }
+
+                    fwFilterPortIntRulesEntry OBJECT-TYPE
+                        SYNTAX      FwFilterPortIntRulesEntry
+                        MAX-ACCESS  not-accessible
+                        STATUS      current
+                        DESCRIPTION
+                            "Entry of the fwFilterPortIntRulesTable."
+                        INDEX       { fwFilterPortIntRulesIndex }
+                        ::= { fwFilterPortIntRulesTable 1 }
+
+                    FwFilterPortIntRulesEntry ::=
+                        SEQUENCE {
+                            fwFilterPortIntRulesIndex      Integer32,
+                            fwFilterPortIntRulesEnable     TruthValue,
+                            fwFilterPortIntRulesVersion    INTEGER,
+                            fwFilterPortIntRulesProtocol   TransportProtocolType,
+                            fwFilterPortIntRulesPort       InetPortNumber
+                        }
+
+                    fwFilterPortIntRulesIndex OBJECT-TYPE
+                        SYNTAX      Integer32
+                        MAX-ACCESS  not-accessible
+                        STATUS      current
+                        DESCRIPTION
+                            "Index of the rules."
+                        ::= { fwFilterPortIntRulesEntry 1 }
+
+                    fwFilterPortIntRulesEnable OBJECT-TYPE
+                        SYNTAX      TruthValue
+                        MAX-ACCESS  read-create
+                        STATUS      current
+                        DESCRIPTION
+                            "Bool value indicates whether this rule is active."
+                        ::= { fwFilterPortIntRulesEntry 2 }
+
+                    fwFilterPortIntRulesVersion OBJECT-TYPE
+                        SYNTAX      INTEGER {
+                                        unknown(0),
+                                        ipv4(1),
+                                        ipv6(2),
+                                        both(3)
+                                    }
+                        MAX-ACCESS  read-create
+                        STATUS      current
+                        DESCRIPTION
+                            "A value representing a version of the IP protocol.
+                             unknown(0)  An unknown or unspecified version
+                                         of the IP protocol.
+                             ipv4(1)     The IPv4 protocol as defined in
+                                         RFC 791 (STD 5).
+                             ipv6(2)     The IPv6 protocol as defined in
+                                         RFC 2460.
+                             both(3)     Both IPv4 and IPv6 protocol."
+                        ::= { fwFilterPortIntRulesEntry 3 }
+
+                    fwFilterPortIntRulesProtocol OBJECT-TYPE
+                        SYNTAX      TransportProtocolType
+                        MAX-ACCESS  read-create
+                        STATUS      current
+                        DESCRIPTION
+                            "Protocol type, could be tcp(1), udp(2) and
+                             tcpudp(3)."
+                        ::= { fwFilterPortIntRulesEntry 4 }
+
+                    fwFilterPortIntRulesPort OBJECT-TYPE
+                        SYNTAX      InetPortNumber
+                        MAX-ACCESS  read-create
+                        STATUS      current
+                        DESCRIPTION
+                            "Filter port number."
+                        ::= { fwFilterPortIntRulesEntry 5 }
+
+        -- ICMP filter
+        fwFilterIcmp    OBJECT IDENTIFIER ::= { fwFilter 5 }
+
+            fwFilterIcmpEnable OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Disable the whole ICMP filter.
+                     ipv4-only(2)   Enable the IPv4 ICMP filter.
+                     ipv6-only(3)   Enable the IPv6 ICMP filter.
+                     both(4)        Enable the whole ICMP filter."
+                DEFVAL      { both }
+                ::= { fwFilterIcmp 1 }
+
+        -- MAC Filter
+        fwFilterMac  OBJECT IDENTIFIER ::= { fwFilter 6 }
+
+            fwFilterMacEnable OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Disable the whole MAC filter.
+                     ipv4-only(2)   Enable the IPv4 MAC filter.
+                     ipv6-only(3)   Enable the IPv6 MAC filter.
+                     both(4)        Enable the whole MAC filter."
+                DEFVAL      { disable }
+                ::= { fwFilterMac 1 }
+
+            fwFilterMacMode  OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Block all devices except
+                                    which in mac list.
+                     ipv4-only(2)   Allow all IPv4 devices except
+                                    which in mac list.
+                     ipv6-only(3)   Allow all IPv6 devices except
+                                    which in mac list.
+                     both(4)        Allow all devices except
+                                    which in mac list."
+                DEFVAL      { disable }
+                ::= { fwFilterMac 2 }
+
+            -- Clear all the rules in current Table.
+            fwFilterMacRulesClear  OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Set true to clear all the rules in current table.
+                     Set false will do nothing."
+                DEFVAL      { false }
+                ::= { fwFilterMac 3 }
+
+            -- Rules Table
+            fwFilterMacRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwFilterMacRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Mac filter rules table."
+                ::= { fwFilterMac 4 }
+
+                fwFilterMacRulesEntry OBJECT-TYPE
+                    SYNTAX      FwFilterMacRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwFilterMacRulesTable."
+                    INDEX       { fwFilterMacRulesIndex }
+                    ::= { fwFilterMacRulesTable 1 }
+
+                FwFilterMacRulesEntry ::=
+                    SEQUENCE {
+                        fwFilterMacRulesIndex          Integer32,
+                        fwFilterMacRulesRowStatus      RowStatus,
+                        fwFilterMacRulesEnable         TruthValue,
+                        fwFilterMacRulesHostname       DisplayString,
+                        fwFilterMacRulesMacAddr        MacAddress,
+                        fwFilterMacRulesTacDayOfWeek   DisplayString,
+                        fwFilterMacRulesTacTimeStart   DisplayString,
+                        fwFilterMacRulesTacTimeEnd     DisplayString
+                    }
+
+                fwFilterMacRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwFilterMacRulesEntry 1 }
+
+                fwFilterMacRulesRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwFilterMacRulesEntry 2 }
+
+                fwFilterMacRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is active."
+                    ::= { fwFilterMacRulesEntry 3 }
+
+                fwFilterMacRulesHostname OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Host name of the device."
+                    ::= { fwFilterMacRulesEntry 4 }
+
+                fwFilterMacRulesMacAddr OBJECT-TYPE
+                    SYNTAX      MacAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "MAC address of LAN device."
+                    ::= { fwFilterMacRulesEntry 5 }
+
+                fwFilterMacRulesTacDayOfWeek OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Days of week to enforce this rule.
+                         More than one value can be set,
+                         format: Mon,Tue,Wed,Thu,Fri,Sat,Sun"
+                    ::= { fwFilterMacRulesEntry 6 }
+
+                fwFilterMacRulesTacTimeStart OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start time to enforce rule.
+                         Format: HH:MM, between 00:00 and 23:59"
+                    ::= { fwFilterMacRulesEntry 7 }
+
+                fwFilterMacRulesTacTimeEnd OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End time. Format: HH:MM, between 00:00 and 23:59"
+                    ::= { fwFilterMacRulesEntry 8 }
+
+        -- internal->external Service Filter
+        fwFilterService OBJECT IDENTIFIER ::= { fwFilter 7 }
+
+            fwFilterServiceEnable OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Disable the whole internal to external
+                                    service filter.
+                     ipv4-only(2)   Enable the IPv4 internal to external
+                                    service filter.
+                     ipv6-only(3)   Enable the IPv6 internal to external
+                                    service filter.
+                     both(4)        Enable the whole internal to external
+                                    service filter."
+                DEFVAL      { disable }
+                ::= { fwFilterService 1 }
+
+            -- Clear all the rules in current Table.
+            fwFilterServiceRulesClear  OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Set true to clear all the rules in current table.
+                     Set false will do nothing."
+                DEFVAL      { false }
+                ::= { fwFilterService 2 }
+
+            -- Clear all the trust hosts in current Table.
+            fwFilterServiceHostsClear  OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Do nothing.
+                     ipv4-only(2)   Clear all the IPv4 rules.
+                     ipv6-only(3)   Clear all the IPv6 rules.
+                     both(4)        Clear all the rules in current table."
+                DEFVAL      { disable }
+                ::= { fwFilterService 3 }
+
+            -- Rules Table
+            fwFilterServiceRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwFilterServiceRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Internal to external service filter rules table."
+                ::= { fwFilterService 4 }
+
+                fwFilterServiceRulesEntry OBJECT-TYPE
+                    SYNTAX      FwFilterServiceRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwFilterServiceRulesTable."
+                    INDEX       { fwFilterServiceRulesIndex }
+                    ::= { fwFilterServiceRulesTable 1 }
+
+                FwFilterServiceRulesEntry ::=
+                    SEQUENCE {
+                        fwFilterServiceRulesIndex          Integer32,
+                        fwFilterServiceRulesRowStatus      RowStatus,
+                        fwFilterServiceRulesEnable         TruthValue,
+                        fwFilterServiceRulesDescription    DisplayString,
+                        fwFilterServiceRulesProtocol       TransportProtocolType,
+                        fwFilterServiceRulesPortStart      InetPortNumber,
+                        fwFilterServiceRulesPortEnd        InetPortNumber,
+                        fwFilterServiceRulesTacDayOfWeek   DisplayString,
+                        fwFilterServiceRulesTacTimeStart   DisplayString,
+                        fwFilterServiceRulesTacTimeEnd     DisplayString
+                    }
+
+                fwFilterServiceRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwFilterServiceRulesEntry 1 }
+
+                fwFilterServiceRulesRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwFilterServiceRulesEntry 2 }
+
+                fwFilterServiceRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is active."
+                    ::= { fwFilterServiceRulesEntry 3 }
+
+                fwFilterServiceRulesDescription OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Description of this rule."
+                    ::= { fwFilterServiceRulesEntry 4 }
+
+                fwFilterServiceRulesProtocol OBJECT-TYPE
+                    SYNTAX      TransportProtocolType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Protocol type, could be tcp(1), udp(2) and
+                         tcpudp(3)."
+                    ::= { fwFilterServiceRulesEntry 5 }
+
+                fwFilterServiceRulesPortStart OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start port."
+                    ::= { fwFilterServiceRulesEntry 6 }
+
+                fwFilterServiceRulesPortEnd OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End port."
+                    ::= { fwFilterServiceRulesEntry 7 }
+
+                fwFilterServiceRulesTacDayOfWeek OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Days of week to enforce this rule.
+                         More than one value can be set,
+                         format: Mon,Tue,Wed,Thu,Fri,Sat,Sun"
+                    ::= { fwFilterServiceRulesEntry 8 }
+
+                fwFilterServiceRulesTacTimeStart OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start time to enforce rule.
+                         Format: HH:MM, between 00:00 and 23:59"
+                    ::= { fwFilterServiceRulesEntry 9 }
+
+                fwFilterServiceRulesTacTimeEnd OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End time. Format: HH:MM, between 00:00 and 23:59"
+                    ::= { fwFilterServiceRulesEntry 10 }
+
+            -- Trust Hosts Table
+            fwFilterServiceHostsTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwFilterServiceHostsEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Internal to external service trust hosts table."
+                ::= { fwFilterService 5 }
+
+                fwFilterServiceHostsEntry OBJECT-TYPE
+                    SYNTAX      FwFilterServiceHostsEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwFilterServiceHostsTable."
+                    INDEX       { fwFilterServiceHostsIndex }
+                    ::= { fwFilterServiceHostsTable 1 }
+
+                FwFilterServiceHostsEntry ::=
+                    SEQUENCE {
+                        fwFilterServiceHostsIndex        Integer32,
+                        fwFilterServiceHostsRowStatus    RowStatus,
+                        fwFilterServiceHostsEnable       TruthValue,
+                        fwFilterServiceHostsHostname     DisplayString,
+                        fwFilterServiceHostsHostaddr     MacAddress
+                    }
+
+                fwFilterServiceHostsIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwFilterServiceHostsEntry 1 }
+
+                fwFilterServiceHostsRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwFilterServiceHostsEntry 2 }
+
+                fwFilterServiceHostsEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is active."
+                    ::= { fwFilterServiceHostsEntry 3 }
+
+                fwFilterServiceHostsHostname OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Host name of the device."
+                    ::= { fwFilterServiceHostsEntry 4 }
+
+                fwFilterServiceHostsHostaddr OBJECT-TYPE
+                    SYNTAX      MacAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "MAC address of LAN device."
+                    ::= { fwFilterServiceHostsEntry 5 }
+
+        -- internal->external Content Filter
+        fwFilterContent OBJECT IDENTIFIER ::= { fwFilter 8 }
+
+            fwFilterContentEnable OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Disable the whole Content filter.
+                     ipv4-only(2)   Enable the IPv4 Content filter.
+                     ipv6-only(3)   Enable the IPv6 Content filter.
+                     both(4)        Enable the whole Content filter."
+                DEFVAL      { disable }
+                ::= { fwFilterContent 1 }
+
+            -- Clear all the url block rules in current Table.
+            fwFilterContentUrlRulesClear  OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Set true to clear all the rules in current table.
+                     Set false will do nothing."
+                DEFVAL      { false }
+                ::= { fwFilterContent 2 }
+
+            -- Clear all the keyword block rules in current Table.
+            fwFilterContentKwRulesClear  OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Set true to clear all the rules in current table.
+                     Set false will do nothing."
+                DEFVAL      { false }
+                ::= { fwFilterContent 3 }
+
+            -- Clear all the trust hosts in current Table.
+            fwFilterContentHostsClear  OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Do nothing.
+                     ipv4-only(2)   Clear all the IPv4 rules.
+                     ipv6-only(3)   Clear all the IPv6 rules.
+                     both(4)        Clear all the rules in current table."
+                DEFVAL      { disable }
+                ::= { fwFilterContent 4 }
+
+            -- Url Block Rules Table
+            fwFilterContentUrlRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwFilterContentUrlRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Internal to external content filter url block rules table."
+                ::= { fwFilterContent 5 }
+
+                fwFilterContentUrlRulesEntry OBJECT-TYPE
+                    SYNTAX      FwFilterContentUrlRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwFilterContentUrlRulesTable."
+                    INDEX       { fwFilterContentUrlRulesIndex }
+                    ::= { fwFilterContentUrlRulesTable 1 }
+
+                FwFilterContentUrlRulesEntry ::=
+                    SEQUENCE {
+                        fwFilterContentUrlRulesIndex          Integer32,
+                        fwFilterContentUrlRulesRowStatus      RowStatus,
+                        fwFilterContentUrlRulesEnable         TruthValue,
+                        fwFilterContentUrlRulesUrl            DisplayString,
+                        fwFilterContentUrlRulesTacDayOfWeek   DisplayString,
+                        fwFilterContentUrlRulesTacTimeStart   DisplayString,
+                        fwFilterContentUrlRulesTacTimeEnd     DisplayString
+                    }
+
+                fwFilterContentUrlRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwFilterContentUrlRulesEntry 1 }
+
+                fwFilterContentUrlRulesRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwFilterContentUrlRulesEntry 2 }
+
+                fwFilterContentUrlRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is active."
+                    ::= { fwFilterContentUrlRulesEntry 3 }
+
+                fwFilterContentUrlRulesUrl OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "URL(web site) to be blocked."
+                    ::= { fwFilterContentUrlRulesEntry 4 }
+
+                fwFilterContentUrlRulesTacDayOfWeek OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Days of week to enforce this rule.
+                         More than one value can be set,
+                         format: Mon,Tue,Wed,Thu,Fri,Sat,Sun"
+                    ::= { fwFilterContentUrlRulesEntry 5 }
+
+                fwFilterContentUrlRulesTacTimeStart OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start time to enforce rule.
+                         Format: HH:MM, between 00:00 and 23:59"
+                    ::= { fwFilterContentUrlRulesEntry 6 }
+
+                fwFilterContentUrlRulesTacTimeEnd OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End time. Format: HH:MM, between 00:00 and 23:59"
+                    ::= { fwFilterContentUrlRulesEntry 7 }
+
+            -- Keyword Block Rules Table
+            fwFilterContentKwRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwFilterContentKwRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Internal to external content filter
+                     keyword block rules table."
+                ::= { fwFilterContent 6 }
+
+                fwFilterContentKwRulesEntry OBJECT-TYPE
+                    SYNTAX      FwFilterContentKwRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwFilterContentKwRulesTable."
+                    INDEX       { fwFilterContentKwRulesIndex }
+                    ::= { fwFilterContentKwRulesTable 1 }
+
+                FwFilterContentKwRulesEntry ::=
+                    SEQUENCE {
+                        fwFilterContentKwRulesIndex          Integer32,
+                        fwFilterContentKwRulesRowStatus      RowStatus,
+                        fwFilterContentKwRulesEnable         TruthValue,
+                        fwFilterContentKwRulesKeyword        DisplayString,
+                        fwFilterContentKwRulesTacDayOfWeek   DisplayString,
+                        fwFilterContentKwRulesTacTimeStart   DisplayString,
+                        fwFilterContentKwRulesTacTimeEnd     DisplayString
+                    }
+
+                fwFilterContentKwRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwFilterContentKwRulesEntry 1 }
+
+                fwFilterContentKwRulesRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwFilterContentKwRulesEntry 2 }
+
+                fwFilterContentKwRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is active."
+                    ::= { fwFilterContentKwRulesEntry 3 }
+
+                fwFilterContentKwRulesKeyword OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Keyword to be blocked."
+                    ::= { fwFilterContentKwRulesEntry 4 }
+
+                fwFilterContentKwRulesTacDayOfWeek OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Days of week to enforce this rule.
+                         More than one value can be set,
+                         format: Mon,Tue,Wed,Thu,Fri,Sat,Sun"
+                    ::= { fwFilterContentKwRulesEntry 5 }
+
+                fwFilterContentKwRulesTacTimeStart OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start time to enforce rule.
+                         Format: HH:MM, between 00:00 and 23:59"
+                    ::= { fwFilterContentKwRulesEntry 6 }
+
+                fwFilterContentKwRulesTacTimeEnd OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End time. Format: HH:MM, between 00:00 and 23:59"
+                    ::= { fwFilterContentKwRulesEntry 7 }
+
+            -- Trust Hosts Table
+            fwFilterContentHostsTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwFilterContentHostsEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Internal to external content trust hosts table."
+                ::= { fwFilterContent 7 }
+
+                fwFilterContentHostsEntry OBJECT-TYPE
+                    SYNTAX      FwFilterContentHostsEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwFilterContentHostsTable."
+                    INDEX       { fwFilterContentHostsIndex }
+                    ::= { fwFilterContentHostsTable 1 }
+
+                FwFilterContentHostsEntry ::=
+                    SEQUENCE {
+                        fwFilterContentHostsIndex        Integer32,
+                        fwFilterContentHostsRowStatus    RowStatus,
+                        fwFilterContentHostsEnable       TruthValue,
+                        fwFilterContentHostsHostname     DisplayString,
+                        fwFilterContentHostsHostaddr     MacAddress
+                    }
+
+                fwFilterContentHostsIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwFilterContentHostsEntry 1 }
+
+                fwFilterContentHostsRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwFilterContentHostsEntry 2 }
+
+                fwFilterContentHostsEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is active."
+                    ::= { fwFilterContentHostsEntry 3 }
+
+                fwFilterContentHostsHostname OBJECT-TYPE
+                    SYNTAX      DisplayString
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Host name of the device."
+                    ::= { fwFilterContentHostsEntry 4 }
+
+                fwFilterContentHostsHostaddr OBJECT-TYPE
+                    SYNTAX      MacAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "MAC address of LAN device."
+                    ::= { fwFilterContentHostsEntry 5 }
+
+        -- external->internal Service Filter
+        fwFilterIntService OBJECT IDENTIFIER ::= { fwFilter 9 }
+
+            fwFilterIntServiceEnable OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Disable the whole external to internal
+                                    service filter.
+                     ipv4-only(2)   Enable the IPv4 external to internal
+                                    service filter.
+                     ipv6-only(3)   Enable the IPv6 external to internal
+                                    service filter.
+                     both(4)        Enable the whole external to internal
+                                    service filter."
+                DEFVAL      { disable }
+                ::= { fwFilterIntService 1 }
+
+            -- Clear all the rules in current Table.
+            fwFilterIntServiceRulesClear  OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Do nothing.
+                     ipv4-only(2)   Clear all the IPv4 rules.
+                     ipv6-only(3)   Clear all the IPv6 rules.
+                     both(4)        Clear all the rules in current table."
+                DEFVAL      { disable }
+                ::= { fwFilterIntService 2 }
+
+            -- Rules Table
+            fwFilterIntServiceRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwFilterIntServiceRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "External to internal service filter rules table."
+                ::= { fwFilterIntService 3 }
+
+                fwFilterIntServiceRulesEntry OBJECT-TYPE
+                    SYNTAX      FwFilterIntServiceRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwFilterIntServiceRulesTable."
+                    INDEX       { fwFilterIntServiceRulesIndex }
+                    ::= { fwFilterIntServiceRulesTable 1 }
+
+                FwFilterIntServiceRulesEntry ::=
+                    SEQUENCE {
+                        fwFilterIntServiceRulesIndex                 Integer32,
+                        fwFilterIntServiceRulesRowStatus             RowStatus,
+                        fwFilterIntServiceRulesEnable                TruthValue,
+                        fwFilterIntServiceRulesProtocol              TransportProtocolType,
+                        fwFilterIntServiceRulesRemoteHostStartType   InetAddressType,
+                        fwFilterIntServiceRulesRemoteHostStart       InetAddress,
+                        fwFilterIntServiceRulesRemoteHostEndType     InetAddressType,
+                        fwFilterIntServiceRulesRemoteHostEnd         InetAddress,
+                        fwFilterIntServiceRulesLocalHostStartType    InetAddressType,
+                        fwFilterIntServiceRulesLocalHostStart        InetAddress,
+                        fwFilterIntServiceRulesLocalHostEndType      InetAddressType,
+                        fwFilterIntServiceRulesLocalHostEnd          InetAddress,
+                        fwFilterIntServiceRulesPortStart             InetPortNumber,
+                        fwFilterIntServiceRulesPortEnd               InetPortNumber
+                    }
+
+                fwFilterIntServiceRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwFilterIntServiceRulesEntry 1 }
+
+                fwFilterIntServiceRulesRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwFilterIntServiceRulesEntry 2 }
+
+                fwFilterIntServiceRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is active."
+                    ::= { fwFilterIntServiceRulesEntry 3 }
+
+                fwFilterIntServiceRulesProtocol OBJECT-TYPE
+                    SYNTAX      TransportProtocolType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Protocol type, could be tcp(1), udp(2) and
+                         tcpudp(3)."
+                    ::= { fwFilterIntServiceRulesEntry 4 }
+
+                fwFilterIntServiceRulesRemoteHostStartType OBJECT-TYPE
+                    SYNTAX      InetAddressType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "IPv4 address or IPv6 address."
+                    ::= { fwFilterIntServiceRulesEntry 5 }
+
+                fwFilterIntServiceRulesRemoteHostStart OBJECT-TYPE
+                    SYNTAX      InetAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start IP of remote host IP range."
+                    ::= { fwFilterIntServiceRulesEntry 6 }
+
+                fwFilterIntServiceRulesRemoteHostEndType OBJECT-TYPE
+                    SYNTAX      InetAddressType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "IPv4 address or IPv6 address."
+                    ::= { fwFilterIntServiceRulesEntry 7 }
+
+                fwFilterIntServiceRulesRemoteHostEnd OBJECT-TYPE
+                    SYNTAX      InetAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End IP of remote host IP range."
+                    ::= { fwFilterIntServiceRulesEntry 8 }
+
+                fwFilterIntServiceRulesLocalHostStartType OBJECT-TYPE
+                    SYNTAX      InetAddressType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Public IPv4 address or IPv6 address."
+                    ::= { fwFilterIntServiceRulesEntry 9 }
+
+                fwFilterIntServiceRulesLocalHostStart OBJECT-TYPE
+                    SYNTAX      InetAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start IP of internal IP range."
+                    ::= { fwFilterIntServiceRulesEntry 10 }
+
+                fwFilterIntServiceRulesLocalHostEndType OBJECT-TYPE
+                    SYNTAX      InetAddressType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Public IPv4 address or IPv6 address."
+                    ::= { fwFilterIntServiceRulesEntry 11 }
+
+                fwFilterIntServiceRulesLocalHostEnd OBJECT-TYPE
+                    SYNTAX      InetAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End IP of internal IP range."
+                    ::= { fwFilterIntServiceRulesEntry 12 }
+
+                fwFilterIntServiceRulesPortStart OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start port of public port range."
+                    ::= { fwFilterIntServiceRulesEntry 13 }
+
+                fwFilterIntServiceRulesPortEnd OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End port of public port range."
+                    ::= { fwFilterIntServiceRulesEntry 14 }
+
+        -- Internal Public IPv4 address Block, only for IPV4
+        fwFilterPubIP   OBJECT IDENTIFIER ::= { fwFilter 10 }
+
+            fwFilterPubIPEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/disable internal to external access control
+                     for IPv4 Public address."
+                DEFVAL      { true }
+                ::= { fwFilterPubIP 1 }
+
+            -- Clear all the rules in current Table.
+            fwFilterPubIPRulesClear  OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Set true to clear all the rules in current table.
+                     Set false will do nothing."
+                DEFVAL      { false }
+                ::= { fwFilterPubIP 2 }
+
+            -- Rules Table
+            fwFilterPubIPRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwFilterPubIPRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Public LAN access control rules table."
+                ::= { fwFilterPubIP 3 }
+
+                fwFilterPubIPRulesEntry OBJECT-TYPE
+                    SYNTAX      FwFilterPubIPRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwFilterPubIPRulesTable."
+                    INDEX       { fwFilterPubIPRulesIndex }
+                    ::= { fwFilterPubIPRulesTable 1 }
+
+                FwFilterPubIPRulesEntry ::=
+                    SEQUENCE {
+                        fwFilterPubIPRulesIndex       Integer32,
+                        fwFilterPubIPRulesRowStatus   RowStatus,
+                        fwFilterPubIPRulesEnable      TruthValue,
+                        fwFilterPubIPRulesIpStart     IpAddress,
+                        fwFilterPubIPRulesIpEnd       IpAddress
+                    }
+
+                fwFilterPubIPRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwFilterPubIPRulesEntry 1 }
+
+                fwFilterPubIPRulesRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwFilterPubIPRulesEntry 2 }
+
+                fwFilterPubIPRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is active."
+                    ::= { fwFilterPubIPRulesEntry 3 }
+
+                fwFilterPubIPRulesIpStart OBJECT-TYPE
+                    SYNTAX      IpAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start IP of internal public IP range.
+                         Value '0.0.0.0' indicates any host."
+                    ::= { fwFilterPubIPRulesEntry 4 }
+
+                fwFilterPubIPRulesIpEnd OBJECT-TYPE
+                    SYNTAX      IpAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End IP of internal public IP range."
+                    ::= { fwFilterPubIPRulesEntry 5 }
+
+        -- Firewall Level
+        fwFilterLevel   OBJECT IDENTIFIER ::= { fwFilter 11 }
+
+            fwFilterLevelMode OBJECT-TYPE
+                SYNTAX      INTEGER {
+                                high(0),
+                                medium(1),
+                                low(2),
+                                custom(3)
+                            }
+                MAX-ACCESS  read-create
+                STATUS      current
+                DESCRIPTION
+                    "Configure firewall security level."
+                DEFVAL      { low }
+                ::= { fwFilterLevel 1 }
+
+            -- Rules Table
+            fwFilterLevelCusRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwFilterLevelCusRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Firewall custom level rules table."
+                ::= { fwFilterLevel 2 }
+
+                fwFilterLevelCusRulesEntry OBJECT-TYPE
+                    SYNTAX      FwFilterLevelCusRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwFilterLevelCusRulesTable."
+                    INDEX       { fwFilterLevelCusRulesIndex }
+                    ::= { fwFilterLevelCusRulesTable 1 }
+
+                FwFilterLevelCusRulesEntry ::=
+                    SEQUENCE {
+                        fwFilterLevelCusRulesIndex    Integer32,
+                        fwFilterLevelCusRulesEnable   TruthValue,
+                        fwFilterLevelCusRulesType     INTEGER
+                    }
+
+                fwFilterLevelCusRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwFilterLevelCusRulesEntry 1 }
+
+                fwFilterLevelCusRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Bool value indicates whether this rule is active."
+                    ::= { fwFilterLevelCusRulesEntry 2 }
+
+                fwFilterLevelCusRulesType OBJECT-TYPE
+                    SYNTAX      INTEGER {
+                                    http(0),
+                                    icmp(1),
+                                    p2p(2),
+                                    ident(3),
+                                    firewall(4)
+                                }
+                    MAX-ACCESS  read-only
+                    STATUS      current
+                    DESCRIPTION
+                        "Protocol type to block. If firewall(4) is enable, firewall will be disabled"
+                    ::= { fwFilterLevelCusRulesEntry 3 }
+
+    -- Remote Management
+    fwRemoteManagement  OBJECT IDENTIFIER ::= { hitronRgFw 3 }
+
+        -- external->internal Remote Management
+        fwRemoteManagementExt OBJECT IDENTIFIER ::= { fwRemoteManagement 1 }
+
+            fwRemoteManagementExtEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/disable external to internal remote management."
+                DEFVAL      { true }
+                ::= { fwRemoteManagementExt 1 }
+
+            -- Clear all external hosts in current Table.
+            fwRemoteManagementExtHostsClear  OBJECT-TYPE
+                SYNTAX      FirewallControlTetrad
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "disable(1)     Do nothing.
+                     ipv4-only(2)   Clear all the IPv4 rules.
+                     ipv6-only(3)   Clear all the IPv6 rules.
+                     both(4)        Clear all the rules in current table."
+                DEFVAL      { disable }
+                ::= { fwRemoteManagementExt 2 }
+
+            fwRemoteManagementExtAllowAll OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Set true to allow all remote hosts,
+                     set false to block all remote hosts
+                     except which in allow list."
+                DEFVAL      { false }
+                ::= { fwRemoteManagementExt 3 }
+
+            -- Rules Table
+            fwRemoteManagementExtRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwRemoteManagementExtRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "External to internal remote management rules table."
+                ::= { fwRemoteManagementExt 4 }
+
+                fwRemoteManagementExtRulesEntry OBJECT-TYPE
+                    SYNTAX      FwRemoteManagementExtRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwRemoteManagementExtRulesTable."
+                    INDEX       { fwRemoteManagementExtRulesIndex }
+                    ::= { fwRemoteManagementExtRulesTable 1 }
+
+                FwRemoteManagementExtRulesEntry ::=
+                    SEQUENCE {
+                        fwRemoteManagementExtRulesIndex          Integer32,
+                        fwRemoteManagementExtRulesEnable         TruthValue,
+                        fwRemoteManagementExtRulesRedirectPort   InetPortNumber,
+                        fwRemoteManagementExtRulesDefaultPort    InetPortNumber
+                    }
+
+                fwRemoteManagementExtRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwRemoteManagementExtRulesEntry 1 }
+
+                fwRemoteManagementExtRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Enable/disable this rule."
+                    ::= { fwRemoteManagementExtRulesEntry 2 }
+
+                fwRemoteManagementExtRulesRedirectPort OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Redirect port opened to remote host."
+                    ::= { fwRemoteManagementExtRulesEntry 3 }
+
+                fwRemoteManagementExtRulesDefaultPort OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-only
+                    STATUS      current
+                    DESCRIPTION
+                        "Default internal port."
+                    ::= { fwRemoteManagementExtRulesEntry 4 }
+
+            -- Allow Hosts Table
+            fwRemoteManagementExtHostsTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwRemoteManagementExtHostsEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Allowed remote hosts table."
+                ::= { fwRemoteManagementExt 5 }
+
+                fwRemoteManagementExtHostsEntry OBJECT-TYPE
+                    SYNTAX      FwRemoteManagementExtHostsEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwRemoteManagementExtHostsTable."
+                    INDEX       { fwRemoteManagementExtHostsIndex }
+                    ::= { fwRemoteManagementExtHostsTable 1 }
+
+                FwRemoteManagementExtHostsEntry ::=
+                    SEQUENCE {
+                        fwRemoteManagementExtHostsIndex         Integer32,
+                        fwRemoteManagementExtHostsRowStatus     RowStatus,
+                        fwRemoteManagementExtHostsIpStartType   InetAddressType,
+                        fwRemoteManagementExtHostsIpStart       InetAddress,
+                        fwRemoteManagementExtHostsIpEndType     InetAddressType,
+                        fwRemoteManagementExtHostsIpEnd         InetAddress
+                    }
+
+                fwRemoteManagementExtHostsIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwRemoteManagementExtHostsEntry 1 }
+
+                fwRemoteManagementExtHostsRowStatus OBJECT-TYPE
+                    SYNTAX      RowStatus
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "RowStatus used to manage the creation and deletion
+                         of conceptual row."
+                    ::= { fwRemoteManagementExtHostsEntry 2 }
+
+                fwRemoteManagementExtHostsIpStartType OBJECT-TYPE
+                    SYNTAX      InetAddressType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "IPv4 address or IPv6 address."
+                    ::= { fwRemoteManagementExtHostsEntry 3 }
+
+                fwRemoteManagementExtHostsIpStart OBJECT-TYPE
+                    SYNTAX      InetAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Start IP of remote host IP range which allow to
+                         access device."
+                    ::= { fwRemoteManagementExtHostsEntry 4 }
+
+                fwRemoteManagementExtHostsIpEndType OBJECT-TYPE
+                    SYNTAX      InetAddressType
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "IPv4 address or IPv6 address."
+                    ::= { fwRemoteManagementExtHostsEntry 5 }
+
+                fwRemoteManagementExtHostsIpEnd OBJECT-TYPE
+                    SYNTAX      InetAddress
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "End IP of remote host IP range."
+                    ::= { fwRemoteManagementExtHostsEntry 6 }
+
+        -- Internal Remote Management
+        fwRemoteManagementInt OBJECT IDENTIFIER ::= { fwRemoteManagement 2 }
+
+            fwRemoteManagementIntEnable OBJECT-TYPE
+                SYNTAX      TruthValue
+                MAX-ACCESS  read-write
+                STATUS      current
+                DESCRIPTION
+                    "Enable/disable local management."
+                DEFVAL      { true }
+                ::= { fwRemoteManagementInt 1 }
+
+            -- Rules Table
+            fwRemoteManagementIntRulesTable OBJECT-TYPE
+                SYNTAX      SEQUENCE OF FwRemoteManagementIntRulesEntry
+                MAX-ACCESS  not-accessible
+                STATUS      current
+                DESCRIPTION
+                    "Local management rules table."
+                ::= { fwRemoteManagementInt 2 }
+
+                fwRemoteManagementIntRulesEntry OBJECT-TYPE
+                    SYNTAX      FwRemoteManagementIntRulesEntry
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Entry of the fwRemoteManagementIntRulesTable."
+                    INDEX       { fwRemoteManagementIntRulesIndex }
+                    ::= { fwRemoteManagementIntRulesTable 1 }
+
+                FwRemoteManagementIntRulesEntry ::=
+                    SEQUENCE {
+                        fwRemoteManagementIntRulesIndex          Integer32,
+                        fwRemoteManagementIntRulesEnable         TruthValue,
+                        fwRemoteManagementIntRulesDefaultPort    InetPortNumber
+                    }
+
+                fwRemoteManagementIntRulesIndex OBJECT-TYPE
+                    SYNTAX      Integer32
+                    MAX-ACCESS  not-accessible
+                    STATUS      current
+                    DESCRIPTION
+                        "Index of the rules."
+                    ::= { fwRemoteManagementIntRulesEntry 1 }
+
+                fwRemoteManagementIntRulesEnable OBJECT-TYPE
+                    SYNTAX      TruthValue
+                    MAX-ACCESS  read-create
+                    STATUS      current
+                    DESCRIPTION
+                        "Enable/disable this rule."
+                    ::= { fwRemoteManagementIntRulesEntry 2 }
+
+                fwRemoteManagementIntRulesDefaultPort OBJECT-TYPE
+                    SYNTAX      InetPortNumber
+                    MAX-ACCESS  read-only
+                    STATUS      current
+                    DESCRIPTION
+                        "Default internal port."
+                    ::= { fwRemoteManagementIntRulesEntry 3 }
+    fwCommit    OBJECT IDENTIFIER  ::= { hitronRgFw 4 }        
+        fwCommitAll  OBJECT-TYPE
+            SYNTAX      TruthValue
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+                "Commit all RgNi settings."
+            ::= { fwCommit 1 }
+
+END

@@ -1,0 +1,219 @@
+--**************************************************************************
+--                                                                          
+--    Copyright 2011 Cisco Systems, Inc.                                   
+--    All Rights Reserved                                                   
+--    No portions of this material may be reproduced in any
+--    form without the written permission of:                                                
+--             Cisco Systems Inc.                                           
+--             170 West Tasman Dr.                                    
+--             San Jose, CA 95134                                    
+--             USA                                                             
+--**************************************************************************
+
+SA-BATTERY-MIB DEFINITIONS ::= BEGIN
+IMPORTS
+        DateAndTime,
+        TruthValue,
+        DisplayString
+                FROM SNMPv2-TC
+        MODULE-IDENTITY, 
+        OBJECT-TYPE,enterprises, 
+        Integer32,IpAddress
+                FROM SNMPv2-SMI
+        ifIndex
+                FROM IF-MIB;
+                
+sa           OBJECT IDENTIFIER ::= { enterprises 1429 }
+saVoip       OBJECT IDENTIFIER ::= { sa 78 }
+
+saBattery MODULE-IDENTITY
+        LAST-UPDATED    "201405010000Z"
+        ORGANIZATION    "Cisco Systems"
+        CONTACT-INFO    "http://support.cisco.com"
+        DESCRIPTION
+            "MTA Battery status."
+
+        -- History 
+        REVISION     "201405010000Z"
+        DESCRIPTION
+            "Added saBatteryModelNumber"
+
+        REVISION     "201210010000Z"
+        DESCRIPTION
+            "Removed saBatteryCurrent and saBatteryVoltage reference from SaBatteryIfOperationEntry"
+
+        REVISION     "201209120000Z"
+        DESCRIPTION
+            "Added saBatteryCurrent and saBatteryVoltage"
+
+	  REVISION     "201012060000Z"
+        DESCRIPTION
+            "Clarified saMtaBatteryEndPntRingPower mib values 2 and 3 are not supported
+             for Docsis 3.0(CR-17531)"
+
+                       
+        REVISION     "0903270000Z"
+        DESCRIPTION
+            "Added saBatterySerialNumber and saBatteryDateCode(CR-3683)"
+
+        REVISION     "0711160000Z"
+        DESCRIPTION
+            "Added saBatteryIfOperationTable (1950)"
+
+        REVISION     "0708140000Z"
+        DESCRIPTION
+            "Changed UNITS to percent for saBatteryReplacePercentage (1665)"
+
+        REVISION     "0702070000Z"
+        DESCRIPTION
+            "Changed description for saMtaBatteryEndPntRingPower
+             Removed DEVFAL and changed description for saMtaBatteryEndPntPower"
+
+        REVISION     "0608110000Z"
+        DESCRIPTION
+            "Added saBatteryType (867)
+             Changed OID for saBatteryHsdPower (867)
+             Changed OID for saBatteryRfAmpPower (867)
+             Added saBatteryCurrentStateA (356)
+             Added saBatteryCurrentStateB (356)"
+
+
+        ::= { saVoip 2 }
+        
+
+saBatteryAcFail OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+        }
+    MAX-ACCESS 	  read-only
+    STATUS        current
+    DESCRIPTION	
+        "Show the Battery AC status(AC_STATUS):
+         0: AC Restored,
+         1: AC Fail "
+    ::= { saBattery 1 }
+
+saBatteryReplace OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+        }
+    MAX-ACCESS 	  read-only
+    STATUS        current
+    DESCRIPTION	
+        "Show the Battery life status(BATTERY_STATUS):
+         0: Battery Good,
+         1: Replace Battery "
+    ::= { saBattery 2 }
+
+saBatteryMissing OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+          true(1)
+        }
+    MAX-ACCESS 	  read-only
+    STATUS        current
+    DESCRIPTION	
+        "Show the Battery presence status(BATTERY_EXIST):
+         0: Battery Present,
+         1: Battery Missing "
+    ::= { saBattery 3 }
+
+saBatteryLow OBJECT-TYPE
+    SYNTAX INTEGER {
+          false(0),
+	  true(1)
+        }
+    MAX-ACCESS 	  read-only
+    STATUS        current
+    DESCRIPTION	
+        "Show the Battery charge status(BATTERY_ENERGY):
+         0: Battery Not Low,
+         1: Battery Low "
+    ::= { saBattery 4 }
+
+saBatteryReplacePercentage OBJECT-TYPE
+    SYNTAX  INTEGER (0..100)
+    UNITS        "percent"
+    MAX-ACCESS 	  read-write
+    STATUS        current  
+    DESCRIPTION	
+        "This MIB defines the percentage capacity at which the Replace Battery telemetry will be activated."
+    DEFVAL { 55 }          
+    ::= { saBattery 15 }
+
+
+saBatteryKFactorChargeLevel OBJECT-TYPE
+    SYNTAX  INTEGER (60..100)
+    UNITS        "percent"
+    MAX-ACCESS 	  read-write
+    STATUS        current  
+    DESCRIPTION	
+        "Defines the charge level percent to which the internal batteries will be charged."
+    DEFVAL { 85 }          
+    ::= { saBattery 16 }
+
+
+saBatteryCurrentStateA OBJECT-TYPE 
+	SYNTAX INTEGER {
+        missing(0),
+        idle(1),
+        charging(2),
+        discharging(3)
+    }
+    MAX-ACCESS 	  read-only
+    STATUS        current  
+    DESCRIPTION	
+        "Displays the current state of the Battery.
+         missing - indicates that battery is not present in slot
+         idle - Indicates the battery is neither charging nor discharging
+         charging - Battery is in charge mode
+         discharging - Battery is being used to power the EMTA"
+    ::= { saBattery 17 }
+
+saBatterySerialNumber OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Battery Serial Number."
+    ::= { saBattery 20 }
+
+
+saBatteryCurrent OBJECT-TYPE
+     SYNTAX INTEGER 
+     UNITS "milliAmps"
+     MAX-ACCESS read-only
+     STATUS current
+     DESCRIPTION
+         "This will provide the current in milliAmps that is flowing from the battery
+          at that particular time. This will help to identify the health of the battery."
+
+     DEFVAL { 0 }
+     ::= { saBattery 22}
+  
+saBatteryVoltage OBJECT-TYPE
+     SYNTAX INTEGER 
+     UNITS "milliVolts"
+     MAX-ACCESS read-only
+     STATUS current
+     DESCRIPTION
+         "This will provide the voltage in milliVolts that shows the electric potential 
+          difference of the battery at that particular time. This will help to identify 
+          the health of the battery."
+
+     DEFVAL { 0 }
+     ::= { saBattery 23 }
+
+saBatteryModelNumber OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Battery Model Number.
+	For example: PB013"
+    ::= { saBattery 24 }
+
+ 
+  END

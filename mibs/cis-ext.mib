@@ -1,0 +1,1666 @@
+-- *****************************************************************
+-- CISCO-DOCS-EXT-MIB.my: Cisco Data Over Cable Service extension MIB file
+--
+-- October 1998, Minnie Lu
+--
+-- Copyright (c) 1998, 1999 by Cisco Systems, Inc.
+-- All rights reserved.
+-- *****************************************************************
+
+CISCO-DOCS-EXT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        NOTIFICATION-TYPE,
+        Integer32,
+        Counter32,
+        IpAddress
+                FROM SNMPv2-SMI
+        TruthValue,
+        DisplayString,
+        MacAddress,
+        TimeStamp, 
+        RowStatus,
+        TimeInterval
+                FROM SNMPv2-TC
+        OBJECT-GROUP,
+        MODULE-COMPLIANCE
+                FROM SNMPv2-CONF
+        ifIndex,
+        InterfaceIndex
+                FROM IF-MIB
+        docsIfCmtsServiceEntry,
+        docsIfCmtsCmStatusEntry, 
+        docsIfCmtsCmStatusIndex, 
+        docsIfCmtsMacEntry,
+        docsIfCmtsCmStatusMacAddress,
+        docsIfCmtsCmStatusIpAddress,
+        docsIfCmtsCmStatusDownChannelIfIndex,
+        docsIfCmtsCmStatusUpChannelIfIndex
+                FROM DOCS-IF-MIB 
+        ciscoMgmt
+                FROM CISCO-SMI;
+
+ciscoDocsExtMIB MODULE-IDENTITY
+        LAST-UPDATED    "9901210000Z"
+        ORGANIZATION    "Cisco Systems, Inc."
+        CONTACT-INFO
+            "        Cisco Systems
+                     Customer Service
+
+             Postal: Cisco Systems
+                     170 West Tasman Drive
+                     San Jose, CA 95134
+                     U.S.A.
+             Phone:  +1 800 553-NETS 
+             E-mail: cs-ubr@cisco.com"
+
+        DESCRIPTION
+            "This is the MIB module for the Cisco specific extension 
+             objects of Data Over Cable Service, Radio Frequency 
+             interface.  There is a standard MIB for Data-Over-Cable 
+             Service Interface Specifications (DOCSIS) and in Cisco,
+             it is called DOCS-IF-MIB. Besides the objects in 
+             DOCS-IF-MIB, this MIB module contains the extension 
+             objects to manage the Cable Modem Termination Systems (CMTS).
+
+             This MIB module includes objects for the scheduler 
+             that supports Quality of Service (QoS) of MCNS/DOCSIS 
+             compliant Radio Frequency (RF) interfaces in Cable Modem 
+             Termination Systems (CMTS). And the purpose is to let 
+             users configure attributes of the schedulers in 
+             order to ensure the Quality of Service and fairness for 
+             modem requests according to users' business needs. 
+             Also this MIB shows various states of the schedulers 
+             for users to monitor of the schedulers' current status. 
+            
+             This MIB module also includes connection status objects
+             for cable modems and Customer Premise Equipment (CPE) 
+             and the purpose is to let users easily get the connection 
+             status and manage access group information about cable 
+             modems and CPE. "
+        ::= { ciscoMgmt 116 }
+
+
+ciscoDocsExtMIBObjects  OBJECT IDENTIFIER ::= { ciscoDocsExtMIB 1 }
+
+cdxQosCtrlObjects OBJECT IDENTIFIER ::= { ciscoDocsExtMIBObjects 1 }
+cdxQosQueueObjects OBJECT IDENTIFIER ::= { ciscoDocsExtMIBObjects 2 }
+cdxCmtsCmCpeObjects OBJECT IDENTIFIER ::= { ciscoDocsExtMIBObjects 3 }
+
+
+--
+-- Scheduler QoS Control Group  
+--
+-- To ensure Quality of Service and fairness, the scheduler needs to 
+-- control the traffic. This group includes attributes that user can 
+-- configure how the scheduler controls the traffic and attributes 
+-- showing the current status of the scheduler admission and rate 
+-- control.     
+--
+-- For each Service ID, there is one Quality of Service profile 
+-- associated with it. The QoS profile limits the request (upstream)/
+-- packet (downstream) size for the Service ID and also defines the 
+-- minimum guaranteed upstream bandwidth. Each modem's request 
+-- associated with a Service ID needs to follow the Quality of 
+-- Service profile constraints. 
+--
+
+--
+-- Quality of Service control upstream table
+--
+-- Quality of Service control objects for the upstream interface
+--
+-- Because upstream's bandwidth(BW) is limited, the upstream scheduler 
+-- needs to control the registration according to the upstream's
+-- bandwidth(BW) capacity for new cable modem asking to be supported in 
+-- this upstream.  This table contains the configurable objects that user 
+-- can enable or disable the controlling process of the scheduler and
+-- the state objects that shows the current status of the scheduler. 
+--
+
+cdxQosCtrlUpTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF CdxQosCtrlUpEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "For each upstream interface, this table maintains a number 
+             of objects related to Quality of Service scheduler which uses
+             these attributes to control cable modem registration. "
+        ::= { cdxQosCtrlObjects 1 }
+
+cdxQosCtrlUpEntry OBJECT-TYPE
+        SYNTAX      CdxQosCtrlUpEntry 
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "A list of attributes for each upstream MAC scheduler 
+             that supports Quality of Service.  Entries in this table
+             exist for each ifEntry with ifType of docsCableUpstream(129). "
+        REFERENCE
+            "Data-Over-Cable Service Interface Specifications (DOCSIS)
+             Radio Frequency Interface Specification (SP-RFI-I04-980724), 
+             section 6.4 and appendix C.
+            
+             docsIfQosProfileTable and docsIfCmtsServiceTable in 
+             DOCS-IF-MIB.my. "
+        INDEX { ifIndex }
+        ::= { cdxQosCtrlUpTable 1 }
+
+CdxQosCtrlUpEntry ::= SEQUENCE {
+            cdxQosCtrlUpAdmissionCtrl        TruthValue,
+            cdxQosCtrlUpMaxRsvdBWPercent     Integer32,
+            cdxQosCtrlUpAdmissionRejects     Counter32,
+            cdxQosCtrlUpReservedBW           Integer32,
+            cdxQosCtrlUpMaxVirtualBW         Integer32
+        }
+
+cdxQosCtrlUpAdmissionCtrl OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The admission control status for this upstream entry.
+
+             When this object is set to 'true', if there is a new modem 
+             with minimum guaranteed upstream bandwidth in its QoS class 
+             requesting to be supported in this upstream, the upstream 
+             scheduler will check the virtual reserved bandwidth remaining 
+             capacity before giving admission to this new modem. If there 
+             is not enough reserved upstream bandwidth to server the modem's 
+             minimum guaranteed bandwidth, the registration request will be 
+             rejected.  
+
+             This object is set to 'false' to disable admission control.
+             That is, there will be no checking for bandwidth capacity and 
+             the upstream interface scheduler just admits modem registration 
+             requests. "   
+        ::= { cdxQosCtrlUpEntry 1 }
+
+cdxQosCtrlUpMaxRsvdBWPercent OBJECT-TYPE
+        SYNTAX      Integer32 (10..1000)
+        UNITS       "percent"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The percentage of upstream maximum reserved bandwidth to the 
+             raw bandwidth if the admission control is enabled on this 
+             upstream. 
+
+             For example, if the upstream interface has raw bandwidth 
+             1,600,000 bits/second and cdxQosCtrlUpMaxRsvdBWPercent is 200 
+             percent, then this upstream scheduler will set the maximum of 
+             virtual reserved bandwidth capacity to 3,200,000 bits/second 
+             (1,600,000 * 2) to serve cable modems with minimum guaranteed 
+             upstream bandwidth.  
+
+             The default value is 100 percent (that is, maximum reserved 
+             bandwidth is the raw bandwidth.) Whenever the admission control 
+             is changed (on to off, off to on), this value will be reset to 
+             the default value 100.  
+    
+             If the admission control is disabled, the value will be reset 
+             to 100 (the default value). "  
+        ::= { cdxQosCtrlUpEntry 2 }
+
+cdxQosCtrlUpAdmissionRejects OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The count of cable modem registration requests rejected on 
+             this upstream interface due to insufficient reserved 
+             bandwidth for serving the cable modem with minimum guaranteed 
+             bandwidth in its Quality of Service class when admission 
+             control is enabled on this upstream interface. "
+        ::= { cdxQosCtrlUpEntry 3 }
+ 
+cdxQosCtrlUpReservedBW OBJECT-TYPE
+        SYNTAX      Integer32 (0..102400000)
+        UNITS       "bits/second"
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The current total reserved bandwidth in bits per second of this 
+             upstream interface.  It is the sum of all cable modems' minimum 
+             guaranteed bandwidth in bits per second currently supported 
+             on this upstream. "  
+        ::= { cdxQosCtrlUpEntry 4 }
+
+cdxQosCtrlUpMaxVirtualBW OBJECT-TYPE
+        SYNTAX      Integer32 (0..102400000)
+        UNITS       "bits/second"
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The maximum virtual bandwidth capacity of this upstream interface
+             if the admission control is enabled. It is the raw bandwidth 
+             in bits per second times the percentage. If the admission 
+             control is disabled, then this object will contain the value 
+             zero. "  
+        ::= { cdxQosCtrlUpEntry 5 }
+
+--
+-- Rate Limiting table
+--
+-- After a cable modem is registered, upstream and downstream schedulers
+-- will control the bandwidth request/packet size to ensure the Quality of 
+-- Service and fairness by a rate limiting algorithm.  This table
+-- contains attributes related to the rate limiting algorithms.
+--
+
+cdxQosIfRateLimitTable  OBJECT-TYPE
+       SYNTAX      SEQUENCE OF CdxQosIfRateLimitEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+           "This table describes the attributes of rate limiting for 
+            schedulers in cable upstream and downstream interfaces that 
+            support Quality of Service.  The rate limiting process is 
+            to ensure the Quality of Service and fairness. "
+       ::= { cdxQosCtrlObjects 2 }
+
+cdxQosIfRateLimitEntry OBJECT-TYPE
+       SYNTAX      CdxQosIfRateLimitEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+            "List of the rate limiting attributes for cable upstream and 
+             downstream interfaces schedulers that support Quality of 
+             Service. Entries in this table exist for each ifEntry with 
+             ifType of docsCableUpstream(129) and docsCableDownstream(128)."
+       REFERENCE
+            "Data-Over-Cable Service Interface Specifications (DOCSIS)
+             Radio Frequency Interface Specification (SP-RFI-I04-980724),
+             section 6.4 and appendix C.
+
+             docsIfQosProfileTable and docsIfCmtsServiceTable in
+             DOCS-IF-MIB.my. "
+       INDEX { ifIndex }
+       ::= { cdxQosIfRateLimitTable 1 } 
+
+CdxQosIfRateLimitEntry ::= SEQUENCE {
+           cdxQosIfRateLimitAlgm       INTEGER,
+           cdxQosIfRateLimitExpWt      Integer32
+       }
+
+cdxQosIfRateLimitAlgm OBJECT-TYPE
+       SYNTAX       INTEGER {
+           noRateLimit(1),      -- rate limiting process is disabled
+           oneSecBurst(2),      -- Bursty 1 second token bucket algorithm
+           carLike(3),          -- Average token usage algorithm (CAR-like)
+           wtExPacketDiscard(4) -- Weighted excess packet discard algorithm
+       }
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+           "To ensure fairness, the modem bandwidth request (upstream)/
+            packet (downstream) size could be controlled. Every Service 
+            ID (Sid) is assigned two token buckets, one for upstream rate 
+            limiting with chosen algorithm and one for downstream rate 
+            limiting with chosen algorithm. 
+
+            The enumerations for the rate limiting algorithm are:
+             noRateLimit(1): The rate limiting is disabled. No rate limiting.
+             oneSecBurst(2): Bursty 1 second token bucket algorithm.
+             carlike(3): Average token usage (CAR-like) algorithm.
+             wtExPacketDiscard(4): Weighted excess packet discard algorithm.
+
+            Upstream supports the following: 
+              No rate limiting (1), 
+              Bursty 1 second token bucket algorithm(2) and
+              Average token usage (CAR-like) algorithm(3).
+
+            Downstream supports the following:
+              No rate limiting (1), 
+              Bursty 1 second token bucket algorithm(2),
+              Average token usage (CAR-like) algorithm(3), and
+              Weighted excess packet discard algorithm(4).
+
+            Bursty 1 second token bucket algorithm(2) is the
+            default algorithm for upstream and downstream.
+
+            Each algorithm is described as below:
+              No rate limiting: 
+                The rate limiting process is disabled and no checking 
+                against the maximum bandwidth allowed. 
+
+              Bursty 1 second token bucket rate limiting algorithm: 
+                In this algorithm, at the start of every 1 second interval, 
+                a Sid's token usage is reset to 0, and every time the 
+                modem for that Sid sends a request (upstream) / 
+                packet (downstream) the upstream/downstream bandwidth 
+                token usage is incremented by the size of the 
+                request/packet sent. As long as the Sid's bandwidth 
+                token usage is less than the maximum bandwidth in bits 
+                per second (peak rate limit) in its QoS service class 
+                allows, the request/packets will not be restricted. 
+                Once the Sid has sent more than its peak rate in the 
+                one second interval, it is prevented from sending more 
+                data by rejecting request (upstream) or dropping 
+                packets (downstream). This is expected to slow down
+                the higher layer sources. The token usage counter gets 
+                reset to 0 after 1 second interval has elapsed and the 
+                modem for that Sid is free to send more data up to the 
+                peak rate limit in the new 1 second interval that begins.  
+
+              Average token usage (Cisco CAR like) algorithm:
+                This algorithm maintains a continuous average of the 
+                burst token usage of a Sid. There is no sudden refilling of
+                tokens every 1 second interval. Every time a request/packet 
+                is to be handled, the scheduler tries to see how much time has
+                elapsed since last transmission, and computes the number of 
+                tokens accumulated by this Sid at its QoS class peak rate. 
+                If burst usage of the Sid is less than tokens accumulated, 
+                the burst usage is reset to 0 and request/packet is 
+                forwarded. If the Sid has accumulated fewer tokens than 
+                its burst usage, the burst usage shows an outstanding 
+                balance usage after decrementing by the tokens accumulated. 
+                In such cases, the request/packet is still forwarded, 
+                provided the Sid's outstanding usage does not exceed peak 
+                rate limit of its QoS class. If outstanding burst usage 
+                exceeds the peak rate of the class, the Sid is given some 
+                token credit up to certain maximum credit limit and 
+                request/packet is forwarded. The request/packet is dropped 
+                when outstanding usage exceeds peak rate and maximum 
+                credit has been used up by this Sid. This algorithm tracks 
+                long term average bandwidth usage of the Sid and controls 
+                this average usage at the peak rate limit.
+
+              Weighted excess packet discard algorithm:
+                This rate limiting algorithm is only available as an option 
+                for downstream rate limiting. The algorithm is to maintain an 
+                weighted exponential moving average of the loss rate of a 
+                Sid over time. The loss rate, expressed in packets, 
+                represents the number of packets that can be sent from this 
+                Sid in a one second interval before a packet will be dropped. 
+                At every one second interval, the loss rate gets updated 
+                using the ration between the Sid peak rate (in bps) in its 
+                QoS profile and the Sid actual usage (in bps). If the Sid 
+                begins to send more than its peak rate continuously, the 
+                number of packets it can send in an one second interval 
+                before experiencing a drop will slowly keep reducing until 
+                the Sid slows down as indicated by actual usage less or 
+                equal the peak rate. "
+       ::= { cdxQosIfRateLimitEntry 1 }
+
+cdxQosIfRateLimitExpWt OBJECT-TYPE
+       SYNTAX      Integer32 (1..4)
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+           "Weight for exponential moving average of loss rate for 
+            weighted excess packet discard algorithm to maintain.
+            The higher value of the weight makes the algorithm
+            more sensitive to the recent bandwidth usage by the Sid. 
+        
+            The default value is 1 and whenever the rate limiting
+            algorithm is changed to weighted excess packet discard 
+            algorithm, this value will be reset to the default 1.
+
+            If the rate limiting algorithm is not weighted excess 
+            packet discard algorithm, the value will be always the 
+            default value 1. "
+       ::= { cdxQosIfRateLimitEntry 2 }
+
+--
+-- Cmts Service Extension Table
+-- 
+-- This table extends the information about a Service ID in
+-- docsIfCmtsServiceTable. 
+--
+-- For each Service ID, there is one Quality of Service profile 
+-- associated with it and the profile limits the request/packet size
+-- for the Service ID. This table shows downstream traffic statistics
+-- and the various counts that the Service ID exceeds the limit in its 
+-- Quality of Service profile. 
+--
+
+cdxCmtsServiceExtTable  OBJECT-TYPE
+       SYNTAX      SEQUENCE OF CdxCmtsServiceExtEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+           "The list contains the additional attributes of a single Service
+            ID that provided by docsIfCmtsServiceEntry. "
+       ::= { cdxQosCtrlObjects 3 }
+
+cdxCmtsServiceExtEntry OBJECT-TYPE
+        SYNTAX      CdxCmtsServiceExtEntry 
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Additional objects for docsIfCmtsServiceTable entry including 
+             downstream traffic statistics and excess counts against the 
+             Quality of Service limits for each Service ID. "
+        REFERENCE
+            "Data-Over-Cable Service Interface Specifications (DOCSIS)
+             Radio Frequency Interface Specification (SP-RFI-I04-980724),
+             section 6.4 and appendix C.
+
+             docsIfQosProfileTable and docsIfCmtsServiceTable in
+             DOCS-IF-MIB.my. "
+        AUGMENTS { docsIfCmtsServiceEntry }
+        ::= { cdxCmtsServiceExtTable 1 }
+
+CdxCmtsServiceExtEntry ::= SEQUENCE {
+            cdxIfCmtsServiceOutOctets       Counter32,
+            cdxIfCmtsServiceOutPackets      Counter32,
+            cdxQosMaxUpBWExcessRequests     Counter32,
+            cdxQosMaxDownBWExcessPackets    Counter32
+        }
+
+cdxIfCmtsServiceOutOctets OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The cumulative number of Packet Data octets sent for this 
+             Service ID. " 
+        ::= { cdxCmtsServiceExtEntry 1 }
+
+cdxIfCmtsServiceOutPackets OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The cumulative number of Packet data packets sent for this 
+             Service ID. "
+        ::= { cdxCmtsServiceExtEntry 2 }
+
+
+cdxQosMaxUpBWExcessRequests OBJECT-TYPE
+        SYNTAX      Counter32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The number of upstream bandwidth requests which exceeds the
+             maximum upstream bandwidth allowed for a service defined 
+             in the Quality of Service profile associated with this Sid. 
+             The request which exceeds the maximum upstream bandwidth 
+             allowed will be rejected by the upstream's rate limiting 
+             process using one of the rate limiting algorithm. 
+
+             Note that the value of this counter cannot be directly used 
+             to know the number of upstream packets that got dropped at 
+             the cable modem.  A single upstream packet drop of a modem 
+             can result in up to 16 increments in this counter, since the 
+             modem keeps retrying and keeps getting bandwidth request 
+             drops at CMTS if it has consumed its peak rate.  " 
+        REFERENCE
+            "docsIfQosProfMaxUpBandwidth object in DOCS-IF-MIB.my. "
+        ::= { cdxCmtsServiceExtEntry 3 }
+
+cdxQosMaxDownBWExcessPackets OBJECT-TYPE
+        SYNTAX      Counter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The number of downstream bandwidth packets which exceeds the
+             maximum downstream bandwidth allowed for a service defined
+             in the Quality of Service profile associated with this Sid. 
+             The packet which exceeds the maximum downstream bandwidth 
+             allowed will be dropped by the downstream's rate limiting 
+             process using one of the rate limiting algorithm. "
+        REFERENCE
+            "docsIfQosProfMaxDownBandwidth object in DOCS-IF-MIB.my. "
+        ::= { cdxCmtsServiceExtEntry 4 }
+
+
+--
+-- Scheduler QoS Queue Group
+--
+-- To ensure Quality of Service and fairness, the scheduler
+-- maintains a set of queues for different services and puts  
+-- cable modems requests/packets for that Sid in different 
+-- queue according to the Quality of Service profile of the 
+-- Sid.  Each queue has a name and order within the queue set.  
+-- The scheduler will serve the requests/packets in higher 
+-- order queue before serving the requests/packets in lower
+-- order queue. 
+--
+
+--
+-- Scheduler bandwidth request queues table 
+--
+-- This table displays the attributes for these queues in a cable
+-- interface scheduler that supports Quality of Service.
+--
+
+cdxBWQueueTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF CdxBWQueueEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table describes the attributes of queues  
+             in cable interfaces schedulers that support 
+             Quality of Service."
+        ::= { cdxQosQueueObjects 1 }
+
+cdxBWQueueEntry OBJECT-TYPE
+        SYNTAX      CdxBWQueueEntry 
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The list of queue attributes in cable upstream and downstream
+             interfaces schedulers that supports Quality of Service. 
+             Entries in this table exist for each ifEntry with ifType of 
+             docsCableUpstream(129) and docsCableDownstream(128). "
+        REFERENCE
+            "Data-Over-Cable Service Interface Specifications (DOCSIS)
+             Radio Frequency Interface Specification (SP-RFI-I04-980724), 
+             section 6.4 and appendix C. "
+        INDEX { ifIndex,cdxBWQueueNameCode }
+        ::= { cdxBWQueueTable 1 }
+
+CdxBWQueueEntry ::= SEQUENCE {
+            cdxBWQueueNameCode                 INTEGER,
+            cdxBWQueueOrder                    Integer32,
+            cdxBWQueueNumServedBeforeYield     Integer32,
+            cdxBWQueueType                     INTEGER,
+            cdxBWQueueMaxDepth                 Integer32,
+            cdxBWQueueDepth                    Integer32,
+            cdxBWQueueDiscards                 Counter32
+        } 
+
+cdxBWQueueNameCode OBJECT-TYPE 
+        SYNTAX       INTEGER {
+            cirQ(1),   -- Committed Information Rate queue
+            tbeQ(2)    -- TIERED BEST EFFORT queue
+        }
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The name code for the queue.
+              cirQ: CIR queue. The queue is for Committed Information Rate 
+                    (CIR) type of service which serves Service IDs which have 
+                    minimum guaranteed rate in its QoS profile. 
+              tbeQ: TBE queue. The queue is for TIERED BEST EFFORT type 
+                    service which serves Service IDs which does not have 
+                    minimum guaranteed rate in its QoS profile. "
+        REFERENCE
+            "Data-Over-Cable Service Interface Specifications (DOCSIS)
+             Radio Frequency Interface Specification (SP-RFI-I04-980724), 
+             section 6.4 and appendix C."
+        ::= { cdxBWQueueEntry 1 }
+        
+cdxBWQueueOrder OBJECT-TYPE
+        SYNTAX      Integer32 (0..10)
+        MAX-ACCESS read-only
+        STATUS      current
+        DESCRIPTION
+            "The relative order of this queue to the other queues within the 
+             cable interface. The smaller number has higher order. That is,
+             0 is the highest order and 10 is the lowest order.  The 
+             scheduler will serve the requests in higher order queue up to 
+             the number of requests defined in cdxBWQueueNumServedBeforeYield 
+             before serving requests in the next higher order queue.  
+
+             If there are n queues on this interface, the queue order will 
+             be 0 to n-1 and maximum number of requests defined as 
+             cdxBWQueueNumServedBeforeYield in order 0 queue will be served 
+             before the requests in order 1 queue to be served. "
+        ::= { cdxBWQueueEntry 2 }
+
+cdxBWQueueNumServedBeforeYield OBJECT-TYPE
+        SYNTAX      Integer32 (0..50)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The maximum number of requests/packets the scheduler can serve 
+             before yielding to another queue. The value 0 means all requests
+             must be served before yielding to another queue. "
+        ::= { cdxBWQueueEntry 3 }
+
+
+cdxBWQueueType OBJECT-TYPE
+        SYNTAX      INTEGER {
+            unknown(1),
+            other(2),
+            fifo(3),
+            priority(4)
+        }
+        MAX-ACCESS read-only
+        STATUS      current
+        DESCRIPTION
+            "The queuing type which decides the position of a request/packet
+             within the queue.
+               unknown : queue type unknown. 
+               other   : not fifo, and not priority.
+               fifo    : first in first out.
+               priority: each bandwidth request has a priority and the 
+                         position of the request within the queue depends 
+                         on its priority. "
+        ::= { cdxBWQueueEntry 4 }
+
+
+cdxBWQueueMaxDepth OBJECT-TYPE
+        SYNTAX      Integer32 (0..50) 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The maximum number of requests/packets which the queue can 
+             support. "
+        ::= { cdxBWQueueEntry 5 }
+
+
+cdxBWQueueDepth OBJECT-TYPE
+        SYNTAX      Integer32 (0..50) 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The current number of requests/packets in the queue. "
+        ::= { cdxBWQueueEntry 6 }
+
+
+cdxBWQueueDiscards OBJECT-TYPE
+        SYNTAX      Counter32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The number of requests/packets discarded because of queue
+             overflow (queue depth > queue maximum depth). " 
+        ::= { cdxBWQueueEntry 7 }
+
+
+--
+-- CMTS Cable Modem (CM) Customer Premises Equipments (CPE) Group
+--
+-- This group contains tables in CMTS for information about  
+-- Cable Modems (CM) and Customer Premises Equipments (CPE) 
+-- that connects to Cable Modems.
+--
+
+--
+-- Cable modem (CM) or Customer Premises Equipments (CPE) Table
+--
+-- For the information of CM or CPE maintained in CMTS. 
+--
+
+cdxCmCpeTable OBJECT-TYPE
+       SYNTAX      SEQUENCE OF CdxCmCpeEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+           "This table contains information about cable modems (CM) or 
+            Customer Premises Equipments (CPE). "
+       ::= { cdxCmtsCmCpeObjects 1 }
+
+cdxCmCpeEntry OBJECT-TYPE
+        SYNTAX      CdxCmCpeEntry 
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+           "The list contains information for a cable modem (CM) or a
+            Customer Premises Equipment (CPE). An entry exist for 
+            each cable modem supported by CMTS and each Customer Premises 
+            Equipment connected to a cable modem supported by CMTS. "
+        REFERENCE
+            "Data-Over-Cable Service Interface Specifications (DOCSIS)
+             Radio Frequency Interface Specification (SP-RFI-I04-980724.)
+             docsIfCmtsCmStatusTable, docsIfCmtsServiceTable in 
+             DOCS-IF-MIB.my. "
+        INDEX { cdxCmCpeMacAddress }
+        ::= { cdxCmCpeTable 1 }
+
+CdxCmCpeEntry ::= SEQUENCE {
+            cdxCmCpeMacAddress           MacAddress,
+            cdxCmCpeType                 INTEGER,
+            cdxCmCpeIpAddress            IpAddress,
+            cdxCmCpeIfIndex              InterfaceIndex,
+            cdxCmCpeCmtsServiceId        INTEGER, 
+            cdxCmCpeCmStatusIndex        INTEGER,
+            cdxCmCpeAccessGroup          DisplayString 
+        }
+
+cdxCmCpeMacAddress OBJECT-TYPE
+        SYNTAX      MacAddress
+        MAX-ACCESS  not-accessible 
+        STATUS      current
+        DESCRIPTION
+            "The Mac address to identify a cable modem or a Customer 
+             Premises Equipment. "
+        ::= { cdxCmCpeEntry 1 }
+
+cdxCmCpeType OBJECT-TYPE
+        SYNTAX      INTEGER {
+            cm(1),  
+            cpe(2) 
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Indicate this entry is for cable modem or Customer Premises 
+             Equipment.  The enumerations are: 
+              cm(1): cable modem
+              cpe(2): Customer Premises Equipment " 
+        ::= { cdxCmCpeEntry 2 }
+
+
+cdxCmCpeIpAddress  OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Ip address of the cable modem or Customer Premises Equipment. " 
+        ::= { cdxCmCpeEntry 3 }
+
+
+cdxCmCpeIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The CMTS cable MAC interface index (ifType of 
+             docsCableMaclayer(127)) that cable modem or Customer Premises 
+             Equipment connects to.  
+
+             Use cdxCmCpeIfIndex and cdxCmCpeCmtsServiceId to indentify an 
+             entry in docsIfCmtsServiceTable.  " 
+        ::= { cdxCmCpeEntry 4 }
+
+cdxCmCpeCmtsServiceId  OBJECT-TYPE
+        SYNTAX      INTEGER(1..16383) 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The cable modem's primary Service ID if the type is cm. 
+             The primary Service ID for the CM which the CPE connects if the 
+             type is cpe.
+
+             Use cdxCmCpeIfIndex and cdxCmCpeCmtsServiceId to identify an 
+             entry in docsIfCmtsServiceTable.  " 
+        ::= { cdxCmCpeEntry 5 }
+
+
+cdxCmCpeCmStatusIndex OBJECT-TYPE 
+        SYNTAX      INTEGER(1..2147483647)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Pointer to an entry in docsIfCmtsCmStatusTable identifying 
+             status of the CM (which the CPE connects to.) "
+        ::= { cdxCmCpeEntry 6 }
+
+cdxCmCpeAccessGroup OBJECT-TYPE    
+        SYNTAX      DisplayString 
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "ASCII text to identify the Access Group for a CM or CPE. 
+             Access Group is to filter the upstream traffic for that
+             CM or CPE.  "
+        ::= { cdxCmCpeEntry 7 }
+
+--
+-- CMTS CM status extension table
+--
+-- This table extends the CM status information in docsIfCmtsCmStatusTable
+--
+
+cdxCmtsCmStatusExtTable  OBJECT-TYPE
+       SYNTAX      SEQUENCE OF CdxCmtsCmStatusExtEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+           "The list contains the additional CM status information. "
+       ::= { cdxCmtsCmCpeObjects 2 }
+
+cdxCmtsCmStatusExtEntry OBJECT-TYPE
+        SYNTAX      CdxCmtsCmStatusExtEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Additional objects for docsIfCmtsCmStatusTable entry. "
+        REFERENCE
+            "Data-Over-Cable Service Interface Specifications (DOCSIS)
+             Radio Frequency Interface Specification (SP-RFI-I04-980724.)
+             docsIfCmtsCmStatusTable in DOCS-IF-MIB.my. "
+        AUGMENTS { docsIfCmtsCmStatusEntry }
+        ::= { cdxCmtsCmStatusExtTable 1 }
+
+CdxCmtsCmStatusExtEntry ::= SEQUENCE {
+            cdxCmtsCmStatusValue             INTEGER,
+            cdxIfCmtsCmStatusOnlineTimes     Counter32,
+            cdxIfCmtsCmStatusPercentOnline   Integer32,
+            cdxIfCmtsCmStatusMinOnlineTime   TimeInterval,
+            cdxIfCmtsCmStatusAvgOnlineTime   TimeInterval,
+            cdxIfCmtsCmStatusMaxOnlineTime   TimeInterval,
+            cdxIfCmtsCmStatusMinOfflineTime  TimeInterval,
+            cdxIfCmtsCmStatusAvgOfflineTime  TimeInterval,
+            cdxIfCmtsCmStatusMaxOfflineTime  TimeInterval
+        }
+
+cdxCmtsCmStatusValue OBJECT-TYPE
+        SYNTAX       INTEGER {
+            offline(1),         
+            others(2),          
+            initRangingRcvd(3), 
+            initDhcpReqRcvd(4), 
+            onlineNetAccessDisabled(5), 
+            onlineKekAssigned(6),  
+            onlineTekAssigned(7), 
+            rejectBadMic(8),      
+            rejectBadCos(9),    
+            kekRejected(10),    
+            tekRejected(11),     
+            online(12)          
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Current Cable Modem connectivity state. The object extends 
+             states in docsIfCmtsCmStatusValue in more details. 
+
+             The enumerations are:
+             offline(1)           : modem considered offline.
+             others(2)            : states is in docsIfCmtsCmStatusValue.
+             initRangingRcvd(3)   : modem sent initial ranging.
+             initDhcpReqRcvd(4)   : dhcp request received.
+             onlineNetAccessDisabled(5): modem registered, but network
+                                         access for the CM is disabled.
+             onlineKekAssigned(6) : modem registered, BPI enabled and KEK
+                                    assigned.
+             onlineTekAssigned(7) : modem registered, BPI enabled and TEK
+                                    assigned.
+             rejectBadMic(8)      : modem did attempt to register but
+                                    registration was refused due to bad mic.
+             rejectBadCos(9)      : modem did attempt to register but
+                                    registration was refused due to bad COS.
+             kekRejected(10)      : KEK modem key assignment rejected.
+             tekRejected(11)      : TEK modem key assignment rejected.
+             online(12)           : modem registered, enabled for data.
+
+             The ranging, rangingAborted, rangingComplete, and ipComplete 
+             states in docsIfCmtsCmStatusValue is others in this object
+             since this object is extension of docsIfCmtsCmStatusValue. 
+
+             The registrationComplete state in docsIfCmtsCmStatusValue 
+             could be online, onlineNetAccessDisabled, onlineKekAssigned, or 
+             onlineTekAssigned in this object.  
+
+             The accessDenied state in docsIfCmtsCmStatusValue could be 
+             rejectBadMic, rejectBadCos in this object for the possible
+             reasons of cable modem registration abort.
+
+             The CMTS only reports states it is able to detect. "
+        ::= { cdxCmtsCmStatusExtEntry 1 }
+
+cdxIfCmtsCmStatusOnlineTimes OBJECT-TYPE
+        SYNTAX      Counter32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The number of times that the modem changes the connectivity 
+             state from 'offline' to 'online' over the time period from 
+             the modem's first ranging message received by CMTS until now.
+
+             The modem is considered as 'online' when the value for 
+             cdxCmtsCmStatusValue is any of the values: online(5), 
+             onlineNetAccessDisabled(6), onlineKekAssigned(7), and 
+             onlineTekAssigned(8), and the modem is considered as 'offline' 
+             for other values for cdxCmtsCmStatusValue.  "
+        REFERENCE
+            "cdxCmtsCmStatusValue object."
+        ::= { cdxCmtsCmStatusExtEntry 2 }
+
+cdxIfCmtsCmStatusPercentOnline OBJECT-TYPE
+        SYNTAX      Integer32 (0..10000)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The percentage of time that the modem stays 'online' over 
+             the time period from the modem's first ranging message 
+             received by CMTS until now. 
+
+             The value for this object is 100 times bigger than the real 
+             percentage value. For example, 32.15% will be value 3215.
+
+             The modem is considered as 'online' when the value for 
+             cdxCmtsCmStatusValue is any of the values: online(5), 
+             onlineNetAccessDisabled(6), onlineKekAssigned(7), and 
+             onlineTekAssigned(8), and the modem is considered as 
+             'offline' for other values for cdxCmtsCmStatusValue.  "
+        REFERENCE
+            "cdxCmtsCmStatusValue object."
+        ::= { cdxCmtsCmStatusExtEntry 3 }
+
+cdxIfCmtsCmStatusMinOnlineTime OBJECT-TYPE
+        SYNTAX      TimeInterval
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The minimum period of time the modem stayed 'online' over
+             the time period from the modem's first ranging message 
+             received by CMTS until now.
+
+             The modem is considered as 'online' when the value for 
+             cdxCmtsCmStatusValue is any of the values: online(5), 
+             onlineNetAccessDisabled(6), onlineKekAssigned(7), and 
+             onlineTekAssigned(8), and the modem is considered as 
+             'offline' for other values for cdxCmtsCmStatusValue.  "
+        REFERENCE
+            "cdxCmtsCmStatusValue object."
+        ::= { cdxCmtsCmStatusExtEntry 4 }
+
+
+cdxIfCmtsCmStatusAvgOnlineTime OBJECT-TYPE
+        SYNTAX      TimeInterval
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The average period of time the modem stayed 'online' over
+             the time period from the modem's first ranging message 
+             received by CMTS until now.
+
+             The modem is considered as 'online' when the value for 
+             cdxCmtsCmStatusValue is any of the values: online(5), 
+             onlineNetAccessDisabled(6), onlineKekAssigned(7), and 
+             onlineTekAssigned(8), and the modem is considered as 
+             'offline' for other values for cdxCmtsCmStatusValue.  "
+        REFERENCE
+            "cdxCmtsCmStatusValue object."
+        ::= { cdxCmtsCmStatusExtEntry 5 }
+
+cdxIfCmtsCmStatusMaxOnlineTime OBJECT-TYPE
+        SYNTAX      TimeInterval
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The maximum period of time the modem stayed 'online' over
+             the time period from the modem's first ranging message 
+             received by CMTS until now.
+
+             The modem is considered as 'online' when the value for 
+             cdxCmtsCmStatusValue is any of the values: online(5), 
+             onlineNetAccessDisabled(6), onlineKekAssigned(7), and 
+             onlineTekAssigned(8), and the modem is considered as 
+             'offline' for other values for cdxCmtsCmStatusValue.  "
+        REFERENCE
+            "cdxCmtsCmStatusValue object."
+        ::= { cdxCmtsCmStatusExtEntry 6 }
+
+cdxIfCmtsCmStatusMinOfflineTime OBJECT-TYPE
+        SYNTAX      TimeInterval
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The minimum period of time modem stayed 'offline' over
+             the time period from the modem's first ranging message 
+             received by CMTS until now.
+
+             The modem is considered as 'online' when the value for 
+             cdxCmtsCmStatusValue is any of the values: online(5), 
+             onlineNetAccessDisabled(6), onlineKekAssigned(7), and 
+             onlineTekAssigned(8), and the modem is considered as 
+             'offline' for other values for cdxCmtsCmStatusValue.  "
+        REFERENCE
+            "cdxCmtsCmStatusValue object."
+        ::= { cdxCmtsCmStatusExtEntry 7 }
+
+
+cdxIfCmtsCmStatusAvgOfflineTime OBJECT-TYPE
+        SYNTAX      TimeInterval
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The average period of time the modem stayed 'offline' over
+             the time period from the modem's first ranging message 
+             received by CMTS until now.
+
+             The modem is considered as 'online' when the value for 
+             cdxCmtsCmStatusValue is any of the values: online(5), 
+             onlineNetAccessDisabled(6), onlineKekAssigned(7), and 
+             onlineTekAssigned(8), and the modem is considered as 
+             'offline' for other values for cdxCmtsCmStatusValue.  "
+        REFERENCE
+            "cdxCmtsCmStatusValue object."
+        ::= { cdxCmtsCmStatusExtEntry 8 }
+
+cdxIfCmtsCmStatusMaxOfflineTime OBJECT-TYPE
+        SYNTAX      TimeInterval
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The maximum period of time the modem stayed 'offline' over
+             the time period from the modem's first ranging message 
+             received by CMTS until now.
+
+             The modem is considered as 'online' when the value for 
+             cdxCmtsCmStatusValue is any of the values: online(5), 
+             onlineNetAccessDisabled(6), onlineKekAssigned(7), and 
+             onlineTekAssigned(8), and the modem is considered as 
+             'offline' for other values for cdxCmtsCmStatusValue.  "
+        REFERENCE
+            "cdxCmtsCmStatusValue object."
+        ::= { cdxCmtsCmStatusExtEntry 9 }
+
+--
+-- CMTS MAC extension Table
+--
+-- This table extends the attributes for CMTS MAC interface.
+--
+-- This table includes attributes of the cable modem notification 
+-- enabling/disabling and the interval of cable modem notification sent 
+-- by the CMTS for a cable modem that the Mac interface supports.
+--
+       
+cdxCmtsMacExtTable  OBJECT-TYPE
+       SYNTAX      SEQUENCE OF CdxCmtsMacExtEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+           "This table contains the additions attributes of a CMTS MAC
+            interface that provided by docsIfCmtsMacTable. "  
+       ::= { cdxCmtsCmCpeObjects 3 }
+
+cdxCmtsMacExtEntry OBJECT-TYPE
+        SYNTAX      CdxCmtsMacExtEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Additional objects for docsIfCmtsMacTable entry including
+             the cable modem notification enable/disable and the interval 
+             of cable modem notification sent by the CMTS for a cable modem
+             that the Mac interface supports. An entry in this table exists 
+             for each ifEntry with an ifType of docsCableMaclayer(127). "
+        REFERENCE
+            "docsIfCmtsMacTable in DOCS-IF-MIB.my. "
+        AUGMENTS { docsIfCmtsMacEntry }
+        ::= { cdxCmtsMacExtTable 1 }
+
+CdxCmtsMacExtEntry ::= SEQUENCE {
+            cdxCmtsCmOnOffTrapEnable       TruthValue,
+            cdxCmtsCmOnOffTrapInterval     Integer32,
+            cdxCmtsCmDefaultMaxCpes        Integer32
+        }
+
+cdxCmtsCmOnOffTrapEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "An indication of whether the cdxCmtsCmOnOffNotification 
+             is enabled. The default value is false(2). "
+        ::= { cdxCmtsMacExtEntry 1 }
+        
+cdxCmtsCmOnOffTrapInterval OBJECT-TYPE
+        SYNTAX      Integer32 (0..86400)
+        UNITS       "seconds"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The interval for cdxCmtsCmOnOffNotification sent by CMTS for
+             one online/offline state change if cdxCmtsCmOnOffTrapEnable 
+             is true. 
+
+             If there are more than one state changes to online/offline 
+             for a cable modem during this interval, only one 
+             cdxCmtsCmOnOffNotification is sent by CMTS for the first 
+             state change to online and one cdxCmtsCmOnOffNotification 
+             for the first state changing to offline if 
+             cdxCmtsCmOnOffTrapEnable is true.
+
+             This is to avoid too many notifications sent for a cable 
+             modem online/offline state changes during a short period
+             of time. 
+
+             If the value is 0, then cdxCmtsCmOnOffNotification will be 
+             sent for every state changes to online/offline for a cable 
+             modem if cdxCmtsCmOnOffTrapEnable is true.  
+
+             If cdxCmtsCmOnOffTrapEnable value changes from true to false 
+             or from false to true, this value will remain no change as 
+             before. 
+
+             The default value is 600 seconds. "
+        ::= { cdxCmtsMacExtEntry 2 }
+
+cdxCmtsCmDefaultMaxCpes OBJECT-TYPE
+        SYNTAX      Integer32 (0..255)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The default maximum number of permitted CPEs per modem 
+             in this cable interface. A modem can override this 
+             value by setting the object cdxCmtsCmMaxCpeNumber
+             in the cdxCmtsCmTable.  
+
+             The value 0 means no maximum limit.
+
+             The default value for this object is 0.
+
+             Setting the value will not affect the already connected
+             CPEs to the modems in this cable interface. "
+        ::= { cdxCmtsMacExtEntry 3 }
+
+
+           
+--
+-- CMTS Cable Modem channel override operation table and the related
+-- objects 
+--
+-- A CMTS operator may perform downstream/upstream load balancing
+-- or failure recovery using cdxCmtsCmChOverTable.  An entry 
+-- in this table is an operation from CMTS to generates downstream 
+-- frequency and upstream channel override fields in the RNG-RSP message 
+-- sent to a cable modem.  A RNG-RSP message is sent to a cable modem 
+-- during initial maintenance opportunity. 
+--
+-- This operation causes the uBR to place an entry for the cable 
+-- modem specified into the override request queue.  The link is 
+-- then broken by deleting the modem from its polling list.  When 
+-- the modem attempts initial ranging, the override request 
+-- causes downstream frequency and upstream channel override 
+-- fields to be inserted into the RNG-RSP message.  
+--
+
+cdxCmtsCmChOverTimeExpiration OBJECT-TYPE
+        SYNTAX      Integer32 (1..86400)
+        UNITS       "minutes"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The time period to expire a CMTS channel override operation. 
+             Within the time period, if the CMTS cannot send out a 
+             RNG-RSP message with channel override fields to a cable 
+             modem specified in the operation, the CMTS will abort 
+             the operation. The possible reason is that the cable 
+             modem does not repeat the initial ranging. 
+
+             The change to this object will not affect the already active 
+             operations in this cdxCmtsCmChOverTable.   
+              
+             Once the operation completes, the management station should
+             retrieve the values of the cdxCmtsCmChOverState 
+             object of interest, and should then delete the entry
+             from cdxCmtsCmChOverTable.  In order to prevent old 
+             entries from clogging the table, entries will be aged out, 
+             but an entry will never be deleted within 15 minutes of 
+             completing. "
+        REFERENCE
+            "Data-Over-Cable Service Interface Specifications (DOCSIS)
+             Radio Frequency Interface Specification (SP-RFI-I04-980724),
+             6.3.2.5.3 Overriding Channels. "
+      ::= { cdxCmtsCmCpeObjects 4 }
+ 
+
+cdxCmtsCmChOverTable OBJECT-TYPE
+       SYNTAX      SEQUENCE OF CdxCmtsCmChOverEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+           "A table of CMTS operation entries to instruct cable modems
+            to move to a new downstream and/or upstream channel. 
+
+            An entry in this table is an operation that has been 
+            initiated from CMTS to generates downstream frequency and/or 
+            upstream channel override fields in the RNG-RSP message sent 
+            to a cable modem.  A RNG-RSP message is sent to a cable 
+            modem during initial maintenance opportunity. 
+
+            This operation causes the uBR to place an entry for the cable 
+            modem specified into the override request queue.  The link is 
+            then broken by deleting the modem from its polling list.  When 
+            the modem attempts initial ranging, the override request 
+            causes downstream frequency and upstream channel override 
+            fields to be inserted into the RNG-RSP message.  "
+      ::= { cdxCmtsCmCpeObjects 5 }
+
+cdxCmtsCmChOverEntry OBJECT-TYPE
+        SYNTAX      CdxCmtsCmChOverEntry 
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "A CMTS operation entry to instruct a cable modem to move to
+             a new downstream and/or upstream channel.
+ 
+             A CMTS operator can use this to initiate an operation
+             in CMTS to instruct a cable modem to move to a new
+             downstream, or upstream channel or both. 
+             
+             Each entry consists of the mac address of the cable modem
+             to be moved, a new downstream frequency, a new upstream channel 
+             id etc..  More than one entries could have for a cable modem,
+             so there is a time stamp for each entry to show the time
+             when this operation is initiated. 
+
+             A management station wishing to create an entry should
+             first generate a pseudo-random serial number to be used
+             as the index to this sparse table.  The station should
+             then create the associated instance of the row status
+             object. It must also, either in the same or in successive
+             PDUs, create the associated instance of the command and
+             parameter objects. It should also modify the default values
+             for any of the parameter objects if the defaults are not
+             appropriate.
+
+             Once the appropriate instances of all the command
+             objects have been created, either by an explicit SNMP
+             set request or by default, the row status should be set
+             to active to initiate the operation. Note that this entire
+             procedure may be initiated via a single set request which
+             specifies a row status  of createAndGo as well as specifies
+             valid values for the non-defaulted parameter objects.
+
+             Once an operation has been activated, it cannot be stopped.
+             That is, it will run until either the CMTS has generated 
+             downstream frequency and/or upstream channel override fields 
+             in the RNG-RSP message sent to a cable modem or time out. 
+             In either case, the operation is completed.
+
+             Once the operation is completed, the real result of the 
+             operation to the cable modem cannot be known from this table.
+             The result of the cable modem's downstream frequency and the 
+             upstream channel id can be checked from other MIB tables.  
+             For example, docsIfCmtsServiceTable from DOCS-IF-MIB can be 
+             used to check whether the cable modem's downstream frequency
+             and upstream channel id are changed.  Please note that even
+             the CMTS has generated downstream frequency and/or upstream 
+             channel override fields in the RNG-RSP message sent to a 
+             cable modems, if the cable modem cannot lock the instructed 
+             downstream frequency or no upstream channel id could be used, 
+             it may reconnect back to the original downstream frequency
+             and upstream channel id. 
+            
+             Once the operation completes, the management station should
+             retrieve the values of the cdxCmtsCmChOverState 
+             objects of interest, and should then delete the entry.  
+             In order to prevent old entries from clogging the table, 
+             entries will be aged out, but an entry will never be deleted 
+             within 15 minutes of completing. "
+        REFERENCE
+            "Data-Over-Cable Service Interface Specifications (DOCSIS)
+             Radio Frequency Interface Specification (SP-RFI-I04-980724),
+             6.3.2.5.3 Overriding Channels. "
+        INDEX { cdxCmtsCmChOverSerialNumber }
+        ::= { cdxCmtsCmChOverTable 1 }
+
+CdxCmtsCmChOverEntry ::= SEQUENCE {
+            -- index
+            cdxCmtsCmChOverSerialNumber     Integer32,
+            -- operation items
+            cdxCmtsCmChOverMacAddress       MacAddress,  
+            cdxCmtsCmChOverDownFrequency    Integer32,  
+            cdxCmtsCmChOverUpChannelId      Integer32, 
+            cdxCmtsCmChOverTrapOnCompletion TruthValue,
+            -- status items
+            cdxCmtsCmChOverOpInitiatedTime  TimeStamp,
+            cdxCmtsCmChOverState            INTEGER,
+            cdxCmtsCmChOverRowStatus        RowStatus
+        } 
+
+cdxCmtsCmChOverSerialNumber OBJECT-TYPE
+        SYNTAX     Integer32 (1..2147483647)
+        MAX-ACCESS not-accessible
+        STATUS     current
+        DESCRIPTION
+            "Object which specifies a unique entry in the
+             table. A management station wishing to initiate a
+             channel override operation should use a pseudo-random 
+             value for this object when creating or modifying an 
+             instance of a cdxCmtsCmChOverEntry.  "
+        ::= { cdxCmtsCmChOverEntry 1 }
+
+cdxCmtsCmChOverMacAddress OBJECT-TYPE
+        SYNTAX     MacAddress
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "The mac address of the cable modem that the CMTS instructs to
+             move to a new downstream and/or upstream channel.  
+
+             This column must be set to a valid Mac address currently in
+             the CMTS in order for this entry's row status to be set to
+             active successfully." 
+        ::= { cdxCmtsCmChOverEntry 2 }
+        
+cdxCmtsCmChOverDownFrequency  OBJECT-TYPE
+        SYNTAX     Integer32 (0..1000000000)
+        UNITS      "hertz"
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "The new downstream frequency which the cable modem is 
+             instructed to move to.  The value 0 is to ask the CMTS not to
+             override the downstream frequency. "  
+        DEFVAL { 0 }
+        ::= { cdxCmtsCmChOverEntry 3 }
+
+cdxCmtsCmChOverUpChannelId  OBJECT-TYPE
+        SYNTAX     Integer32 (-1..255)
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "The new channel Id which the cable modem is instructed to 
+             move to.  The value -1 is to ask the CMTS not to override
+             the upstream channel Id. "
+        DEFVAL { -1 }
+        ::= { cdxCmtsCmChOverEntry 4 }
+
+cdxCmtsCmChOverTrapOnCompletion OBJECT-TYPE
+        SYNTAX     TruthValue
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "Specifies whether or not a cdxCmtsCmChOverNotification 
+             should be issued on completion of the operation.  If such a 
+             notification is desired, it is the responsibility of the 
+             management entity to ensure that the SNMP administrative model 
+             is configured in such a way as to allow the notification to be 
+             delivered. "
+        DEFVAL { false }
+        ::= { cdxCmtsCmChOverEntry 5 }
+
+cdxCmtsCmChOverOpInitiatedTime OBJECT-TYPE
+        SYNTAX     TimeStamp
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+            "The value of sysUpTime at which the operation was initiated.  
+             Since it is possible to have more than one entry in this 
+             table for a cable modem, this object can help to distinguish 
+             the entries for the same cable modem. " 
+        ::= { cdxCmtsCmChOverEntry 6 }
+
+cdxCmtsCmChOverState  OBJECT-TYPE
+        SYNTAX     INTEGER {
+            messageSent(1),
+            commandNotActive(2),
+            noOpNeeded(3),
+            modemNotFound(4),
+            waitToSendMessage(5),    
+            timeOut(6)   
+        }
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+            "The status of the specified channel override operation.
+             The enumerations are:
+               messageSent(1): the CMTS has sent a RNG-RSP message 
+                           with channel override to the cable modem. 
+               commandNotActive(2): the command is not in active mode
+                                    due to this entry's row status is not
+                                    in active yet.
+               noOpNeed(3): The downstream frequency and the upstream 
+                            channel Id in this entry are the same as 
+                            original ones when this entry's row status
+                            is set to active, so CMTS does not need to 
+                            do any operation.  
+               modemNotFound(4): The modem is not found in the CMTS
+                                 at the time when the command becomes
+                                 active.
+               waitToSendMessage(5): specified the operation is active
+                                     and CMTS is waiting to send
+                                     a RNG-RSP message with channel 
+                                     override to the cable modem.
+               timeOut(6): specified the operation is timed out.
+                           That is, the CMTS cannot send a RNG-RSP message 
+                           with channel override to the cable modem within 
+                           the time specified in the object of 
+                           cdxCmtsCmChOverTimeExpiration. 
+                           The possible reason is that the cable modem
+                           does not repeat the initial ranging. 
+
+                The possible state change diagram is as below: 
+                [commandNotActive ->] waitToSendMessage -> 
+                    messageSent or timeOut. 
+                [commandNotActive ->] noOpNeeded or modemNotFound. "
+        REFERENCE
+            "Data-Over-Cable Service Interface Specifications (DOCSIS)
+             Radio Frequency Interface Specification (SP-RFI-I04-980724),
+             6.3.2.5.3 Overriding Channels. "
+        ::= { cdxCmtsCmChOverEntry 7 }
+
+cdxCmtsCmChOverRowStatus OBJECT-TYPE
+        SYNTAX     RowStatus
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "The status of this table entry.  
+
+             This value for cdxCmtsCmChOverMacAddress must be valid Mac 
+             address currently in the CMTS in order for the row 
+             status to be set to active successfully. 
+                
+             Once the row status becomes active and state becomes 
+             waitToSendMessage, the entry cannot not be changed except 
+             to delete the entry by setting the row status to destroy(6) 
+             and since the operation cannot be stopped, the destroy(6) 
+             will just cause the SNMP agent to hide the entry from 
+             application and the SNMP agent will delete the entry 
+             right after the operation is completed. "
+        ::= { cdxCmtsCmChOverEntry 8 }
+
+--
+-- CMTS Cable modem (CM) Table
+--
+-- This table contains attributes or configurable parameters 
+-- for cable modems from a CMTS.   
+--
+-- A CMTS operator can use this table to report a cable modem's  
+-- attributes or configure a cable modem by a cable modem's 
+-- MAC address.
+--
+
+cdxCmtsCmTable OBJECT-TYPE
+       SYNTAX      SEQUENCE OF CdxCmtsCmEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+           "This table contains attributes or configurable parameters 
+            for cable modems from a CMTS. " 
+       ::= { cdxCmtsCmCpeObjects 6 }
+
+cdxCmtsCmEntry OBJECT-TYPE
+        SYNTAX      CdxCmtsCmEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+           "The list contains a cable modem's attributes or 
+            configurable parameters from a CMTS. "
+        INDEX { docsIfCmtsCmStatusIndex }
+        ::= { cdxCmtsCmTable 1 } 
+
+CdxCmtsCmEntry ::= SEQUENCE {
+            cdxCmtsCmMaxCpeNumber     Integer32
+        }
+
+cdxCmtsCmMaxCpeNumber OBJECT-TYPE
+        SYNTAX      Integer32 (-1..255)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The maximum number of permitted CPEs connecting to the
+             modem. 
+
+             The value -1 means to use the default value of maximum 
+             hosts per modem in the CMTS cable interface which the modem 
+             connects to and the value is defined in 
+             cdxCmtsCmDefaultMaxCpes in the cdxCmtsMacExtTable. 
+
+             The value 0 means no maximum limit.
+
+             The default value is -1.
+
+             Setting the value will not affect the already connected
+             CPEs to the modem. "
+        ::= { cdxCmtsCmEntry 1 }
+
+
+--
+-- The Cisco DOCS Extension MIB Notifications 
+--
+
+ciscoDocsExtNotificationsPrefix   OBJECT IDENTIFIER
+                          ::= { ciscoDocsExtMIB 2 }
+ciscoDocsExtNotifications         OBJECT IDENTIFIER
+                          ::= { ciscoDocsExtNotificationsPrefix 0 }
+
+
+cdxCmtsCmOnOffNotification NOTIFICATION-TYPE
+       OBJECTS    { docsIfCmtsCmStatusMacAddress,
+                    docsIfCmtsCmStatusIpAddress,
+                    docsIfCmtsCmStatusDownChannelIfIndex,
+                    docsIfCmtsCmStatusUpChannelIfIndex,
+                    cdxCmCpeCmtsServiceId,
+                    cdxCmtsCmStatusValue 
+                  }
+       STATUS  current
+       DESCRIPTION
+           "This notification indicates that the cable modem coming online
+            and going offline. A notification will be sent from CMTS for 
+            a cable modem status changing to online or offline
+            within the interval specified in cdxCmtsCmOnOffTrapInterval. "
+       ::= { ciscoDocsExtNotifications 1 }
+
+
+cdxCmtsCmChOverNotification NOTIFICATION-TYPE
+       OBJECTS    { cdxCmtsCmChOverMacAddress,
+                    cdxCmtsCmChOverDownFrequency,
+                    cdxCmtsCmChOverUpChannelId,
+                    cdxCmtsCmChOverOpInitiatedTime,
+                    cdxCmtsCmChOverState
+                  }
+       STATUS  current
+       DESCRIPTION
+           "This notification is sent at the completion of a CMTS 
+            channel override operation if 
+            cdxCmtsCmChOverTrapOnCompletion is true in the
+            original entry.
+
+            Once a channel override operation has been activated, it 
+            cannot be stopped.  That is, it will run until either the 
+            CMTS has generated downstream frequency and/or upstream 
+            channel override fields in the RNG-RSP message sent to a 
+            cable modem or 
+            cdxCmtsCmChOverTimeExpiration time expired.
+            In either case, the operation is completed. State in the 
+            cdxCmtsCmChOverState object will tell in which 
+            condition the operation is completed. "
+       ::= { ciscoDocsExtNotifications 2 }
+
+
+
+
+--
+-- The Cisco DOCS Extension MIB Conformance Statements 
+--
+
+--
+-- Conformance statement
+--
+
+ciscoDocsExtConformance  OBJECT IDENTIFIER 
+    ::= { ciscoDocsExtMIB 3 }
+cdxDocsExtCompliances               OBJECT IDENTIFIER 
+    ::= { ciscoDocsExtConformance 1 }
+cdxDocsExtGroups                    OBJECT IDENTIFIER 
+    ::= { ciscoDocsExtConformance 2 }
+
+
+-- compliance statements
+
+cdxDocsExtCompliance MODULE-COMPLIANCE
+        STATUS     current
+        DESCRIPTION
+            "The compliance statement for devices that implement MCNS
+             compliant Radio Frequency Interfaces and DOCSIS features."
+        MODULE  -- this module
+                MANDATORY-GROUPS {
+                        cdxQosCtrlGroup, 
+                        cdxQosQueueGroup,
+                        cdxCmtsCmCpeGroup 
+                }
+
+        OBJECT     cdxCmtsCmChOverTimeExpiration
+        MIN-ACCESS read-only
+        DESCRIPTION
+                   "Write access is not required."
+        ::= { cdxDocsExtCompliances 1 }
+
+
+-- MIB groupings
+
+cdxQosCtrlGroup OBJECT-GROUP
+        OBJECTS {
+        cdxQosCtrlUpAdmissionCtrl,
+        cdxQosCtrlUpMaxRsvdBWPercent,
+        cdxQosCtrlUpAdmissionRejects,
+        cdxQosCtrlUpReservedBW,
+        cdxQosCtrlUpMaxVirtualBW,
+        cdxQosIfRateLimitAlgm,
+        cdxQosIfRateLimitExpWt,
+        cdxIfCmtsServiceOutOctets,
+        cdxIfCmtsServiceOutPackets,
+        cdxQosMaxUpBWExcessRequests,
+        cdxQosMaxDownBWExcessPackets
+        }
+        STATUS    current
+        DESCRIPTION
+            "Group of objects implemented in Cable Modem Termination Systems 
+             (CMTS) cable interfaces for states of the scheduler supporting 
+             Data-Over-Cable Service Interface Specifications (DOCSIS)
+             1.0 Quality of Service (QoS). "
+        ::= { cdxDocsExtGroups 1 }
+
+cdxQosQueueGroup OBJECT-GROUP
+        OBJECTS {
+        cdxBWQueueOrder,
+        cdxBWQueueNumServedBeforeYield,
+        cdxBWQueueType,
+        cdxBWQueueMaxDepth,
+        cdxBWQueueDepth,
+        cdxBWQueueDiscards
+        }
+        STATUS    current
+        DESCRIPTION
+            "Group of objects implemented in Cable Modem Termination Systems 
+             (CMTS) cable interfaces for the queuing states of the scheduler 
+             supporting Data-Over-Cable Service Interface Specifications 
+             (DOCSIS) 1.0 Quality of Service (QoS). Each upstream scheduler 
+             maintains a queue set, but the downstream schedulers does not 
+             in DOCSIS 1.0 QoS. So only each upstream has an entry for 
+             DOCSIS 1.0 QoS support."
+        ::= { cdxDocsExtGroups 2 }
+
+cdxCmtsCmCpeGroup OBJECT-GROUP
+        OBJECTS {
+        cdxCmCpeType,
+        cdxCmCpeIpAddress,
+        cdxCmCpeIfIndex,
+        cdxCmCpeCmtsServiceId,
+        cdxCmCpeCmStatusIndex,
+        cdxCmCpeAccessGroup,
+        cdxCmtsCmStatusValue,
+        cdxIfCmtsCmStatusOnlineTimes,
+        cdxIfCmtsCmStatusPercentOnline,
+        cdxIfCmtsCmStatusMinOnlineTime,
+        cdxIfCmtsCmStatusAvgOnlineTime,
+        cdxIfCmtsCmStatusMaxOnlineTime,
+        cdxIfCmtsCmStatusMinOfflineTime,
+        cdxIfCmtsCmStatusAvgOfflineTime,
+        cdxIfCmtsCmStatusMaxOfflineTime,
+        cdxCmtsCmOnOffTrapEnable,
+        cdxCmtsCmOnOffTrapInterval,
+        cdxCmtsCmDefaultMaxCpes,
+        cdxCmtsCmChOverTimeExpiration,
+        cdxCmtsCmChOverMacAddress,
+        cdxCmtsCmChOverDownFrequency,
+        cdxCmtsCmChOverUpChannelId,
+        cdxCmtsCmChOverTrapOnCompletion,
+        cdxCmtsCmChOverOpInitiatedTime,
+        cdxCmtsCmChOverState,
+        cdxCmtsCmChOverRowStatus,
+        cdxCmtsCmMaxCpeNumber
+        }
+        STATUS    current
+        DESCRIPTION
+            "Group of objects implemented in Cable Modem Termination Systems 
+             (CMTS) for managing and monitoring cable modems or Customer 
+             Premises Equipments. "
+        ::= { cdxDocsExtGroups 3 }
+
+
+END

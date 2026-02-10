@@ -1,0 +1,1893 @@
+IRT1000-MIB DEFINITIONS ::= BEGIN
+
+--  br 031113 removed underscores
+--  IRT1000-MIB MODULE-IDENTITY
+--      LAST-UPDATED "9810141520Z"
+--      ORGANIZATION "General Instrument Corp."
+--		Copyright 1998, General Instrument Corp.
+--      CONTACT-INFO "Jim Harris
+--                    General Instrument Corp.
+--                    Digital Network Systems
+--                    101 Tournament Drive
+--                    Horsham, PA  19044
+--
+--                    Tel: +1 215 323 1451
+--                    Fax: +1 215 323 0377
+--                    E-mail: jharris@gi.com"
+--
+--      DESCRIPTION  "The MIB module for the IRT 1000/2000.
+--                    
+--	         Revision Number 14.5
+
+IMPORTS
+        Counter, IpAddress
+	                FROM RFC1155-SMI
+        DisplayString   FROM RFC1213-MIB
+		irt1000			FROM NLS-BBNIDENT-MIB
+        OBJECT-TYPE     FROM RFC-1212
+		TRAP-TYPE		FROM RFC-1215
+        trapIdentifier,     
+        trapNetworkElemModelNumber,
+        trapNetworkElemSerialNum,
+        trapPerceivedSeverity,
+        trapNetworkElemOperState,
+        trapNetworkElemAlarmStatus,
+        trapNetworkElemAdminState,
+        trapNetworkElemAvailStatus, 
+        trapText,
+        trapNETrapLastTrapTimeStamp,
+        trapChangedObjectId,
+        trapAdditionalInfoInteger1, 
+        trapAdditionalInfoInteger2, 
+        trapAdditionalInfoInteger3,     
+        trapChangedValueDisplayString,  
+        trapChangedValueOID, 
+        trapChangedValueIpAddress,		       
+        trapChangedValueInteger	FROM NLSBBN-TRAPS-MIB;
+                
+-- groups in the IRT  1000 MIB
+       	irtSysConf				OBJECT IDENTIFIER ::= {irt1000 1}
+		irtSysConfTac			OBJECT IDENTIFIER ::= {irtSysConf 1}
+		irtSysConfPktInsertion	OBJECT IDENTIFIER ::= {irtSysConf 7}
+		irtSysConfNetwork		OBJECT IDENTIFIER ::= {irtSysConf 8}
+		irtSysConfModulator		OBJECT IDENTIFIER ::= {irtSysConf 9}
+		irtSysConfLBand			OBJECT IDENTIFIER ::= {irtSysConf 11}
+		irtSysConfTime			OBJECT IDENTIFIER ::= {irtSysConf 13}
+       	irtSysStatus			OBJECT IDENTIFIER ::= {irt1000 2}
+		irtSysStatusCommands	OBJECT IDENTIFIER ::= {irtSysStatus 2}
+		irtSysStatusWKEcounts	OBJECT IDENTIFIER ::= {irtSysStatus 3}
+		irtSysStatusTac			OBJECT IDENTIFIER ::= {irtSysStatus 4}
+--		irtSysDecrypt			OBJECT IDENTIFIER ::= {irtSysStatus 5}
+--		irtSysEncrypt			OBJECT IDENTIFIER ::= {irtSysStatus 6} 
+		irtSysAlarms			OBJECT IDENTIFIER ::= {irtSysStatus 7} 
+
+
+irtSysConfTacConfig OBJECT-TYPE
+        SYNTAX      INTEGER
+            {
+              primaryOdvarcEnet(1),
+              secondary530(2),
+              primaryOdvarc530(3),
+              secondaryEnet(4),
+              locallyControlled(5)
+            }
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This defines the TCI Access Control (TAC) used by the
+             IRT-1000.  Values and meanings are:
+             
+             'primaryOdvarcEnet':  This is a primary IRT.  Input to this
+                  IRT is via ODVARC.  Output is via Ethernet.
+             'primaryOdvarc530': :  This is a primary IRT.  Input to 
+                  this IRT is via ODVARC.  Output is via RS-530.
+             'secondaryEnet':  This is a secondary IRT.  Input to this
+                  IRT is Ethernet.
+             'secondary530': :  This is a secondary IRT.  Input to this
+                  IRT is via RS-530.
+             'locallyControlled':  The TAC configuration is not in use. 
+				The IRT is being locally controlled by an ACC-4000D."
+
+REFERENCE   " -- "
+    ::= { irtSysConfTac 1 }
+
+irtSysConfTACemmProviderID OBJECT-TYPE
+        SYNTAX      INTEGER (0..65535)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the EMM Provider ID to be used to extract 
+             messages from the TAC stream.  The default value of this 
+             object is to be defined.  This means that when an IRT is 
+             first powered on, it will internally set this object to 
+             this default value.  Normally, this value will be set 
+             during the configuration process"
+        REFERENCE   " -- "
+    ::= { irtSysConfTac 2 }
+
+irtSysConfTACStreamUDPPort OBJECT-TYPE
+        SYNTAX      INTEGER (0..65535)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains UDP port number used in communication from a
+             primary IRT to secondary IRTs and OMs. The default value is 5457."
+        REFERENCE   " -- "
+    ::= { irtSysConfTac 3 }
+
+irtSysConfMulticastMACaddress OBJECT-TYPE
+        SYNTAX      DisplayString
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This object contains the Multicast Ethernet Address used in communication from a
+             primary IRT to secondary IRTs and OMs.  This is a six byte binary value with the MSB first."
+        REFERENCE   " -- "
+    ::= { irtSysConfTac 4 }
+
+irtSysConfIsoServicePID OBJECT-TYPE
+        SYNTAX      INTEGER (2..8190)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This object contains the Isochronous Service PID used by a
+             primary IRT to detunnel an isochronous service. "
+        REFERENCE   " -- "
+    ::= { irtSysConfTac 5 }
+
+irtSysConfIsoPCRPID OBJECT-TYPE
+        SYNTAX      INTEGER (2..8190)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This object contains the Isochronous PCR PID used by a
+             primary IRT to detunnel an isochronous service. "
+        REFERENCE   " -- "
+    ::= { irtSysConfTac 6 }
+
+irtSysConfIsoDataRate OBJECT-TYPE
+        SYNTAX      INTEGER (1..1600000)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This object contains the Isochronous Data Rate used by a
+             primary IRT to detunnel an isochronous service. "
+        REFERENCE   " -- "
+    ::= { irtSysConfTac 7 }
+
+irtSysConfControllerIP OBJECT-TYPE
+        SYNTAX      IpAddress
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the IP address of the local controller.
+             This is most often an ACC-4000D, but may be some other
+             device.  The IRT needs to have an IP address of the local
+             controller to begin operations.  The default value for 
+             this object is an IP address of '0.0.0.0' (which is an
+             invalid IP Address).  This means that when an IRT is first 
+             powered on, it will internally set this object to this 
+             default value.  If the configuration fails to set this
+             object to a non-zero IP address, the IRT will not begin
+             normal operation."
+        REFERENCE   " -- "
+    ::= { irtSysConf  2 }
+
+
+irtSysConfSrvNumEMMprovIDcount OBJECT-TYPE
+        SYNTAX      INTEGER (0..32)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "A count that determines the number of valid entries in the 
+             table of Service Number To Entitlement Management Message
+             (EMM) Provider Ids. The count may range from 0 to 32. "
+        REFERENCE   " -- "
+    ::= { irtSysConf  3 }
+
+irtSysConfSrvNumEMMprovIDTable OBJECT-TYPE
+		SYNTAX		SEQUENCE OF IrtSysConfSrvNumEMMprovIDEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  
+            "A table containing entries that have two fields. The first 
+             field is the Service Number. The second field is the EMM 
+             Provider Id. The table is used to authorize Decrypt ACPs 
+             on a per service basis. "
+    ::= { irtSysConf 4}
+
+irtSysConfSrvNumEMMprovIDEntry		OBJECT-TYPE
+		SYNTAX		IrtSysConfSrvNumEMMprovIDEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A row in the Service Number to EMM Provider ID Table"
+		INDEX {irtSysConfSrvNum }
+::= { irtSysConfSrvNumEMMprovIDTable 1}
+
+IrtSysConfSrvNumEMMprovIDEntry ::= SEQUENCE
+	{
+		irtSysConfSrvNum			INTEGER,
+		irtSysConfEMMprovID			INTEGER
+	}
+
+irtSysConfSrvNum			OBJECT-TYPE
+		SYNTAX		INTEGER (1..65535)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The MPEG-2 Service (Program) Number. "
+		REFERENCE " -- "
+::= { irtSysConfSrvNumEMMprovIDEntry 1}
+
+irtSysConfEMMprovID			OBJECT-TYPE
+		SYNTAX		INTEGER (0..65535)
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION  "The EMM Provider ID." 
+		REFERENCE " -- "
+::= { irtSysConfSrvNumEMMprovIDEntry 2}
+
+irtSysConfDefDecryptEMMprovID OBJECT-TYPE
+        SYNTAX      INTEGER (0..65535)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "A default Entitlement Management Message(EMM) provider Id 
+             to be used to authorize Decrypt ACPs in the event that 
+             the Service Number to EMM Provider Ids Table is empty or 
+             not applicable and the Satellite (received In-Band) 
+             Conditional Access Message does not contain an EMM Provider 
+             ID for a given service."
+        REFERENCE   " -- "
+    ::= { irtSysConf 5 }
+
+irtSysConfigDHEIControl OBJECT-TYPE
+        SYNTAX INTEGER
+		{
+			selectNoPorts(19),
+			selectInputPort(65555),
+			selectOutputPort(131091),
+			selectBothPorts(196627)
+		}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This object is used to control the Digital Headend Expansion Interface."
+        REFERENCE   " -- "
+    ::= { irtSysConf 6 }
+
+irtPktInsertionEnable OBJECT-TYPE
+		SYNTAX		INTEGER
+					{ disabled(1),
+					  enabled(2)
+					}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This is the Packet Insertion Enable parameter for the
+             IRT-1000.  Values and meanings are:
+             
+             'disabled':  (Default value) The packet insertion feature is disabled.
+                  
+             'enabled':  The packet insertion feature is enabled. "
+
+		REFERENCE   " -- "
+    ::= { irtSysConfPktInsertion 1 }
+
+irtPktInsertionUDPPort OBJECT-TYPE
+        SYNTAX      INTEGER (0..65535)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains UDP port number used in reception 
+             of packets to be inserted in-band. The default value is 5754."
+        REFERENCE   " -- "
+    ::= { irtSysConfPktInsertion 2 }
+
+irtPktInsMulticastMACaddress OBJECT-TYPE
+        SYNTAX      DisplayString
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This object contains the Multicast Ethernet Address used in reception
+             of packets to be inserted in-band. The data is a six byte binary format 
+			 with the MSB first."
+        REFERENCE   " -- "
+    ::= { irtSysConfPktInsertion 3 }
+    
+irtPktInsertionDroppedCounter OBJECT-TYPE
+        SYNTAX      Counter
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the number of dropped 
+             packets that were to be inserted in-band. 
+			 Setting this object clears the counter. "
+        REFERENCE   " -- "
+    ::= { irtSysConfPktInsertion 4 }
+
+irtSysConfPktInsertionCounter OBJECT-TYPE
+        SYNTAX      Counter
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the number of packets inserted in-band. "
+        REFERENCE   " -- "
+    ::= { irtSysConfPktInsertion 5 }
+
+irtSysConfPktInsRevisitPeriod OBJECT-TYPE
+        SYNTAX      INTEGER (0..255)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This is the minimum revisit period between inserting
+			 out-of-band packets into the In-Band for wireless 
+             applications."
+        REFERENCE   " -- "
+    ::= { irtSysConfPktInsertion 6 }
+
+irtSysConfIPAddress OBJECT-TYPE
+        SYNTAX      IpAddress
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the IP address of the IRT."
+        REFERENCE   " -- "
+    ::= { irtSysConfNetwork  1 }
+
+irtSysConfSubnetMask OBJECT-TYPE
+        SYNTAX      IpAddress
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the Subnet Mask of the IRT."
+        REFERENCE   " -- "
+    ::= { irtSysConfNetwork  2 }
+
+irtSysConfRouter OBJECT-TYPE
+        SYNTAX      IpAddress
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the Router IP Address for the IRT."
+        REFERENCE   " -- "
+    ::= { irtSysConfNetwork  3 }
+
+irtSysConfMACAddress OBJECT-TYPE
+        SYNTAX      DisplayString
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the Ethernet MAC Address of the IRT."
+        REFERENCE   " -- "
+    ::= { irtSysConfNetwork  4 }
+
+irtSysConfModulatorVersion OBJECT-TYPE
+        SYNTAX      INTEGER
+					{ original (1),
+					  firstRevision (2)
+					}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the version number of the QAM card."
+        REFERENCE   " -- "
+    ::= { irtSysConfModulator  1 }
+
+irtSysConfModulatorMode OBJECT-TYPE
+        SYNTAX      INTEGER
+					{ operate (1),
+					  continuousWave (2)
+					}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the mode of the QAM card."
+        REFERENCE   " -- "
+    ::= { irtSysConfModulator  2 }
+
+irtSysConfModulatorLevel OBJECT-TYPE
+        SYNTAX      INTEGER
+					{ plus30dBmV (1),
+					  plus40dBmV (2),
+					  off (3)
+					}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the output level of the QAM card."
+        REFERENCE   " -- "
+    ::= { irtSysConfModulator  3 }
+
+irtSysConfModulatorPLLlocked OBJECT-TYPE
+        SYNTAX      INTEGER
+					{ locked (1),
+					  unlocked (2)
+					}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the version number of the QAM card."
+        REFERENCE   " -- "
+    ::= { irtSysConfModulator  4 }
+
+irtSysConfModel OBJECT-TYPE
+        SYNTAX INTEGER
+			{ auto (1),
+			irt1000 (2),
+			irt2000 (3)
+			}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object is the model type the user has selected."
+        REFERENCE   " -- "
+    ::= { irtSysConf 10 }
+
+irtSysConfPort OBJECT-TYPE
+        SYNTAX      INTEGER
+		{
+		 	lBandPort1 (1),
+		 	lBandPort2 (2)
+		}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the L-Band Tuner port number.
+             If the port number is to be changed, it is required
+			 that it be changed first before updating other L-Band
+			 related parameters."
+        REFERENCE   " -- "
+    ::= { irtSysConfLBand 1 }
+
+irtSysConfSymbolRate OBJECT-TYPE
+        SYNTAX      INTEGER
+		{
+			symRate2912Combined (1),
+			symRate1934Combined (2),
+			symRate2978SplitI (3),
+			symRate2978SplitQ (4)
+		}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the L-Band Tuner Symbol Rate, Trellis Coding,
+			 and Combined/Split settings."
+        REFERENCE   " -- "
+    ::= { irtSysConfLBand 2 }
+
+irtSysConfFrequency OBJECT-TYPE
+        SYNTAX      INTEGER
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the L-Band Tuner frequency used by the 
+             IRT-1000.  This value can range in value from 950 MHz
+             to 1450 MHz in increments of 10 MHz.  The internal
+             coding is in MHz, so a value of 1010 means 1010 MHz.
+             The default value for this field is 1250 MHz.  This
+             means that when an IRT is first powered on, it will
+             internally set its frequency to this default value.  
+             During the configuration process, this value is normally
+             set to the actual frequency to be used."
+        REFERENCE   " -- "
+    ::= { irtSysConfLBand 3 }
+
+irtSysConfTunerLocked OBJECT-TYPE
+        SYNTAX      INTEGER
+			{
+				notLocked(1),
+				locked(2)
+			}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object indicates whether the L-Band tuner is locked to a Digicipher II signal."
+        REFERENCE   " -- "
+    ::= { irtSysConfLBand 4 }
+
+irtCommandRestartEnable OBJECT-TYPE
+		SYNTAX		INTEGER
+					{ disabled(1),
+					  enabled(2)
+					}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This is the Command Restart Enable parameter for the
+             IRT-1000.  Values and meanings are:
+             
+             'disabled':  (Default value) The command restart feature is disabled.
+                  
+             'enabled':  The command restart feature is enabled. "
+
+		REFERENCE   " -- "
+    ::= { irtSysConf 12 }
+
+
+irtSysConfTimeServerSetting OBJECT-TYPE
+        SYNTAX      INTEGER
+		{
+		 	useSNTP (1),
+		 	useLBand (2)
+		}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the setting to tell the IRT
+             which source of time to use. SNTP and L-Band are
+			 the choices. L-Band could also mean via DHEI input."
+        REFERENCE   " -- "
+    ::= { irtSysConfTime 1 }
+
+irtSysConfTimeUTCoffset OBJECT-TYPE
+        SYNTAX      INTEGER
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-write
+        STATUS      mandatory
+        DESCRIPTION 
+            "This is the UTC offset. This is the number of seconds
+			 of difference between GPS time and UTC time."
+        REFERENCE   " -- "
+    ::= { irtSysConfTime 2 }
+
+irtSysConfTimeServerState OBJECT-TYPE
+        SYNTAX      INTEGER
+		{
+			waitingForSNTP (1),
+			waitingForLBand (2),
+			usingSNTP (3),
+			usingLBand (4),
+			waitingForSNTPusingLBand (5)
+		}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "This contains the state of what the IRT is doing with
+			 the time source."
+        REFERENCE   " -- "
+    ::= { irtSysConfTime 3 }
+
+irtSysStatusSystemTime OBJECT-TYPE
+        SYNTAX INTEGER
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object is the System Time the IRT is using for commands and encryption purposes."
+        REFERENCE   " -- "
+    ::= { irtSysStatus 1 }
+
+irtSysStatusCommandsActive OBJECT-TYPE
+        SYNTAX INTEGER (0..1400)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object is number of LOAD IRT commands currently active."
+        REFERENCE   " -- "
+    ::= { irtSysStatusCommands 1 }
+
+irtSysStatusCommandsWaiting OBJECT-TYPE
+        SYNTAX INTEGER (0..1400)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object is number of LOAD IRT commands currently waiting to execute."
+        REFERENCE   " -- "
+    ::= { irtSysStatusCommands 2 }
+
+irtSysStatusBlocksAvailable OBJECT-TYPE
+        SYNTAX INTEGER (0..1400)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object is amount of free memory blocks available for 
+			 LOAD IRT commands. Each block contains 64 bytes of storage space."
+        REFERENCE   " -- "
+    ::= { irtSysStatusCommands 3 }
+
+irtSysStatusBlocksTotal OBJECT-TYPE
+        SYNTAX INTEGER
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object is the total amount of memory blocks available 
+			 for LOAD IRT commands. The value is 1400 blocks."
+        REFERENCE   " -- "
+    ::= { irtSysStatusCommands 4 }
+
+irtLastSequenceNumberReceived OBJECT-TYPE
+        SYNTAX INTEGER (0..65535)
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object is the sequence number of the last received LOAD IRT command."
+        REFERENCE   " -- "
+    ::= { irtSysStatusCommands 5 }
+
+irtNumberOfCommandRestarts OBJECT-TYPE
+        SYNTAX INTEGER 
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object is the number of times the commands have been restarted."
+        REFERENCE   " -- "
+    ::= { irtSysStatusCommands 6 }
+
+irtNumberOfSystemTimeRestarts OBJECT-TYPE
+        SYNTAX INTEGER 
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object is the number of times the commands have been restarted due to a large system time change."
+        REFERENCE   " -- "
+    ::= { irtSysStatusCommands 7 }
+
+irtSysStatusWKEcount133msec OBJECT-TYPE
+        SYNTAX INTEGER 
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION
+            "The value of this object is 133msec WKE Counter Value."
+        REFERENCE   " -- "
+    ::= { irtSysStatusWKEcounts 1 }
+
+irtSysStatusWKEcount400msec OBJECT-TYPE
+        SYNTAX INTEGER 
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION
+            "The value of this object is 400msec WKE Counter Value."
+        REFERENCE   " -- "
+    ::= { irtSysStatusWKEcounts 2 }
+
+irtSysStatusWKEcount1sec OBJECT-TYPE
+        SYNTAX INTEGER 
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION
+            "The value of this object is 1 second WKE Counter Value."
+        REFERENCE   " -- "
+    ::= { irtSysStatusWKEcounts 3 }
+
+irtSysStatusWKEcount4sec OBJECT-TYPE
+        SYNTAX INTEGER 
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION
+            "The value of this object is 4 second WKE Counter Value."
+        REFERENCE   " -- "
+    ::= { irtSysStatusWKEcounts 4 }
+
+irtSysStatusTacStreamPresent OBJECT-TYPE
+        SYNTAX      INTEGER
+			{
+				notPresent(1),
+				present(2)
+			}
+--      MAX-ACCESS  read-write
+--      STATUS      current
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION 
+            "The value of this object indicates whether a TAC control stream is present or not."
+        REFERENCE   " -- "
+    ::= { irtSysStatusTac 1 }
+
+irtSysAlarmNoTacStream		OBJECT-TYPE
+		SYNTAX		INTEGER
+					{ ok(1),
+					interdeterminate(2),
+					warning(3),
+					minor(4),
+					major(5),
+					critical(6)
+					}
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "A TAC Stream should be present when the IRT is a Primary or Secondary with Ethernet"
+		REFERENCE " -- "
+::= { irtSysAlarms 3000}
+
+irtSysAlarmCommandsOnErrorList		OBJECT-TYPE
+		SYNTAX		INTEGER
+					{ ok(1),
+					interdeterminate(2),
+					warning(3),
+					minor(4),
+					major(5),
+					critical(6)
+					}
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "Set to 'major' if any LOAD IRT commands are located on the Error List"
+		REFERENCE " -- "
+::= { irtSysAlarms 3001}
+
+irtSysAlarmZeroSystemTime		OBJECT-TYPE
+		SYNTAX		INTEGER
+					{ ok(1),
+					interdeterminate(2),
+					warning(3),
+					minor(4),
+					major(5),
+					critical(6)
+					}
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "Set to 'major' when the IRT System Time value is 0. Set to 'critical' when the IRT Time and the Satellite Time are greater than 15 seconds apart."
+		REFERENCE " -- "
+::= { irtSysAlarms 3002}
+
+irtSysAlarmCmdTbl90PercentFull	OBJECT-TYPE
+		SYNTAX		INTEGER
+					{ ok(1),
+					interdeterminate(2),
+					warning(3),
+					minor(4),
+					major(5),
+					critical(6)
+					}
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "Set to 'warning' when the LOAD IRT Command Table is >= 90% full"
+		REFERENCE " -- "
+::= { irtSysAlarms 3003}
+
+irtSysAlarmServceNotAuthorized		OBJECT-TYPE
+		SYNTAX		INTEGER
+					{ ok(1),
+					interdeterminate(2),
+					warning(3),
+					minor(4),
+					major(5),
+					critical(6)
+					}
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "Set to 'major' when a Service is not authorized but should be"
+		REFERENCE " -- "
+::= { irtSysAlarms 3004}
+
+irtSysAlarmTunerNotLocked		OBJECT-TYPE
+		SYNTAX		INTEGER
+					{ ok(1),
+					interdeterminate(2),
+					warning(3),
+					minor(4),
+					major(5),
+					critical(6)
+					}
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "Set to 'critical' when the L-Band tuner is not locked but should be"
+		REFERENCE " -- "
+::= { irtSysAlarms 3005}
+
+irtSysAlarmNoCommandsWaiting		OBJECT-TYPE
+		SYNTAX		INTEGER
+					{ ok(1),
+					interdeterminate(2),
+					warning(3),
+					minor(4),
+					major(5),
+					critical(6)
+					}
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "Set to 'warning' when no LOAD IRT commands are waiting to execute"
+		REFERENCE " -- "
+::= { irtSysAlarms 3006}
+
+irtSysSatelliteMessagesTable		OBJECT-TYPE
+		SYNTAX		SEQUENCE OF IrtSysSatelliteMessageEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A table of Satellite Digicipher II Messages. Please refer to
+				      the NextLevel Systems Digicipher II Message Stream Protocol
+					  document."
+::= { irtSysStatus 8}
+
+irtSysSatelliteMessageEntry		OBJECT-TYPE
+		SYNTAX		IrtSysSatelliteMessageEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A row in the Satellite Message Stream Table"
+		INDEX {irtSysSatelliteMessageType, irtSysSatelliteMessagePID, irtSysSatelliteMessageServNum, irtSysSatelliteMessagePartNum }
+::= { irtSysSatelliteMessagesTable 1}
+
+IrtSysSatelliteMessageEntry ::= SEQUENCE
+	{
+		irtSysSatelliteMessagePID			INTEGER,
+		irtSysSatelliteMessageType			INTEGER,
+		irtSysSatelliteMessageServNum		INTEGER,
+		irtSysSatelliteMessagePartNum		INTEGER,
+		irtSysSatelliteMessage				DisplayString
+	}
+
+irtSysSatelliteMessagePID			OBJECT-TYPE
+		SYNTAX		INTEGER (0..8191)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The MPEG-2 Packet Identifier (PID) of Interest "
+		REFERENCE " -- "
+::= { irtSysSatelliteMessageEntry 1}
+
+irtSysSatelliteMessageType		OBJECT-TYPE
+		SYNTAX		INTEGER (0..255)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The Message Type of Interest "
+		REFERENCE " -- "
+::= { irtSysSatelliteMessageEntry 2}
+
+irtSysSatelliteMessageServNum	OBJECT-TYPE
+		SYNTAX		INTEGER (0..65535)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The MPEG-2 Service Number of Interest - use 0 if not applicable "
+		REFERENCE " -- "
+::= { irtSysSatelliteMessageEntry 3}
+
+irtSysSatelliteMessagePartNum	OBJECT-TYPE
+		SYNTAX		INTEGER (1..4)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "Which part of the message this is"
+		REFERENCE " -- "
+::= { irtSysSatelliteMessageEntry 4}
+
+irtSysSatelliteMessage OBJECT-TYPE
+        SYNTAX      DisplayString
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION "This object contains the text of a satellite-side Digicipher II message "
+        REFERENCE   " -- "
+::= { irtSysSatelliteMessageEntry 5 }
+
+irtSysCableMessagesTable		OBJECT-TYPE
+		SYNTAX		SEQUENCE OF IrtSysCableMessageEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A table of Cable Digicipher II Messages"
+::= { irtSysStatus 9}
+
+irtSysCableMessageEntry		OBJECT-TYPE
+		SYNTAX		IrtSysCableMessageEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A row in the Cable Message Stream Table"
+		INDEX {irtSysCableMessageType, irtSysCableMessagePID, irtSysCableMessageServNum, irtSysCableMessagePartNum }
+::= { irtSysCableMessagesTable 1}
+
+IrtSysCableMessageEntry ::= SEQUENCE
+	{
+		irtSysCableMessagePID			INTEGER,
+		irtSysCableMessageType			INTEGER,
+		irtSysCableMessageServNum		INTEGER,
+		irtSysCableMessagePartNum		INTEGER,
+		irtSysCableMessage				DisplayString
+	}
+
+irtSysCableMessagePID			OBJECT-TYPE
+		SYNTAX		INTEGER (0..8191)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The MPEG-2 Packet Identifier (PID) of Interest "
+		REFERENCE " -- "
+::= { irtSysCableMessageEntry 1}
+
+irtSysCableMessageType		OBJECT-TYPE
+		SYNTAX		INTEGER (0..255)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The Message Type of Interest "
+		REFERENCE " -- "
+::= { irtSysCableMessageEntry 2}
+
+irtSysCableMessageServNum	OBJECT-TYPE
+		SYNTAX		INTEGER (0..65535)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The MPEG-2 Service Number of Interest - use 0 if not applicable "
+		REFERENCE " -- "
+::= { irtSysCableMessageEntry 3}
+
+irtSysCableMessagePartNum	OBJECT-TYPE
+		SYNTAX		INTEGER (1..4)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "Which part of the message this is"
+		REFERENCE " -- "
+::= { irtSysCableMessageEntry 4}
+
+irtSysCableMessage OBJECT-TYPE
+        SYNTAX      DisplayString
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION "This object contains the text of a satellite-side Digicipher II message "
+        REFERENCE   " -- "
+::= { irtSysCableMessageEntry 5 }
+
+irtSysLoadIRTcommandTable		OBJECT-TYPE
+		SYNTAX		SEQUENCE OF IrtSysLoadIRTcommandEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A table of LOAD IRT Commands"
+::= { irtSysStatus 10}
+
+irtSysLoadIRTcommandEntry		OBJECT-TYPE
+		SYNTAX		IrtSysLoadIRTcommandEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A row in the Cable Message Stream Table"
+		INDEX {irtSysLoadIRTlistNumber,irtSysLoadIRTsequenceNumber,irtSysLoadIRTpartNumber}
+::= { irtSysLoadIRTcommandTable 1}
+
+IrtSysLoadIRTcommandEntry ::= SEQUENCE
+	{
+		irtSysLoadIRTlistNumber			INTEGER,
+		irtSysLoadIRTsequenceNumber		INTEGER,
+		irtSysLoadIRTpartNumber			INTEGER,
+		irtSysLoadIRTcommand			DisplayString
+	}
+
+irtSysLoadIRTlistNumber		OBJECT-TYPE
+		SYNTAX		INTEGER
+					{
+					waitingForStartTimeList	(1),
+					waitingForStopTimeList	(2),
+					waitingForMsgExtractList(3),
+					activeList	(4),
+					waitingForMessageUpdateList	(5),
+					waitingForTimeUpdateList	(6),
+					errorList	(7),
+					overRiddenList	(8)
+					} 
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "Which list the LOAD IRT Command is on"
+		REFERENCE " -- "
+::= { irtSysLoadIRTcommandEntry 1}
+
+irtSysLoadIRTsequenceNumber		OBJECT-TYPE
+		SYNTAX		INTEGER 
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The sequence number of the LOAD IRT Command"
+		REFERENCE " -- "
+::= { irtSysLoadIRTcommandEntry 2}
+
+irtSysLoadIRTpartNumber		OBJECT-TYPE
+		SYNTAX		INTEGER (1..4)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "Which part of the LOAD IRT Command"
+		REFERENCE " -- "
+::= { irtSysLoadIRTcommandEntry 3}
+
+irtSysLoadIRTcommand OBJECT-TYPE
+        SYNTAX      DisplayString
+        ACCESS      read-only
+        STATUS      mandatory
+        DESCRIPTION "This object contains the text of a LOAD IRT command "
+        REFERENCE   " -- "
+::= { irtSysLoadIRTcommandEntry 4 }
+
+irtSysInsertionQueueTable			OBJECT-TYPE
+		SYNTAX		SEQUENCE OF IrtSysInsertionQueueEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A table of Insertion Queue subqueue information"
+::= { irtSysStatus 11}
+
+irtSysInsertionQueueEntry			OBJECT-TYPE
+		SYNTAX		IrtSysInsertionQueueEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A row in the Insertion Queue table"
+		INDEX {irtSysSubqueueType,irtSysSubqueueSubtype,irtSysSubqueueSlotNumber}
+::= { irtSysInsertionQueueTable 1}
+
+IrtSysInsertionQueueEntry ::= SEQUENCE
+	{
+		irtSysSubqueueType				INTEGER,
+		irtSysSubqueueSubtype			INTEGER,
+		irtSysSubqueueSlotNumber		INTEGER,
+		irtSysMessageType				INTEGER,
+		irtSysInsLoadIRTsequenceNumber	INTEGER
+	}
+
+irtSysSubqueueType		OBJECT-TYPE
+		SYNTAX		INTEGER (0..7)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The type of Subqueue"
+		REFERENCE " -- "
+::= { irtSysInsertionQueueEntry 1}
+
+irtSysSubqueueSubtype		OBJECT-TYPE
+		SYNTAX		INTEGER (0..65535)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The subtype of the Subqueue"
+		REFERENCE " -- "
+::= { irtSysInsertionQueueEntry 2}
+
+irtSysSubqueueSlotNumber	OBJECT-TYPE
+		SYNTAX		INTEGER (0..31)
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The slot number of the Subqueue"
+		REFERENCE " -- "
+::= { irtSysInsertionQueueEntry 3}
+
+irtSysMessageType		OBJECT-TYPE
+		SYNTAX		INTEGER 
+					{
+					programAssociationTable (256),
+					conditionalAccessTable (1),
+					programMapTable (2),
+					workingKeyEpochMessage (64),
+					programRekeyMessage (65),
+					programInfoMessage (192),
+					programNameMessage (193),
+					systemTimeMessage (197),
+					slotNotInUse (257)
+					}
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "The message type of the message being inserted"
+		REFERENCE " -- "
+::= { irtSysInsertionQueueEntry 4}
+
+irtSysInsLoadIRTsequenceNumber	OBJECT-TYPE
+		SYNTAX		INTEGER (0..65535)
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "The LOAD IRT sequence number of the Insert Message/Insert ECM command. A zero value indicates the slot is not in use."
+		REFERENCE " -- "
+::= { irtSysInsertionQueueEntry 5}
+
+irtSysErrorListTable			OBJECT-TYPE
+		SYNTAX		SEQUENCE OF IrtSysErrorListEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A table of Command Record Error List information"
+::= { irtSysStatus 12}
+
+irtSysErrorListEntry			OBJECT-TYPE
+		SYNTAX		IrtSysErrorListEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A row in the Error List table"
+		INDEX {irtSysErrorListIndex}
+::= { irtSysErrorListTable 1}
+
+IrtSysErrorListEntry ::= SEQUENCE
+	{
+		irtSysErrorListIndex			INTEGER,
+		irtSysErrLoadIRTsequenceNumber	INTEGER,
+		irtSysLoadIRTsubCommand			INTEGER,
+		irtSysScriptState				INTEGER,
+		irtSysErrorCode					INTEGER
+	}
+
+irtSysErrorListIndex	OBJECT-TYPE
+		SYNTAX		INTEGER 
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The index of the Error List"
+		REFERENCE " -- "
+::= { irtSysErrorListEntry 1}
+
+irtSysErrLoadIRTsequenceNumber	OBJECT-TYPE
+		SYNTAX		INTEGER (1..65535)
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "The LOAD IRT sequence number of the errored command"
+		REFERENCE " -- "
+::= { irtSysErrorListEntry 2}
+
+irtSysLoadIRTsubCommand	OBJECT-TYPE
+		SYNTAX		INTEGER 
+					{
+					serviceDecryptCommand	(1),
+					serviceEncryptCommand	(2),
+					insertECMmessageCommand	(3),
+					deliverEMMcommand		(4),
+					clearStreamCommand	(5),
+					extractMessageCommand	(6),
+					insertMessageCommand	(7),
+					defineInsertionQueueCommand	(8),
+					modifyMessageInsertionRateCmd	(10),
+					deleteCommand	(11),
+					modifyCommand	(12),
+					wkeCountConfigureCommand	(13)
+					}
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "The LOAD IRT subcommand ID of the errored command"
+		REFERENCE " -- "
+::= { irtSysErrorListEntry 3}
+
+irtSysScriptState	OBJECT-TYPE
+		SYNTAX		INTEGER 
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "The script state of the errored command"
+		REFERENCE " -- "
+::= { irtSysErrorListEntry 4}
+
+irtSysErrorCode	OBJECT-TYPE
+		SYNTAX		INTEGER 
+					{
+					invalidMessage		(1),
+					merObjectNotFound		(2),
+					invalidSemaphore		(3),
+					oldIRTcommand		(4),
+					illegalSubcommandID	(5),
+					tooManyMsgExtractions	(6),
+					noExtractionPID		(7),
+					unableToAllocateMER	(8),
+					unableToAllocateMsg	(9),
+					illegalExtractionType	(16),
+					illegalMsgStreamTable	(17),
+					pidNotFound			(18),
+					sccPIDarrayOverflow	(19),
+					noMessageExtracted	(20),
+					illegalPIDtype		(21),
+					noLoadIRTcommand		(22),
+					unableToAllocateExtrMsg (23),
+					illegalForwardToController (24),
+					pmtSegmentZeroNotFound	(25),
+					noECMdescriptor		(32),
+					noMorePIDarrayBuffers	(33),
+					noProgramAssocTblReturned (34),
+					noPIDfound			(35),
+					tooManyPIDsToCrypt	(36),
+					bothACPsidesInUse		(37),
+					ecmPIDalreadyUsed		(38),
+					codingError			(39),
+					acpIndexNotFound		(40),
+					acpSideNotFound		(41),
+					loadIRTcmdNotFound	(48),
+					unableToUpdateCmdTable	(49),
+					invalidSubcommandID	(50),
+					illegalDeleteFunction	(51),
+					noCommandRecord		(52),
+					illegalDeleteCRlist	(53),
+					invalidStartTime		(54),
+					invalidList			(55),														unableToInsertMessage	(56),
+					loadIRTcmdNotStored	(57),
+					acpUnitAddressesNotStored	(64),
+					notUnitAddressed		(65),
+					emmProviderIDnotFound	(66),
+					emmProviderIDnotDefined	(67),
+					emmProviderIDalreadyDefined (68),
+					acpDeviceNotInUse		(69),
+					acpUnitAddressNotFound	(70),
+					stopTimeBeforeCompletion (71),
+					ecmPIDnotLogged		(72),
+					subqueueNotDefined	(73),
+					messageSlotInUse		(80)
+					}
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "The error code of the errored command"
+		REFERENCE " -- "
+::= { irtSysErrorListEntry 5}
+
+irtSysErrorLogTable			OBJECT-TYPE
+		SYNTAX		SEQUENCE OF IrtSysErrorLogEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A table of Command Record Error List information"
+::= { irtSysStatus 13}
+
+irtSysErrorLogEntry			OBJECT-TYPE
+		SYNTAX		IrtSysErrorLogEntry
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "A row in the Error List table"
+		INDEX {irtSysErrorLogIndex}
+::= { irtSysErrorLogTable 1}
+
+IrtSysErrorLogEntry ::= SEQUENCE
+	{
+		irtSysErrorLogIndex			INTEGER,
+		irtSysErrorLogCode			INTEGER
+	}
+
+irtSysErrorLogIndex	OBJECT-TYPE
+		SYNTAX		INTEGER 
+		ACCESS		not-accessible
+		STATUS		mandatory
+		DESCRIPTION  "The index into the table"
+		REFERENCE " -- "
+::= { irtSysErrorLogEntry 1}
+
+irtSysErrorLogCode	OBJECT-TYPE
+		SYNTAX		INTEGER 
+		ACCESS		read-only
+		STATUS		mandatory
+		DESCRIPTION  "The error code"
+		REFERENCE " -- "
+::= { irtSysErrorLogEntry 2}
+
+-- ****************************************************************************
+-- The IRT-1000 specific traps.
+-- ****************************************************************************
+
+irtTrapNoTacStream		TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued if the there is no TAC stream present
+		 and there shoould be one"
+        ::= 3000
+
+irtTrapCommandsOnErrorList		TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued if the there is no TAC stream present
+		 and there shoould be one"
+        ::= 3001
+
+irtTrapZeroSystemTime		TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued if the there is no TAC stream present
+		 and there shoould be one"
+        ::= 3002
+
+irtTrapCmdTbl90PercentFull	TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued if the there is no TAC stream present
+		 and there shoould be one"
+        ::= 3003
+
+irtTrapServceNotAuthorized		TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued if the there is no TAC stream present
+		 and there shoould be one"
+        ::= 3004
+
+irtTrapTunerNotLocked		TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued if the there is no TAC stream present
+		 and there shoould be one"
+        ::= 3005
+
+irtTrapNoCommandsWaiting		TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued if the there is no TAC stream present
+		 and there shoould be one"
+        ::= 3006
+
+-- ****************************************************************************
+-- **************************** NLSBBN Traps Group ****************************
+-- ****************************************************************************
+-- This group contains those objects which are commonly defined for the Next
+-- Level Systems Broadband Network Group except that the ENTERPRISE is set specific
+-- to the IRT-1000.  Trap IDs start at 1.
+-- ****************************************************************************
+
+trapNewNEFound TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedValueOID
+		}
+	DESCRIPTION
+		"This trap is isssued if a Proxy Agent Detected A New NE.
+		 trapPerceivedSeverity - 'indeterminate'
+		 trapChangedValueOID - This  variable identifies the new
+		 Network Element.  This trap is not issues by non-proxy
+		 agents."
+	::= 1
+
+
+trapNewNELost TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedValueOID
+		}
+	DESCRIPTION
+		"This trap is isssued if a Proxy Agent lost communication with
+		 NE.  trapPerceivedSeverity - 'critical'.
+		 trapChangedValueOID - This  variable identifies the new
+		 Network Element. This trap is not issues by non-proxy agents."
+	::= 2
+
+
+trapConfigurationChangeInteger TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger
+		}
+	DESCRIPTION
+		"This trap is issued if configuration of a single variable
+		 with integer type was changed (via ANY interface).  
+		 TrapChangedValueInteger variable may contain current reading
+		 of that variable.
+		 trapPerceivedSeverity - 'indeterminate'"
+	::= 3
+
+
+trapConfigurationChangeDisplayString TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueDisplayString
+		}
+	DESCRIPTION
+		"This trap is issued if configuration of a single variable
+		 with DispalayString type was changed (via ANY interface).  
+		 TrapChangedValueDisplayString variable may contain current
+		 reading of that variable.
+		 trapPerceivedSeverity - 'indeterminate'"
+	::= 4
+
+
+trapConfigurationChangeOID TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueOID
+		}
+	DESCRIPTION
+		"This trap is issued if configuration of a single variable
+		 with OID type was changed (via ANY interface).  
+		 TrapChangedValueOID variable may contain current reading
+		 of that variable.
+		 trapPerceivedSeverity - 'indeterminate'"
+	::= 5
+
+trapConfigurationChangeIpAddress TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueIpAddress
+		}
+	DESCRIPTION
+		"This trap is issued if configuration of a single variable
+		 with IpAddress type was changed (via ANY interface).  
+		 TrapChangedValueIpAddress variable may contain current reading
+		 of that variable.
+		 trapPerceivedSeverity - 'indeterminate'"
+	::= 6
+
+
+trapToBeSendQueueOverflow TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp
+		}
+	DESCRIPTION
+		"This trap is issued if SNMP agent's TrapToBeSendQueue is full.
+		 trapPerceivedSeverity - 'major'
+		 trapNetworkElemModelNumber - Model # of the Agent
+		 trapNetworkElemSerialNum - Serial # of the Agent
+		 trapNetworkElemOperState - from Ident MIB
+		 trapNetworkElemAlarmStatus - from Ident MIB   
+		 trapNetworkElemAdminState - from Ident MIB
+		 trapNetworkElemAvailStatus - from Ident MIB"
+	::= 7
+
+-- ****************************************************************************
+-- ****************************** DNS Traps Group *****************************
+-- ****************************************************************************
+-- This group contains those objects which are commonly defined for the Digital
+-- Network Systems group except that the ENTERPRISE is set specific to the 
+-- IRT1000.  Trap IDs start at 20.
+-- ****************************************************************************
+
+trapConditionNotInList TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued if a condition is being cleared and
+		 it is not in the condition list. " 
+	::= 20
+
+trapConditionAlreadyInList TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued if a condition is being set and
+		 it is already in the condition list. " 
+	::= 21
+
+trapConditionListFull TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued if a condition is being set and
+		 the condition list is full. " 
+	::= 22
+
+trapInvalidCaseInSwitch TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued when in a switch statement the
+		 default case is reached.  The trapAdditionalInfoInteger1
+		 will contain the value of the switch.
+		 The trapAdditionalInfoInteger2 will contain the
+		 task ID and the trapAdditionalInfoInteger3 will
+		 contain the function ID."
+	::= 23
+
+trapCannotCreateSemaphore TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued when a semaphore cannot
+		 be created. The trapAdditionalInfoInteger1 will contain the
+		 task ID and the trapAdditionalInfoInteger2 will
+		 contain the function ID."
+	::= 24
+
+trapCannotOpenSocket TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued when a socket cannot
+		 be opened. The trapAdditionalInfoInteger1 will contain the
+		 task ID. The trapAdditionalInfoInteger2 will contain the 
+		 errno returned by the call to socket()."
+	::= 25
+
+trapUnknownMessageReceived TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued when an unknown message
+		 is received.  The trapAdditionalInfoInteger1 will contain the
+		 message ID. The trapAdditionalInfoInteger2 will contain the 
+		 task ID."
+	::= 26
+
+trapInvalidMessageReceived TRAP-TYPE
+	ENTERPRISE irt1000
+	VARIABLES
+		{       
+		trapIdentifier,
+		trapNetworkElemModelNumber,
+		trapNetworkElemSerialNum,
+		trapPerceivedSeverity,
+		trapNetworkElemOperState,
+		trapNetworkElemAlarmStatus,  
+		trapNetworkElemAdminState,
+		trapNetworkElemAvailStatus,
+		trapText,
+		trapNETrapLastTrapTimeStamp,
+		trapChangedObjectId,
+		trapChangedValueInteger,  
+		trapAdditionalInfoInteger1, 
+		trapAdditionalInfoInteger2, 
+		trapAdditionalInfoInteger3     
+		}
+	DESCRIPTION
+		"This trap is issued when an invalid message
+		 is received.  The trapAdditionalInfoInteger1 will contain the
+		 message ID. The trapAdditionalInfoInteger2 will contain the 
+		 task ID."
+	::= 27
+
+END
+

@@ -1,0 +1,91 @@
+-- **************************************************************************
+--
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--    No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+--
+-- **************************************************************************
+--    Filename: Ntgr-smi.mib
+--    Creation Date: May 10, 2012
+--
+-- **************************************************************************
+--    Description:
+--
+--		private MIB for runtime management of diag thread.
+--
+-- **************************************************************************
+--    Revision History:
+--
+-- **************************************************************************
+
+NETGEAR-CABLEMGMT-SMI DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-IDENTITY
+        FROM SNMPv2-SMI
+    netgear
+        FROM NETGEAR-SMI; -- Defined above in this same module
+        
+cableMgmt MODULE-IDENTITY
+    LAST-UPDATED "201205140000Z"
+    ORGANIZATION "Netgear, Inc"
+    CONTACT-INFO
+        ""
+    DESCRIPTION
+        "Initial version of this MIB module."
+    ::= { netgear 30 }
+
+--------------------------------------------------
+--------------------------------------------------
+
+--docsisMgmt OBJECT-IDENTITY
+--    STATUS	current
+--    DESCRIPTION
+--        ""
+--    ::= { cableMgmt 1 }
+
+--emtaMgmt OBJECT-IDENTITY
+--    STATUS	current
+--    DESCRIPTION
+--        ""
+--    ::= { cableMgmt 2 }
+
+--wifiMgmt OBJECT-IDENTITY
+--    STATUS	current
+--    DESCRIPTION
+--        ""
+--    ::= { cableMgmt 3 }
+
+--ipMgmt OBJECT-IDENTITY
+--    STATUS	current
+--    DESCRIPTION
+--        ""
+--    ::= { cableMgmt 4 }
+
+--userserviceMgmt OBJECT-IDENTITY
+--    STATUS	current
+--    DESCRIPTION
+--        ""
+--    ::= { cableMgmt 5 }
+
+--networkmapMgmt OBJECT-IDENTITY
+--    STATUS	current
+--    DESCRIPTION
+--        ""
+--    ::= { cableMgmt 6 }
+
+--diagMgmt OBJECT-IDENTITY
+--    STATUS	current
+--    DESCRIPTION
+--        ""
+--    ::= { cableMgmt 7 }
+
+END
+
+

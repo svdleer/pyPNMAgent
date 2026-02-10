@@ -1,0 +1,172 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-networkMap-mgmt.mib
+--    Creation Date: May 11, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--		private MIB for network map management.
+--
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-NETWORKMAP-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, MODULE-IDENTITY, enterprises, 
+	Unsigned32
+		FROM SNMPv2-SMI
+	MacAddress
+		FROM SNMPv2-TC
+	SnmpAdminString
+		FROM SNMP-FRAMEWORK-MIB
+	InetAddress
+		FROM INET-ADDRESS-MIB
+	cableMgmt
+		FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrNetworkMapMgmt MODULE-IDENTITY
+	LAST-UPDATED "201205110000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"Initial version of this MIB module."
+::= { cableMgmt 6 }
+
+
+-- 
+-- Netgear Group
+-- 
+
+-- 
+-- Network Map
+-- 
+
+networkMapDevNum  OBJECT-TYPE
+	SYNTAX     Unsigned32
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"Display the number of connections."
+	::= { ntgrNetworkMapMgmt 1 }
+
+networkMapWanType  OBJECT-TYPE
+	SYNTAX     INTEGER {
+		docsis-wan (1)
+	}
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"Only support docsis wan type"
+	DEFVAL  { 1 }
+	::= { ntgrNetworkMapMgmt 2 }   
+	
+networkMapHostTable  OBJECT-TYPE
+	SYNTAX SEQUENCE OF NetworkMapHostEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= {  ntgrNetworkMapMgmt 3 }
+
+networkMapHostEntry  OBJECT-TYPE
+	SYNTAX 	NetworkMapHostEntry
+	MAX-ACCESS not-accessible
+	STATUS     current
+	DESCRIPTION 
+		""
+	INDEX { networkMapHostName }
+	::= { networkMapHostTable 1 }
+
+NetworkMapHostEntry ::= SEQUENCE {
+	networkMapHostName
+		SnmpAdminString,
+	networkMapHostType
+		Unsigned32,
+	networkMapHostLinkSpeed
+		Unsigned32,
+	networkMapHostLink
+		INTEGER,
+	networkMapHostIpAddr
+		InetAddress,
+	networkMapHostMacAddress
+    MacAddress
+}
+
+networkMapHostName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		"The name of Connected devices"
+	::= { networkMapHostEntry 1 }
+
+networkMapHostType  OBJECT-TYPE
+	SYNTAX     Unsigned32  {  
+	             static(1),
+	             dynamic(2)
+	                  }
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"display static or dynamic ip"
+	::= { networkMapHostEntry 2 }
+
+networkMapHostLinkSpeed  OBJECT-TYPE
+	SYNTAX     Unsigned32
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"Connection speed"
+	::= { networkMapHostEntry 3 }
+
+networkMapHostLink  OBJECT-TYPE
+	SYNTAX     INTEGER {
+		wire (1),
+		wireless (2)
+	}
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"Use wire or wireless to connect"
+	::= { networkMapHostEntry 4 }
+
+networkMapHostIpAddr  OBJECT-TYPE
+	SYNTAX     InetAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The ip address of Connected devices"
+	::= { networkMapHostEntry 5 }
+
+networkMapHostMacAddress  OBJECT-TYPE
+	SYNTAX     MacAddress
+	MAX-ACCESS read-only
+	STATUS     current
+	DESCRIPTION 
+		"The mac address of Connected devices"
+	::= { networkMapHostEntry 6 }     
+	
+END

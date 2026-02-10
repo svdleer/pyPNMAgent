@@ -1,0 +1,1029 @@
+    SMC-DORY-MTA-MIB  DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Counter32,
+        Integer32,
+        IpAddress,
+        experimental,
+        private,
+        enterprises,
+        transmission            FROM SNMPv2-SMI
+        
+        InetAddressType, 
+        InetAddress			   	FROM INET-ADDRESS-MIB
+               
+    	MODULE-COMPLIANCE,
+    	OBJECT-GROUP            FROM SNMPv2-CONF
+    	
+    	TEXTUAL-CONVENTION,
+    	MacAddress,
+	    PhysAddress,
+    	RowStatus,
+    	TruthValue,
+        DateAndTime,
+	    TimeStamp,
+    	DisplayString           FROM SNMPv2-TC;
+    	
+            
+-- Textual Conventions
+	smcNetworks		OBJECT IDENTIFIER ::= { enterprises 202 }
+	smcCableModem	OBJECT IDENTIFIER ::= { smcNetworks 80 }
+
+    smcDoryMtaMib MODULE-IDENTITY
+    LAST-UPDATED "201205230000Z" -- May 25, 2012
+    ORGANIZATION "SMC Networks, Inc."
+    CONTACT-INFO
+           " aRyeh Elkon
+            SMC Networks Inc
+            1873 S Bellaire St	
+            Suite 1025	
+            Denver, CO 80222
+            USA
+            Phone: +1 949 679 8267
+            E-mail: elkon@smc.com"    DESCRIPTION
+        "Waiting for update"
+
+    REVISION "201108020000Z" -- August 02, 2011
+    DESCRIPTION
+        "DORY-NCS-CCR release 2.1.3.5.5
+         was managed until 8/02/2011 ny Hitron "
+
+   REVISION "201109190000Z" -- September 19, 2011
+    DESCRIPTION
+        " Change ownership to SMC.
+
+          Change the main module identity from smcDoryMib to smcDoryMtaMib.
+          Add smcSdp function (Require by MSO for some products).
+          Add Loss Plann Configuration options.
+          Add RMA related Utilities.  "
+
+   REVISION "201205250000Z" -- May 23, 2012
+    DESCRIPTION
+        "add:
+                lineHdAudioEnable      doryVsmLineStatusEntry 6,
+              
+                doryMtaG722-64-static  dorySigMibObject 16  "
+
+        ::= { smcCableModem 501 }
+
+-- ++++++++++++++++++++++++++++++++++++++++++++++++++
+
+dorySigMibObject OBJECT IDENTIFIER 
+		::= { smcDoryMtaMib 1 }
+
+dorySwdlControlMibObject OBJECT IDENTIFIER 
+		::= { smcDoryMtaMib 2 }
+		
+doryVsmStatus OBJECT IDENTIFIER 
+		::= { smcDoryMtaMib 3 }
+
+doryPowerSavingDelay OBJECT IDENTIFIER 
+		::= { smcDoryMtaMib 4 }   
+
+doryBatteryData OBJECT IDENTIFIER 
+		::= { smcDoryMtaMib 5 } 
+
+smcMtaSdp       OBJECT IDENTIFIER 
+		::= { smcDoryMtaMib 6 } 
+
+smcMtaRmaUtil   OBJECT IDENTIFIER 
+		::= { smcDoryMtaMib 7 } 
+
+		
+doryVsmBatteryStatus OBJECT IDENTIFIER 
+		::= { doryVsmStatus 1 }
+
+doryVsmMtaStatus OBJECT IDENTIFIER 
+		::= { doryVsmStatus 2 }
+
+doryVsmLineStatus OBJECT IDENTIFIER 
+		::= { doryVsmStatus 3 }
+		
+ 		
+-- ++++++++++++++++++++++++++++++++++++++++++++++++++
+    
+InterfaceIndex ::= TEXTUAL-CONVENTION
+    DISPLAY-HINT "d"
+    STATUS       current
+    DESCRIPTION
+            "A unique value, greater than zero, for each interface or
+            interface sub-layer in the managed system.  It is
+            recommended that values are assigned contiguously starting
+            from 1.  The value for each interface sub-layer must remain
+            constant at least from one re-initialization of the entity's
+            network management system to the next re-initialization."
+    SYNTAX       Integer32 (1..2147483647)
+    
+doryOSIcontrol0 OBJECT-TYPE
+      SYNTAX      Integer32
+      MAX-ACCESS  read-write
+      STATUS      current
+      DESCRIPTION
+            "control the OSI value"
+      DEFVAL { 1 }
+      ::= { dorySigMibObject 1 }
+	  
+doryOSIcontrol1 OBJECT-TYPE
+      SYNTAX      Integer32
+      MAX-ACCESS  read-write
+      STATUS      current
+      DESCRIPTION
+            "control the OSI value"
+      DEFVAL { 1 }
+      ::= { dorySigMibObject 2 }
+
+dorySigProvTimer OBJECT-TYPE
+        SYNTAX      Integer32 (1..600)
+        UNITS       "seconds"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "A timer that STARTS at packetcable provisioning complete. If the
+            MTA has not sent an RSIP for a configurable time period following
+            prov complete then the MTA should go back to PacketCable MTA-1."
+        DEFVAL    { 600 }
+        ::= { dorySigMibObject 3 }
+          
+dorySigLoopCurrent	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		normal(1),
+		high(2),
+		notSupported(3)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"NotSupported indicates this feature is not supported on the
+	chosen hardware platform
+	Normal indicates that the the DC current in the loop is at the
+	normal level for the SLIC.
+	High indicates that the the DC current in the loop is at the
+	high level for the SLIC."
+	DEFVAL { normal }
+	::= { dorySigMibObject 4 }  
+
+dorySigRingingVoltage0	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		sinusoidal(1),
+		trapezoidal(2)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The default ringing voltage MUST be sinusoidal, 
+  settable via SNMP to sinusoidal and trapezoidal,
+   and any changes in the setting persistant across reboot."
+	DEFVAL { sinusoidal }
+	::= { dorySigMibObject 5 }
+	
+dorySigRingingVoltage1	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		sinusoidal(1),
+		trapezoidal(2)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"The default ringing voltage MUST be sinusoidal, 
+  settable via SNMP to sinusoidal and trapezoidal,
+   and any changes in the setting persistant across reboot."
+	DEFVAL { sinusoidal }
+	::= { dorySigMibObject 6 } 
+  
+dorySigDialTypeSwitch	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		digit(1),
+		pulse(2),
+		auto(3)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"dial type switch."
+	DEFVAL { auto }
+	::= { dorySigMibObject 7 }
+      
+doryMTAResetDelay OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The object will reboot the MTA"
+        DEFVAL {1}
+        ::= { dorySigMibObject 10}	  
+
+doryMTAemtaLineEnable0	OBJECT-TYPE
+    	SYNTAX         INTEGER
+    	{
+            disable(0),
+            enable(1)
+    	}
+    	MAX-ACCESS     read-write
+    	STATUS         current
+        DESCRIPTION
+        "True indicates enabled which connects the subscriber line to the TA.
+        False indicates disabled which disconnects the subscriber line from
+        the TA"
+        DEFVAL { enable }
+        ::= { dorySigMibObject 11 }
+        
+doryMTAemtaLineEnable1	OBJECT-TYPE
+    	SYNTAX         INTEGER
+    	{
+            disable(0),
+            enable(1)
+    	}
+    	MAX-ACCESS     read-write
+    	STATUS         current
+        DESCRIPTION
+        "True indicates enabled which connects the subscriber line to the TA.
+        False indicates disabled which disconnects the subscriber line from
+        the TA"
+        DEFVAL { enable }
+        ::= { dorySigMibObject 12 }   
+        
+doryMTACodecControl	OBJECT-TYPE
+	SYNTAX        BITS 
+	{
+            g711-mu(0),
+            g711-a(1),
+            t38-udp-fax(2),
+            g722(3)
+	}
+        MAX-ACCESS     read-write
+    	STATUS         current         
+        DESCRIPTION
+        "Control codec in D3vn MTA"
+        ::= { dorySigMibObject 13 }              
+               
+doryMTADCVoltageRingingModeTcid0	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+      balanced(0),
+      unbalanced(1)
+	}
+        MAX-ACCESS     read-write
+        STATUS         deprecated
+        DESCRIPTION
+        "1/ Each telephony line interface MUST support balanced and SHOULD support unbalanced ringing. Balanced ringing MUST be the default."
+        DEFVAL { balanced }
+        ::= { dorySigMibObject 14 }
+
+doryMTADCVoltageRingingModeTcid1	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+      balanced(0),
+      unbalanced(1)
+	}
+        MAX-ACCESS     read-write
+        STATUS         deprecated
+        DESCRIPTION
+        "1/ Each telephony line interface MUST support balanced and SHOULD support unbalanced ringing. Balanced ringing MUST be the default."
+        DEFVAL { balanced }
+        ::= { dorySigMibObject 15 }      
+
+doryMtaG722-64-static OBJECT-TYPE
+        SYNTAX          TruthValue
+	MAX-ACCESS	read-write
+	STATUS	        current
+	DESCRIPTION
+        "Global flag to set G.722-64 behavior.   Default is Dynamic (2) codec .
+           Enable  (1)
+           Disable (2)
+
+         This value MUST-NOT persist reset. "
+        DEFVAL { 2 }
+       ::= { dorySigMibObject 16 }         
+
+--
+-- The following group describes the software download control objects
+--
+
+dorySoftwareDownloadDuringCall	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		docsisDefault(0),
+		noSwdlDuringCall(1),
+		swdlRebootAfterCall(2)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"This feature is used to control the conditions for rebooting the modem following a software download.
+        (0) DOCSIS default
+        (1) Do not download software if any phone endpoint is off hook
+        (2) Download software immediately but delay the reboot until all lines have been on-hook"
+	DEFVAL { swdlRebootAfterCall }
+	::= { dorySwdlControlMibObject 1 }
+
+doryStopVoiceCallDuringSoftwareDownload	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		disable(0),
+		enable(1)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"To stop the voice call during software download invoked from snmp"
+	DEFVAL { disable }
+	::= { dorySwdlControlMibObject 2 }
+
+doryVendorTrapEnable	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		disable(0),
+		enable(1)		
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enable vendor trap, to receive vsm trap, this function must be enable.
+        (0) Disable
+        (1) Enable"
+	::= { doryVsmStatus 4 }
+
+doryBbuEnable	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		disable(0),
+		enable(1)		
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enable vendor trap, to receive vsm trap, this function must be enable.
+        (0) Disable
+        (1) Enable"
+	::= { doryVsmStatus 5 }
+
+doryVsmBatteryAcFailStatus	OBJECT-TYPE
+  SYNTAX  DisplayString (SIZE (0..255))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"Battery AC fail status."	
+	::= { doryVsmBatteryStatus 1 }
+
+doryVsmBatteryReplaceBatteryStatus	OBJECT-TYPE
+  SYNTAX  DisplayString (SIZE (0..255))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"Battery replace status."	
+	::= { doryVsmBatteryStatus 2 }
+	
+doryVsmBatteryMissingStatus	OBJECT-TYPE
+  SYNTAX  DisplayString (SIZE (0..255))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"Battery missing status."	
+	::= { doryVsmBatteryStatus 3 }	
+
+doryVsmBatteryLowStatus	OBJECT-TYPE
+  SYNTAX  DisplayString (SIZE (0..255))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"Battery low status."	
+	::= { doryVsmBatteryStatus 4 }
+
+doryVsmCmsLocStatus	OBJECT-TYPE
+  SYNTAX  DisplayString (SIZE (0..255))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"CMS LOC status."	
+	::= { doryVsmMtaStatus 1 }
+	
+doryVsmHwSwFailStatus	OBJECT-TYPE
+  SYNTAX  DisplayString (SIZE (0..255))
+	MAX-ACCESS     read-only
+	STATUS         current
+	DESCRIPTION
+	"HW/SW status."	
+	::= { doryVsmMtaStatus 2 }
+
+doryVsmLineStatusTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF DoryVsmLineStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Line status table."
+    ::= { doryVsmLineStatus 1 }
+
+doryVsmLineStatusEntry OBJECT-TYPE
+    SYNTAX      DoryVsmLineStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "An entry containing management information applicable to a
+            particular interface."
+    INDEX   { lineIndex }
+    ::= { doryVsmLineStatusTable 1 }
+
+DoryVsmLineStatusEntry ::=
+    SEQUENCE {
+        lineIndex	      InterfaceIndex,
+        lineStatus      DisplayString,
+        lineReset       INTEGER,
+        lineRxGain      INTEGER,
+        lineTxGain      INTEGER,
+        lineHdAudioEnable   TruthValue               
+    }
+    
+lineIndex OBJECT-TYPE
+    SYNTAX      InterfaceIndex
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "A unique value, greater than zero, for each interface.  It
+            is recommended that values are assigned contiguously
+            starting from 1.  The value for each interface sub-layer
+            must remain constant at least from one re-initialization of
+           initialization."
+    ::= { doryVsmLineStatusEntry 1 }
+
+lineStatus OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "A textual string containing information about the
+            interface.  This string should include the name of the
+            manufacturer, the product name and the version of the
+            interface hardware/software."
+    ::= { doryVsmLineStatusEntry 2 }          
+
+lineReset	OBJECT-TYPE
+	SYNTAX         INTEGER
+	{
+		false(0),
+		true(1)
+	}
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Trigger line reset
+        (0) false
+        (1) true"
+	::= { doryVsmLineStatusEntry 3 }
+
+lineRxGain	OBJECT-TYPE
+  SYNTAX      INTEGER (-12..0)
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Rx gain control setting (0~-12db)"
+  DEFVAL { -4 }	
+	::= { doryVsmLineStatusEntry 4 }
+
+lineTxGain	OBJECT-TYPE
+  SYNTAX      INTEGER (-12..0)
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Tx gain control setting (0~-12db)"
+  DEFVAL { -2 }	
+	::= { doryVsmLineStatusEntry 5 }
+
+     lineHdAudioEnable  OBJECT-TYPE
+        SYNTAX          TruthValue
+	MAX-ACCESS	read-write
+	STATUS	        current
+	DESCRIPTION
+        "State of Line-by-Line HD (G722) Audio .
+           Enable  (1)
+           Disable (2)
+
+         This value must persist reset.
+         
+              "
+     DEFVAL { 1 }
+	::= { doryVsmLineStatusEntry 6 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Line Test Results
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+doryVsmLineTestResultTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF DoryVsmLineTestResultEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Line test result table."
+    ::= { doryVsmLineStatus 2 }
+
+doryVsmLineTestResultEntry OBJECT-TYPE
+    SYNTAX      DoryVsmLineTestResultEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "An entry containing management information applicable to a
+            particular interface."
+    INDEX   { lineIndex }
+    ::= { doryVsmLineTestResultTable 1 }
+
+DoryVsmLineTestResultEntry ::=
+    SEQUENCE {
+        lineTestResultIndex                 InterfaceIndex,
+        lineVoltageTestResult               OCTET STRING,
+        receiverOffHookTestResult           OCTET STRING,
+        ringersEquivalenceNumberTestResult  OCTET STRING,
+        resistiveFaultTestResult            OCTET STRING,
+        loopbackTestResult                  OCTET STRING,
+        dcFeedSelfTestResult                OCTET STRING,
+        dcVoltageTestResult                 OCTET STRING,
+        onOffHookSelfTestResult             OCTET STRING,
+        preLineVoltageTestResult            OCTET STRING                                                                              
+    }
+    
+lineTestResultIndex OBJECT-TYPE
+    SYNTAX      InterfaceIndex
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "A unique value, greater than zero, for each interface.  It
+            is recommended that values are assigned contiguously
+            starting from 1.  The value for each interface sub-layer
+            must remain constant at least from one re-initialization of
+           initialization."
+    ::= { doryVsmLineTestResultEntry 1 }
+
+lineVoltageTestResult OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..512))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This procedure tests for the hazardous electromotive force (HEMF)
+             and foreign electromotive force (FEMF) on the tip lead, 
+             ring lead and between the tip, ring leads."
+    ::= { doryVsmLineTestResultEntry 2 }
+
+receiverOffHookTestResult OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..512))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This procedure can identify an on-hook phone or a off-hook phone or a resistive loop condition. 
+             An on-hook phone is considered to be passing."
+    ::= { doryVsmLineTestResultEntry 3 }      
+
+ringersEquivalenceNumberTestResult OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..512))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This procedure measures ringer equivalence number (REN; or telephone ringer load)
+             across the tip and ring leads."
+    ::= { doryVsmLineTestResultEntry 4 } 
+
+resistiveFaultTestResult OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..512))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This procedure tests for resistive faults on the tip lead, 
+             ring lead and between tip and ring leads."
+    ::= { doryVsmLineTestResultEntry 5 }    
+    
+loopbackTestResult OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..512))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This test could be used for production tests to verify the digital
+             and analog aspects of the line circuit are behaving as expected."
+    ::= { doryVsmLineTestResultEntry 6 }
+
+dcFeedSelfTestResult OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..512))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This test is used to verify the DC feed is working as expected. This test measures the voltage and current 
+             across the known test load resistor using the DC feed profile that has been programmed. It then uses the 
+             measured parameters to compute the test  load resistance. The test outcome is derived by comparing the 
+             known test load resistance against the computed test load resistance."
+    ::= { doryVsmLineTestResultEntry 7 }
+
+dcVoltageTestResult OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..512))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This test is used to verify the line circuit has the ability to drive the voltage ranges required for the normal 
+             operations of the line circuit like ringing the phone, providing DC feed etc. This test applies the specified 
+             voltage with normal polarity and reverse polarity using a slow ramp such that the customer phone does not 
+             ring. It then measures the applied voltage and compares it against the expected value to determine the test 
+             outcome."
+    ::= { doryVsmLineTestResultEntry 8 }
+
+onOffHookSelfTestResult OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..512))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This test is used to verify that the on-hook and off-hook events are detected by the API and the VTD. This
+             test creates on-hook and off-hook conditions on the line using the test load resistor and verifies that the
+             expected hook conditions are reported by the API. The test outcome is based on the the comparision 
+             between the expected and reported hook status."
+    ::= { doryVsmLineTestResultEntry 9 }    
+
+  
+preLineVoltageTestResult OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE (0..512))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "This procedure quickly tests for the presents of a foreign voltage on the tip lead, ring lead and between the 
+             tip, ring leads. This test was designed to be run as quickly as possible in order to determine if the much 
+             longer Line Voltage Test needs to be run."
+    ::= { doryVsmLineTestResultEntry 10 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- VSM Line Testing Administration
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+doryVsmLineTestAdminTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF DoryVsmLineTestAdminEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "Line test result table."
+    ::= { doryVsmLineStatus 3 }
+
+doryVsmLineTestAdminEntry OBJECT-TYPE
+    SYNTAX      DoryVsmLineTestAdminEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+            "An entry containing management information applicable to a
+            particular interface."
+    INDEX   { lineIndex }
+    ::= { doryVsmLineTestAdminTable 1 }
+
+DoryVsmLineTestAdminEntry ::=
+    SEQUENCE {
+        lineTestAdminIndex                 InterfaceIndex,
+        startLineVoltageTest               INTEGER,
+        startReceiverOffHookTest           INTEGER,
+        startRingersEquivalenceNumberTest  INTEGER,
+        startResistiveFaultTest            INTEGER,
+        startLoopbackTest                  INTEGER,
+        startDcFeedSelfTest                INTEGER,
+        startDcVoltageTest                 INTEGER,
+        startOnOffHookSelfTest             INTEGER,
+        startPreLineVoltageTest            INTEGER                                                                              
+    }
+   
+lineTestAdminIndex OBJECT-TYPE
+    SYNTAX      InterfaceIndex
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "A unique value, greater than zero, for each interface.  It
+            is recommended that values are assigned contiguously
+            starting from 1.  The value for each interface sub-layer
+            must remain constant at least from one re-initialization of
+           initialization."
+    ::= { doryVsmLineTestAdminEntry 1 }
+
+startLineVoltageTest OBJECT-TYPE
+    SYNTAX  INTEGER 
+    {
+      none(0),
+      start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This procedure tests for the hazardous electromotive force (HEMF)
+             and foreign electromotive force (FEMF) on the tip lead, 
+             ring lead and between the tip, ring leads."
+    ::= { doryVsmLineTestAdminEntry 2 }
+
+startReceiverOffHookTest OBJECT-TYPE
+    SYNTAX  INTEGER 
+    {
+      none(0),
+      start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This procedure can identify an on-hook phone or a off-hook phone or a resistive loop condition. 
+             An on-hook phone is considered to be passing."
+    ::= { doryVsmLineTestAdminEntry 3 }      
+
+startRingersEquivalenceNumberTest OBJECT-TYPE
+    SYNTAX  INTEGER 
+    {
+      none(0),
+      start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This procedure measures ringer equivalence number (REN; or telephone ringer load)
+             across the tip and ring leads."
+    ::= { doryVsmLineTestAdminEntry 4 } 
+
+startResistiveFaultTest OBJECT-TYPE
+    SYNTAX  INTEGER 
+    {
+      none(0),
+      start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This procedure tests for resistive faults on the tip lead, 
+             ring lead and between tip and ring leads."
+    ::= { doryVsmLineTestAdminEntry 5 }    
+    
+startLoopbackTest OBJECT-TYPE
+    SYNTAX  INTEGER 
+    {
+      none(0),
+      start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This test could be used for production tests to verify the digital
+             and analog aspects of the line circuit are behaving as expected."
+    ::= { doryVsmLineTestAdminEntry 6 }
+
+startDcFeedSelfTest OBJECT-TYPE
+    SYNTAX  INTEGER 
+    {
+      none(0),
+      start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This test is used to verify the DC feed is working as expected. This test measures the voltage and current 
+             across the known test load resistor using the DC feed profile that has been programmed. It then uses the 
+             measured parameters to compute the test  load resistance. The test outcome is derived by comparing the 
+             known test load resistance against the computed test load resistance."
+    ::= { doryVsmLineTestAdminEntry 7 }
+
+startDcVoltageTest OBJECT-TYPE
+    SYNTAX  INTEGER 
+    {
+      none(0),
+      start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This test is used to verify the line circuit has the ability to drive the voltage ranges required for the normal 
+             operations of the line circuit like ringing the phone, providing DC feed etc. This test applies the specified 
+             voltage with normal polarity and reverse polarity using a slow ramp such that the customer phone does not 
+             ring. It then measures the applied voltage and compares it against the expected value to determine the test 
+             outcome."
+    ::= { doryVsmLineTestAdminEntry 8 }
+
+
+startOnOffHookSelfTest OBJECT-TYPE
+    SYNTAX  INTEGER 
+    {
+      none(0),
+      start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This test is used to verify that the on-hook and off-hook events are detected by the API and the VTD. This
+             test creates on-hook and off-hook conditions on the line using the test load resistor and verifies that the
+             expected hook conditions are reported by the API. The test outcome is based on the the comparision 
+             between the expected and reported hook status."
+    ::= { doryVsmLineTestAdminEntry 9 }    
+
+
+    
+startPreLineVoltageTest OBJECT-TYPE
+    SYNTAX  INTEGER 
+    {
+      none(0),
+      start(1)
+    }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This procedure quickly tests for the presents of a foreign voltage on the tip lead, ring lead and between the 
+             tip, ring leads. This test was designed to be run as quickly as possible in order to determine if the much 
+             longer Line Voltage Test needs to be run."
+    ::= { doryVsmLineTestAdminEntry 10 }
+    
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Paower Saving Options
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+dorySwitchPowerSavingDelay OBJECT-TYPE
+      SYNTAX      Integer32
+      MAX-ACCESS  read-write
+      STATUS      current
+      DESCRIPTION
+            "The delay time(s) to shutdown switch"
+      ::= { doryPowerSavingDelay 1 }
+
+doryWifiPowerSavingDelay OBJECT-TYPE
+      SYNTAX      Integer32
+      MAX-ACCESS  read-write
+      STATUS      current
+      DESCRIPTION
+            "The delay time(s) to shutdown WIFI"
+      ::= { doryPowerSavingDelay 2 }
+
+doryUsbPowerSavingDelay OBJECT-TYPE
+      SYNTAX      Integer32
+      MAX-ACCESS  read-write
+      STATUS      current
+      DESCRIPTION
+            "The delay time(s) to shutdown USB"
+      ::= { doryPowerSavingDelay 3 }
+
+doryLine2PowerSavingDelay OBJECT-TYPE
+      SYNTAX      Integer32
+      MAX-ACCESS  read-write
+      STATUS      current
+      DESCRIPTION
+            "The delay time(s) to shutdown MTA line2"
+      ::= { doryPowerSavingDelay 4 }   
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- 
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   
+
+dorySerialNumber OBJECT-TYPE
+      SYNTAX  DisplayString (SIZE (0..255))
+    	MAX-ACCESS     read-only
+    	STATUS         current
+    	DESCRIPTION
+    	"Read Battery Serial Number"	
+      ::= { doryBatteryData 1 } 
+
+doryCreateDate OBJECT-TYPE
+      SYNTAX  DisplayString (SIZE (0..255))
+    	MAX-ACCESS     read-only
+    	STATUS         current
+    	DESCRIPTION
+    	"Read Battery Create Date"	
+      ::= { doryBatteryData 2 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- MTA SDP
+    -- Implementation and support main be different per product 
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+smcMtaSdpCdsc	OBJECT-TYPE
+        SYNTAX         INTEGER
+        {
+               enable(0),
+               disable(1)
+        }
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enabled/Disable Capability Descripton in SDP."
+	DEFVAL { enable }
+	::= { smcMtaSdp 1}  
+
+smcMtaSdpCpar	OBJECT-TYPE
+        SYNTAX         INTEGER
+        {
+               enable(0),
+               disable(1)
+        }
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enabled/Disable Capability Descripton Parameter in SDP."
+	DEFVAL { enable }
+	::= { smcMtaSdp 2} 
+
+smcMtaSdpCparmax	OBJECT-TYPE
+        SYNTAX         INTEGER
+        {
+               enable(0),
+               disable(1)
+        }
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enabled/Disable Capability Descripton Parameter Max in SDP."
+	DEFVAL { enable }
+	::= { smcMtaSdp 3} 
+	
+smcMtaSdpCparmin	OBJECT-TYPE
+        SYNTAX         INTEGER
+        {
+               enable(0),
+               disable(1)
+        }
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enabled/Disable Capability Descripton Parameter Min in SDP."
+	DEFVAL { enable }
+	::= { smcMtaSdp 4}    
+
+smcMtaSdpSqn	OBJECT-TYPE
+        SYNTAX         INTEGER
+        {
+               enable(0),
+               disable(1)
+        }
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enabled/Disable sqn in SDP."
+	DEFVAL { enable }
+	::= { smcMtaSdp 5}    	
+
+smcMtaSdpRtcpxr	OBJECT-TYPE
+        SYNTAX         INTEGER
+        {
+               enable(0),
+               disable(1)
+        }
+	MAX-ACCESS     read-write
+	STATUS         current
+	DESCRIPTION
+	"Enabled/Disable RTCP-XR in SDP."
+	DEFVAL { enable }
+	::= { smcMtaSdp 6}   
+
+smcMtaSdpAdvertiseT38 OBJECT-TYPE
+    SYNTAX INTEGER {
+        disabled(0),
+        enabled(1)
+    }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "enable or disable advertise information of T38 fax codec in outgoing SDP"
+    DEFVAL { disabled }
+    ::= {  smcMtaSdp 7 }  
+
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- SMC MTA Utilities for RMA to allow some testing 
+    -- even if VOICE Provision system does not exist 
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    rmaUtilEnable 		OBJECT-TYPE
+	SYNTAX         		TruthValue
+	MAX-ACCESS     		read-write
+	STATUS         		current
+	DESCRIPTION
+	"Enable RMA Mode testing.
+        This mode MUST NOT presist reset which mean RMA mode (and features) can not be activated unless 
+        this OID is include in the CM-DOCSIS-Config file!
+        ALl the following RmaUtill are only enabled in RMA mode. "
+	DEFVAL { false }
+	::= { smcMtaRmaUtil 1 }
+
+    rmaUtilLineRingphone	OBJECT-TYPE
+	SYNTAX         		TruthValue
+	MAX-ACCESS     		read-write
+	STATUS         		current
+	DESCRIPTION
+	"Generate Ring tone remotely without a call.
+         True (1) indicates start ringing.
+	 False (0) indicates stop ringing.
+         The index should be used to indicate the line under test.
+         The 'line-x' LED should blink parallel to the RING to indicate 
+         the Line-Under-Test. "
+	DEFVAL { false }
+	::= { smcMtaRmaUtil 2 }
+
+    rmaUtilTalkLine1toLine2Enable 		OBJECT-TYPE
+	SYNTAX         		TruthValue
+	MAX-ACCESS     		read-write
+	STATUS         		current
+	DESCRIPTION
+	" This mode activate voice traffic between the 2 lines of the 2-line-MTA.
+          This allow quick testing during RMA.
+          Enable (1) mean you should be able to talk/listen between line 1 and line 2. 
+          Disable (2) maen call between line 1 and line 2 is disabled. "
+	DEFVAL { false }
+	::= { smcMtaRmaUtil 3 }
+
+
+END	  

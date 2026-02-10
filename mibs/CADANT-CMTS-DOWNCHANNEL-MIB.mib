@@ -1,0 +1,633 @@
+CADANT-CMTS-DOWNCHANNEL-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, MODULE-IDENTITY, 
+	-- do not import BITS,
+	Integer32, TimeTicks
+		FROM SNMPv2-SMI
+	TEXTUAL-CONVENTION, TimeInterval, TruthValue
+		FROM SNMPv2-TC
+    InterfaceIndex
+        FROM IF-MIB
+	TenthdBmV
+		FROM DOCS-IF-MIB
+	cadSpectrum
+		FROM CADANT-PRODUCTS-MIB
+	CardId
+		FROM CADANT-TC;
+
+cadDownchannelMib MODULE-IDENTITY
+    LAST-UPDATED "201301090000Z"  -- Jan 9, 2013
+    ORGANIZATION "Cadant Inc"
+    CONTACT-INFO "Cadant Technical Support "
+    DESCRIPTION "Cadant Downstream Channel "
+
+
+    REVISION "201301090000Z"  -- Jan 9, 2013
+    DESCRIPTION "Add cadDownChannelOorRecoveryEnable"
+    REVISION "201006100000Z"  -- June 10, 2010
+    DESCRIPTION "Change default value of cadIfDownChannelPower from 500 to 490, and range (410..605)"
+    REVISION "201005030000Z"  -- May 3rd, 2010
+    DESCRIPTION "Added non RFC 2670 interleave modes for annex B."
+    REVISION "201004010000Z"  -- Apr 1st, 2010
+    DESCRIPTION "Added cadIfDownChannelAnnex back to support 24D/32D CAM."
+    REVISION "200912160000Z"  -- Dec 16, 2009
+    DESCRIPTION "Change default value of cadIfDownChannelModulation from qam64(3) to qam256(4)."
+    REVISION "200804030000Z"  -- Apr 03, 2008
+    DESCRIPTION "Add cadDownChannelMaxFrequency and cadDownChannelMinFrequency."
+    REVISION "200710090000Z"  -- Oct 09, 2007
+    DESCRIPTION "Remove cadIfCmtsCapabilities, cadIfCmtsSyncInterval, cadIfCmtsUcdInterval, 
+                 cadIfCmtsInsertionInterval, cadIfCmtsMaxServiceIds, cadIfCmtsInvitedRangingAttempts, 
+                 cadIfCmtsInsertInterval, cadIfCmtsRangingInterval, cadIfCmtsRangeOpportunityCycle, 
+                 cadIfCmtsCPEAgingInterval, cadIfCmtsSFAgingInterval, cadIfCmtsCardNumber, 
+                 cadIfCmtsConfigured, cadIfCmtsTftpEnforce, cadIfCmtsDynamicSecret."
+    REVISION "200709280000Z"  -- Sep 28, 2007
+    DESCRIPTION "change cadIfDownChannelPower range from 43.5 to 60.5 dBmV."
+    REVISION "200702070000Z"  -- Feb 7, 2007
+    DESCRIPTION "Remove cadIfCmtsTftpEnforce and cadIfCmtsDynamicSecret."
+    REVISION "200701220000Z"  -- Jan 22, 2007
+    DESCRIPTION "Remove cadIfDownChannelAnnex"
+    REVISION "200611010000Z"  -- Nov 1, 2006
+    DESCRIPTION "Change cadIfDownChannelIfIndex as the index of cadIfDownstreamChannelTable ."
+    REVISION "200608300000Z"  -- Aug 30, 2006
+    DESCRIPTION "Add cadIfDownChannelPrimaryCapable to cadIfDownstreamChannelTable."
+    REVISION "200608280000Z"  -- Aug 28, 2006
+    DESCRIPTION "Add cadIfDownChannelIfIndex to cadIfDownstreamChannelTable."
+    REVISION "200602240000Z"
+    DESCRIPTION "Modify the range of cadIfDownChannelPowerFineAdj."
+    REVISION "200506210000Z"
+    DESCRIPTION "Included Traffic Shaping for 2D12U feature."
+    REVISION "200412030000Z"
+    DESCRIPTION "Included support for TFTP Enforce feature."
+    REVISION "200403040000Z"
+    DESCRIPTION "Populate read-write objects with defaults via DEFVAL."
+    REVISION "200307030000Z"
+    DESCRIPTION "Change definition of downstream channel to include slot."
+    REVISION "200212030000Z"
+    DESCRIPTION "Add PacketCable CAC Reserved and Allowed Values for Normal and Emergency Calls."
+    ::= { cadSpectrum 2 }
+
+
+
+CadDsTokenBucketMode ::= TEXTUAL-CONVENTION
+    STATUS     current
+    DESCRIPTION	
+        "Token bucket modes on a DOCSIS downstream.  The value `disabled'
+        implies that no per flow rate limiting is done and WRED is used to discard 
+        packets that exceed the link rate. Any value other than `disabled' indicates
+        some form per flow token bucket rate limiting is active.  The value
+        `police' indicates that the interface will police each service flow according
+        to the DOCSIS token bucket algorithm and every packet that is
+        non-conforming will be dropped. `shape' indicates delay non-conforming
+        packets until theybecome conforming. If a 1D8U CAM is set to shape, it
+        will treat it as if it were set to police."
+    SYNTAX INTEGER {
+        disabled(0),
+        police(1),
+        shape(2)
+    }
+
+--
+-- The following table is implemented on both the Cable Modem (CM)
+-- and the Cable Modem Termination System (CMTS).
+--
+
+cadIfDownstreamChannelTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF CadIfDownstreamChannelEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table describes the attributes of downstream
+             channels (frequency bands)."
+        REFERENCE
+
+
+            "DOCSIS Radio Frequency Interface Specification,
+             Table 4-12 and Table 4-13."
+        ::= { cadDownchannelMib 1 }
+
+cadIfDownstreamChannelEntry OBJECT-TYPE
+        SYNTAX      CadIfDownstreamChannelEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An entry provides a list of attributes for a single
+             Downstream channel.
+             An entry in this table exists for each ifEntry with an
+             ifType of docsCableDownstream(128)."
+        INDEX { cadIfDownChannelIfIndex }
+        ::= { cadIfDownstreamChannelTable 1 }
+
+CadIfDownstreamChannelEntry ::= SEQUENCE {
+            cadIfDownChannelId                  Integer32,
+            cadIfDownChannelFrequency           Integer32,
+            cadIfDownChannelWidth               Integer32,
+            cadIfDownChannelModulation          INTEGER,
+            cadIfDownChannelInterleave          INTEGER,
+            cadIfDownChannelPower               TenthdBmV,
+            cadIfDownChannelPowerFineAdj        Integer32,
+            cadIfCmtsCardNumber                 CardId,
+            cadIfDownChannelCACL1Threshold      Integer32,
+            cadIfDownChannelCACL2Threshold      Integer32,
+            cadIfDownChannelCACL3Threshold      Integer32,
+            cadIfDownChannelMaxRoundTripDelay   Integer32,
+            cadIfDownChannelAnnex               INTEGER,
+            cadIfDownChannelPCNormAllowedUsage  Integer32,
+            cadIfDownChannelPCNormResUsage      Integer32,
+            cadIfDownChannelPCEmerAllowedUsage  Integer32,
+            cadIfDownChannelPCEmerResUsage      Integer32,
+            cadIfDownChannelPCTotalAllowedUsage Integer32,
+            cadIfDownChannelPCPreemptionAllowed TruthValue,
+            cadIfCmtsDsTokenBucket              CadDsTokenBucketMode,
+            cadIfDownChannelAutoGainControlEnable TruthValue,
+            cadIfDownChannelIfIndex             InterfaceIndex,
+            cadIfDownChannelPrimaryCapable      TruthValue
+
+        }
+
+cadIfDownChannelId OBJECT-TYPE
+        SYNTAX      Integer32 (0..255)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The Cable Modem Termination System (CMTS) identification
+             of the downstream channel within this particular MAC
+             interface. If the interface is down, the object returns
+             the most current value. If the downstream channel ID is
+             unknown, this object returns a value of 0."
+        ::= { cadIfDownstreamChannelEntry 1 }
+
+cadIfDownChannelFrequency  OBJECT-TYPE
+        SYNTAX      Integer32 (0..1000000000)
+        UNITS       "hertz"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The center of the downstream frequency associated with
+             this channel. This object will return the current tuner
+             frequency. If this CMTS interface provides IF output only, 
+             this object will return 0 and will be treated as read-only.
+             See the associated compliance object for a description of 
+             valid frequencies that may be written to this object."
+        REFERENCE
+            "DOCSIS Radio Frequency Interface Specification,
+             Section 4.3.3."
+        DEFVAL { 0 }
+        ::= { cadIfDownstreamChannelEntry 2 }
+
+cadIfDownChannelWidth  OBJECT-TYPE
+        SYNTAX      Integer32 (0..16000000)
+        UNITS       "hertz"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The bandwidth of this downstream channel. Most
+             implementations are expected to support a channel width
+             of 6 MHz (North America) and/or 8 MHz (Europe).  See the
+             associated compliance object for a description of the
+             valid channel widths for this object."
+        REFERENCE
+            "DOCSIS Radio Frequency Interface Specification,
+             Table 4-12 and Table 4-13."
+        DEFVAL { 6000000 }
+        ::= { cadIfDownstreamChannelEntry 3 }
+
+cadIfDownChannelModulation OBJECT-TYPE
+        SYNTAX      INTEGER {
+            unknown(1),
+            other(2),
+            qam64(3),
+            qam256(4)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The modulation type associated with this downstream
+             channel. If the interface is down, this object either
+             returns the configured value (CMTS), the most current
+             value (CM), or the value of unknown(1).  See the
+             associated conformance object for write conditions and
+             limitations. See the reference for specifics on the
+             modulation profiles implied by qam64 and qam256."
+        REFERENCE
+            "DOCSIS Radio Frequency Interface Specification,
+             Section 3.6.2."
+        DEFVAL { qam256 }
+        ::= { cadIfDownstreamChannelEntry 4 }
+
+cadIfDownChannelInterleave OBJECT-TYPE
+        SYNTAX      INTEGER {
+            unknown(1),
+            other(2),
+            taps8Increment16(3),
+            taps16Increment8(4),
+            taps32Increment4(5),
+            taps64Increment2(6),
+            taps128Increment1(7),
+            taps12increment17(8),
+             -- non RFC 2670 interleave modes
+            taps128increment2(9),
+            taps128increment3(10),
+            taps128increment4(11),
+            taps128increment5(12),
+            taps128increment6(13),
+            taps128increment7(14),
+            taps128increment8(15)
+
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The Forward Error Correction (FEC) interleaving used
+             for this downstream channel.
+             Values are defined as follows:
+             taps8Increment16(3):   protection 5.9/4.1 usec,
+                                    latency .22/.15 msec
+             taps16Increment8(4):   protection 12/8.2 usec,
+                                    latency .48/.33 msec
+             taps32Increment4(5):   protection 24/16 usec,
+                                    latency .98/.68 msec
+             taps64Increment2(6):   protection 47/33 usec,
+                                    latency 2/1.4 msec
+             taps128Increment1(7):  protection 95/66 usec,
+                                    latency 4/2.8 msec
+             taps12increment17(8):  protection 18/14 usec,
+                                    latency 0.43/0.32 msec
+             If the interface is down, this object either returns
+             the configured value (CMTS), the most current value (CM),
+             or the value of unknown(1).
+             The value of other(2) is returned if the interleave
+             is known but not defined in the above list.
+             See the associated conformance object for write
+             conditions and limitations. See the reference for the FEC
+             configuration described by the setting of this object.
+             non RFC 2670 interleave modes are only available for annex B."
+        REFERENCE
+            "DOCSIS Radio Frequency Interface Specification,
+             Section 4.3.2."
+        DEFVAL { taps32Increment4 }
+        ::= { cadIfDownstreamChannelEntry 5 }
+
+cadIfDownChannelPower OBJECT-TYPE
+        SYNTAX      TenthdBmV (0|410..605)
+        UNITS       "dBmV"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The CMTS operational transmit power.  If this CMTS
+             interface does not support output power control then
+             this object will return 0 and be treated as read-only.
+             If the interface is down, this object either returns
+             the configured value or the value of 0.  See the 
+             reference for recommended and required power levels."
+        REFERENCE
+            "DOCSIS Radio Frequency Interface Specification,
+             Table 4-12 and Table 4-13."
+        DEFVAL { 490 }
+        ::= { cadIfDownstreamChannelEntry 6 }
+
+cadIfDownChannelPowerFineAdj OBJECT-TYPE
+        SYNTAX      Integer32 (-255..255)
+        UNITS       "Steps"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "At the CMTS, the fine power adjustments steps to increase
+             or decrease the output power in incremental steps. 
+             If the Down Channel Frequency or Power are changed, 
+             then this value will be set back to zero.
+             If this CMTS interface does not support output power 
+             control then this object will return 0 and be treated 
+             as read-only. When the cadIfDownChannelAutoGainControlEnable is set to true(1), 
+             this object will be forced to 0 and it will not be allowed to be written to
+             a non-zero value."
+        DEFVAL { 0 }
+        ::= { cadIfDownstreamChannelEntry 7 }
+
+--cadIfCmtsCapabilities OBJECT-TYPE
+--        SYNTAX      BITS {
+--            atmCells(0),
+--            concatenation(1)
+--        }
+--        MAX-ACCESS  read-only
+--        STATUS      current
+--        DESCRIPTION
+--            "Identifies the capabilities of the CMTS MAC
+--             implementation at this interface. Note that packet
+--             transmission is always supported. Therefore, there
+--             is no specific bit required to explicitely indicate
+--             this capability."
+--        REFERENCE
+--            "DOCSIS Radio Frequency Interface specification,
+--             Chapter 6."
+--        ::= { cadIfDownstreamChannelEntry 8 }
+
+
+
+
+
+
+cadIfCmtsCardNumber OBJECT-TYPE
+        SYNTAX      CardId
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+	    "Card Number associated with this Channel."
+        ::= { cadIfDownstreamChannelEntry 19 }
+
+--cadIfCmtsConfigured OBJECT-TYPE
+--        SYNTAX      TruthValue
+--        MAX-ACCESS  read-only
+--        STATUS      current
+--        DESCRIPTION
+--	    "Is the this channel provisioned?"
+--        ::= { cadIfDownstreamChannelEntry 20 }
+
+cadIfDownChannelCACL1Threshold OBJECT-TYPE
+        SYNTAX      Integer32 (0..1000)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Percentage of available bandwidth on the channel that can
+			 be reserved for admitted/active service flows before the 
+			 channel goes into Level 1 Overload. When a channel goes 
+			 into Level 1 Overload, a warning message will be logged. 
+			 Service flow activation/admission will not be denied in 
+			 Level 1 Overload. 
+			 
+			 If the percentage is set to 0, the default value will be 
+			 used and reading this object must return the the default 
+			 L1 threshold.
+			 
+			 If a set operation tries to change the value of an
+             existing instance of this object to any value that 
+			 is higher than cadIfDownChannelCACL2Threshold or higher
+			 than cadIfDownChannelCACL3Threshold on the same row, then 
+			 an 'inconsistentValue' error must be returned."
+        REFERENCE
+            "C4 Cable Modem Termination System (CMTS): Software Architecture Document"
+        DEFVAL { 90 }
+        ::= { cadIfDownstreamChannelEntry 21 }
+
+cadIfDownChannelCACL2Threshold OBJECT-TYPE
+        SYNTAX      Integer32 (0..1000)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Percentage of available bandwidth on the channel that can
+			 be reserved for admitted/active service flows before the 
+			 channel goes into Level 2 Overload. When a channel goes 
+			 into Level 2 Overload, a warning message will be logged. 
+			 Service flow activation/admission will not be denied in 
+			 Level 2 Overload. 
+			 
+			 A channel in Level 2 Overload is a good candidate for 
+			 overload control or load balancing actions.
+
+			 If the percentage is set to 0, the default value will be 
+			 used and reading this object must return the the default 
+			 L2 threshold.
+			 
+			 If a set operation tries to change the value of an
+             existing instance of this object to any value that 
+			 is higher than cadIfDownChannelCACL3Threshold or lower
+			 than cadIfDownChannelCACL1Threshold on the same row, then 
+			 an 'inconsistentValue' error must be returned."
+        REFERENCE
+            "C4 Cable Modem Termination System (CMTS): Software Architecture Document"
+        DEFVAL { 100 }
+        ::= { cadIfDownstreamChannelEntry 22 }
+
+cadIfDownChannelCACL3Threshold OBJECT-TYPE
+        SYNTAX      Integer32 (0..1000)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Percentage of available bandwidth on the channel that can
+			 be reserved for admitted/active service flows. A 
+			 Registration Request, DSA Request or DSC Request will be 
+			 denied due to temporary resource limitations if it would 
+			 result in an active or admitted service flow whose 
+			 mininum reserved bandwidth would cause this threshold to 
+			 be exceeded on the downstream channel.
+
+			 If the percentage is set to 0, the default value will be 
+			 used and reading this object must return the the default 
+			 L3 threshold.
+			 
+			 If a set operation tries to change the value of an
+             existing instance of this object to any value that 
+			 is lower than cadIfDownChannelCACL1Threshold or lower
+			 than cadIfDownChannelCACL2Threshold on the same row, then 
+			 an 'inconsistentValue' error must be returned."
+        REFERENCE
+            "C4 Cable Modem Termination System (CMTS): Software Architecture Document"
+        DEFVAL { 500 }
+        ::= { cadIfDownstreamChannelEntry 23 }
+
+cadIfDownChannelMaxRoundTripDelay OBJECT-TYPE
+        SYNTAX      Integer32 (200..1600)
+        UNITS       "Microseconds"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Maximum round-trip propagation delay for cable
+             plant in Microseconds.  Should be configured for
+             the furthest CM in all cable groups containing
+             this DownChannel.  Default of 1600 Microseconds
+             is approxiamately 100 miles between the CMTS and
+             the furthest CM."
+        DEFVAL { 1600 }
+        ::= { cadIfDownstreamChannelEntry 24 }
+
+cadIfDownChannelAnnex OBJECT-TYPE
+        SYNTAX      INTEGER {
+            unknown(1),
+            other(2),
+            annexA(3),
+            annexB(4),
+            annexC(5)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The value of this object indicates the conformance of
+             the implementation to important regional cable standards.
+             annexA : Annex A from ITU-J83 is used.
+             annexB : Annex B from ITU-J83 is used.
+             annexC : Annex C from ITU-J83 is used."
+        DEFVAL { annexB }
+        ::= { cadIfDownstreamChannelEntry 26 }
+
+cadIfDownChannelPCNormAllowedUsage OBJECT-TYPE
+    SYNTAX          Integer32 (0..100)
+    UNITS           "percent"       
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION     "Maximum percentage of downstream resources that may be 
+                     used by non-emergency telephony services. This is also 
+		     the maximum amount of resources non-exclusively allocated
+		     to sessions of this type.  The default is set from the 
+		     globals in CadPCMibBase."
+    REFERENCE       "'Cadant CMTS Requirements for PacketCable' requirement 3.3.3.0.2"
+    ::= { cadIfDownstreamChannelEntry 27 }
+
+cadIfDownChannelPCNormResUsage OBJECT-TYPE
+    SYNTAX          Integer32 (0..100)
+    UNITS           "percent"       
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION     "Minimum percentage of downstream resources that may be 
+                     used by non-emergency telephony services. This is also
+		     the maximum amount of resources exclusively allocated 
+		     to sessions of this type. If the value of this object 
+		     is non-zero, then a portion of the downstream bandwidth 
+		     will be set aside for normal telephony use only - reducing
+                     the bandwidth that is available for normal data.  The
+		     default is set from the globals in CadPCMibBase."
+    REFERENCE       "'Cadant CMTS Requirements for PacketCable' requirement 3.3.3.0.2"
+    ::= { cadIfDownstreamChannelEntry 28 }
+
+cadIfDownChannelPCEmerAllowedUsage OBJECT-TYPE
+    SYNTAX          Integer32 (0..100)
+    UNITS           "percent"       
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION     "Maximum percentage of downstream resources that may 
+                     be used by emergency telephony services.  The default
+		     is set from the globals in CadPCMibBase."
+    REFERENCE       "'Cadant CMTS Requirements for PacketCable' requirement 3.3.3.0.2"
+    ::= { cadIfDownstreamChannelEntry 29 }
+
+cadIfDownChannelPCEmerResUsage OBJECT-TYPE
+    SYNTAX          Integer32 (0..100)
+    UNITS           "percent"       
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION     "Minimum percentage of downstream resources that may be 
+                     used by emergency telephony services. If the value of 
+		     this object is non-zero, then a portion of the downstream 
+		     bandwidth will be set aside for normal telephony use 
+		     only - reducing the bandwidth that is available for
+                     normal data.  The default is set from the globals in 
+		     CadPCMIbBase."
+    REFERENCE       "'Cadant CMTS Requirements for PacketCable' requirement 3.3.3.0.2"
+    ::= { cadIfDownstreamChannelEntry 30 }
+
+cadIfDownChannelPCTotalAllowedUsage OBJECT-TYPE
+    SYNTAX          Integer32 (0..100)
+    UNITS           "percent"       
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION     "Maximum percentage of downstream resources that may 
+                     be used by both normal and  emergency telephony services.
+		     The default is set from the globals in CadPCMibBase."
+    REFERENCE       "'Cadant CMTS Requirements for PacketCable' requirement 3.3.3.0.2"
+    ::= { cadIfDownstreamChannelEntry 31 }
+
+cadIfDownChannelPCPreemptionAllowed OBJECT-TYPE
+    SYNTAX          TruthValue
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION     "Indicates whether the system will preempt another session
+                     for an emergency call.  The default is set from the 
+		     globals in CadPCMibBase."
+    REFERENCE       "'Cadant CMTS Requirements for PacketCable' requirement 3.3.3.0.2"
+    ::= { cadIfDownstreamChannelEntry 32 }
+
+
+cadIfCmtsDsTokenBucket OBJECT-TYPE
+    SYNTAX     CadDsTokenBucketMode
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+        "Current state of token bucket rate limiting for this interface."
+    DEFVAL { shape }
+    ::= { cadIfDownstreamChannelEntry 35 }
+
+cadIfDownChannelAutoGainControlEnable  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "True to enable AGC for downstream power. This feature is not
+         supported on the 1D8U CAM. Attempting to write this to true for
+         a 1D8U will result in an inconsistentValue error."
+    DEFVAL { false }
+    ::= { cadIfDownstreamChannelEntry 36 }
+
+cadIfDownChannelIfIndex OBJECT-TYPE
+    SYNTAX     InterfaceIndex
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "the ifIndex of this downstream channel."
+    ::= { cadIfDownstreamChannelEntry 37 }
+
+cadIfDownChannelPrimaryCapable OBJECT-TYPE
+    SYNTAX     TruthValue
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+        "When a row's cadIfDownChannelPrimaryCapable column is set to true(1)
+         then DOCSIS SYNC message generation is enabled on the downstream channel.
+         Otherwise, DOCSIS SYNC message generation is disabled."
+    DEFVAL { true }
+    ::= { cadIfDownstreamChannelEntry 38 }
+
+
+
+
+cadDownChannelParams OBJECT IDENTIFIER ::= { cadDownchannelMib 2 }
+
+cadDownChannelMaxFrequency OBJECT-TYPE
+        SYNTAX      INTEGER (858000000 | 867000000 | 999000000)
+        UNITS       "hertz"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to configure the C4 CMTS to accept maximum downstream
+            frequency limit that conform with the EuroDOCSIS specifications
+            (starndard range 112 MHz to 858 MHz), (extended 85 MHz to 999MHz)
+            or to the DOCSIS specifications (standard 91 to 867 MHz), (extended range 57 MHz to 999 MHz).
+            Changes to downstream frequency and width are verified against this
+            object to ensure the C4 CMTS does not exceed the downstream spectrum
+            limits imposed by this object. Attempting to decrease the downstream
+            frequency spectrum implied by this object will fail if at least
+            a single downstream is configured outside of the range for the new
+            value. It is recommended this object be set during initial system
+            setup."
+        DEFVAL { 867000000 } -- rely upon Annex for frequency ranges
+        ::= { cadDownChannelParams 1 }
+
+cadDownChannelMinFrequency OBJECT-TYPE
+        SYNTAX      INTEGER (57000000 | 85000000 | 91000000 | 112000000)
+        UNITS       "hertz"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to configure the C4 CMTS to accept minimum downstream
+            frequency limit that conform with the EuroDOCSIS specifications
+            (starndard range 112 MHz to 858 MHz), (extended 85 MHz to 999MHz)
+            or to the DOCSIS specifications (standard 91 to 867 MHz), (extended range 57 MHz to 999 MHz).
+            Changes to downstream frequency and width are verified against this
+            object to ensure the C4 CMTS does not exceed the downstream spectrum
+            limits imposed by this object. Attempting to increase the minimum downstream
+            frequency limit implied by this object will fail if at least
+            a single downstream is configured outside of the range for the new
+            value. It is recommended this object be set during initial system
+            setup."
+        DEFVAL { 91000000 } -- rely upon Annex for frequency ranges
+        ::= { cadDownChannelParams 2 }
+
+cadDownChannelOorRecoveryEnable  OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "True to enable toggling the Sequence Change Count for a DSID in response to 
+            a CM-STATUS sequence number Out-Of-Range message."
+        DEFVAL { false }
+        ::= { cadDownChannelParams 3}
+
+END

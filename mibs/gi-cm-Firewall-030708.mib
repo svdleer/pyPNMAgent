@@ -1,0 +1,604 @@
+--
+-- (c) 2002 Motorola, Inc.
+--
+--
+-- CM Firewall MIB
+--
+
+CM-FIREWALL-MIB DEFINITIONS ::= BEGIN
+
+   IMPORTS
+      enterprises, OBJECT-TYPE, MODULE-IDENTITY, Unsigned32 
+         FROM SNMPv2-SMI
+      RowStatus, TruthValue
+          FROM SNMPv2-TC
+      SnmpAdminString
+         FROM SNMP-FRAMEWORK-MIB
+      InetAddressType, InetAddress, InetPortNumber 
+         FROM INET-ADDRESS-MIB; 
+ 
+--
+-- Path to root
+--
+
+   gi OBJECT IDENTIFIER ::= {enterprises 1166}
+   giproducts OBJECT IDENTIFIER ::= {gi 1}
+   cm OBJECT IDENTIFIER ::= {giproducts 19}
+
+   cmFirewall MODULE-IDENTITY
+      LAST-UPDATED "200307080000Z"  -- July 8, 2003
+      ORGANIZATION
+         "Motorola BCS"
+      CONTACT-INFO
+         "Author: Greg Nakanishi
+          Org:    Motorola BCS
+          postal: 6450 Sequence Drive
+                  San Diego, CA 92121
+          email:  gnakanishi@motorola.com
+          phone:  858-404-2366"
+      DESCRIPTION
+          "This MIB defines additional firewall management objects that are
+           not specified by CableHome." 
+      REVISION  "200307080000Z"
+      DESCRIPTION
+        "Edited by Jason Krasnow. 
+        Published as cmFirewall-17.mib 
+		Changed text strings to SnmpAdminString from OCTET STRING.  Fixed various
+		syntactical errors that caused compile errors on strict MIB compilers. 
+		"
+     		     
+      REVISION  "200302060000Z"
+   	  DESCRIPTION
+		"Edited by Zheng Fang. 
+		Published as cmFirewall-16.mib.
+		- change cmFirewallFilterPortId from (0..20) to (1..20) to sync with GUI.   
+		- change cmFirewallIDEmailRecipientAddress from (0..63) to (1..63) to sync with GUI.
+		"               
+	  REVISION  "200212230000Z"
+   	  DESCRIPTION
+		"Edited by Zheng Fang. 
+		Published as cmFirewall-14.mib.
+		- Per SCR718 change default value of cmFirewallPolicy to none.
+		- Per SCR726 change INET-ADDRESS related TC.
+		"                
+
+      ::= {cm 54}
+
+-- BIG NOTES:
+-- All objects are available only in gateway mode and are saved on NV.
+
+
+-- Administrative assignments ----------------------
+
+   cmFirewallObjects OBJECT IDENTIFIER ::= { cmFirewall 1 }
+   cmFirewallConformance OBJECT IDENTIFIER ::= { cmFirewall 2 }
+
+--
+-- Object definitions ------------------------------
+--
+
+-- Firewall Policy Objects --
+
+  cmFirewallPolicyObjects OBJECT IDENTIFIER ::= { cmFirewallObjects 1 }
+
+  cmFirewallSetToFactory OBJECT-TYPE
+	SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "Setting this object to true(1) causes the Firewall default 
+            options to be returned back to factory defaults and all 
+            current mappings to use the factory default settings at 
+            the next lease renewal time.  Reading this object always
+            returns false(2).
+                         	
+            The objects set to factory defaults are:      
+			
+			cmFirewallPolicy,
+			cmFirewallIDEmailEnable,
+			cmFirewallIDEmailInetAddressType,
+			cmFirewallIDEmailInetAddress,
+			cmFirewallIDEmailPortNum,
+			cmFirewallIDEmailSender,
+			cmFirewallIDSnmpEnable,
+			cmFirewallIDSnmpInetAddressType,
+			cmFirewallIDSnmpInetAddress,
+			cmFirewallIDSnmpPortNum,
+			cmFirewallIDSnmpCommunity,
+  			cmFirewallLogSessionEnable,
+  			cmFirewallLogBlockingEnable,
+  			cmFirewallLogIntrusionEnable 
+  
+			All existing entries in cmFirewallFilterTable and cmFirewallIDEmailRecipientTable
+			will be destroyed. The default entries for the cmFirewallFilterTable will be restored 
+			according to the default cmFirewallPolicy.
+ 			"
+    ::= { cmFirewallPolicyObjects 1 }
+
+   cmFirewallPolicy OBJECT-TYPE
+      SYNTAX INTEGER
+             {
+              high(1),
+              medium(2),
+              low(3),
+              custom(4),
+              none(5)
+             }
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "The firewall policy in affect for this device.  Three predefined
+          policies (high, medium, low) are available.  If custom(4)
+          is selected, the firewall policy is based on the policies
+          defined in cmFirewallPolicyTable and cmFirewallPolicyAllowIcmp.
+          If none(5) is selected, the firewall is disabled and there will be
+          no entry installed in the CmFirewallFilterTable."
+      DEFVAL { none }
+       ::= { cmFirewallPolicyObjects 2 }
+                                           
+                                           
+
+-- Firewall Policy Port Filter table
+
+   cmFirewallFilterTable OBJECT-TYPE
+      SYNTAX SEQUENCE OF CmFirewallFilterEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "Table of firewall Filter policies.
+           
+          This table is used to configure firewall Filter policies.
+          
+          Up to 64 entries are supported for now.
+          
+          The cmFirewallFilterTable can only be changed 
+          if cmFirewallPolicy object is set to 'custom'."
+      ::= { cmFirewallPolicyObjects 3 }
+
+   cmFirewallFilterEntry OBJECT-TYPE
+      SYNTAX CmFirewallFilterEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "Each entry defines a single firewall Filter policy"
+      INDEX { cmFirewallFilterPortId }  
+      ::= { cmFirewallFilterTable 1 }
+
+   CmFirewallFilterEntry::=
+      SEQUENCE {     
+         cmFirewallFilterPortId
+            SnmpAdminString,
+         cmFirewallFilterEnable 
+            TruthValue,
+         cmFirewallFilterPortFrom
+            InetPortNumber,
+         cmFirewallFilterPortTo
+            InetPortNumber,
+         cmFirewallFilterAllowInbound
+            TruthValue,
+         cmFirewallFilterAllowOutbound
+            TruthValue,
+         cmFirewallFilterAllowProtocol
+            INTEGER,
+   		 cmFirewallFilterProtocolNum
+		    Unsigned32,
+         cmFirewallFilterStatus
+            RowStatus
+      }
+
+   cmFirewallFilterPortId OBJECT-TYPE
+      SYNTAX SnmpAdminString (SIZE(1..20))
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "Short name given to this Filter policy.  It is recommended that the filter name
+          be the name of the protocol that this policies applies to.  E.g. http"
+      ::= { cmFirewallFilterEntry 1 }
+
+   cmFirewallFilterEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "This object controls whether this filter is enabled.
+          If enabled, the device applies this filter to packets processed."
+      DEFVAL { false }
+      ::= { cmFirewallFilterEntry 2 }   
+
+   cmFirewallFilterPortFrom OBJECT-TYPE 
+      SYNTAX      InetPortNumber
+      MAX-ACCESS  read-create 
+      STATUS      current 
+      DESCRIPTION 
+         "Start port."
+      DEFVAL { 0 }
+      ::= { cmFirewallFilterEntry 3 } 
+      
+   cmFirewallFilterPortTo OBJECT-TYPE 
+      SYNTAX      InetPortNumber
+      MAX-ACCESS  read-create 
+      STATUS      current 
+      DESCRIPTION 
+         "End port."
+      DEFVAL { 0 }           
+      ::= { cmFirewallFilterEntry 4 }
+
+   cmFirewallFilterAllowInbound OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "This object controls whether this filter will allow inbound
+          packets through."
+      DEFVAL { false }
+      ::= { cmFirewallFilterEntry 5 }   
+
+   cmFirewallFilterAllowOutbound OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "This object controls whether this filter will allow outbound
+          packets through."
+      DEFVAL { false }
+      ::= { cmFirewallFilterEntry 6 }   
+
+   cmFirewallFilterAllowProtocol OBJECT-TYPE
+      SYNTAX INTEGER
+      	{
+      	 	 ip(1),
+      	 	 udp(2),
+      	 	 tcp(3),
+      	 	 udpAndTcp(4)
+      	}
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "This object controls whether this filter will allow listed packets
+          through.
+         
+         If this filter is enabled and the cmFirewallFilterAllowProtocol 
+         object is set to udp, tcp, or  udpAndTcp, then 
+         the cmFirewallFilterPortFrom and cmFirewallFilterPortTo objects 
+         must have non-zero values, 
+         and cmFirewallFilterPortFrom <=  cmFirewallFilterPortTo.
+         
+          If this filter is enabled and the cmFirewallFilterAllowProtocol 
+          object is set to ip, then the cmFirewallFilterProtocolNum object 
+          must have a non-zero value."
+      DEFVAL { ip }
+      ::= { cmFirewallFilterEntry 7 } 
+ 
+   cmFirewallFilterProtocolNum OBJECT-TYPE
+      SYNTAX Unsigned32 (0..255)
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "This object controls protocol number.
+		 Refer to www.iana.org for a complete protocol number list."
+      DEFVAL { 255 }
+      ::= { cmFirewallFilterEntry 8 }
+
+   cmFirewallFilterStatus OBJECT-TYPE
+      SYNTAX RowStatus
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "Controls the creation and modification of entries in this table."
+      ::= { cmFirewallFilterEntry 9 }
+      
+cmFirewallPolicyTemplate OBJECT-TYPE
+      SYNTAX INTEGER
+             {
+              high(1),
+              medium(2),
+              low(3)             }
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object is only applicable when the current policy level (cmFirewallPolicy) is 
+         custom(4). Select a different policy template will erase the previously defined
+         customizations."
+      DEFVAL { low }
+      ::= { cmFirewallPolicyObjects 4 }
+
+
+--
+-- Intrusion detection (ID) alerts --------------------------------------
+--
+
+   cmFirewallIDObjects OBJECT IDENTIFIER ::= { cmFirewallObjects 2 }
+   cmFirewallIDEmailObjects OBJECT IDENTIFIER ::= { cmFirewallIDObjects 1 }
+   cmFirewallIDSnmpObjects OBJECT IDENTIFIER ::= { cmFirewallIDObjects 2 }
+
+
+-- E-mail intrusion detection alert
+
+   cmFirewallIDEmailEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object controls whether e-mail alerts are generated
+          when an intrusion is detected."
+      DEFVAL { false }
+      ::= { cmFirewallIDEmailObjects 1 }   
+
+  cmFirewallIDEmailInetAddressType OBJECT-TYPE 
+      SYNTAX      InetAddressType 
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "The type of IP address of cmFirewallIDEmailInetAddress."
+      DEFVAL { ipv4 }           
+      ::= { cmFirewallIDEmailObjects 4 }
+      
+   cmFirewallIDEmailInetAddress OBJECT-TYPE 
+      SYNTAX      InetAddress 
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "IP address of the e-mail server to which the alert is
+          to be sent." 
+      ::= { cmFirewallIDEmailObjects 5 }
+
+   cmFirewallIDEmailPortNum OBJECT-TYPE 
+      SYNTAX      InetPortNumber
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "Port number of e-mail server that the alert is
+          to be sent."
+      DEFVAL { 25 } 
+      ::= { cmFirewallIDEmailObjects 6 }
+
+   cmFirewallIDEmailSender OBJECT-TYPE 
+      SYNTAX      SnmpAdminString (SIZE(0..63))
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "E-mail address of device sending this alert."
+      DEFVAL { "" } 
+      ::= { cmFirewallIDEmailObjects 7 }
+
+   cmFirewallIDEmailRecipientTable OBJECT-TYPE 
+      SYNTAX      SEQUENCE OF CmFirewallIDEmailRecipientEntry 
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "E-mail address(es) of recipients that this alert will be
+          sent.  
+          
+          Up to 4 entries are supported." 
+      ::= { cmFirewallIDEmailObjects 8 }
+      
+   cmFirewallIDEmailRecipientEntry OBJECT-TYPE
+      SYNTAX CmFirewallIDEmailRecipientEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "Each entry defines a single firewall policy"
+      INDEX { cmFirewallIDEmailRecipientIndex }  
+      ::= { cmFirewallIDEmailRecipientTable 1 }
+
+   CmFirewallIDEmailRecipientEntry ::=
+      SEQUENCE {
+		 cmFirewallIDEmailRecipientIndex
+		 	Unsigned32,        
+         cmFirewallIDEmailRecipientAddress
+            SnmpAdminString,
+         cmFirewallIDEmailRecipientStatus
+            RowStatus
+      }
+
+   cmFirewallIDEmailRecipientIndex OBJECT-TYPE
+      SYNTAX Unsigned32 (1..4)
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+         "index of cmFirewallIDEmailRecipientTable"
+      ::= { cmFirewallIDEmailRecipientEntry 1 }
+
+   cmFirewallIDEmailRecipientAddress OBJECT-TYPE
+      SYNTAX SnmpAdminString (SIZE(1..63))
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "E-mail address of recipient that this alert will be
+          sent. "
+      ::= { cmFirewallIDEmailRecipientEntry 2 }
+
+   cmFirewallIDEmailRecipientStatus OBJECT-TYPE
+      SYNTAX RowStatus
+      MAX-ACCESS read-create
+      STATUS current
+      DESCRIPTION
+         "Controls the creation and modification of entries in this table."
+      ::= { cmFirewallIDEmailRecipientEntry 3 }
+
+
+-- SNMP intrusion detection alert 
+
+  cmFirewallIDSnmpEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object controls whether SNMP alerts are generated
+          when an intrusion is detected."
+      DEFVAL{ false }
+      ::= { cmFirewallIDSnmpObjects 1 }
+
+  cmFirewallIDSnmpInetAddressType OBJECT-TYPE 
+      SYNTAX      InetAddressType 
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "The type of IP address of cmFirewallIDSnmpInetAddress."
+      DEFVAL { ipv4 }           
+      ::= { cmFirewallIDSnmpObjects 2 }
+      
+   cmFirewallIDSnmpInetAddress OBJECT-TYPE 
+      SYNTAX      InetAddress 
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "IP address of the SNMP entity to which this alert is
+          to be sent." 
+      ::= { cmFirewallIDSnmpObjects 3 }   
+
+   cmFirewallIDSnmpPortNum OBJECT-TYPE 
+      SYNTAX      InetPortNumber 
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "Port number of SNMP entity that the alert is
+          to be sent."
+      DEFVAL { 162 } 
+      ::= { cmFirewallIDSnmpObjects 4 }
+
+   cmFirewallIDSnmpCommunity OBJECT-TYPE 
+      SYNTAX      SnmpAdminString  (SIZE(0..64))
+      MAX-ACCESS  read-write 
+      STATUS      current 
+      DESCRIPTION 
+         "Community string that is used when sending an alert.
+          If read, this object must return a null string."
+      DEFVAL { "public" } 
+      ::= { cmFirewallIDSnmpObjects 5 }
+
+--
+-- Event log
+--
+
+   cmFirewallLogObjects OBJECT IDENTIFIER ::= { cmFirewallObjects 3 }        
+   
+   cmFirewallLogControlObjects OBJECT IDENTIFIER ::= { cmFirewallLogObjects 1 }
+
+--
+-- log control
+--
+  cmFirewallLogSessionEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object controls whether to log session events"
+      DEFVAL{ false }
+      ::= { cmFirewallLogControlObjects 1 }
+
+  cmFirewallLogBlockingEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object controls whether to log blocking events"
+      DEFVAL{ false }
+      ::= { cmFirewallLogControlObjects 2 }
+
+  cmFirewallLogIntrusionEnable OBJECT-TYPE
+      SYNTAX TruthValue
+      MAX-ACCESS read-write
+      STATUS current
+      DESCRIPTION
+         "This object controls whether to log intrusion events"
+      DEFVAL{ false }
+      ::= { cmFirewallLogControlObjects 3 }
+    
+--  Conformance -------------------------------------------------------------
+
+   cmFirewallCompliances OBJECT IDENTIFIER ::= { cmFirewallConformance 1 }
+   cmFirewallGroups      OBJECT IDENTIFIER ::= { cmFirewallConformance 2 }
+                                 
+-- Compliance statements
+
+   cmFirewallCompliance MODULE-COMPLIANCE
+    STATUS       current
+    DESCRIPTION "The compliance statement for devices that implement the
+                 CM Firewall MIB"
+
+    MODULE       -- this module
+        MANDATORY-GROUPS { cmFirewallBaseGroup,
+        				   cmFirewallFilterGroup,
+                           cmFirewallIDGroup,
+                           cmFirewallLogGroup }
+ 
+        OBJECT  cmFirewallIDEmailInetAddressType 
+           WRITE-SYNTAX INTEGER { ipv4(1) } 
+           MIN-ACCESS  read-only 
+           DESCRIPTION 
+               "Only IPv4 address type is required to be supported.  This can be
+                done by making this object read-only or only allowing the value
+                of ipv4 to be written." 
+   
+        OBJECT  cmFirewallIDSnmpInetAddressType 
+           WRITE-SYNTAX INTEGER { ipv4(1) } 
+           MIN-ACCESS  read-only 
+           DESCRIPTION 
+               "Only IPv4 address type is required to be supported.  This can be
+                done by making this object read-only or only allowing the value
+                of ipv4 to be written." 
+    
+    ::= { cmFirewallCompliances 1 }    
+
+-- Units of compliance
+   cmFirewallBaseGroup OBJECT-GROUP
+       OBJECTS     {
+                     cmFirewallSetToFactory,
+                     cmFirewallPolicy
+                   }    
+       STATUS       current
+       DESCRIPTION "A collection of objects for policy base configuration."
+       ::= { cmFirewallGroups 1 }
+
+   cmFirewallFilterGroup OBJECT-GROUP
+       OBJECTS     {
+                     cmFirewallFilterEnable,
+                     cmFirewallFilterPortFrom,
+                     cmFirewallFilterPortTo,
+                     cmFirewallFilterAllowInbound,
+                     cmFirewallFilterAllowOutbound,
+                     cmFirewallFilterAllowProtocol,
+                     cmFirewallFilterProtocolNum,
+                     cmFirewallFilterStatus 
+                   }    
+       STATUS       current
+       DESCRIPTION "A collection of objects for policy configuration."
+       ::= { cmFirewallGroups 2 }
+
+   cmFirewallIDGroup OBJECT-GROUP
+      OBJECTS     {
+                    cmFirewallIDEmailEnable,
+                    cmFirewallIDEmailInetAddressType,
+                    cmFirewallIDEmailInetAddress,
+                    cmFirewallIDEmailPortNum,
+                    cmFirewallIDEmailSender,    
+                    --cmFirewallIDEmailRecipientIndex,
+                    cmFirewallIDEmailRecipientAddress,
+                    cmFirewallIDEmailRecipientStatus,
+                    cmFirewallIDSnmpEnable,
+                    cmFirewallIDSnmpInetAddressType,
+                    cmFirewallIDSnmpInetAddress,
+                    cmFirewallIDSnmpPortNum,
+                    cmFirewallIDSnmpCommunity
+                   }    
+       STATUS       current
+       DESCRIPTION "A collection of objects for intrusion detection
+                    configuration."
+       ::= { cmFirewallGroups 3 }
+
+   cmFirewallLogGroup OBJECT-GROUP
+      OBJECTS     {
+                    cmFirewallLogSessionEnable,
+                    cmFirewallLogBlockingEnable,
+                    cmFirewallLogIntrusionEnable
+                   }    
+       STATUS       current
+       DESCRIPTION "A collection of objects for log event
+                    configuration."
+       ::= { cmFirewallGroups 4 }
+
+END
+
+
+

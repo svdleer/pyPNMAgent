@@ -1,0 +1,1001 @@
+    SMC-Hotspot-MIB  DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Counter32,
+        Integer32,
+        Unsigned32,
+        IpAddress,
+        experimental,
+        private,
+        enterprises,
+        transmission            FROM SNMPv2-SMI
+        
+        InetAddressType, 
+        InetAddress			   	FROM INET-ADDRESS-MIB
+                
+    	MODULE-COMPLIANCE,
+    	OBJECT-GROUP            FROM SNMPv2-CONF
+    	
+    	TEXTUAL-CONVENTION,
+    	MacAddress,
+	    PhysAddress,
+    	RowStatus,
+    	TruthValue,
+        DateAndTime,
+	    TimeStamp,
+    	DisplayString           FROM SNMPv2-TC
+    	    	
+        ifIndex		            FROM IF-MIB;
+            
+-- Textual Conventions
+	smcNetworks		OBJECT IDENTIFIER ::= { enterprises 202 }
+
+    smcHotspot MODULE-IDENTITY
+    LAST-UPDATED "201305210000Z" -- May 21, 2013
+    ORGANIZATION "SMC Networks, Inc."
+    CONTACT-INFO
+        " aRyeh Elkon
+        	SMC Networks Inc
+            1873 S Bellaire St	
+            Suite 1025	
+            Denver, CO 80222
+            USA
+            Phone: +1 949 679 8267
+            E-mail: elkon@smc.com"
+    DESCRIPTION
+        "The MIB module to manage and configure the Hotspot functions."
+
+REVISION "201305210000Z"
+	DESCRIPTION
+              " add hotspotGreTunnelTerminationServerStatus hotspotGreTunnelTerminationServersTable 9 "
+
+REVISION "201305160000Z"
+	DESCRIPTION
+             " Add  hotspotGreRecoveryPingIntervalWhenAllTerminationServersDown    smcHotspotGreTunnel 20
+               Add  hotspotPrimaryGreTunnelTerminationServerReconnectInterval  smcHotspotGreTunnel 21 "
+
+
+
+REVISION "201304110000Z"
+	DESCRIPTION
+		" Syntax correction per the rule:
+                 If any columnar object in a conceptual row has 'read-create' as its maximal level of access,
+                  then no other columnar object of the same conceptual row may have a maximal access of 'read-write'.
+                  (Note that 'read-create' is a superset of 'read-write'.)
+                  AE: others like read-only or cot-accesable are permitted.
+                  http://www.freesoft.org/CIE/RFC/1902/43.htm  
+
+                  example:
+                  the follow OID access was changed to read-create:
+                     hotspotGreTunnelTerminationFqdn   
+                     hotspotGreTunnelTerminationPort  
+                     hotspotGreTunnelTerminationPriority   
+                     hotspotGreTunnelTerminationPrimary       
+                     hotspotGreTunnelTerminationServerIp        "
+
+ 
+ REVISION "201207240000Z"
+	DESCRIPTION
+           " add  smcHotspotMultipleSsid Table  (smcHotspot 13):
+                  smcHotspotSsidIndex                      INTEGER,
+                  smcHotspotSsidEnabled                    TruthValue,
+                  smcHotspotSsidCaptivePortalIp            OCTET STRING,
+                  smcHotspotSsidCaptivePortalPort           INTEGER,
+                  smcHotspotSsidMaxNumberOfSessions        INTEGER,
+                  smcHotspotSsidFactoryReset               TruthValue,
+                  smcHotspotSsidHotspotType                INTEGER
+           
+            As enhancment/replacement for the original Global OIDs, 
+            the following OIDs were deprecated: 
+                     smcHotspotCaptivePortalIp,
+                     smcHotspotCaptivePortalPort,
+                     smcHotspotMaxNumberOfSessions,
+                     smcHotspotFactoryReset
+           
+            Note that the following Global OIDs have also option for per SSID as well as:
+                   smcHotspotEnabled
+                   smcHotspotType
+            User must make sure there is no conflict between the two when SET-OID is use!!
+         "
+
+  REVISION "201206040000Z"
+	DESCRIPTION
+           " Change hotspotWanV4Table Index to hotspotWanV4Index"
+
+  REVISION "201205040000Z"
+	DESCRIPTION
+             " Add  hotspotGreTunnelHotspotClientDhcpServer  smcHotspotGreTunnel 13 "
+
+
+  REVISION "201205040000Z"
+	DESCRIPTION
+        "  add  
+        hotspotGreTunnelDiscoveryType          smcHotspotGreTunnel 1,
+        hotspotGreTunnelTerminationServerFqdnSource  hotspotGreTunnelTerminationServersTable 6,
+        hotspotGreTunnelTerminationServerIp          hotspotGreTunnelTerminationServersTable 7,
+        hotspotGreTunnelTerminationServerRowStatus   hotspotGreTunnelTerminationServersTable 8
+
+        Indexes update relative to erlier version (20120503).
+                   "
+
+  REVISION "201205030000Z"
+	DESCRIPTION
+		"  Adopt Comcast HHG reuirements:
+                   add smcHotspotType         smcHotspot 6,
+                   add  smcHotspotGreTunnel   smcHotspot 12      "
+  
+   REVISION "201109160000Z"
+	DESCRIPTION
+		"  Initial Version "
+  
+
+    ::= { smcNetworks 63 }
+
+    -- Generic information
+
+    smcHotspotWan	 		OBJECT IDENTIFIER ::= {  smcHotspot 10 }
+    smcHotspotLan               	OBJECT IDENTIFIER ::= {  smcHotspot 11 }
+    smcHotspotGreTunnel               	OBJECT IDENTIFIER ::= {  smcHotspot 12 }
+
+	
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Hotspot Managment
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+     smcHotspotEnabled  OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether Hotspot is enabled/disabled.
+                         This is a global Flag for the complete application.
+
+                         To manage per SSID use smcHotspotSsidEnabled "
+	    ::= { smcHotspot  1 }
+
+
+--    smcHotspotCaptivePortalIp    OBJECT-TYPE
+--        SYNTAX      OCTET STRING (SIZE (2..256))
+--	    MAX-ACCESS	read-write
+--	    STATUS		deprecated
+--	    DESCRIPTION
+--	        " function changed to be per SSID in smcHotspotMultipleSsid Table "
+--	    ::= { smcHotspot  2 }
+
+
+--     smcHotspotCaptivePortalPort OBJECT-TYPE
+--        SYNTAX      INTEGER
+--	    MAX-ACCESS	read-write
+--	    STATUS		deprecated
+--	    DESCRIPTION
+--	        " function changed to be per SSID in smcHotspotMultipleSsid Table "
+--	    ::= { smcHotspot 3 }
+
+
+--     smcHotspotMaxNumberOfSessions OBJECT-TYPE
+--        SYNTAX      INTEGER
+--	    MAX-ACCESS	read-write
+--	    STATUS		deprecated
+--	    DESCRIPTION
+--	        " function changed to be per SSID in smcHotspotMultipleSsid Table "
+--	    ::= { smcHotspot 4 }
+
+--     smcHotspotFactoryReset OBJECT-TYPE
+--        SYNTAX      TruthValue
+--	    MAX-ACCESS	read-write
+--	    STATUS		deprecated
+--	    DESCRIPTION
+--	        " function changed to be per SSID in smcHotspotMultipleSsid Table "
+--	    ::= { smcHotspot  5 }
+
+      smcHotspotType   OBJECT-TYPE
+          SYNTAX INTEGER {
+            greTunnel(1),
+            guestNetwork(2)
+            }
+	    MAX-ACCESS	read-write
+	    STATUS	current
+	    DESCRIPTION
+		        " HotSpot implementation type.
+                          May change according to product.
+                          OIDs may or may not be applicable according to product definition.
+                          If OIDs are not applicable to the HoySpot type - they must 
+                          not be reported SNMP-Walk of smc-Hotspot.mib   
+
+                          This is a global flag.
+                          there is also an option to use per-SSID-Configuration via smcHotspotSsidHotspotType.                                        User MUST make sure there is no conflict between the two.
+                          If Global OID is used - use the per-SSID OID for info only.
+                          If operatore wish to use per SSID - Global flag should not be used!
+                           "
+               ::= { smcHotspot 6 }
+
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Hotspot WAN interface
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+      smcHotspotWanIpVersion   OBJECT-TYPE
+          SYNTAX INTEGER {
+            honorMDD(0),
+            ipv4Only(1),
+            ipv6Only(2),
+            dpm(4)
+            }
+	    MAX-ACCESS	read-write
+	    STATUS	current
+	    DESCRIPTION
+		        " IP Version of the WAN interface associated to Hotspot  "
+            DEFVAL { ipv4Only }
+	    ::= { smcHotspotWan 1 }
+
+   hotspotWanV4Table OBJECT-TYPE
+            SYNTAX     SEQUENCE OF  HotspotWanV4Entry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "A list of configuration entries for individually
+                     address pools."
+            ::= { smcHotspotWan 2 }
+    
+    hotspotWanV4Entry  OBJECT-TYPE
+            SYNTAX     HotspotWanV4Entry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "Configuration parameters for an individually
+                     address ppol."
+            INDEX   {hotspotWanV4Index }
+            ::= { hotspotWanV4Table 1 }
+    
+    HotspotWanV4Entry ::=
+            SEQUENCE {
+
+
+                    hotspotWanV4Index          		INTEGER,
+                    hotspotWanV4Ip                 		InetAddress,
+                    hotspotWanV4SubnetMask         		InetAddress,
+                    hotspotWanV4DnsServer1         		InetAddress,
+                    hotspotWanV4DnsServer2         		InetAddress,
+                    hotspotWanV4AssociatedSsid     		BITS,
+                    hotspotWanV4Interface      	INTEGER
+                    }
+
+      hotspotWanV4Index     OBJECT-TYPE
+            SYNTAX     INTEGER
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                    "The Interface  number.
+                     This value must match the IfIndex defined by eDOCSIS.
+                     Aa 1st eRouter interface (ifIndex=1) is already used by the Gateway 
+                     WAN interface for subscriber traffic, Hotspot Interface(s) should be start from 5.
+                     If additional WAN interfacs will be created in the future, they should follow
+                     according to Table5-1, CM-SP-eDOCSIS-I21-101008   "
+            ::= {  hotspotWanV4Entry 1 }
+      
+      hotspotWanV4Ip  OBJECT-TYPE
+            SYNTAX      InetAddress
+            MAX-ACCESS	read-only
+	    STATUS		current
+	    DESCRIPTION
+		    "Hotspot WAN IPv4 address."
+            ::= {  hotspotWanV4Entry 2 }
+
+      hotspotWanV4SubnetMask  OBJECT-TYPE
+            SYNTAX      InetAddress
+            MAX-ACCESS	read-only
+	    STATUS		current
+	    DESCRIPTION
+		    "Hotspot WAN IPv4 Subnet Msk."
+            ::= {  hotspotWanV4Entry 3 }
+
+
+      hotspotWanV4DnsServer1  OBJECT-TYPE
+            SYNTAX      InetAddress
+            MAX-ACCESS	read-only
+	    STATUS		current
+	    DESCRIPTION
+		    "Hotspot WAN DNS1 server address."
+
+            ::= {  hotspotWanV4Entry 4 }
+
+      hotspotWanV4DnsServer2 OBJECT-TYPE
+            SYNTAX      InetAddress
+            MAX-ACCESS	read-only
+	    STATUS		current
+	    DESCRIPTION
+		    "Hotspot WAN DNS2 server address."
+            ::= {  hotspotWanV4Entry 5 }
+
+
+      hotspotWanV4AssociatedSsid    OBJECT-TYPE 
+             SYNTAX        BITS { 
+                          ssid1(0),
+                          ssid2(1),
+                          ssid3(2),
+                          ssid4(3),
+                          ssid5(4),
+                          ssid6(5),
+                          ssid7(6),
+                          ssid8(7)
+                         } 
+           MAX-ACCESS  read-only
+           STATUS      current 
+           DESCRIPTION 
+             " Define the SSID associated with the Hotspot
+              Default value is = 0x04 (00000100) which mean the default is SSID3
+              Setting this will be via the Hotspot LAN Settings"
+           ::= {  hotspotWanV4Entry 6 }
+
+       hotspotWanV4Interface  OBJECT-TYPE
+           SYNTAX INTEGER {
+            wan1(1),
+            wan2(2)
+             }
+	    MAX-ACCESS	read-write
+	    STATUS	current
+	    DESCRIPTION
+		        "  WAN interface associated to Hotspot. This match the OS terminology  "
+            DEFVAL { wan1 }
+           ::= {  hotspotWanV4Entry 7 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Hotspot LAN DHCP (IPv4) setting
+    -- Aplicable if Hotspot client IPv4 is managed by Gateway.
+    -- Not applicable if Hotspot is of GreTunnle type ( smcHotspotType =1)
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   
+   hotspotLanV4AddrTable  OBJECT-TYPE
+            SYNTAX     SEQUENCE OF HotspotLanV4AddrEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "A list of configuration entries for individually
+                     address pools."
+            ::= { smcHotspotLan 1 }
+    
+    hotspotLanV4AddrEntry  OBJECT-TYPE
+            SYNTAX     HotspotLanV4AddrEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "Configuration parameters for an individually
+                     address ppol."
+            INDEX   { hotspotLanV4Index }
+            ::= { hotspotLanV4AddrTable 1 }
+    
+    HotspotLanV4AddrEntry ::=
+            SEQUENCE {
+                    hotspotLanV4Index              		INTEGER,
+                    hotspotLanV4Ip                 		InetAddress,
+                    hotspotLanV4SubnetMask         		InetAddress,
+                    hotspotLanV4PoolStart          		InetAddress,
+                    hotspotLanV4PoolEnd            		InetAddress,
+                    hotspotLanV4DomainName         		DisplayString,
+                    hotspotLanV4AssignDnsManualy   		TruthValue,
+                    hotspotLanV4DnsServer1         		InetAddress,
+                    hotspotLanV4DnsServer2         		InetAddress,
+                    hotspotLanV4LeaseTime          		Unsigned32,
+                    hotspotLanV4AssociatedSsid     		BITS,
+                    hotspotLanV4AssociatedWanInterface      	INTEGER
+            }
+    
+      hotspotLanV4Index OBJECT-TYPE
+            SYNTAX     INTEGER
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                    "The Interface  number."
+            ::= { hotspotLanV4AddrEntry 1 }
+    
+      hotspotLanV4Ip OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            " Hotspot LAN IPv4 Addresses."
+           DEFVAL { '0a0a0001'h }    -- 10.10.0.1
+	    ::= { hotspotLanV4AddrEntry 2 }
+       
+	
+      hotspotLanV4SubnetMask OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "Hotspot LAN IPv4 Subnet Mask."
+             DEFVAL { 'ffffff00'h }    -- 255.255.255.0
+	    ::= { hotspotLanV4AddrEntry 3 }
+
+       hotspotLanV4PoolStart   OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            " Hotspot DHCPv4 pool start "
+            DEFVAL { '0a0a000a'h }    -- 10.10.0.10
+	    ::= {  hotspotLanV4AddrEntry 4 }
+
+        hotspotLanV4PoolEnd OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The end of range for LAN IP Addresses. The type of
+	            this address is specified by DhcpsAddrPoolType."
+             DEFVAL { '0a0a00c8'h }    -- 10.10.0.200
+	    ::= { hotspotLanV4AddrEntry 5 }
+       
+
+	 hotspotLanV4DomainName OBJECT-TYPE
+	    SYNTAX      DisplayString
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "The gateway MUST provide the value of this MIB object
+	            in the Option 15 (Domain Name Option) of the DHCP
+	            OFFER and ACK messages sent to the LAN IP Device."
+	    DEFVAL { "" }
+	    ::= { hotspotLanV4AddrEntry 6 }
+
+       hotspotLanV4AssignDnsManualy OBJECT-TYPE
+            SYNTAX       TruthValue
+	    MAX-ACCESS	 read-write
+	    STATUS	 current
+	    DESCRIPTION
+		        "Enable this option will allow set DNS info 
+                         in Hotspot LAN DHCPv4 offer manually.
+                         the default is OFF (2) which mean the DNS info 
+                         will be taken from the WAN Interface DHCP settings "
+            ::= { hotspotLanV4AddrEntry 7 }
+
+	hotspotLanV4DnsServer1 OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            " DNS Server 1 in Hotspot DHCPv4 offer "
+	    ::= { hotspotLanV4AddrEntry 8 }
+	
+	 hotspotLanV4DnsServer2 OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            " DNS Server 2 in Hotspot DHCPv4 offer "
+	     ::= { hotspotLanV4AddrEntry 9 }
+
+      	hotspotLanV4LeaseTime OBJECT-TYPE
+	    SYNTAX      Unsigned32
+	    UNITS       "seconds"
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            "  IP Address lease time in the Hotspot DHCPv4 OFFER "
+	    DEFVAL { 3600 }
+	    ::= { hotspotLanV4AddrEntry 10 }
+
+       hotspotLanV4AssociatedSsid   OBJECT-TYPE 
+           SYNTAX        BITS { 
+                          ssid1(0),
+                          ssid2(1),
+                          ssid3(2),
+                          ssid4(3),
+                          ssid5(4),
+                          ssid6(5),
+                          ssid7(6),
+                          ssid8(7)
+                         } 
+           MAX-ACCESS  read-write
+           STATUS      current 
+           DESCRIPTION 
+                "Define which SSID associated with this Hotspot Lan Pool
+                 Default value = 0x03 (00000100)                
+                 As a  start only SSIDs >2 are permitted "
+ 	    ::= { hotspotLanV4AddrEntry 11 }
+
+      hotspotLanV4AssociatedWanInterface  OBJECT-TYPE
+            SYNTAX  	INTEGER 
+            MAX-ACCESS	read-write
+	    STATUS	current
+	    DESCRIPTION
+		        " Future option to set WAN interface associated to 
+                          This specific Hotspot LAN pool. 
+                         This should match one of the values of hotspotWanV4Index 
+                         (Start from 5)"
+ 	    ::= { hotspotLanV4AddrEntry 12 }
+
+
+   -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- Hotspot GRE Tunnel  setting
+    -- Aplicable if Hotspot is of GreTunnl type ( smcHotspotType =1)
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+      hotspotGreTunnelDiscoveryType  OBJECT-TYPE
+          SYNTAX INTEGER {
+            dnsSrv(1),
+            static(2)
+            }
+	    MAX-ACCESS	read-write
+	    STATUS	current
+	    DESCRIPTION
+            " set the method used by Gateway to obtain Hotspot FQDN DNS records 
+           If set to dnsSrv(1) Gateway use the  value of hotspotGreTunnelTerminationFqdn.0 
+           in CM-DOCSIS-config file to query DNS records and update the hotspotGreTunnelTerminationServersTable
+           based on the SRV records in the DNS respond.
+           
+           If set to static - entries in the hotspotGreTunnelTerminationServersTable could be
+           set via SNMP manager.  
+           "
+            DEFVAL { dnsSrv }
+            ::= {  smcHotspotGreTunnel 1 }
+
+     hotspotGreTunnelTerminationServersTable  OBJECT-TYPE
+            SYNTAX     SEQUENCE OF HotspotGreTunnelTerminationServersEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+             "A list of configuration entries for individual Hotspot GreTunnel Termination Servers.
+             If hotspotGreTunnelDiscoveryType=dnsSrv (Default):
+                   hotspotGreTunnelTerminationFqdn.0 must be used to set the FQDN or IP for the initial DNS query.
+                   The rest of this table will reflect the status of this DNS query.
+             If hotspotGreTunnelDiscoveryType=dnsSrv-static:
+                   Table could be used to populate all values for proper Hotspot operation.
+              "
+            ::= {  smcHotspotGreTunnel 2 }
+    
+    hotspotGreTunnelTerminationServersEntry  OBJECT-TYPE
+            SYNTAX     HotspotGreTunnelTerminationServersEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "Configuration parameters for an individual
+                     Hotspot GreTunnel Termination Server."
+            INDEX   { hotspotGreTunnelTerminationServersIndex }
+            ::= {  hotspotGreTunnelTerminationServersTable 1 }
+    
+    HotspotGreTunnelTerminationServersEntry ::=
+            SEQUENCE {
+                    hotspotGreTunnelTerminationServersIndex     INTEGER,
+                    hotspotGreTunnelTerminationFqdn             OCTET STRING,
+                    hotspotGreTunnelTerminationPort 	        INTEGER,
+                    hotspotGreTunnelTerminationPriority         INTEGER,
+                    hotspotGreTunnelTerminationPrimary          TruthValue,
+                    hotspotGreTunnelTerminationServerFqdnSource  INTEGER,
+                    hotspotGreTunnelTerminationServerIp          InetAddress,
+                    hotspotGreTunnelTerminationServerRowStatus   RowStatus,
+                    hotspotGreTunnelTerminationServerStatus      INTEGER
+            }
+
+    hotspotGreTunnelTerminationServersIndex OBJECT-TYPE
+            SYNTAX     INTEGER
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                    "The Hotspot Gre Tunnel Termination Servers index."
+            ::= { hotspotGreTunnelTerminationServersEntry 1 }
+      
+     hotspotGreTunnelTerminationFqdn   OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..256))
+	    MAX-ACCESS	read-create
+	    STATUS		current
+	    DESCRIPTION
+	        " Hotspot Gre Tunnel Termination Server  FQDN or IP address. 
+                 "
+	    ::= { hotspotGreTunnelTerminationServersEntry  2 }        
+
+     hotspotGreTunnelTerminationPort   OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-create
+	    STATUS		current
+	    DESCRIPTION
+		        " Hotspot Gre Tunnel Termination Server port. "
+	    ::= { hotspotGreTunnelTerminationServersEntry 3 }
+
+
+     hotspotGreTunnelTerminationPriority      OBJECT-TYPE
+           SYNTAX      INTEGER
+	    MAX-ACCESS	read-create
+	    STATUS		current
+	    DESCRIPTION
+		        " Hotspot Gre Tunnel Termination Server Priority. "
+	    ::= { hotspotGreTunnelTerminationServersEntry 4 }
+
+     hotspotGreTunnelTerminationPrimary       OBJECT-TYPE
+            SYNTAX      TruthValue
+	    MAX-ACCESS	read-create
+	    STATUS		current
+	    DESCRIPTION
+		        "This object identifies whether Hotspot Gre Tunnel 
+                         Termination Server is Primary or not.
+
+                    Primary  (1)
+                    None Primary (2)    "
+            ::= { hotspotGreTunnelTerminationServersEntry 5 }
+
+
+     hotspotGreTunnelTerminationServerFqdnSource    OBJECT-TYPE
+            SYNTAX INTEGER {
+               viaDocsisConfig(1),
+               viaDnsRecord(2),
+               manually(3)
+            }
+	    MAX-ACCESS	read-only
+	    STATUS	current
+	    DESCRIPTION
+            " reflect the method the FQDN record was obtained "
+            ::= { hotspotGreTunnelTerminationServersEntry 6 }
+
+       hotspotGreTunnelTerminationServerIp         OBJECT-TYPE
+            SYNTAX     InetAddress
+	    MAX-ACCESS	read-create
+	    STATUS		current
+	    DESCRIPTION
+            " FQDN IP .
+            If hotspotGreTunnelDiscoveryType=dnsSrv, this will reflect the IP received in the DNS query respond.
+            If hotspotGreTunnelDiscoveryType=static, this OID can be used to set the IP for this FQDN.
+             "
+            ::= { hotspotGreTunnelTerminationServersEntry 7 }
+
+     hotspotGreTunnelTerminationServerRowStatus OBJECT-TYPE 
+        SYNTAX      RowStatus 
+        MAX-ACCESS  read-create 
+        STATUS      current 
+        DESCRIPTION 
+        " When hotspotGreTunnelDiscoveryType=dnsSrv:
+             The device must assign a RowStatus of notReady(3) to any new row entry created 
+            without a hotspotGreTunnelTerminationServerIp. this is helpful if DNS query fail.
+
+          When hotspotGreTunnelDiscoveryType=static:
+              The RowStatus interlock for creation and deletion of row entries. 
+              The device must not allow the NMS to set RowStatus to notInService(2). 
+               The device must assign a RowStatus of notInService(2) to any new row entry created with a non-unique, 
+             hotspotGreTunnelTerminationServerIp or hotspotGreTunnelTerminationPriority values. 
+               The device must assign a RowStatus of notReady(3) to any new row entry created 
+             without hotspotGreTunnelTerminationServerIp & hotspotGreTunnelTerminationPriority.
+               The device will prevent modification of this table's columns and return an inconsistentValue error, 
+               if the NMS attempts to make such modifications while the RowStatus is active(1).
+
+              " 
+            ::= { hotspotGreTunnelTerminationServersEntry 8 }
+
+hotspotGreTunnelTerminationServerStatus OBJECT-TYPE 
+      SYNTAX INTEGER {
+               inUse(1),
+               notInuse(2)
+            }
+ 
+        MAX-ACCESS  read-only 
+        STATUS      current 
+        DESCRIPTION 
+        "provide the connection status of the GRE Termination Server:
+               In Use(1),
+               Not In Use(2)
+              " 
+            ::= { hotspotGreTunnelTerminationServersEntry 9 }
+
+
+    hotspotGreTunnelTerminationServerFqdnDnsRetryTimer   OBJECT-TYPE
+            SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		  " Retry timer(s) triggered when Gateway is unable to resolve the Tunnel Termination Server FQDN
+                  Min: 30 seconds Max: 1800 seconds  "
+            DEFVAL { 30 }
+	    ::= {  smcHotspotGreTunnel 3 }
+
+
+    hotspotGreTunnelTerminationServerPingCount OBJECT-TYPE
+            SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		  " Number of ICMP PINGs sent at regular interval for Tunnel Termination Server reachability health check "
+            DEFVAL { 3 }
+	    ::= {  smcHotspotGreTunnel 4 }
+
+    hotspotGreTunnelTerminationServerPingInterval OBJECT-TYPE
+            SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		  "  Configured interval between Tunnel Termination Server reachability health check.
+                     Units : Seconds  "
+            DEFVAL { 60 }
+	    ::= {  smcHotspotGreTunnel 5 }
+
+    hotspotGreTunnelTerminationServerFailoverThreshold  OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		  " Number of consecutive un-acknowledged pings before the Gateway determines that the 
+                  Primary Gre Tunnel Termination Server is no longer available and the Gateway 
+                  starts failover to the Secondary Tunnel Termination Server "
+            DEFVAL { 3 }
+	    ::= {  smcHotspotGreTunnel 6 }
+
+    hotspotGreTunnelOptOut OBJECT-TYPE
+            SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		 " This helps the Hateway determine if the user has opted out of hotspot service.  
+                   Returns TRUE if smcHotspotEnabled is set to disable using SNMP or config file via TFTP or from ACS via TR-069. 
+                   If set to TRUE, the Gateway must ignore any Hotspot configuration information that may be present in the configuration file.
+
+                    Enable  (1)
+                    Disable (2)"
+
+           ::= {  smcHotspotGreTunnel 7 }
+
+    hotspotGreTunnelInsertSsidInDhcpOption OBJECT-TYPE
+            SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		 " Enable insertion of Client SSID in the DHCP relay agent circuit-ID suboption. 
+                
+                    Enable  (1)
+                    Disable (2)"
+           ::= {  smcHotspotGreTunnel 8 }
+
+    hotspotGreTunnelInsertMacInDhcpOption   OBJECT-TYPE
+            SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		 " Enable insertion of Client MAC address in DHCP relay agent Remote-ID suboption. 
+                 If Enabled, the Gateway will insert the DHCP relay agent Remote-ID suboption with 
+                 the hotspot client MAC address. 
+
+                    Enable  (1)
+                    Disable (2)"
+           ::= {  smcHotspotGreTunnel 9 }
+
+     hotspotGreTunnelDefaultDscp OBJECT-TYPE
+            SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+              "   DSCP values used for marking the tunneled packets and classifying data
+                  from GRE Tunnel and Home Wi-Fi into different DOCSIS service flows.
+                  Individual Dscp could be done via hotspotGreTunnelSsidDscp which will override  hotspotGreTunnelDefaultDscp "
+            ::= {  smcHotspotGreTunnel 10 }
+
+     hotspotGreTunnelAssociatedSsid   OBJECT-TYPE 
+           SYNTAX        BITS { 
+                          ssid1(0),
+                          ssid2(1),
+                          ssid3(2),
+                          ssid4(3),
+                          ssid5(4),
+                          ssid6(5),
+                          ssid7(6),
+                          ssid8(7)
+                         } 
+           MAX-ACCESS  read-write
+           STATUS      current 
+           DESCRIPTION 
+                "Define the SSID associated with this Hotspot tunnel
+                 Default value = 0x03 (00000100)                
+                 Only Operator's SSIDs are permitted "
+ 	    ::= { smcHotspotGreTunnel 11 }
+
+     hotspotGreTunnelMultipleSsidSettingTable  OBJECT-TYPE
+            SYNTAX     SEQUENCE OF HotspotGreTunnelMultipleSsidSettingEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "A list of configuration entries for individual SSIDs 
+                     Associated with the Hotspot GreTunnel."
+            ::= {  smcHotspotGreTunnel 12 }
+
+     hotspotGreTunnelMultipleSsidSettingEntry OBJECT-TYPE
+            SYNTAX      HotspotGreTunnelMultipleSsidSettingEntry
+            MAX-ACCESS not-accessible
+            STATUS     current
+            DESCRIPTION
+                    "Configuration parameters for each SSID associated with the HotSpot.
+                     Only SSIDs that are associated with the Hotspot should return proper value."
+            INDEX   {  hotspotGreTunnelSsidIndex }
+            ::= {  hotspotGreTunnelMultipleSsidSettingTable 1 }
+
+     HotspotGreTunnelMultipleSsidSettingEntry ::=
+            SEQUENCE {
+                    hotspotGreTunnelSsidIndex                    INTEGER,
+                    hotspotGreTunnelSsidAssociatedWithHotspot    TruthValue,
+                    hotspotGreTunnelSsidVlanTag 	         INTEGER,
+                    hotspotGreTunnelSsid                         OCTET STRING
+            }
+
+      hotspotGreTunnelSsidIndex       OBJECT-TYPE
+            SYNTAX     INTEGER
+            MAX-ACCESS read-only
+            STATUS     current
+            DESCRIPTION
+                    "The Hotspot Ssid Index."
+            ::= { hotspotGreTunnelMultipleSsidSettingEntry 1 }
+
+      hotspotGreTunnelSsidAssociatedWithHotspot     OBJECT-TYPE
+            SYNTAX      TruthValue
+	    MAX-ACCESS	read-only
+	    STATUS		current
+	    DESCRIPTION
+		 " Indicates if this specific SSID is associated with the Hotspot or not.
+                   Setting the association is done via  hotspotGreTunnelAssociatedSsid
+
+                    associated  (1)
+                    notAssociated (2)"
+           ::= {   hotspotGreTunnelMultipleSsidSettingEntry 2 }
+
+      hotspotGreTunnelSsidVlanTag 	 OBJECT-TYPE
+            SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+              "   VLAN ID used in the 802.1q VLAN tag inserted in the tunneled 802.3 frame. 
+                  VLAN ID is configured for each SSID and is unique  "
+            ::= {  hotspotGreTunnelMultipleSsidSettingEntry 3 }
+
+           hotspotGreTunnelSsid   OBJECT-TYPE
+            SYNTAX      OCTET STRING
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+	        " Hotspot SSID string. 
+                  This OID can configure ONLY SSIDs that are associated with the hotspot
+                  (per hotspotGreTunnelAssociatedSsid )
+                  Other SSID parameters setting should be according to smc-wireless-n.mib "
+	    ::= {  hotspotGreTunnelMultipleSsidSettingEntry  4 } 
+
+
+           hotspotGreTunnelHotspotClientDhcpServer    OBJECT-TYPE
+	    SYNTAX      InetAddress
+	    MAX-ACCESS  read-write
+	    STATUS      current
+	    DESCRIPTION
+	            " DHCP server IPv4 Addresses for the Hot Spot client.
+                     This address will be used by the Gateway when rebuild the DHCP
+                     mesagges before send them up in the tunnel. "
+            ::= {  smcHotspotGreTunnel 13 }
+
+   hotspotGreRecoveryPingIntervalWhenAllTerminationServersDown OBJECT-TYPE
+            SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+         "  Configured interval between pings to Tunnel Termination Server when disabled due to both servers failing. 
+            After health check fail to both Primary and Secondary Termination server fail.
+            Units : Seconds  "
+            DEFVAL { 300 }
+	    ::= {  smcHotspotGreTunnel 20 }
+
+   hotspotPrimaryGreTunnelTerminationServerReconnectInterval OBJECT-TYPE
+            SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+         "  Configured number of hours for Gateway (AP) to reattempt connection to a Primary Termination Server
+            when clients are continuously connected using the Secondary Termination Server (Even clients are connected).
+            Default: 12 hours.
+            Units : Seconds  "
+            DEFVAL { 43200 }
+	    ::= {  smcHotspotGreTunnel 21 }
+
+  -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- smcHotspotMultipleSsid Table
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    smcHotspotMultipleSsidTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF SmcHotspotMultipleSsidEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+                "Specifics controls for configuring individual Hopspot per SSID."
+        ::= { smcHotspot 13 }
+
+    smcHotspotMultipleSsidEntry OBJECT-TYPE
+        SYNTAX      SmcHotspotMultipleSsidEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+                "An entry in wlsSecTable associated to a
+                wireless Ssid Index."
+         INDEX { smcHotspotSsidIndex }
+        ::= { smcHotspotMultipleSsidTable  1 }
+
+    SmcHotspotMultipleSsidEntry ::=
+        SEQUENCE { 
+                  smcHotspotSsidIndex                      INTEGER,
+                  smcHotspotSsidEnabled       		   TruthValue,
+                  smcHotspotSsidCaptivePortalIp            OCTET STRING,
+                  smcHotspotSsidCaptivePortalPort          INTEGER,
+                  smcHotspotSsidMaxNumberOfSessions        INTEGER,
+                  smcHotspotSsidFactoryReset  		   TruthValue,
+                  smcHotspotSsidHotspotType                INTEGER
+                  }
+    
+    smcHotspotSsidIndex OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+                "The Ssid index."
+        ::= { smcHotspotMultipleSsidEntry 1 }
+   
+     smcHotspotSsidEnabled  OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+	        "This object identifies whether Hotspot is enabled/disabled.
+                 Defaults will be specific per product specifications. "
+	::= { smcHotspotMultipleSsidEntry  2 }
+
+     smcHotspotSsidCaptivePortalIp    OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (2..256))
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+	        " Hotspot Captive Portal FQDN or IP address. 
+                 This OID aplicable only if Hotspot authentication is done in the Gateway.  "
+	    ::= { smcHotspotMultipleSsidEntry  3 }
+
+
+     smcHotspotSsidCaptivePortalPort OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+		        " Hotspot Captive Portal Port. 
+                        This OID aplicable only if Hotspot authentication is done in the Gateway. "
+	    ::= { smcHotspotMultipleSsidEntry 4 }
+	
+     smcHotspotSsidMaxNumberOfSessions OBJECT-TYPE
+        SYNTAX      INTEGER
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+	        " The maximum number of concurrent hotspot sessions to this SSID.
+                  Defaults will be specific per product specifications. "
+	::= { smcHotspotMultipleSsidEntry 5 }
+
+
+     smcHotspotSsidFactoryReset OBJECT-TYPE
+        SYNTAX      TruthValue
+	    MAX-ACCESS	read-write
+	    STATUS		current
+	    DESCRIPTION
+	        " Restore this SSID to HotSpot factory default.
+                  This defaults may differ per product specification "
+	::= { smcHotspotMultipleSsidEntry 6 }
+
+
+     smcHotspotSsidHotspotType   OBJECT-TYPE
+          SYNTAX INTEGER {
+            greTunnel(1),
+            guestNetwork(2)
+            }
+	    MAX-ACCESS	read-write
+	    STATUS	current
+	    DESCRIPTION
+		        " HotSpot implementation type.
+                          May change according to product.
+                          OIDs may or may not be applicable according to product definition.
+                          If OIDs are not applicable to the HoySpot type - they must 
+                          not be reported SNMP-Walk of smc-Hotspot.mib   
+                        
+                          This OID is an option to manage per SSID.
+                          If global OID smcHotspotType is use user must not use this OID 
+                          in a confilc way.  "
+               ::= {  smcHotspotMultipleSsidEntry 7 }
+
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    -- End of Hotspot MIB 
+    -- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+END

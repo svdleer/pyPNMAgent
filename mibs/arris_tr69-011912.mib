@@ -1,0 +1,240 @@
+ARRIS-TR69-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+   MODULE-IDENTITY,
+   OBJECT-TYPE,
+   Integer32,
+   Unsigned32,
+   Counter32,
+   Counter64,
+   IpAddress
+      FROM SNMPv2-SMI
+   arrisProdIdCM
+      FROM ARRIS-MIB
+   TruthValue, DisplayString, TimeStamp, DateAndTime, TEXTUAL-CONVENTION
+      FROM SNMPv2-TC
+   SnmpAdminString
+      FROM SNMP-FRAMEWORK-MIB;
+
+   arrisTR69Mib MODULE-IDENTITY
+      LAST-UPDATED    "1007160000Z"  -- July 16, 2010
+      ORGANIZATION    "ARRIS Broadband"
+      CONTACT-INFO    "Rodney Osborne
+                       Postal: ARRIS Broadband
+                       3871 Lakefield Drive
+                       Suite 300
+                       Suwanee, GA 30024-1242
+                       U.S.A.
+                       Phone:  +1 770-473-5120
+                       E-mail: rodney.osborne@arrisi.com"
+      DESCRIPTION
+       "This MIB module supplies the basic proprietary
+        management objects for ARRIS modems."
+
+      -- Revision history
+      REVISION    "1201190000Z"  -- January 19, 2012
+         DESCRIPTION
+      "Added interface selection mib"
+
+      REVISION    "1107180000Z"  -- July 18, 2011
+         DESCRIPTION
+      "Initial version"
+::= { arrisProdIdCM 7 }
+
+-- This MIB module contains the following groups.
+arrisTR69MibObjects          OBJECT IDENTIFIER ::= { arrisTR69Mib 1 }
+arrisTR69Base                OBJECT IDENTIFIER ::= { arrisTR69MibObjects 1 }
+arrisTR69Setup               OBJECT IDENTIFIER ::= { arrisTR69MibObjects 2 }
+
+arrisTR69EnableCWMP OBJECT-TYPE
+     SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+     }
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "Used for overall control of the CPE's support of TR-069.
+      A value of disable(0) will disable CPE support of TR-069; the TR-069
+      client will not be allowed to start.
+      A value of enable(1) will enable CPE support of TR-069."
+      ::= { arrisTR69Base 1 }
+
+arrisTR69AcsUrl  OBJECT-TYPE
+    SYNTAX  OCTET STRING (SIZE (1..256))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The URL used by the TR-069 client to connect to the ACS.
+     MUST be a valid HTTP or HTTPS format."
+      ::= { arrisTR69Base 2 }
+
+arrisTR69AcsUserName  OBJECT-TYPE
+    SYNTAX  OCTET STRING (SIZE (1..256))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The username used by the TR-069 client for HTTP based authentication
+     with the ACS."
+      ::= { arrisTR69Base 3 }
+
+arrisTR69AcsPassword  OBJECT-TYPE
+    SYNTAX  OCTET STRING (SIZE (1..256))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The password used by the TR-069 client for HTTP based authentication
+     with the ACS.  This MIB object always returns an empty string when read."
+      ::= { arrisTR69Base 4 }
+
+arrisTR69PeriodicInformEnable OBJECT-TYPE
+     SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+     }
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "Determines whether or not the TR-069 client will periodically send information
+      to the ACS in an Inform method call."
+     ::= { arrisTR69Base 5 }
+
+arrisTR69PeriodicInformInterval OBJECT-TYPE
+     SYNTAX Unsigned32
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "The interval in seconds used to periodically send information to the ACS in an
+      Inform method call."
+     ::= { arrisTR69Base 6 }
+
+arrisTR69PeriodicInformTime OBJECT-TYPE
+     SYNTAX INTEGER
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "The absolute time when the TR-069 client will send periodic Inform method calls."
+     ::= { arrisTR69Base 7 }
+
+ -- arrisTR69ParameterKey  OBJECT-TYPE
+ --     SYNTAX  OCTET STRING (SIZE (1..256))
+ --     MAX-ACCESS  read-write
+ --     STATUS      current
+ --     DESCRIPTION
+ --             "The ??? ."
+ --       ::= { arrisTR69Base 8 }
+
+arrisTR69ConnectionRequestUrl  OBJECT-TYPE
+    SYNTAX  OCTET STRING (SIZE (1..256))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "The URL used by the ACS to initiate a connection request session
+             with the TR-069 client.
+             MUST be an HTTP URL.      Format:  http://host:port/path
+             An HTTPS URL is not valid."
+      ::= { arrisTR69Base 9 }
+
+arrisTR69ConnectionRequestUserName  OBJECT-TYPE
+    SYNTAX  OCTET STRING (SIZE (1..256))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The username used by the ACS for HTTP based authentication
+     with the TR-069 client."
+      ::= { arrisTR69Base 10 }
+
+arrisTR69ConnectionRequestPassword  OBJECT-TYPE
+    SYNTAX  OCTET STRING (SIZE (1..256))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The username used by the ACS for HTTP based authentication with the 
+     TR-069 client.  This MIB object always returns an empty string when read."
+      ::= { arrisTR69Base 11 }
+
+arrisTR69PersistEnable OBJECT-TYPE
+     SYNTAX INTEGER {
+        disable(0),
+        enable(1)
+     }
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "Used to determine whether ACS information from the 
+      configuration file is saved in dynamic non-vol memory."
+     ::= { arrisTR69Setup 1 }
+
+arrisTR69TransportInterface OBJECT-TYPE
+     SYNTAX INTEGER {
+        gwInterface(1),
+        cmInterface(2)
+     }
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "Used to determine the transport interface used for all TR69
+      communications"
+     DEFVAL { 1 }
+     ::= { arrisTR69Base 12 }
+
+arrisTR69CwmpPort OBJECT-TYPE
+     SYNTAX Unsigned32
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "The port assigned for ACS initiated messaging.  This port number
+     is normally included as part of the Connection Request URL.  This MIB
+     object is intended to overwrite the port used in the URL."
+     ::= { arrisTR69Base 13 }
+
+arrisTR69NameSpacePriOverride OBJECT-TYPE
+     SYNTAX INTEGER {
+        default(1),
+        cwmp10(2),
+        cwmp11(3)
+     }
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "Used to override the default TR-069 Primary Namespace.
+     The choices are as follows:
+     (1) default pri: cwmp-1-1, sec: cwmp-1-0
+     (2) urn:dslforum-org:cwmp-1-0
+     (3) urn:dslforum-org:cwmp-1-1"
+     ::= { arrisTR69Base 14 }
+
+arrisTR69NameSpaceSecOverride OBJECT-TYPE
+     SYNTAX INTEGER {
+        null(1),
+        cwmp10(2),
+        cwmp11(3)
+     }
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "Used to override the default TR-069 Secondary Namespace.
+     The choices are as follows:
+     (1) NULL
+     (2) urn:dslforum-org:cwmp-1-0
+     (3) urn:dslforum-org:cwmp-1-1"
+     ::= { arrisTR69Base 15 }
+
+arrisTR69RetryMinimumWaitInterval OBJECT-TYPE
+     SYNTAX Unsigned32
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "Used to override CWMPRetryMinimumWaitInterval
+     range minInclusive=1 maxInclusive=65535"
+     ::= { arrisTR69Base 17 }
+
+arrisTR69RetryIntervalMultiplier OBJECT-TYPE
+     SYNTAX Unsigned32
+     MAX-ACCESS read-write
+     STATUS current
+     DESCRIPTION
+     "Used to override CWMPRetryIntervalMultiplier
+     range minInclusive=1000 maxInclusive=65535"
+     ::= { arrisTR69Base 18 }
+END

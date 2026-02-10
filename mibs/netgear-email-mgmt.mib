@@ -1,0 +1,163 @@
+
+-- **************************************************************************
+-- 
+--  Copyright (c) 2012  NETGEAR, Inc.
+--    All Rights Reserved
+--  No portions of this material may be reproduced in any form without the
+--    written permission of:
+--          NETGEAR, Inc.
+--          San Jose CA 95134
+--  All information contained in this document is NETGEAR, Inc.
+--  private, proprietary, and trade secret.
+-- 
+-- 
+-- 
+-- **************************************************************************
+--    Filename: netgear-email-mgmt.mib
+--    Creation Date: June 1, 2012
+-- 
+-- **************************************************************************
+--    Description:
+-- 
+--		private MIB for email management.
+-- 
+-- **************************************************************************
+--    Revision History:
+-- 
+-- **************************************************************************
+
+NETGEAR-email-MGMT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	OBJECT-TYPE, MODULE-IDENTITY, Integer32
+		FROM SNMPv2-SMI
+	TruthValue
+		FROM SNMPv2-TC
+	SnmpAdminString
+		FROM SNMP-FRAMEWORK-MIB
+	cableMgmt
+		FROM NETGEAR-CABLEMGMT-SMI;
+
+-- 
+-- Netgear Group
+-- 
+-- 
+-- groups in NETGEAR-CABLE-MIB
+-- 
+
+ntgrEmailmgmt MODULE-IDENTITY
+	LAST-UPDATED "201205100000Z"
+	ORGANIZATION 
+		"Netgear, Inc"
+	CONTACT-INFO 
+		""
+	DESCRIPTION 
+		"Initial version of this MIB module."
+::= { cableMgmt 12 }
+
+
+emailNotificationEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 1 }
+
+emailAuthenticationEnable  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 2 }
+
+emailAccountUserName  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 3 }
+
+emailAccountPassword  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 4 }
+
+emailServerDomain  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 5 }
+
+emailTargetDomain  OBJECT-TYPE
+	SYNTAX     SnmpAdminString
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 6 }
+
+emailDeliveryImmediately  OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 7 }
+
+emailDeliveryScheduleType  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 8 }
+
+emailDeliveryScheduleDays  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 9 }
+
+emailDeliveryScheduleStartHour  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 10 }
+
+emailDeliveryScheduleStartMinute  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 11 }
+
+emailDeliveryScheduleEndHour  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 12 }
+
+emailDeliveryScheduleEndMinute  OBJECT-TYPE
+	SYNTAX     Integer32
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION 
+		""
+	::= { ntgrEmailmgmt 13 }
+END
+

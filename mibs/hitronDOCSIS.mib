@@ -1,0 +1,1386 @@
+HITRON-CABLE-MODEM-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        IpAddress,
+        Unsigned32,
+        Integer32,
+        enterprises
+                FROM SNMPv2-SMI
+        RowStatus,
+        TruthValue
+                FROM SNMPv2-TC
+        OBJECT-GROUP,
+        MODULE-COMPLIANCE
+                FROM SNMPv2-CONF
+        hitronMib
+                FROM HITRON-MIB;
+
+-- hitron Cable Modem Reference Design Module
+
+hitronDOCSIS MODULE-IDENTITY
+        LAST-UPDATED    "201106230100Z" -- June 23, 2011
+        ORGANIZATION    "Hitron Technologies, Inc."
+        CONTACT-INFO
+            "        Rudy Zijlstra
+             Postal: Hitron Technologies, Inc.
+                     No. 1-8, Lihsin 1st Rd., Hsinchu Science Park,
+                     Hsinchu, Taiwan, R.O.C.
+             Phone: +886 3 578 6658
+             E-mail: rudy.zijlstra@hc.hitrontech.com"
+        DESCRIPTION
+            "This is the MIB module for Hitron DOCSIS compliant
+             Cable Modem." 
+      	REVISION    "200808010100Z" -- AUG 1, 2008
+	      DESCRIPTION
+	        "Initial Compilable Version."
+      	REVISION    "200808190100Z" -- AUG 19, 2008
+	      DESCRIPTION
+	        "Add SNMP daemon control under hitronCmDaemonCapability. It's only 
+          for DOCSIS3.0. The default value for the SNMP damon is rfiAccessEnabled(2)."
+      	REVISION    "200808200100Z" -- AUG 20, 2008
+	      DESCRIPTION
+	        "Adjust the control for http password enable/disable. Create an independent OID 
+          under hitronCmManagementParameters. It's only for DOCSIS3.0. The default value 
+          would depend on the model."
+      	REVISION    "200810220100Z" -- Oct 22, 2008
+	      DESCRIPTION
+	        "Modify the hitronCmScanningParameters to enable setting of the freq range for 
+          all frequency plan."
+      	REVISION    "200809240100Z" -- Sep 24, 2008
+	      DESCRIPTION
+	        "Add TurboDox and Max CPES control, allow to config user password"
+      	REVISION    "200903060100Z" -- Mar 06, 2009
+	      DESCRIPTION
+	        "Add more detail configuration in TurboDoxControl"
+      	REVISION    "200906220100Z" -- Jun 22, 2009
+	      DESCRIPTION
+	        "Add the hitronDQoSControlTable for DQoS for SIP control."
+      	REVISION    "200910080100Z" -- Oct 8, 2009
+	      DESCRIPTION
+	        "Add the hitronCmSpeedTestTable for speed test control and speed display."
+      	REVISION    "200910300100Z" -- Oct 30, 2009
+	      DESCRIPTION
+	        "Further define the behavior of hitronCmDhcpServerEnable, hitronHttpPasswordControl
+          and hitronCmUserPasswordTable."
+      	REVISION    "200911020100Z" -- Nov 2, 2009
+	      DESCRIPTION
+	        "Define the behaviors of 3 New OIDs, hitronDisplayIpInformation, hitronDisplayCmConfig
+          and hitronConsoleEnable."
+      	REVISION    "200911120100Z" -- Nov 12, 2009
+	      DESCRIPTION
+	        "Modify the hitronCmBufferLength syntax and the unit for the syntax."
+      	REVISION    "201003160100Z" -- March 16, 2010
+	      DESCRIPTION
+	        "Modify the hitronCmScanningParameters"
+      	REVISION    "201004130100Z" -- April 13, 2010
+	      DESCRIPTION
+	        "Add the hitronForceDOCSIS20 and hitronDocsisMode OIDs."
+        REVISION      "201011220100Z" --  Nov 22, 2010
+        DESCRIPTION
+          "Change the definition of hitronCmDaemonAccessTable and hitronCmDaemonAccessible. Add the default value for hitronMaxCpesControl. " 
+        REVISION      "201101100100Z" --  Jan 10, 2011
+        DESCRIPTION
+          "Insert the OID hitronMddIpModeOverride before hitronForceDOCSIS20, change the OIDs for hitronForceDOCSIS20, hitronDocsisMode.
+           hitronMddIpModeOverride 16.
+           hitronForceDOCSIS20 from 16 to 17.
+           hitronDocsisMode from 17 to 18."  
+        REVISION      "201104290100Z" --  April 29, 2011
+        DESCRIPTION
+          "Change back the OIDs for hitronForceDOCSIS20, hitronDocsisMode and hitronMddIpModeOverride.
+           hitronForceDOCSIS20 from 17 to 16.
+           hitronDocsisMode from 18 to 17.
+           hitronMddIpModeOverride from 16 to 18."  
+        REVISION      "201106230100Z" --  June 23, 2011
+        DESCRIPTION
+          "Add OID hitronMaxT3Count to control the max count of T3."   								          
+        REVISION      "201108190100Z" --  Aug 19, 2011
+        DESCRIPTION
+          "Add control for extra US power in hitronUsHighPowerPlusOffset OID." 
+		REVISION      "201309130100Z" --  Sep 29, 2013
+        DESCRIPTION
+          "A new OID can be created, like hitronDeviceSwAdminStatus and follow the 7th item defined in the 2 Requirements of the spec,
+		  DOCSIS cable modem vendor specific upgrade v1.1 to sync the values of 
+		  docsDevSwAdminStatus, docsDevSwFilename and docsDevSwServer to 
+		  maintain compatibility with standard DOCSIS network management software."  		  
+        ::= { hitronMib 2 }
+
+   SnmpAdminString ::= TEXTUAL-CONVENTION
+       DISPLAY-HINT "255a"
+       STATUS       current
+       DESCRIPTION "An octet string containing administrative
+                    information, preferably in human-readable form.
+
+                    To facilitate internationalization, this
+                    information is represented using the ISO/IEC
+                    IS 10646-1 character set, encoded as an octet
+                    string using the UTF-8 transformation format
+                    described in [RFC2044].
+
+                    Since additional code points are added by
+                    amendments to the 10646 standard from time
+                    to time, implementations must be prepared to
+                    encounter any code point from 0x00000000 to
+                    0x7fffffff.
+
+                    The use of control codes should be avoided.
+
+                    When it is necessary to represent a newline,
+                    the control code sequence CR LF should be used.
+
+                    The use of leading or trailing white space should
+                    be avoided.
+
+                    For code points not directly supported by user
+                    interface hardware or software, an alternative
+                    means of entry and display, such as hexadecimal,
+                    may be provided.
+
+                    For information encoded in 7-bit US-ASCII,
+                    the UTF-8 encoding is identical to the
+                    US-ASCII encoding.
+
+                    Note that when this TC is used for an object that
+                    is used or envisioned to be used as an index, then
+                    a SIZE restriction must be specified so that the
+                    number of sub-identifiers for any object instance
+                    does not exceed the limit of 128, as defined by
+                    [RFC1905].
+                   "
+       SYNTAX       OCTET STRING (SIZE (0..255))
+
+hitronCm OBJECT IDENTIFIER ::= { hitronDOCSIS 1 }
+
+--------------------------------------------------------------------------------
+--
+-- hitron Scanning Parameters
+--
+--------------------------------------------------------------------------------
+
+hitronCmScanningParameters OBJECT IDENTIFIER ::= { hitronCm 1 }
+
+hitronScanFreqStart OBJECT-TYPE
+        SYNTAX      Unsigned32 (93000000..999000000)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is the Lowest downstream channel center frequency in the 
+             scan range before wraping back to HighDownstreamChannelFreq.
+             For US, this value must be between 93000000-855000000 Hz for 2.0 products and 
+             93000000-999000000 Hz for 3.0 product.
+             For Europe, this value must be between 112000000-858000000 Hz for 2.0/3.0 products.
+             In order to cover all freq plan, the default value would be 93000000Hz. "
+        DEFVAL {114000000}
+        ::= { hitronCmScanningParameters 1 }
+
+hitronScanFreqStop OBJECT-TYPE
+        SYNTAX      Unsigned32 (93000000..999000000)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is the Highest downstream channel center frequency in the 
+             scan range before wraping back to LowDownstreamChannelFreq.
+             For US, this value must be between 93000000-855000000 Hz for 2.0 products and 
+             93000000-999000000 Hz for 3.0 product.
+             For Europe, this value must be between 112000000-858000000 Hz for 2.0/3.0 products.
+             In order to cover all freq plan and consider the scanning algorithm,the default value would be 994000000Hz for 3.0 product
+             and 858000000 Hz for 2.0 only product."
+        DEFVAL {994000000}
+        ::= { hitronCmScanningParameters 2 }
+
+hitronFrequencyPlanInUse OBJECT-TYPE
+        SYNTAX      INTEGER {
+            irc(0),
+            hrc(1),
+            usa(2),
+            euro(3),
+            japan(4),
+            auto(5)
+        } 
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "If provied, only scan this frequency plan, if USA, scan IRC first 
+            and then scan HRC. The AUTO is for Euro-Board only. if provided,
+            will try both of Docsis and EuroDocsis mode. When Japan is set, the
+            modem will first scan the Japanese frequency ranges and then it will
+            continue scanning using the North American frequency plan."
+        DEFVAL {auto}
+        ::= { hitronCmScanningParameters 3 }
+ 
+hitronDirectionToScan OBJECT-TYPE
+        SYNTAX      INTEGER {
+            downwards(0),
+  	        upwards(1)
+        }    
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The object is the direction of the scanning."
+        DEFVAL {downwards}
+        ::= { hitronCmScanningParameters 4}
+
+hitronEuropeanScanStep OBJECT-TYPE
+        SYNTAX      Unsigned32 (1..48)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "It is only apply for Europe-like frequency scanning, including euro and auto plan .
+            The scanning step represents how many steps will be skiped for the next channel.
+             One step is 0.125Mhz. This multiplier will increase the frequency
+            increment during a EURODOCSIS scan.  The default value step multiplier is 2.
+            e.g.:  ScanStep = 2, ScanStepSize = 250000 Hz."
+        DEFVAL {2}
+        ::= { hitronCmScanningParameters 5}
+
+--------------------------------------------------------------------------------
+--
+-- Management of Golden/Black Lists
+--
+--------------------------------------------------------------------------------
+--
+-- The Provisioned Gold Table
+--
+hitronGoldFreqProvTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF HitronGoldFreqProvEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table defines the set of downstream channel frequencies to scan 
+             before any other channel frequencies. The lowest index entries are 
+             searched first, skipping over all entries that have a '0' frequency 
+             value in this table."
+        ::= { hitronCmScanningParameters 6 }
+
+hitronGoldFreqProvEntry OBJECT-TYPE
+        SYNTAX      HitronGoldFreqProvEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Each entry defines a downstream channel frequency to scan first
+             during scanning."
+        INDEX { hitronGoldProvIndex }
+        ::= { hitronGoldFreqProvTable 1 }
+
+HitronGoldFreqProvEntry ::= SEQUENCE 
+        {
+            hitronGoldProvIndex     INTEGER,
+            hitronGoldProvStatus    RowStatus,
+            hitronGoldProvFrequency Unsigned32
+        }
+
+hitronGoldProvIndex OBJECT-TYPE
+        SYNTAX      INTEGER (1..64)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The index of the Provisioned Gold List entry"
+        ::= { hitronGoldFreqProvEntry 1 }
+
+hitronGoldProvStatus OBJECT-TYPE
+        SYNTAX      RowStatus 
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Controls and reflects the status of rows in this
+             table. Rows in this table may be created by either the
+             create-and-go or create-and-wait paradigms.  There is no
+             restriction on changing values in a row of this table while
+             the row is active."
+        ::= { hitronGoldFreqProvEntry 2 }
+
+hitronGoldProvFrequency OBJECT-TYPE
+        SYNTAX      Unsigned32 (85000000..999000000)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The Golden Frequency used during scanning. "
+        ::= { hitronGoldFreqProvEntry 3 }
+
+--
+-- The Learned Gold Table
+--
+hitronGoldFreqLearnedTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF HitronGoldFreqLearnedEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Learned Golden Frequencies. A frequency will be entered into this table 
+             once the modem has succesfully registered on it."
+        ::= { hitronCmScanningParameters 7 }
+
+hitronGoldFreqLearnedEntry OBJECT-TYPE
+        SYNTAX      HitronGoldFreqLearnedEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Each entry defines a downstream channel freuency to scan first during 
+             scanning."
+        INDEX { hitronGoldLearnedIndex }
+        ::= { hitronGoldFreqLearnedTable 1 }
+
+HitronGoldFreqLearnedEntry ::= SEQUENCE 
+        {
+            hitronGoldLearnedIndex     INTEGER,
+            hitronGoldLearnedFrequency Unsigned32
+        }
+
+hitronGoldLearnedIndex OBJECT-TYPE
+        SYNTAX      INTEGER (1..32)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The index of the Learned Gold List entry"
+        ::= { hitronGoldFreqLearnedEntry 1 }
+
+hitronGoldLearnedFrequency OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The Learned Gold frequency learned. It is not
+             possible to modify the value of this frequency to any other
+             value than '0'. Setting a value to '0' will delete the learned
+             gold frequency from the list."
+        ::= { hitronGoldFreqLearnedEntry 2 }
+
+--
+-- The Provisioned Black Table
+--
+hitronBlackFreqProvTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF HitronBlackFreqProvEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table defines the set of downstream channel frequencies to be skipped  
+             from scanning. The skipping should happen during the whole channel plan scanning. 
+             Also ignore all entries that have a '0' frequency 
+             value in this table."
+        ::= { hitronCmScanningParameters 8 }
+
+hitronBlackFreqProvEntry OBJECT-TYPE
+        SYNTAX      HitronBlackFreqProvEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Each entry defines a downstream channel frequency to be skipped
+             during scanning."
+        INDEX { hitronBlackProvIndex }
+        ::= { hitronBlackFreqProvTable 1 }
+
+HitronBlackFreqProvEntry ::= SEQUENCE 
+        {
+            hitronBlackProvIndex INTEGER,
+            hitronBlackProvStatus RowStatus,
+            hitronBlackProvFrequency Unsigned32
+        }
+
+hitronBlackProvIndex OBJECT-TYPE
+        SYNTAX      INTEGER (1..32)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The index of the Provisioned Black List entry"
+        ::= { hitronBlackFreqProvEntry 1 }
+
+hitronBlackProvStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Controls and reflects the status of rows in this
+             table. Rows in this table may be created by either the
+             create-and-go or create-and-wait paradigms.  There is no
+             restriction on changing values in a row of this table while
+             the row is active."
+        ::= { hitronBlackFreqProvEntry 2 }
+
+hitronBlackProvFrequency OBJECT-TYPE
+        SYNTAX      Unsigned32 (85000000..999000000)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The Black Frequency to be skipped during scanning. "
+        ::= { hitronBlackFreqProvEntry 3 }
+
+--
+-- The Learned Black Table
+-- This table is not implemented on all products
+--
+hitronBlackFreqLearnedTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF HitronBlackFreqLearnedEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Learned Black Frequencies. A frequency will be entered into this table 
+             once the modem has succesfully locked it, but unable to get the DOCSIS messages or
+             unable to get registered."
+        ::= { hitronCmScanningParameters 9 }
+
+hitronBlackFreqLearnedEntry OBJECT-TYPE
+        SYNTAX      HitronBlackFreqLearnedEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Each entry defines a downstream channel freuency to be skipped during 
+             scanning."
+        INDEX { hitronBlackLearnedIndex }
+        ::= { hitronBlackFreqLearnedTable 1 }
+
+HitronBlackFreqLearnedEntry ::= SEQUENCE 
+        {
+            hitronBlackLearnedIndex     INTEGER,
+            hitronBlackLearnedFrequency Unsigned32
+        }
+
+hitronBlackLearnedIndex OBJECT-TYPE
+        SYNTAX      INTEGER (1..32)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The index of the Learned Black List entry"
+        ::= { hitronBlackFreqLearnedEntry 1 }
+
+hitronBlackLearnedFrequency OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The Learned Black frequency learned. It is not
+             possible to modify the value of this frequency to any other
+             value than '0'. Setting a value to '0' will delete the learned
+             black frequency from the list."
+        ::= { hitronBlackFreqLearnedEntry 2 }
+        
+hitronSelectISP OBJECT-TYPE
+	SYNTAX		Unsigned32 (0..254)
+	MAX-ACCESS 	read-write
+	STATUS		current
+	DESCRIPTION
+	    "This OID allows for several ISP on the same cable network
+            as it sets a ISP identifier in CM non-volatile memory. The configuration 
+            file needs to contain a vendor specific TLV (80) with value equal to that
+            stored in non-volatile to accept the config file. On rejection the CM
+            will continue to scan for other downstreams. This OID cannot be used
+	    in the configuration file and will cause rejection of the configuration file
+            if present. The value 0 indicates this function has been disabled."
+	DEFVAL {0}
+	::= { hitronCmScanningParameters 10 }
+
+hitronCmManagementParameters OBJECT IDENTIFIER ::= { hitronCm 2 }
+
+hitronCmDhcpServerEnable OBJECT-TYPE
+        SYNTAX      INTEGER
+        {
+            active(1),
+            inactive(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      obsolete
+        DESCRIPTION
+          "This object is used to enable/disable DHCP Local Server. As long
+          as CM is not operational, local DHCP Server is working if enabled.
+          Set to true(1) to enable DHCP server. Set to false(2) to disable it.
+          
+          For BVW-3653 series (with RG feature), the object is invalid. It would
+          not control the local DHCP server."
+          
+        ::= { hitronCmManagementParameters 1 }
+
+hitronDaemonAccessTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF HitronDaemonAccessEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table allows control of accessing the CM daemons, like TELNET, HTTP, SNMP, HTTPS and SSH."
+        ::= { hitronCmManagementParameters 2 }
+
+hitronDaemonAccessEntry  OBJECT-TYPE
+        SYNTAX      HitronDaemonAccessEntry
+        MAX-ACCESS  not-accessible
+	   STATUS		current
+	   DESCRIPTION
+        "Allow configuration for accessing control of different cable modem daemons from different interfaces."
+        INDEX { hitronDaemonCapability }
+        ::= { hitronDaemonAccessTable 1 }
+
+HitronDaemonAccessEntry ::= SEQUENCE {
+            hitronDaemonCapability       INTEGER,
+            hitronDaemonAccessible       BITS
+        }
+
+hitronDaemonCapability OBJECT-TYPE
+        SYNTAX INTEGER {
+            telnet(1),
+            http(2),
+	        snmp(3),
+            https(4),
+	        ssh(5)
+        }
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The daemon list that is controlled by this entry. SNMP is only
+             supported on 3.0 products."
+        ::= { hitronDaemonAccessEntry 1 }
+
+hitronDaemonAccessible OBJECT-TYPE
+        SYNTAX BITS {
+            cpeAccessOnlineEnabled(0),
+            cpeAccessOfflineEnabled(1),
+            rfiAccessEnabled(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "When flag(s) is enabled ((cpe/rfi)AccessEnabled = 1) indicates that access through specific interface(s) is enable.
+             If disabled(=0), indicates that any daemon access through the specific interface is disallowed.
+             For telnet and http default is any interface has access at any time,['E0'h].
+             For SNMP, default  is rfi has the access when the device is on line,['20'h]."
+        ::= { hitronDaemonAccessEntry 2 }
+
+hitronResetFactory OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+	    "Reset the unit to factory default. this will also wipe any
+            learned golden frequencies and reset the unit to the state as
+            from factory. WARNING: the behaviour on different products may
+            differ. Reading this object always returns false."
+      ::= { hitronCmManagementParameters 3 }
+
+hitronCmIGMPMaxStreams OBJECT-TYPE
+        SYNTAX		INTEGER(0..16)
+        MAX-ACCESS	read-write
+	STATUS		current
+        DESCRIPTION
+            "This object allows the setting of the maximum number of multicast 
+            streams the unit will bridge at the same time. This is done by snooping 
+            the IGMP-Join messages. If the number of consurrent IGMP-join messages 
+            exceeds the value of this OID, then the stream that is the oldest (has 
+            been bridged for the longest time) should be dropped. Dropping of this 
+            stream means: an IGMP leave is sent to the CMTS and the stream is 
+            stopped from being bridged to the CPE port.  Therefore if this is set 
+            to one; An IPTV STB on a channel change will send an IGMP leave and 
+            join but the STB will only ever see the last stream that it has requested.
+            Setting this mib to 0 will disable IGMP completely. "
+        DEFVAL { 16 }
+        ::= { hitronCmManagementParameters 4 }
+
+hitronCmIGMPTimeout OBJECT-TYPE
+        SYNTAX		INTEGER(0..30)
+        MAX-ACCESS	read-write
+	STATUS		current
+        DESCRIPTION
+            "This OID determines the Maximum delay for passive mode IGMP Membership 
+            reports in 1/10th of seconds. This timer has a default value of 3 
+            seconds therefore a value of 30 will result in the default behavior 
+            according to the DOCSIS standard.  Setting this timer to 0 enables 
+            immediate forwarding of IGMP messages to the CMTS"
+        DEFVAL { 30 }
+        ::= { hitronCmManagementParameters 5 }
+
+-- hitronLedControl OBJECT-TYPE
+-- 	SYNTAX		INTEGER
+--         {
+--             active(1),
+--             inactive(2)
+--         }
+-- 	MAX-ACCESS	read-write
+-- 	STATUS		current
+-- 	DESCRIPTION
+-- 	    "This OID allows to control the LED on the device, with exception of the 
+--              power led. When active, the led have the normal behaviour. When inactive 
+--              only the power led is lit, the others are off. At (re-)boot the value is
+--              always the default value, active.
+--              This OID is valid only in the 3.0 product range"
+--         DEFVAL { 1 }
+--         ::= { hitronCmManagementParameters 6 }
+
+hitronHttpPasswordControl OBJECT-TYPE
+	SYNTAX		INTEGER
+        {
+            enabled(1),
+            disabled(2)
+        }
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+	    "This OID allows to enable/disable of the password control of http access on the device, 
+             For BVG-3653 series (SIP and MGCP version, US or Euro version), the default 
+                 value is enabled(1).
+             For BVW-3653 series (with RG feature), the object is invalid. The Web GUI access
+             would always need the password.
+             For httpPassword, disabled means that access to the webpages does
+             not need password authentication.
+             This OID is valid only in the 3.0 product range"
+             
+        ::= { hitronCmManagementParameters 7 }
+
+hitronTurboDoxControl OBJECT-TYPE
+	SYNTAX		INTEGER
+        {
+            enabled(1),
+            tdoxdisabled(2),
+            disabled(3)
+        }
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+	    "Config PP and Turbodox control.
+			enabled(1): PP and Tdox On.
+			tdoxdisabled(2): PP on Tdox off.
+			disabled(3): PP and Tdox off."
+             
+        ::= { hitronCmManagementParameters 8 }
+
+hitronMaxCpesControl OBJECT-TYPE
+	SYNTAX		INTEGER
+        {
+            unlimited(1),
+            limited(0)
+        }
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+	    "Config MAX CPES settings."
+  DEFVAL { limited }
+             
+        ::= { hitronCmManagementParameters 9 }
+
+hitronCmUserPasswordTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF HitronCmUserPasswordEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table allows configuration of change user password"
+        ::= { hitronCmManagementParameters 10 }
+
+hitronCmUserPasswordEntry  OBJECT-TYPE
+        SYNTAX      HitronCmUserPasswordEntry
+        MAX-ACCESS  not-accessible
+        STATUS		current
+        DESCRIPTION
+           "Allow configuration for change user password by role."
+        INDEX { hitronCmUserRole }
+        ::= { hitronCmUserPasswordTable 1 }
+
+HitronCmUserPasswordEntry ::= SEQUENCE {
+            hitronCmUserRole       INTEGER,
+            hitronCmPassword       SnmpAdminString
+        }
+
+hitronCmUserRole OBJECT-TYPE
+        SYNTAX INTEGER {
+            admin(1),
+            msoadmin(2)
+        }
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Select User Role"
+        ::= { hitronCmUserPasswordEntry 1 }
+
+hitronCmPassword OBJECT-TYPE
+        SYNTAX     SnmpAdminString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Set password for the selected user in hitronCmUserRole.
+            
+            For dump CM products, only admin user is supported. So, for other user role, the password
+            setting would have no effect"
+            	     
+        ::= { hitronCmUserPasswordEntry 2 }
+
+--
+-- hitronDQoSControlTable. 
+-- This table is used to control the triggering target of the SIP session for the DQoS service. There 
+-- could have difference SIP servers which serve the voice from external SIP device. If the port and 
+-- SIP server IP in this table match the information in the session, the DQoS service flow should be 
+-- created. 
+--
+-- If this table is empty, the default behavior for DQoS triggering should be disabled. Also, this
+-- table should only be configured through the SNMP object in the DOCSIS config file, not through 
+-- the normal SNMP setting. The values in this table should not be stored in the flash. 
+--
+
+-- hitronDQoSControlTable	OBJECT-TYPE
+--        	SYNTAX SEQUENCE OF HitronDQoSControlEntry
+--        	MAX-ACCESS 	not-accessible
+--           STATUS          current
+--        	DESCRIPTION
+--           	"This table contains the information for the DQoS control entries."
+--        	::= { hitronCmManagementParameters 11 }
+  
+  
+-- hitronDQoSControlEntry      OBJECT-TYPE
+--         SYNTAX         		HitronDQoSControlEntry
+--         MAX-ACCESS         	not-accessible
+--         STATUS  			current
+--         DESCRIPTION             
+--             "The table that describes the DQoS Control PROFILE."
+--         INDEX { hitronDQoSControlOrder } 
+--         ::= { hitronDQoSControlTable 1 }
+  
+-- HitronDQoSControlEntry ::= SEQUENCE {
+--         hitronDQoSControlOrder           INTEGER,
+--         hitronDQoSSIPServerIP            IpAddress,
+--         hitronDQoSSIPServerPort          INTEGER,
+--         hitronDQoSControlRowStatus       RowStatus    
+--         }
+  
+-- hitronDQoSControlOrder 	OBJECT-TYPE
+--         SYNTAX   		INTEGER (1..100)
+--         MAX-ACCESS      	not-accessible
+--         STATUS   		current
+--         DESCRIPTION             
+--                 "Integer index into the hitron DQoS for SIP server table"
+--         ::= { hitronDQoSControlEntry 1 }
+  
+-- hitronDQoSSIPServerIP OBJECT-TYPE
+--         SYNTAX      IpAddress
+--         MAX-ACCESS  read-create
+--         STATUS      current
+--         DESCRIPTION
+--             "The allowed SIP server which could trigger the DQoS"
+--         ::= { hitronDQoSControlEntry 2 }
+  
+-- hitronDQoSSIPServerPort OBJECT-TYPE
+--         SYNTAX     INTEGER
+--         MAX-ACCESS read-create
+--         STATUS     current
+--         DESCRIPTION
+--             "The SIP server port which allow the triggering of the DQoS"
+--         ::= { hitronDQoSControlEntry 3 }
+  
+-- hitronDQoSControlRowStatus OBJECT-TYPE
+--         SYNTAX      RowStatus
+--         MAX-ACCESS  read-create
+--         STATUS      current
+--         DESCRIPTION
+--             "The RowStatus interlock for the creation and deletion
+--             of a hitronDQoSControlTable entry. Any writable
+--             object in each row of the hitronDQoSControlTable
+--             can be modified at any time while the row is active(1)."
+--         ::= { hitronDQoSControlEntry 4}
+
+-- hitronCmSpeedTestTable OBJECT-TYPE
+--         SYNTAX      SEQUENCE OF HitronCmSpeedTestEntry
+--         MAX-ACCESS  not-accessible
+--         STATUS      current
+--         DESCRIPTION
+--             "This table allows configuration of RF speed test by iperf tool."
+--         ::= { hitronCmManagementParameters 12 }
+
+-- hitronCmSpeedTestEntry  OBJECT-TYPE
+--         SYNTAX      HitronCmSpeedTestEntry
+--         MAX-ACCESS  not-accessible
+--         STATUS		current
+--         DESCRIPTION
+--            "Allow configuration of RF speed test by iperf tool."
+--         INDEX { hitronCmServerMode }
+--         ::= { hitronCmSpeedTestTable 1 }
+
+-- HitronCmSpeedTestEntry ::= SEQUENCE {
+--             hitronCmServerMode     INTEGER,
+--             hitronCmListenPort     INTEGER,
+--             hitronCmBufferLength   INTEGER,
+--             hitronCmTcpWindowSize  INTEGER,
+--             hitronCmRunSpeedTest   INTEGER,
+--             hitronCmTestUploadSpeed  Integer32,
+--             hitronCmTestDownloadSpeed  Integer32
+--         }
+
+-- hitronCmServerMode OBJECT-TYPE
+--         SYNTAX INTEGER {
+--             udp(1),
+--             tcp(2)
+--         }
+--         MAX-ACCESS  read-write
+--         STATUS      current
+--         DESCRIPTION
+--             "Select speed test mode"
+--         ::= { hitronCmSpeedTestEntry 1 }
+
+-- hitronCmListenPort OBJECT-TYPE
+--         SYNTAX     INTEGER(1025..65535)
+--         MAX-ACCESS  read-write
+--         STATUS      current
+--         DESCRIPTION
+--             "set the listen port for the speed test"               
+--         ::= { hitronCmSpeedTestEntry 2 }
+
+-- hitronCmBufferLength OBJECT-TYPE
+--         SYNTAX INTEGER (256..65535)
+--         MAX-ACCESS  read-write
+--         STATUS      current
+--         DESCRIPTION
+--             "The buffer length definition for the UDP traffic test, in Bytes"
+--         ::= { hitronCmSpeedTestEntry 3 }
+
+-- hitronCmTcpWindowSize OBJECT-TYPE
+--         SYNTAX     INTEGER(8..128)
+--         MAX-ACCESS  read-write
+--         STATUS      current
+--         DESCRIPTION
+--             "The TCP window size setting for TCP traffic test, in KBytes"  	     
+--         ::= { hitronCmSpeedTestEntry 4 }
+
+-- hitronCmRunSpeedTest OBJECT-TYPE
+--         SYNTAX INTEGER {
+--             enable(1),
+--             disable(2)
+--         }
+--         MAX-ACCESS  read-write
+--         STATUS      current
+--         DESCRIPTION
+--             "Setting to 'enable' is to start the speed test daemon. If the daemon is enabled, the read-back value is
+--             enable. Setting to 'disable' is to stop the speed test daemon. If the daemon is disabled, the read-back value is
+--             disable. "	     
+--         ::= { hitronCmSpeedTestEntry 5 }
+
+-- hitronCmTestUploadSpeed OBJECT-TYPE
+--         SYNTAX     Integer32
+--         MAX-ACCESS  read-only
+--         STATUS      current
+--         DESCRIPTION
+--             "The upstream speed test result, in KBytes. It will keep the last result until
+--             the hitronCmRunSpeedTest is enabled. If hitronCmRunSpeedTest is disabled, this
+--             read-back value would be zero."  	     
+--         ::= { hitronCmSpeedTestEntry 6 }
+
+-- hitronCmTestDownloadSpeed OBJECT-TYPE
+--         SYNTAX Integer32 
+--         MAX-ACCESS  read-only
+--         STATUS      current
+--         DESCRIPTION
+--             "The downstream speed test result, in KBytes. It will keep the last result until
+--             the hitronCmRunSpeedTest is enabled. If hitronCmRunSpeedTest is disabled, this
+--             read-back value would be zero." 	     
+--         ::= { hitronCmSpeedTestEntry 7 }
+
+hitronDisplayIpInformation OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+             "This OID controls whether the status page displays IP information. Default: True.
+      When set to False the <Cable Modem IP> block is not shown"
+
+	DEFVAL {true}
+      ::= { hitronCmManagementParameters 13 }
+
+hitronDisplayCmConfig OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+	    "When this OID is set to false, the CM configuration file name and the nework access rows in the web page
+      are NOT displayed."
+
+	DEFVAL {true}
+      ::= { hitronCmManagementParameters 14 }
+      
+hitronConsoleEnable OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+	    "When this OID is set to true, the console for both the Uboot and Application is active and can be used"
+             
+	DEFVAL {false}
+      ::= { hitronCmManagementParameters 15 }
+            
+hitronForceDOCSIS20 OBJECT-TYPE
+	SYNTAX      TruthValue
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+	    "If this flag is set to true, the CM would behave like a D2 CM even under
+             a D3 environment."
+ DEFVAL {false}            
+        ::= { hitronCmManagementParameters 16 }
+
+hitronDocsisMode OBJECT-TYPE
+        SYNTAX BITS {
+            d2(0), 
+            d3Full(1), 
+            d3Fallback(2),
+            oneDS(3), 
+            twoDS(4), 
+            threeDS(5),
+            fourDS(6), 
+            fiveDS(7), 
+            sixDS(8),
+            sevenDS(9), 
+            eightDS(10), 
+            nineDS(11), 
+            tenDS(12), 
+            elevenDS(13),
+            twelveDS(14), 
+            thirteenDS(15), 
+            fourteenDS(16),
+            fifteenDS(17), 
+            sixteenDS(18),
+            seventeenDS(19), 
+            eighteenDS(20), 
+            nineteenDS(21),
+            twentyDS(22), 
+            twentyoneDS(23),            
+            twentytwoDS(24), 
+            twentythreeDS(25),       
+            twentyfourDS(26),           
+            oneUS(27),
+            twoUS(28), 
+            threeUS(29), 
+            fourUS(30),       
+            fiveUS(31),
+            sixUS(32), 
+            sevenUS(33), 
+            eightUS(34)          
+        }
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+	    "Display the CM DOCSIS opearation mode and Downstream and Upstream online
+             number. For example, if it's 24x8 Full D3 locked, the value is 
+             0100000000000000000000000010000000100000000000000000000000000000, 
+             i.e. 0x4000002020000000.
+             The bit 36~64 is not used at this moment."
+             
+        ::= { hitronCmManagementParameters 17 }
+
+hitronMddIpModeOverride OBJECT-TYPE
+  SYNTAX		INTEGER (-1..4)
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+	    "hitronMddIpModeOverride is used to change the DHCP process mode."
+	DEFVAL { 0 }
+      ::= { hitronCmManagementParameters 18 } 
+
+hitronMaxT3Count OBJECT-TYPE
+        SYNTAX      INTEGER 
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This is controls MAX T3 count ."
+        DEFVAL {12}
+        ::= { hitronCmManagementParameters 19}
+        
+hitronUsHighPowerPlusOffset OBJECT-TYPE
+        SYNTAX      INTEGER (0..12) 
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This OID is to extra US power beyond the DOCSIS spec. Its unit is in dBmv."
+        DEFVAL {0}
+        ::= { hitronCmManagementParameters 20}
+     
+hitronGuiDisplayCtrl OBJECT IDENTIFIER ::= { hitronCmManagementParameters 21 } 
+      
+hitronGuiDisplayCableStatus OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+             "This OID controls whether the cable status page would be displayed. Default: True.
+      When set to False the whole cable status tab should not be displayed."
+
+	DEFVAL {true}
+      ::= { hitronGuiDisplayCtrl 1 }
+
+hitronGuiDisplayIpInformation OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+             "This OID controls whether the cable status page displays IP information. Default: True.
+      When set to False the <Cable Modem IP> block is not shown"
+
+	DEFVAL {true}
+      ::= { hitronGuiDisplayCtrl 2 }
+
+hitronGuiDisplayDsTune OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+	    "When this OID is set to false, the downstream setting column in the cable status page is hidden and disabled."
+
+	DEFVAL {true}
+      ::= { hitronGuiDisplayCtrl 3 }
+
+hitronGuiDisplayDsDisplay OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+	    "When this OID is set to false, the downstream display table in the cable status page is hidden and disabled."
+
+	DEFVAL {true}
+      ::= { hitronGuiDisplayCtrl 4 }
+
+hitronGuiDisplayUsTune OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+	    "When this OID is set to false, the upstream setting column in the cable status page is hidden and disabled."
+
+	DEFVAL {true}
+      ::= { hitronGuiDisplayCtrl 5 }
+
+hitronGuiDisplayUsDisplay OBJECT-TYPE
+	SYNTAX     TruthValue
+	MAX-ACCESS read-write
+	STATUS     current
+	DESCRIPTION
+	    "When this OID is set to false, the upstream display table in the cable status page is hidden and disabled."
+
+	DEFVAL {true}
+      ::= { hitronGuiDisplayCtrl 6 }
+
+     
+hitronCmImageParameters OBJECT IDENTIFIER ::= { hitronCm 3} 
+
+hitronDeviceDloadTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF HitronDeviceDloadEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table controls device download list for different HWID, Model and download
+            server and download image filename."
+        ::= { hitronCmImageParameters 1 }
+
+hitronDeviceDloadEntry OBJECT-TYPE
+        SYNTAX      HitronDeviceDloadEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An entry describing a complete row for HW ID, HW Model, download server IP
+            and download image filename."
+        INDEX { hitronDeviceDloadIndex  }
+        ::= {  hitronDeviceDloadTable 1 }
+
+HitronDeviceDloadEntry ::= SEQUENCE {
+            hitronDeviceDloadIndex      Integer32,
+            hitronCVCp1                  OCTET STRING,
+            hitronCVCp2                  OCTET STRING,
+            hitronCVCp3                  OCTET STRING,
+            hitronCVCp4                  OCTET STRING,
+            hitronCVCp5                  OCTET STRING,
+            hitronCVCp6                  OCTET STRING,
+            hitronCVCp7                  OCTET STRING,
+            hitronHardwareId            SnmpAdminString,
+            hitronHardwareModel         SnmpAdminString,
+            hitronSwServer              IpAddress,
+            hitronSwFilename            SnmpAdminString,
+            hitronDeviceDloadStatus     INTEGER,
+            hitronIPv6SwServer          SnmpAdminString
+        }
+
+hitronDeviceDloadIndex OBJECT-TYPE
+        SYNTAX      Integer32 (1..2147483647)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Index used to order the download device
+             entries."
+        ::= { hitronDeviceDloadEntry 1 }
+
+hitronCVCp1 OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..225))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+          "This object is used to check against the CVC header in the signed CM image. It is part of
+           the CVC header of the signed image. This item should combine sequentially with CVC2, 
+           CVC3, CVC4, CVC5, CVC6 and CVC7 to form a complete manufacturer CVC which should equal to the CVC header 
+           of the signed image before CM would accept the downloaded image. 
+           When read, this object SHOULD return a zero length string."
+        ::= { hitronDeviceDloadEntry 2 }
+        
+hitronCVCp2 OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..225))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+          "This object is used to check against the CVC header in the signed CM image. It is part of
+           the CVC header of the signed image. This item should combine sequentially with CVC1, 
+           CVC3, CVC4, CVC5, CVC6 and CVC7 to form a complete manufacturer CVC which should equal to the CVC header 
+           of the signed image before CM would accept the downloaded image. 
+           When read, this object SHOULD return a zero length string."
+        ::= { hitronDeviceDloadEntry 3 }
+        
+hitronCVCp3 OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..225))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+          "This object is used to check against the CVC header in the signed CM image. It is part of
+           the CVC header of the signed image. This item should combine sequentially with CVC1, 
+           CVC2, CVC4, CVC5, CVC6 and CVC7 to form a complete manufacturer CVC which should equal to the CVC header 
+           of the signed image before CM would accept the downloaded image. 
+           When read, this object SHOULD return a zero length string."
+        ::= { hitronDeviceDloadEntry 4 }
+        
+hitronCVCp4 OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..225))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+          "This object is used to check against the CVC header in the signed CM image. It is part of
+           the CVC header of the signed image. This item should combine sequentially with CVC1, 
+           CVC2, CVC3, CVC5, CVC6 and CVC7 to form a complete manufacturer CVC which should equal to the CVC header 
+           of the signed image before CM would accept the downloaded image. 
+           When read, this object SHOULD return a zero length string."
+        ::= { hitronDeviceDloadEntry 5 }
+        
+hitronCVCp5 OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..225))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+          "This object is used to check against the CVC header in the signed CM image. It is part of
+           the CVC header of the signed image. This item should combine sequentially with CVC1, 
+           CVC2, CVC3, CVC4, CVC6 and CVC7 to form a complete manufacturer CVC which should equal to the CVC header 
+           of the signed image before CM would accept the downloaded image. 
+           When read, this object SHOULD return a zero length string."
+        ::= { hitronDeviceDloadEntry 6 }
+        
+hitronCVCp6 OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..225))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+          "This object is used to check against the CVC header in the signed CM image. It is part of
+           the CVC header of the signed image. This item should combine sequentially with CVC1, 
+           CVC2, CVC3, CVC4, CVC5 and CVC7 to form a complete manufacturer CVC which should equal to the CVC header 
+           of the signed image before CM would accept the downloaded image. 
+           When read, this object SHOULD return a zero length string."
+        ::= { hitronDeviceDloadEntry 7 }
+        
+hitronCVCp7 OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..225))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+          "This object is used to check against the CVC header in the signed CM image. It is part of
+           the CVC header of the signed image. This item should combine sequentially with CVC1, 
+           CVC2, CVC3, CVC4, CVC5 and CVC6 to form a complete manufacturer CVC which should equal to the CVC header 
+           of the signed image before CM would accept the downloaded image. 
+           When read, this object SHOULD return a zero length string."
+        ::= { hitronDeviceDloadEntry 8 }
+       
+        
+hitronHardwareId OBJECT-TYPE
+        SYNTAX      SnmpAdminString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The Hardware ID which is used by the receiving device to check against its own harware ID.
+            If the checking is failed, no image upgrade should be performed.
+
+            The currently defined HW ID's are:
+            
+                1.A -> BRG-35302ED
+                1.A -> BVG-3642ED
+		0.B -> BRG-35513ED, BVG-3653 (early samples)
+
+            This list will be kept in this MIB." 
+        ::= { hitronDeviceDloadEntry 9 }
+
+hitronHardwareModel OBJECT-TYPE
+        SYNTAX      SnmpAdminString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The Hardware model name which is used by the receiving device to check against its own harware model name.
+            If the checking is failed, no image upgrade should be performed.
+
+            The current list of hardware model names is:
+            BRG-35302ED
+            BVG-3642ED_MGCP
+            BVG-3642ED_SIP
+	    BRG-35513ED
+            BVG-3653_MGCP
+	    BVG-3653_SIP
+ 
+            This list to be maintained in this MIB definition."
+        ::= { hitronDeviceDloadEntry 10 }
+
+hitronSwServer OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The tftp server IP address which is used for image upgrade."
+        ::= { hitronDeviceDloadEntry 11 }
+
+hitronSwFilename OBJECT-TYPE
+        SYNTAX      SnmpAdminString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The image filename which is used for image upgrade."
+        ::= { hitronDeviceDloadEntry 12 }
+
+hitronDeviceDloadStatus OBJECT-TYPE
+        SYNTAX INTEGER {
+            upgradeFromMgt(1),
+            allowProvisioningUpgrade(2),
+            ignoreProvisioningUpgrade(3)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Controls and reflects the status of rows in this
+             table. Rows in this table may be created by either the
+             create-and-go or create-and-wait paradigms.  There is no
+             restriction on changing values in a row of this table while
+             the row is active."
+        ::= { hitronDeviceDloadEntry 13 }
+
+hitronIPv6SwServer OBJECT-TYPE
+        SYNTAX      SnmpAdminString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The IPv6 tftp server IP address which is used for image upgrade. 
+            For OID hitronSwServer and hitronIPv6SwServer, only one should be used.
+            If both of them exist or empty, take hitronSwServer as the tftp server. "
+        ::= { hitronDeviceDloadEntry 14 }
+		
+		
+hitronFlashActiveImage OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-only
+	      STATUS		current
+	      DESCRIPTION
+            "This object display the current active image segamenet."
+        ::= { hitronCmImageParameters 2 }
+
+hitronFlashImageTable OBJECT-TYPE
+        SYNTAX     SEQUENCE OF HitronFlashImageEntry
+        MAX-ACCESS not-accessible
+        STATUS     current
+        DESCRIPTION
+            "A list of images version and filename in flash."
+        ::= { hitronCmImageParameters 3 }
+    
+hitronFlashImageEntry OBJECT-TYPE
+        SYNTAX     HitronFlashImageEntry
+        MAX-ACCESS not-accessible
+        STATUS     current
+        DESCRIPTION
+            "list entry for each image segament in flash."
+        INDEX   { hitronFlashImageIndex }
+            ::= { hitronFlashImageTable 1 }
+    
+HitronFlashImageEntry ::=
+        SEQUENCE {
+                hitronFlashImageIndex
+                        Integer32,
+                hitronFlashVersion
+                        SnmpAdminString,
+                hitronFlashFilename
+                        SnmpAdminString
+        }
+    
+hitronFlashImageIndex OBJECT-TYPE
+        SYNTAX     Integer32 (1..2147483647)
+        MAX-ACCESS not-accessible
+        STATUS     current
+        DESCRIPTION
+            "The image segament number."
+        ::= { hitronFlashImageEntry 1 }
+    
+hitronFlashVersion OBJECT-TYPE
+        SYNTAX     SnmpAdminString
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+            "The software version in the indexed segament in the flash."
+        ::= { hitronFlashImageEntry 2 }
+
+hitronFlashFilename OBJECT-TYPE
+        SYNTAX     SnmpAdminString
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+            "The image filename in the indexed segament in the flash."
+        ::= { hitronFlashImageEntry 3 }
+		
+		
+hitronDeviceSwAdminStatus  OBJECT-TYPE
+        SYNTAX     SEQUENCE OF HitronDeviceSwAdminStatusEntry
+        MAX-ACCESS not-accessible
+        STATUS     current
+        DESCRIPTION
+            "A list of images version and filename in flash."
+        ::= { hitronCmImageParameters 4 }
+    
+hitronDeviceSwAdminStatusEntry OBJECT-TYPE
+        SYNTAX     HitronDeviceSwAdminStatusEntry
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+            "list entry for each image segament in flash."
+        INDEX   { hitronDevSwAdminStatus }
+            ::= { hitronDeviceSwAdminStatus  1 }
+    
+HitronDeviceSwAdminStatusEntry ::=
+        SEQUENCE {
+                hitronDevSwAdminStatus			Integer32,
+				hitrondocsDevSwServer			IpAddress,
+				hitrondocsDevSwFilename			SnmpAdminString
+        }
+    
+hitronDevSwAdminStatus OBJECT-TYPE
+        SYNTAX     Integer32 (1..2147483647)
+        MAX-ACCESS read-write
+        STATUS     current
+        DESCRIPTION
+            "The image segament number."
+        ::= { hitronDeviceSwAdminStatusEntry 1 }
+
+hitrondocsDevSwServer OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The address of the TFTP server used for software
+            upgrades.  If the TFTP server is unknown or is a
+            non-IPv4 address, return 0.0.0.0.
+
+            This object is deprecated.  See docsDevSwServerAddress
+            for its replacement.  This object will have its value
+            modified, given a valid SET to docsDevSwServerAddress."
+        ::= { hitronDeviceSwAdminStatusEntry 2 }
+
+hitrondocsDevSwFilename OBJECT-TYPE
+        SYNTAX      SnmpAdminString (SIZE (0..64))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The filename of the software image to be downloaded via
+            TFTP, or the abs_path (as defined in RFC 2616) of the
+            software image to be downloaded via HTTP.
+
+            Unless set via SNMP, this is the filename or abs_path
+            specified by the provisioning server during the boot
+            process that corresponds to the software version that
+
+            is desired for this device.
+
+            If unknown, the value of this object is the zero-length
+            string."
+        ::= { hitronDeviceSwAdminStatusEntry 3 }
+
+  
+
+END
