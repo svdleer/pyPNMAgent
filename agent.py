@@ -786,25 +786,14 @@ class PyPNMAgent:
                                community: str, timeout: int = 5) -> dict:
         """Async SNMP SET using pysnmp."""
         try:
-            type_map = {
-                'i': Integer32,
-                's': OctetString,
-                'u': Unsigned32,
-                'c': Counter32,
-                'C': Counter64,
-                'g': Gauge32,
-                't': TimeTicks,
-                'a': IpAddress,
-            }
-            
-            pysnmp_type = type_map.get(value_type, OctetString)
+            snmp_value = self._to_snmp_value(value, value_type)
             
             errorIndication, errorStatus, errorIndex, varBinds = await set_cmd(
                 SnmpEngine(),
                 CommunityData(community),
                 await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
                 ContextData(),
-                ObjectType(ObjectIdentity(oid), pysnmp_type(value))
+                ObjectType(ObjectIdentity(oid), snmp_value)
             )
             
             if errorIndication:
