@@ -30,3 +30,4 @@ logs/
 # SSH keys
 *.pem
 id_*
+# Committed DOCSIS MIBs for agent SNMP operations

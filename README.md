@@ -1,59 +1,42 @@
 # PyPNM Agent
 
-Remote agent for PyPNM that runs on a jump server with access to DOCSIS network equipment (CMTS, cable modems, TFTP servers).
+Remote agent for [PyPNM](https://github.com/svdleer/PyPNM) that runs on a jump server with network access to DOCSIS equipment (CMTS, cable modems, TFTP servers).
 
 ## Features
 
-- **CMTS Access**: SNMP queries and CLI commands to CMTS devices
-- **Cable Modem Access**: Direct or proxy-based SNMP to cable modems
-- **PNM Measurements**: Trigger and retrieve Proactive Network Maintenance data
-- **WebSocket Connection**: Secure connection to PyPNM GUI server
-- **pysnmp v7**: Pure Python SNMP - no net-snmp dependency
+- **Pure Python SNMP** - Uses pysnmp v7, no net-snmp dependency
+- **CMTS Access** - SNMP queries and optional SSH CLI to CMTS devices
+- **Cable Modem Access** - Direct or proxy-based SNMP to cable modems
+- **PNM Measurements** - Trigger and retrieve Proactive Network Maintenance data
+  - Downstream RxMER, Spectrum, Channel Estimation
+  - Upstream OFDMA RxMER and UTSC
+- **Secure Connection** - WebSocket with authentication to PyPNM GUI server
+- **Capability-based Routing** - Advertises capabilities for smart task routing
 
 ## Quick Start
+
+See [INSTALL.md](INSTALL.md) for detailed installation instructions.
 
 ### Docker (Recommended)
 
 ```bash
-# Build
-docker build -t pypnm-agent -f docker/Dockerfile .
-
-# Run
-docker run -d \
-  --name pypnm-agent \
-  -v ./config:/app/config:ro \
-  -v ~/.ssh:/home/pypnm/.ssh:ro \
-  pypnm-agent
+git clone https://github.com/svdleer/pyPNMAgent.git
+cd pyPNMAgent
+mkdir -p config
+cp agent_config.example.json config/agent_config.json
+# Edit config/agent_config.json
+docker compose up -d
 ```
 
-### Manual Installation
+### Manual
 
 ```bash
-# Install dependencies
 pip install -r requirements.txt
-
-# Copy and edit config
 cp agent_config.example.json agent_config.json
-# Edit agent_config.json with your settings
-
-# Run
 python agent.py -c agent_config.json
 ```
 
-### Systemd Service
-
-```bash
-# Copy service file
-sudo cp systemd/pypnm-agent.service /etc/systemd/system/
-
-# Enable and start
-sudo systemctl enable pypnm-agent
-sudo systemctl start pypnm-agent
-```
-
 ## Configuration
-
-See `agent_config.example.json` for all options:
 
 ```json
 {
@@ -64,26 +47,34 @@ See `agent_config.example.json` for all options:
     },
     "cmts_access": {
         "enabled": true,
-        "community": "public",
-        "write_community": "private"
+        "community": "public"
     },
     "cm_access": {
-        "enabled": true,
-        "community": "m0d3m1nf0"
+        "enabled": false,
+        "community": "your-cm-community"
     }
 }
 ```
 
 ## Capabilities
 
-The agent reports its capabilities to the server:
-
 | Capability | Description |
 |------------|-------------|
-| `cmts_reachable` | Can reach CMTS devices |
-| `cm_reachable` | Can reach cable modems |
+| `cmts_reachable` | Can reach CMTS devices for SNMP |
+| `cm_reachable` | Can reach cable modems for SNMP |
 | `snmp_get/walk/set` | SNMP operations |
-| `pnm_*` | PNM measurement commands |
+| `pnm_ofdm_rxmer` | Downstream RxMER measurements |
+| `pnm_us_rxmer_*` | Upstream OFDMA RxMER |
+| `pnm_utsc_*` | Upstream Triggered Spectrum Capture |
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AGENT_ID` | Unique agent identifier | `pypnm-agent-01` |
+| `SERVER_URL` | PyPNM GUI WebSocket URL | `ws://localhost:5050/ws/agent` |
+| `PYPNM_CMTS_ENABLED` | Enable CMTS access | `true` |
+| `PYPNM_CM_ENABLED` | Enable CM access | `false` |
 
 ## License
 

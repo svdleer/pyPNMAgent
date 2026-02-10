@@ -41,6 +41,10 @@ WORKDIR /app
 COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy DOCSIS MIB files
+COPY mibs /usr/share/snmp/mibs/
+RUN chmod -R 755 /usr/share/snmp/mibs
+
 # Copy agent code
 COPY agent.py ./
 COPY ssh_tunnel.py ./
