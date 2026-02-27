@@ -1053,10 +1053,6 @@ class PyPNMAgent:
                     on_message=self._on_message,
                     on_error=self._on_error,
                     on_close=self._on_close,
-                    # Suppress permessage-deflate: websocket-client advertises
-                    # the extension but cannot decode compressed frames (RSV1),
-                    # causing "rsv is not implemented, yet" errors.
-                    header={"Sec-WebSocket-Extensions": ""},
                 )
                 
                 self.ws.run_forever(ping_interval=120, ping_timeout=60)
