@@ -682,7 +682,8 @@ class PyPNMAgent:
         ip = params.get('ip')
         oids = params.get('oids', [])
         community = params.get('community', 'public')
-        timeout = params.get('timeout', 10)
+        timeout = params.get('timeout', 3)          # 3 s per packet — CMTS is LAN
+        max_reps = params.get('max_repetitions', 100)  # fewer round-trips per walk
         
         if not ip or not oids:
             return {'success': False, 'error': 'ip and oids required'}
@@ -698,7 +699,7 @@ class PyPNMAgent:
                 results = []
                 async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
                     SnmpEngine(), CommunityData(community), transport, ContextData(),
-                    0, 25, ObjectType(ObjectIdentity(oid))
+                    0, max_reps, ObjectType(ObjectIdentity(oid))
                 ):
                     if errorIndication or errorStatus:
                         break
