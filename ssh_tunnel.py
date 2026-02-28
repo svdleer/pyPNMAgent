@@ -41,6 +41,9 @@ class SSHTunnelConfig:
     remote_host: str = "127.0.0.1"
     remote_port: int = 5050
     
+    # Tunnel type
+    reverse: bool = False  # True = -R (remote binds on ssh_host), False = -L (local bind)
+
     # Tunnel options
     keepalive_interval: int = 30
     keepalive_count_max: int = 3
@@ -77,9 +80,19 @@ class SSHTunnelManager:
     
     def _start_subprocess_tunnel(self) -> bool:
         """Start tunnel using ssh subprocess."""
+        if self.config.reverse:
+            # -R remote_port:local_host:local_port
+            # Opens remote_port on ssh_host that forwards back to local_host:local_port here
+            fwd_spec = f'{self.config.remote_port}:{self.config.local_host}:{self.config.local_port}'
+            fwd_flag = '-R'
+        else:
+            # -L local_port:remote_host:remote_port
+            fwd_spec = f'{self.config.local_port}:{self.config.remote_host}:{self.config.remote_port}'
+            fwd_flag = '-L'
+
         ssh_cmd = [
             'ssh', '-N',  # No command, just tunnel
-            '-L', f'{self.config.local_port}:{self.config.remote_host}:{self.config.remote_port}',
+            fwd_flag, fwd_spec,
             '-o', f'ServerAliveInterval={self.config.keepalive_interval}',
             '-o', f'ServerAliveCountMax={self.config.keepalive_count_max}',
             '-o', 'ExitOnForwardFailure=yes',
@@ -113,7 +126,10 @@ class SSHTunnelManager:
                 self.logger.error(f"SSH tunnel failed to start: {stderr}")
                 return False
             
-            self.logger.info(f"SSH tunnel established: localhost:{self.config.local_port} → {self.config.ssh_host}:{self.config.remote_port}")
+            if self.config.reverse:
+                self.logger.info(f"Reverse SSH tunnel established: {self.config.ssh_host}:{self.config.remote_port} → localhost:{self.config.local_port}")
+            else:
+                self.logger.info(f"SSH tunnel established: localhost:{self.config.local_port} → {self.config.ssh_host}:{self.config.remote_port}")
             return True
             
         except Exception as e:
@@ -147,21 +163,60 @@ class SSHTunnelManager:
             self._paramiko_transport = self._paramiko_client.get_transport()
             self._paramiko_transport.set_keepalive(self.config.keepalive_interval)
             
-            # Start local port forwarding in background thread
+            # Start port forwarding in background thread
             self._running = True
-            self._tunnel_thread = threading.Thread(
-                target=self._paramiko_forward_tunnel,
-                daemon=True
-            )
+            if self.config.reverse:
+                self._tunnel_thread = threading.Thread(
+                    target=self._paramiko_reverse_tunnel,
+                    daemon=True
+                )
+                self.logger.info(f"Reverse SSH tunnel established via paramiko: {self.config.ssh_host}:{self.config.remote_port} → localhost:{self.config.local_port}")
+            else:
+                self._tunnel_thread = threading.Thread(
+                    target=self._paramiko_forward_tunnel,
+                    daemon=True
+                )
+                self.logger.info(f"SSH tunnel established via paramiko: localhost:{self.config.local_port} → {self.config.remote_host}:{self.config.remote_port}")
             self._tunnel_thread.start()
-            
-            self.logger.info(f"SSH tunnel established via paramiko: localhost:{self.config.local_port} → {self.config.remote_host}:{self.config.remote_port}")
             return True
             
         except Exception as e:
             self.logger.error(f"Failed to start paramiko tunnel: {e}")
             return False
     
+    def _paramiko_reverse_tunnel(self):
+        """Handle paramiko reverse port forwarding — opens a port on the remote server."""
+        try:
+            # Ask the remote SSH server to listen on remote_port and forward to us
+            self._paramiko_transport.request_port_forward(
+                '', self.config.remote_port
+            )
+            self.logger.info(f"Reverse tunnel listening on {self.config.ssh_host}:{self.config.remote_port}")
+
+            while self._running:
+                # Accept inbound channels from the remote side
+                chan = self._paramiko_transport.accept(timeout=1)
+                if chan is None:
+                    continue
+                threading.Thread(
+                    target=self._handle_reverse_channel,
+                    args=(chan,),
+                    daemon=True
+                ).start()
+        except Exception as e:
+            if self._running:
+                self.logger.error(f"Reverse tunnel error: {e}")
+
+    def _handle_reverse_channel(self, channel):
+        """Forward an inbound reverse-tunnel channel to the local service."""
+        import socket
+        try:
+            sock = socket.create_connection((self.config.local_host, self.config.local_port))
+            self._forward_data(sock, channel)
+        except Exception as e:
+            self.logger.debug(f"Reverse channel error: {e}")
+            channel.close()
+
     def _paramiko_forward_tunnel(self):
         """Handle paramiko port forwarding (runs in thread)."""
         import socket

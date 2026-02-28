@@ -4,6 +4,16 @@
         "url": "ws://127.0.0.1:8000/api/agents/ws",
         "auth_token": "your-secure-token-here"
     },
+    "peer_tunnel": {
+        "_comment": "Reverse SSH tunnel: opens remote_port on ssh_host so Server B agent can reach PyPNM via localhost there",
+        "enabled": false,
+        "ssh_host": "server-b.internal",
+        "ssh_port": 22,
+        "ssh_user": "svdleer",
+        "key_file": "~/.ssh/id_ed25519",
+        "local_port": 8000,
+        "remote_port": 8000
+    },
     "cmts_access": {
         "enabled": true,
         "community": "public",
