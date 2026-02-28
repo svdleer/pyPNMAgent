@@ -682,8 +682,8 @@ class PyPNMAgent:
         ip = params.get('ip')
         oids = params.get('oids', [])
         community = params.get('community', 'public')
-        timeout = params.get('timeout', 3)          # 3 s per packet — CMTS is LAN
-        max_reps = params.get('max_repetitions', 100)  # fewer round-trips per walk
+        timeout = params.get('timeout', 5)          # 5 s per packet
+        max_reps = params.get('max_repetitions', 500)  # 12k modems / 500 = 24 PDUs per tree
         
         if not ip or not oids:
             return {'success': False, 'error': 'ip and oids required'}
