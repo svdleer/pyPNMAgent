@@ -591,11 +591,12 @@ class PyPNMAgent:
         request_id = data.get('request_id')
         command = data.get('command')
         params = data.get('params', {})
-        
+
         self.logger.info(f"Received command: {request_id} - {command}")
-        
+
         handler = self.handlers.get(command)
         if not handler:
+            self.logger.warning(f"Unknown command '{command}' for task {request_id}")
             response = {
                 'type': 'error',
                 'request_id': request_id,
@@ -603,18 +604,20 @@ class PyPNMAgent:
             }
             ws.send(json.dumps(response))
             return
-        
+
         def _run_handler():
             try:
+                self.logger.debug(f"Executing {command} for {request_id}")
                 result = handler(params)
+                success = result.get('success', True) if isinstance(result, dict) else True
+                self.logger.info(f"Handler returned for {request_id} (success={success})")
                 response = {
                     'type': 'response',
                     'request_id': request_id,
                     'result': result
                 }
-                self.logger.info(f"Handler returned for {request_id}")
             except Exception as e:
-                self.logger.exception(f"Command execution error: {e}")
+                self.logger.exception(f"Command execution error for {request_id}: {e}")
                 response = {
                     'type': 'error',
                     'request_id': request_id,
@@ -625,7 +628,7 @@ class PyPNMAgent:
                 self.logger.info(f"Response sent for {request_id}")
             except Exception as e:
                 self.logger.error(f"Failed to send response for {request_id}: {e}")
-        
+
         self._executor.submit(_run_handler)
     
     def _handle_ping(self, params: dict) -> dict:
