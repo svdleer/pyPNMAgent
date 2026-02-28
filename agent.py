@@ -141,7 +141,16 @@ class AgentConfig:
     def from_file(cls, path: str) -> 'AgentConfig':
         """Load configuration from JSON file."""
         with open(path) as f:
-            data = json.load(f)
+            raw = f.read()
+        # Strip trailing garbage (e.g. from broken heredoc installs)
+        idx = raw.rfind('}')
+        if idx == -1:
+            raise ValueError(f"No closing '}}' found in {path} — file appears empty or corrupt")
+        raw = raw[:idx + 1]
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in {path}: {e}") from e
         
         # Expand ~ in paths
         def expand_path(p):
