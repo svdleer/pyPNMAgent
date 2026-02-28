@@ -4,6 +4,8 @@
 # This agent runs on the Jump Server and connects OUT to the GUI Server
 # via WebSocket. It executes SNMP/SSH commands and returns results.
 
+from __future__ import annotations  # enables PEP 604/585 syntax on Python 3.8/3.9
+
 import json
 import logging
 import os
