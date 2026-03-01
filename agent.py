@@ -29,9 +29,10 @@ except ImportError:
     paramiko = None
     print("WARNING: paramiko not installed. SSH proxy features disabled.")
 
-# pysnmp imports (pysnmp v7 uses v3arch.asyncio)
+# pysnmp imports — v7+ uses v3arch.asyncio, v6 uses hlapi.asyncio
+import asyncio
 try:
-    import asyncio
+    # pysnmp >= 7 (requires Python 3.9+)
     from pysnmp.hlapi.v3arch.asyncio import (
         SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
         ObjectType, ObjectIdentity,
@@ -39,9 +40,58 @@ try:
         Integer32, OctetString, Unsigned32, Counter32, Counter64, Gauge32, TimeTicks, IpAddress
     )
     PYSNMP_AVAILABLE = True
+    print("INFO: pysnmp v7+ loaded (v3arch.asyncio)")
 except ImportError:
-    PYSNMP_AVAILABLE = False
-    print("WARNING: pysnmp not installed. Using net-snmp fallback.")
+    try:
+        # pysnmp 6.x (Python 3.8 compatible)
+        from pysnmp.hlapi.asyncio import (
+            SnmpEngine, CommunityData, UdpTransportTarget as _UdpTransportTarget, ContextData,
+            ObjectType, ObjectIdentity,
+            getCmd, setCmd, bulkCmd,
+            Integer32, OctetString, Unsigned32, Counter32, Counter64, Gauge32, TimeTicks, IpAddress
+        )
+        # v6 uses direct constructor; wrap to match v7's `await UdpTransportTarget.create()` syntax
+        class UdpTransportTarget(_UdpTransportTarget):
+            @classmethod
+            async def create(cls, addr, timeout=5, retries=1, **kw):
+                return cls(addr, timeout=timeout, retries=retries, **kw)
+        # Alias to v7 names
+        get_cmd = getCmd
+        set_cmd = setCmd
+        # v6 has bulkCmd (one PDU) but not bulk_walk_cmd — implement pagination
+        async def bulk_walk_cmd(engine, community, transport, context,
+                                non_repeaters, max_repetitions, *var_binds):
+            """Paginate bulkCmd to emulate v7 bulk_walk_cmd async generator."""
+            try:
+                base_oid = str(var_binds[0][0])
+            except Exception:
+                base_oid = str(var_binds[0])
+            current_vbs = list(var_binds)
+            while True:
+                errorIndication, errorStatus, errorIndex, varBindTable = await bulkCmd(
+                    engine, community, transport, context,
+                    non_repeaters, max_repetitions, *current_vbs
+                )
+                if errorIndication or errorStatus:
+                    yield (errorIndication, errorStatus, errorIndex, [])
+                    return
+                if not varBindTable:
+                    return
+                last_oid = None
+                for varBind in varBindTable:
+                    oid_str = str(varBind[0])
+                    if not oid_str.startswith(base_oid):
+                        return
+                    yield (None, None, 0, [varBind])
+                    last_oid = varBind[0]
+                if last_oid is None:
+                    return
+                current_vbs = [ObjectType(ObjectIdentity(str(last_oid)))]
+        PYSNMP_AVAILABLE = True
+        print("INFO: pysnmp v6 loaded (hlapi.asyncio) — Python 3.8 compatible")
+    except ImportError:
+        PYSNMP_AVAILABLE = False
+        print("WARNING: pysnmp not installed. Run: pip install pysnmp")
 
 try:
     import redis
