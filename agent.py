@@ -776,9 +776,14 @@ class PyPNMAgent:
         
         self.logger.info(f"SNMP parallel walk: {ip} - {len(oids)} OIDs")
         
+        # Per-tree hard timeout: retries=0 on LAN (no double-wait on loss),
+        # timeout=5s per PDU, 24 PDUs max → 120s worst-case per tree.
+        # Hard cap per tree at timeout*max_reps*1.5 so a hung tree doesn't block.
+        per_tree_hard_limit = timeout * (max_reps + 4) * 1.5  # generous headroom
+
         async def do_parallel_walk():
             async def walk_one(oid):
-                transport = await UdpTransportTarget.create((ip, 161), timeout=timeout, retries=1)
+                transport = await UdpTransportTarget.create((ip, 161), timeout=timeout, retries=0)
                 results = []
                 async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
                     SnmpEngine(), CommunityData(community), transport, ContextData(),
@@ -796,8 +801,18 @@ class PyPNMAgent:
                             'type': type(varBind[1]).__name__
                         })
                 return results
-            
-            results_list = await asyncio.gather(*[walk_one(oid) for oid in oids])
+
+            async def walk_one_safe(oid):
+                try:
+                    return await asyncio.wait_for(walk_one(oid), timeout=per_tree_hard_limit)
+                except asyncio.TimeoutError:
+                    self.logger.warning(f"walk_one timed out after {per_tree_hard_limit:.0f}s for OID {oid} on {ip}")
+                    return []
+                except Exception as e:
+                    self.logger.debug(f"walk_one error OID {oid} on {ip}: {e}")
+                    return []
+
+            results_list = await asyncio.gather(*[walk_one_safe(oid) for oid in oids])
             all_results = dict(zip(oids, results_list))
             return {'success': any(len(v) > 0 for v in all_results.values()), 'results': all_results}
         
