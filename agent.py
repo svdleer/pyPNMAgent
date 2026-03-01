@@ -29,7 +29,7 @@ except ImportError:
     paramiko = None
     print("WARNING: paramiko not installed. SSH proxy features disabled.")
 
-# pysnmp imports — v7+ uses v3arch.asyncio, v6 uses hlapi.asyncio
+# pysnmp imports -- v7+ uses v3arch.asyncio, v6 uses hlapi.asyncio
 import asyncio
 try:
     # pysnmp >= 7 (requires Python 3.9+)
@@ -58,7 +58,7 @@ except ImportError:
         # Alias to v7 names
         get_cmd = getCmd
         set_cmd = setCmd
-        # v6 has bulkCmd (one PDU) but not bulk_walk_cmd — implement pagination
+        # v6 has bulkCmd (one PDU) but not bulk_walk_cmd -- implement pagination
         async def bulk_walk_cmd(engine, community, transport, context,
                                 non_repeaters, max_repetitions, *var_binds):
             """Paginate bulkCmd to emulate v7 bulk_walk_cmd async generator."""
@@ -88,7 +88,7 @@ except ImportError:
                     return
                 current_vbs = [ObjectType(ObjectIdentity(str(last_oid)))]
         PYSNMP_AVAILABLE = True
-        print("INFO: pysnmp v6 loaded (hlapi.asyncio) — Python 3.8 compatible")
+        print("INFO: pysnmp v6 loaded (hlapi.asyncio) - Python 3.8 compatible")
     except ImportError:
         PYSNMP_AVAILABLE = False
         print("WARNING: pysnmp not installed. Run: pip install pysnmp")
@@ -125,7 +125,7 @@ class AgentConfig:
     pypnm_tunnel_local_port: int = 8080
     pypnm_tunnel_remote_port: int = 8080
     
-    # Reverse SSH tunnel — opens a port on a peer server (e.g. Server B)
+    # Reverse SSH tunnel -- opens a port on a peer server (e.g. Server B)
     # so that Server B's agent can reach PyPNM via localhost there.
     peer_tunnel_enabled: bool = False
     peer_tunnel_ssh_host: Optional[str] = None   # Server B hostname
@@ -195,7 +195,7 @@ class AgentConfig:
         # Strip trailing garbage (e.g. from broken heredoc installs)
         idx = raw.rfind('}')
         if idx == -1:
-            raise ValueError(f"No closing '}}' found in {path} — file appears empty or corrupt")
+            raise ValueError(f"No closing '}}' found in {path} -- file appears empty or corrupt")
         raw = raw[:idx + 1]
         try:
             data = json.loads(raw)
@@ -498,7 +498,7 @@ class PyPNMAgent:
             self.logger.info(
                 f"Peer reverse tunnel active: "
                 f"{self.config.peer_tunnel_ssh_host}:{self.config.peer_tunnel_remote_port} "
-                f"→ localhost:{self.config.peer_tunnel_local_port}"
+                f"-> localhost:{self.config.peer_tunnel_local_port}"
             )
             return True
         except ImportError:
@@ -539,7 +539,7 @@ class PyPNMAgent:
             self.pypnm_tunnel_monitor = TunnelMonitor(self.pypnm_tunnel)
             self.pypnm_tunnel_monitor.start()
             
-            self.logger.info(f"PyPNM SSH tunnel established: localhost:{self.config.pypnm_tunnel_local_port} → {self.config.pypnm_ssh_host}:{self.config.pypnm_tunnel_remote_port}")
+            self.logger.info(f"PyPNM SSH tunnel established: localhost:{self.config.pypnm_tunnel_local_port} -> {self.config.pypnm_ssh_host}:{self.config.pypnm_tunnel_remote_port}")
             return True
             
         except ImportError:
@@ -830,7 +830,7 @@ class PyPNMAgent:
         self.logger.info(f"SNMP parallel walk: {ip} - {len(oids)} OIDs")
         
         # Per-tree hard timeout: retries=0 on LAN (no double-wait on loss),
-        # timeout=5s per PDU, 24 PDUs max → 120s worst-case per tree.
+        # timeout=5s per PDU, 24 PDUs max -> 120s worst-case per tree.
         # Hard cap per tree at timeout*max_reps*1.5 so a hung tree doesn't block.
         per_tree_hard_limit = timeout * (max_reps + 4) * 1.5  # generous headroom
 
@@ -1114,7 +1114,7 @@ class PyPNMAgent:
                     return '.'.join(str(b) for b in raw)
                 return str(value)
             
-            # Integer types — pysnmp v7 has quirks with int() conversion
+            # Integer types -- pysnmp v7 has quirks with int() conversion
             if type_name in ('Integer', 'Integer32', 'Unsigned32', 'Counter32', 
                             'Counter64', 'Gauge32', 'TimeTicks'):
                 
@@ -1189,7 +1189,7 @@ class PyPNMAgent:
         self.running = True
 
         # PyPNM WebSocket is always direct (LAN or our own SSH tunnel)
-        # — never route it through a corporate HTTP proxy
+        # -- never route it through a corporate HTTP proxy
         for _var in ('http_proxy', 'HTTP_PROXY', 'https_proxy', 'HTTPS_PROXY', 'all_proxy', 'ALL_PROXY'):
             os.environ.pop(_var, None)
 
@@ -1199,7 +1199,7 @@ class PyPNMAgent:
                 return
 
         if self.config.peer_tunnel_enabled:
-            self._setup_peer_tunnel()  # non-fatal — log and continue
+            self._setup_peer_tunnel()  # non-fatal -- log and continue
         
         ws_url = self._get_websocket_url()
         
@@ -1215,7 +1215,7 @@ class PyPNMAgent:
                     on_close=self._on_close,
                 )
 
-                # Always bypass HTTP proxy — PyPNM connection is direct (LAN or SSH tunnel)
+                # Always bypass HTTP proxy -- PyPNM connection is direct (LAN or SSH tunnel)
                 self.ws.run_forever(
                     ping_interval=120,
                     ping_timeout=60,
