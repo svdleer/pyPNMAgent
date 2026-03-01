@@ -1119,7 +1119,12 @@ class PyPNMAgent:
     def connect(self):
         """Connect to PyPNM Server."""
         self.running = True
-        
+
+        # PyPNM WebSocket is always direct (LAN or our own SSH tunnel)
+        # — never route it through a corporate HTTP proxy
+        for _var in ('http_proxy', 'HTTP_PROXY', 'https_proxy', 'HTTPS_PROXY', 'all_proxy', 'ALL_PROXY'):
+            os.environ.pop(_var, None)
+
         if self.config.pypnm_ssh_tunnel_enabled:
             if not self._setup_pypnm_tunnel():
                 self.logger.error("Failed to establish SSH tunnel, cannot continue")
@@ -1141,8 +1146,12 @@ class PyPNMAgent:
                     on_error=self._on_error,
                     on_close=self._on_close,
                 )
-                
-                self.ws.run_forever(ping_interval=120, ping_timeout=60)
+
+                # Always bypass HTTP proxy — PyPNM connection is direct (LAN or SSH tunnel)
+                self.ws.run_forever(
+                    ping_interval=120,
+                    ping_timeout=60,
+                )
                 
             except Exception as e:
                 self.logger.error(f"Connection failed: {e}")
