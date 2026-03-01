@@ -610,7 +610,10 @@ class PyPNMAgent:
                 self.logger.debug(f"Executing {command} for {request_id}")
                 result = handler(params)
                 success = result.get('success', True) if isinstance(result, dict) else True
-                self.logger.info(f"Handler returned for {request_id} (success={success})")
+                if not success:
+                    self.logger.warning(f"Handler returned failure for {request_id} ({command}): {result.get('error', 'no error detail')}")
+                else:
+                    self.logger.info(f"Handler returned for {request_id} (success=True)")
                 response = {
                     'type': 'response',
                     'request_id': request_id,
