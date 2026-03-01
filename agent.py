@@ -40,7 +40,7 @@ try:
         Integer32, OctetString, Unsigned32, Counter32, Counter64, Gauge32, TimeTicks, IpAddress
     )
     PYSNMP_AVAILABLE = True
-    print("INFO: pysnmp v7+ loaded (v3arch.asyncio)")
+    print("INFO: pysnmp v7+ loaded (v3arch.asyncio)", flush=True)
 except ImportError:
     try:
         # pysnmp 6.x (Python 3.8 compatible)
@@ -88,10 +88,10 @@ except ImportError:
                     return
                 current_vbs = [ObjectType(ObjectIdentity(str(last_oid)))]
         PYSNMP_AVAILABLE = True
-        print("INFO: pysnmp v6 loaded (hlapi.asyncio) - Python 3.8 compatible")
+        print("INFO: pysnmp v6 loaded (hlapi.asyncio) - Python 3.8 compatible", flush=True)
     except ImportError:
         PYSNMP_AVAILABLE = False
-        print("WARNING: pysnmp not installed. Run: pip install pysnmp")
+        print("WARNING: pysnmp not installed. Run: pip install pysnmp", flush=True)
 
 try:
     import redis

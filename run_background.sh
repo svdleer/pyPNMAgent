@@ -40,7 +40,7 @@ start_agent() {
     # Wrap in a restart loop so crashes auto-recover
     nohup bash -c "
         while true; do
-            ${PYTHON} agent.py -c agent_config.json
+            PYTHONUNBUFFERED=1 ${PYTHON} -u agent.py -c agent_config.json
             EXIT_CODE=\$?
             echo \"\$(date '+%Y-%m-%d %H:%M:%S') Agent exited (code \$EXIT_CODE), restarting in 10s...\"
             sleep 10
