@@ -79,8 +79,8 @@ except ImportError:
                     return
                 last_oid = None
                 for varBind in varBindTable:
-                    oid_str = str(varBind[0])
-                    if not oid_str.startswith(base_oid):
+                    oid_str = str(varBind[0]).lstrip('.')
+                    if not oid_str.startswith(base_oid.lstrip('.')):
                         return
                     yield (None, None, 0, [varBind])
                     last_oid = varBind[0]
@@ -845,8 +845,8 @@ class PyPNMAgent:
                     if errorIndication or errorStatus:
                         break
                     for varBind in varBinds:
-                        oid_str = str(varBind[0])
-                        if not oid_str.startswith(oid):
+                        oid_str = str(varBind[0]).lstrip('.')
+                        if not oid_str.startswith(oid.lstrip('.')):
                             return results
                         results.append({
                             'oid': oid_str,
@@ -920,9 +920,9 @@ class PyPNMAgent:
                     return {'success': False, 'error': f'{errorStatus.prettyPrint()} at {errorIndex}'}
                 
                 for varBind in varBinds:
-                    oid_str = str(varBind[0])
+                    oid_str = str(varBind[0]).lstrip('.')
                     # Stop if we've walked past the requested OID tree
-                    if not oid_str.startswith(oid):
+                    if not oid_str.startswith(oid.lstrip('.')):
                         break
                     results.append({
                         'oid': oid_str,
