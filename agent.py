@@ -60,7 +60,7 @@ except ImportError:
         set_cmd = setCmd
         # v6 has bulkCmd (one PDU) but not bulk_walk_cmd -- implement pagination
         async def bulk_walk_cmd(engine, community, transport, context,
-                                non_repeaters, max_repetitions, *var_binds):
+                                non_repeaters, max_repetitions, *var_binds, **kwargs):
             """Paginate bulkCmd to emulate v7 bulk_walk_cmd async generator."""
             try:
                 base_oid = str(var_binds[0][0])
