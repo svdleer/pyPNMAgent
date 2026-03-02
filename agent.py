@@ -33,31 +33,38 @@ except ImportError:
 import asyncio
 try:
     # pysnmp >= 7 (lextudio fork, Python 3.9+) — v3arch.asyncio path
-    # Name changed between releases: bulkWalkCmd (7.1.x) → bulk_walk_cmd (7.1.22+)
+    # Naming changed across releases: camelCase (7.1.x) → snake_case (7.1.22+)
     from pysnmp.hlapi.v3arch.asyncio import (
         SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
         ObjectType, ObjectIdentity,
-        getCmd, setCmd,
         Integer32, OctetString, Unsigned32, Counter32, Counter64, Gauge32, TimeTicks, IpAddress
     )
-    try:
-        from pysnmp.hlapi.v3arch.asyncio import bulk_walk_cmd  # 7.1.22+
-    except ImportError:
-        from pysnmp.hlapi.v3arch.asyncio import bulkWalkCmd as bulk_walk_cmd  # 7.1.x
-    get_cmd = getCmd
-    set_cmd = setCmd
+    import pysnmp.hlapi.v3arch.asyncio as _snmp_mod
+
+    def _pick(*names):
+        for n in names:
+            v = getattr(_snmp_mod, n, None)
+            if v is not None:
+                return v
+        raise ImportError(f"None of {names} found in pysnmp.hlapi.v3arch.asyncio")
+
+    get_cmd       = _pick('get_cmd',       'getCmd')
+    set_cmd       = _pick('set_cmd',       'setCmd')
+    bulk_walk_cmd = _pick('bulk_walk_cmd', 'bulkWalkCmd', 'walkCmd')
+
     PYSNMP_AVAILABLE = True
     import pysnmp as _pysnmp_pkg
     print(f"INFO: pysnmp {_pysnmp_pkg.__version__} loaded (v3arch.asyncio)", flush=True)
-except ImportError as _pysnmp_err:
+except (ImportError, Exception) as _pysnmp_err:
     # Check if pysnmp is installed at all (could be v6 or missing)
     try:
         import pysnmp as _pysnmp_pkg
         _ver = getattr(_pysnmp_pkg, '__version__', 'unknown')
         print(
-            f"ERROR: pysnmp {_ver} is installed but pysnmp >= 7 (Python 3.9+) is required.\n"
-            f"       This agent requires pysnmp v7+ (lextudio fork). To upgrade:\n"
-            f"         pyenv install 3.11.9 && pyenv local 3.11.9\n"
+            f"ERROR: pysnmp {_ver} is installed but failed to import required symbols: {_pysnmp_err}\n"
+            f"       This agent requires pysnmp v7+ (lextudio fork) on Python 3.9+.\n"
+            f"       To reinstall:\n"
+            f"         pyenv local 3.11.9\n"
             f"         rm -rf venv && python -m venv venv\n"
             f"         venv/bin/pip install -r requirements.txt",
             flush=True
