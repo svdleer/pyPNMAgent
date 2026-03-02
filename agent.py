@@ -29,10 +29,10 @@ except ImportError:
     paramiko = None
     print("WARNING: paramiko not installed. SSH proxy features disabled.")
 
-# pysnmp imports -- v7+ uses v3arch.asyncio, v6 uses hlapi.asyncio
+# pysnmp imports -- requires v7+ (lextudio fork, Python 3.9+)
 import asyncio
 try:
-    # pysnmp >= 7 (lextudio fork) — uses camelCase names, v3arch.asyncio path
+    # pysnmp >= 7 (lextudio fork, Python 3.9+) — v3arch.asyncio path
     from pysnmp.hlapi.v3arch.asyncio import (
         SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
         ObjectType, ObjectIdentity,
@@ -43,66 +43,31 @@ try:
     set_cmd = setCmd
     bulk_walk_cmd = bulkWalkCmd
     PYSNMP_AVAILABLE = True
-    PYSNMP_V7 = True
     print("INFO: pysnmp v7+ loaded (v3arch.asyncio)", flush=True)
-except ImportError:
-    PYSNMP_V7 = False
+except ImportError as _pysnmp_err:
+    # Check if pysnmp is installed at all (could be v6 or missing)
     try:
-        # pysnmp 6.x (Python 3.8 compatible)
-        from pysnmp.hlapi.asyncio import (
-            SnmpEngine, CommunityData, UdpTransportTarget as _UdpTransportTarget, ContextData,
-            ObjectType, ObjectIdentity,
-            getCmd, setCmd, bulkCmd,
-            Integer32, OctetString, Unsigned32, Counter32, Counter64, Gauge32, TimeTicks, IpAddress
+        import pysnmp as _pysnmp_pkg
+        _ver = getattr(_pysnmp_pkg, '__version__', 'unknown')
+        print(
+            f"ERROR: pysnmp {_ver} is installed but pysnmp >= 7 (Python 3.9+) is required.\n"
+            f"       This agent requires pysnmp v7+ (lextudio fork). To upgrade:\n"
+            f"         pyenv install 3.11.9 && pyenv local 3.11.9\n"
+            f"         rm -rf venv && python -m venv venv\n"
+            f"         venv/bin/pip install -r requirements.txt",
+            flush=True
         )
-        # v6 uses direct constructor; wrap to match v7's `await UdpTransportTarget.create()` syntax
-        class UdpTransportTarget(_UdpTransportTarget):
-            @classmethod
-            async def create(cls, addr, timeout=5, retries=1, **kw):
-                return cls(addr, timeout=timeout, retries=retries, **kw)
-        # Alias to v7 names
-        get_cmd = getCmd
-        set_cmd = setCmd
-        # v6 has bulkCmd (one PDU) but not bulk_walk_cmd -- implement pagination
-        async def bulk_walk_cmd(engine, community, transport, context,
-                                non_repeaters, max_repetitions, *var_binds, **kwargs):
-            """Paginate bulkCmd to emulate v7 bulk_walk_cmd async generator."""
-            try:
-                base_oid = str(var_binds[0][0])
-            except Exception:
-                base_oid = str(var_binds[0])
-            current_vbs = list(var_binds)
-            while True:
-                errorIndication, errorStatus, errorIndex, varBindTable = await bulkCmd(
-                    engine, community, transport, context,
-                    non_repeaters, max_repetitions, *current_vbs
-                )
-                if errorIndication or errorStatus:
-                    yield (errorIndication, errorStatus, errorIndex, [])
-                    return
-                if not varBindTable:
-                    return
-                last_oid = None
-                for varBind in varBindTable:
-                    oid_str = str(varBind[0]).lstrip('.')
-                    if not oid_str.startswith(base_oid.lstrip('.')):
-                        return
-                    yield (None, None, 0, [varBind])
-                    last_oid = varBind[0]
-                if last_oid is None:
-                    return
-                current_vbs = [ObjectType(ObjectIdentity(str(last_oid)))]
-        PYSNMP_AVAILABLE = True
-        print("INFO: pysnmp v6 loaded (hlapi.asyncio) - Python 3.8 compatible", flush=True)
     except ImportError:
-        PYSNMP_AVAILABLE = False
-        print("WARNING: pysnmp not installed. Run: pip install pysnmp", flush=True)
+        print(
+            "ERROR: pysnmp is not installed.\n"
+            "       Run: pip install pysnmp",
+            flush=True
+        )
+    PYSNMP_AVAILABLE = False
+    raise SystemExit(1)
 
 async def make_transport(ip: str, port: int = 161, timeout: float = 5, retries: int = 1):
-    """Create UdpTransportTarget for pysnmp v7.
-    v7: __init__ does NOT take transportAddr — must use create() classmethod.
-    Direct instantiation causes 'multiple values for timeout' because
-    the tuple is passed as the first positional arg (timeout)."""
+    """Create UdpTransportTarget via create() classmethod (required by pysnmp v7)."""
     return await UdpTransportTarget.create((ip, port), timeout=timeout, retries=retries)
 
 try:
