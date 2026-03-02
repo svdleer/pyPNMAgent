@@ -33,17 +33,22 @@ except ImportError:
 import asyncio
 try:
     # pysnmp >= 7 (lextudio fork, Python 3.9+) — v3arch.asyncio path
+    # Name changed between releases: bulkWalkCmd (7.1.x) → bulk_walk_cmd (7.1.22+)
     from pysnmp.hlapi.v3arch.asyncio import (
         SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
         ObjectType, ObjectIdentity,
-        getCmd, setCmd, bulkWalkCmd,
+        getCmd, setCmd,
         Integer32, OctetString, Unsigned32, Counter32, Counter64, Gauge32, TimeTicks, IpAddress
     )
+    try:
+        from pysnmp.hlapi.v3arch.asyncio import bulk_walk_cmd  # 7.1.22+
+    except ImportError:
+        from pysnmp.hlapi.v3arch.asyncio import bulkWalkCmd as bulk_walk_cmd  # 7.1.x
     get_cmd = getCmd
     set_cmd = setCmd
-    bulk_walk_cmd = bulkWalkCmd
     PYSNMP_AVAILABLE = True
-    print("INFO: pysnmp v7+ loaded (v3arch.asyncio)", flush=True)
+    import pysnmp as _pysnmp_pkg
+    print(f"INFO: pysnmp {_pysnmp_pkg.__version__} loaded (v3arch.asyncio)", flush=True)
 except ImportError as _pysnmp_err:
     # Check if pysnmp is installed at all (could be v6 or missing)
     try:
