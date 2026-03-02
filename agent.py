@@ -40,8 +40,10 @@ try:
         Integer32, OctetString, Unsigned32, Counter32, Counter64, Gauge32, TimeTicks, IpAddress
     )
     PYSNMP_AVAILABLE = True
+    PYSNMP_V7 = True
     print("INFO: pysnmp v7+ loaded (v3arch.asyncio)", flush=True)
 except ImportError:
+    PYSNMP_V7 = False
     try:
         # pysnmp 6.x (Python 3.8 compatible)
         from pysnmp.hlapi.asyncio import (
@@ -92,6 +94,14 @@ except ImportError:
     except ImportError:
         PYSNMP_AVAILABLE = False
         print("WARNING: pysnmp not installed. Run: pip install pysnmp", flush=True)
+
+async def make_transport(ip: str, port: int = 161, timeout: float = 5, retries: int = 1):
+    """Create UdpTransportTarget compatible with both pysnmp v6 and v7.
+    v7 direct instantiation avoids __init__() multiple-values-for-timeout bug in create()."""
+    if PYSNMP_V7:
+        return UdpTransportTarget((ip, port), timeout=timeout, retries=retries)
+    else:
+        return await UdpTransportTarget.create((ip, port), timeout=timeout, retries=retries)
 
 try:
     import redis
@@ -836,7 +846,7 @@ class PyPNMAgent:
 
         async def do_parallel_walk():
             async def walk_one(oid):
-                transport = await UdpTransportTarget.create((ip, 161), timeout=timeout, retries=0)
+                transport = await make_transport(ip, 161, timeout=timeout, retries=0)
                 results = []
                 async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
                     SnmpEngine(), CommunityData(community), transport, ContextData(),
@@ -883,7 +893,7 @@ class PyPNMAgent:
             errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
                 SnmpEngine(),
                 CommunityData(community),
-                await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+                await make_transport(target_ip, 161, timeout=timeout, retries=2),
                 ContextData(),
                 ObjectType(ObjectIdentity(oid))
             )
@@ -908,7 +918,7 @@ class PyPNMAgent:
             async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
                 SnmpEngine(),
                 CommunityData(community),
-                await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+                await make_transport(target_ip, 161, timeout=timeout, retries=2),
                 ContextData(),
                 0, 25,  # non-repeaters, max-repetitions
                 ObjectType(ObjectIdentity(oid)),
@@ -943,7 +953,7 @@ class PyPNMAgent:
             errorIndication, errorStatus, errorIndex, varBinds = await set_cmd(
                 SnmpEngine(),
                 CommunityData(community),
-                await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+                await make_transport(target_ip, 161, timeout=timeout, retries=2),
                 ContextData(),
                 ObjectType(ObjectIdentity(oid), snmp_value)
             )
@@ -969,7 +979,7 @@ class PyPNMAgent:
         async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
             SnmpEngine(),
             CommunityData(community),
-            await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+            await make_transport(target_ip, 161, timeout=timeout, retries=2),
             ContextData(),
             0, max_repetitions,  # non-repeaters, max-repetitions
             ObjectType(ObjectIdentity(oid)),
