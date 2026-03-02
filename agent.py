@@ -32,13 +32,16 @@ except ImportError:
 # pysnmp imports -- v7+ uses v3arch.asyncio, v6 uses hlapi.asyncio
 import asyncio
 try:
-    # pysnmp >= 7 (requires Python 3.9+)
+    # pysnmp >= 7 (lextudio fork) — uses camelCase names, v3arch.asyncio path
     from pysnmp.hlapi.v3arch.asyncio import (
         SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
         ObjectType, ObjectIdentity,
-        get_cmd, set_cmd, bulk_walk_cmd,
+        getCmd, setCmd, bulkWalkCmd,
         Integer32, OctetString, Unsigned32, Counter32, Counter64, Gauge32, TimeTicks, IpAddress
     )
+    get_cmd = getCmd
+    set_cmd = setCmd
+    bulk_walk_cmd = bulkWalkCmd
     PYSNMP_AVAILABLE = True
     PYSNMP_V7 = True
     print("INFO: pysnmp v7+ loaded (v3arch.asyncio)", flush=True)
@@ -96,12 +99,11 @@ except ImportError:
         print("WARNING: pysnmp not installed. Run: pip install pysnmp", flush=True)
 
 async def make_transport(ip: str, port: int = 161, timeout: float = 5, retries: int = 1):
-    """Create UdpTransportTarget compatible with both pysnmp v6 and v7.
-    v7 direct instantiation avoids __init__() multiple-values-for-timeout bug in create()."""
-    if PYSNMP_V7:
-        return UdpTransportTarget((ip, port), timeout=timeout, retries=retries)
-    else:
-        return await UdpTransportTarget.create((ip, port), timeout=timeout, retries=retries)
+    """Create UdpTransportTarget for pysnmp v7.
+    v7: __init__ does NOT take transportAddr — must use create() classmethod.
+    Direct instantiation causes 'multiple values for timeout' because
+    the tuple is passed as the first positional arg (timeout)."""
+    return await UdpTransportTarget.create((ip, port), timeout=timeout, retries=retries)
 
 try:
     import redis
@@ -216,7 +218,14 @@ class AgentConfig:
         def expand_path(p):
             return os.path.expanduser(p) if p else None
         
-        server_config = data.get('pypnm_server') or data.get('gui_server', {})
+        server_config = data.get('pypnm_server') or data.get('gui_server') or {}
+        # Also support flat format: server_url / token at top level
+        if not server_config.get('url') and data.get('server_url'):
+            server_config = {
+                'url': data['server_url'],
+                'auth_token': data.get('token', data.get('auth_token', 'dev-token')),
+                'reconnect_interval': data.get('reconnect_interval', 5),
+            }
         tunnel_config = data.get('pypnm_ssh_tunnel') or data.get('gui_ssh_tunnel', {})
         cmts = data.get('cmts_access', {})
         cm_access = data.get('cm_access', {})
