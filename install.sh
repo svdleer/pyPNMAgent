@@ -37,9 +37,35 @@ if [ ! -f "$INSTALL_DIR/agent_config.json" ]; then
     echo "Created default config at $INSTALL_DIR/agent_config.json"
 fi
 
+# Require Python 3.9+ (pysnmp v7 needs it)
+echo "Checking Python version..."
+# Prefer pyenv shim if available
+if command -v pyenv &>/dev/null; then
+    PYTHON_BIN="$(pyenv which python3 2>/dev/null || pyenv which python 2>/dev/null || echo python3)"
+else
+    PYTHON_BIN="python3"
+fi
+
+PYTHON_VER=$("$PYTHON_BIN" -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+PYTHON_MAJOR=$("$PYTHON_BIN" -c 'import sys; print(sys.version_info[0])')
+PYTHON_MINOR=$("$PYTHON_BIN" -c 'import sys; print(sys.version_info[1])')
+
+if [ "$PYTHON_MAJOR" -lt 3 ] || [ "$PYTHON_MINOR" -lt 9 ]; then
+    echo ""
+    echo "ERROR: Python 3.9+ is required (found $PYTHON_VER via $PYTHON_BIN)."
+    echo "       pysnmp v7 does not support Python < 3.9."
+    echo ""
+    echo "       Install Python 3.11 with pyenv:"
+    echo "         pyenv install 3.11.9"
+    echo "         pyenv local 3.11.9   # in this directory"
+    echo "       Then re-run this installer."
+    exit 1
+fi
+echo "  Python $PYTHON_VER OK ($PYTHON_BIN)"
+
 # Create virtual environment
 echo "Creating Python virtual environment..."
-python3 -m venv "$VENV_DIR"
+"$PYTHON_BIN" -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --upgrade pip
 "$VENV_DIR/bin/pip" install -r "$INSTALL_DIR/requirements.txt"
 
