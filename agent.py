@@ -1095,6 +1095,11 @@ class PyPNMAgent:
             
             if type_name == 'OctetString':
                 raw = bytes(value)
+                # 6-byte OctetStrings containing non-printable bytes are MAC addresses.
+                # Must check BEFORE attempting UTF-8 decode, because bytes like
+                # [0x00, 0x07, 0x11, 0x14, 0x3c, 0x27] are valid UTF-8 but not text.
+                if len(raw) == 6 and any(b < 0x20 or b > 0x7e for b in raw):
+                    return ':'.join(f'{b:02x}' for b in raw).upper()
                 try:
                     return raw.decode('utf-8').strip()
                 except UnicodeDecodeError:
