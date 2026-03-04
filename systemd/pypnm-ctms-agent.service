@@ -1,0 +1,29 @@
+[Unit]
+Description=PyPNM CMTS Agent (ctms-agent)
+Documentation=https://github.com/svdleer/pyPNMAgent
+After=network-online.target
+Wants=network-online.target
+# No SSH tunnel required — connects directly to ws://127.0.0.1:8000
+
+[Service]
+Type=simple
+User=svdleer
+WorkingDirectory=/opt/pyPNMAgent
+
+# Use the venv python directly; -u = unbuffered so logs appear immediately
+ExecStart=/home/svdleer/.pypnm-agent/venv/bin/python -u agent.py \
+          -c /home/svdleer/.pypnm-agent/agent_config.json
+
+# Auto-restart: if the API hasn't come up yet the agent will keep retrying
+Restart=always
+RestartSec=10
+
+# Give the API time to start before the first connection attempt
+StartLimitIntervalSec=0
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pypnm-ctms-agent
+
+[Install]
+WantedBy=multi-user.target
