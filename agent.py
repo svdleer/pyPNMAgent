@@ -411,7 +411,14 @@ class PyPNMAgent:
         self.ws: Optional[websocket.WebSocketApp] = None
         self.running = False
         
-        self._executor = ThreadPoolExecutor(max_workers=20, thread_name_prefix='snmp')
+        # Two separate thread pools so background enrichment never starves
+        # interactive GUI tasks.
+        # · interactive_pool — GUI clicks, CMTS walks, RF/ifindex discovery
+        # · bulk_pool        — background modem enrichment (snmp_bulk_get)
+        self._interactive_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix='snmp-int')
+        self._bulk_executor        = ThreadPoolExecutor(max_workers=5,  thread_name_prefix='snmp-bulk')
+        # Legacy alias kept so any direct references still work
+        self._executor = self._interactive_executor
         
         # SSH Tunnel to PyPNM
         self.pypnm_tunnel = None
@@ -678,7 +685,13 @@ class PyPNMAgent:
             except Exception as e:
                 self.logger.error(f"Failed to send response for {request_id}: {e}")
 
-        self._executor.submit(_run_handler)
+        # Route bulk (enrichment) tasks to the dedicated pool so they can
+        # never starve the 10-worker interactive pool used for GUI requests.
+        priority = data.get('priority', 'interactive')
+        if priority == 'bulk':
+            self._bulk_executor.submit(_run_handler)
+        else:
+            self._interactive_executor.submit(_run_handler)
     
     def _handle_ping(self, params: dict) -> dict:
         """Handle ping/connectivity check."""
