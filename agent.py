@@ -13,7 +13,7 @@ import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -114,15 +114,11 @@ class AgentConfig:
     pypnm_tunnel_local_port: int = 8080
     pypnm_tunnel_remote_port: int = 8080
     
-    # Reverse SSH tunnel -- opens a port on a peer server (e.g. Server B)
-    # so that Server B's agent can reach PyPNM via localhost there.
-    peer_tunnel_enabled: bool = False
-    peer_tunnel_ssh_host: Optional[str] = None   # Server B hostname
-    peer_tunnel_ssh_port: int = 22
-    peer_tunnel_ssh_user: Optional[str] = None
-    peer_tunnel_ssh_key: Optional[str] = None
-    peer_tunnel_local_port: int = 8000            # local port to expose (PyPNM)
-    peer_tunnel_remote_port: int = 8000           # port opened on Server B
+    # Reverse SSH tunnels -- each entry opens a port on a remote peer server
+    # so that peer agent can reach PyPNM via localhost there.
+    # Supports both a single peer_tunnel object (legacy) and a peer_tunnels array.
+    # Each entry: {enabled, ssh_host, ssh_port, ssh_user, ssh_key, local_port, remote_port}
+    peer_tunnels: list = field(default_factory=list)
 
     # CMTS Access - for SNMP to CMTS devices
     cmts_enabled: bool = True
@@ -161,20 +157,31 @@ class AgentConfig:
     tftp_path: str = "/tftpboot"
     
     @classmethod
-    def _parse_peer_tunnel(cls, data: dict, expand_path) -> dict:
-        """Parse peer_tunnel section from config dict."""
+    def _parse_peer_tunnels(cls, data: dict, expand_path) -> dict:
+        """Parse peer_tunnels (array) or legacy peer_tunnel (object) from config."""
+        def _normalise(pt: dict) -> dict:
+            return {
+                'enabled': pt.get('enabled', True),
+                'ssh_host': pt.get('ssh_host'),
+                'ssh_port': pt.get('ssh_port', 22),
+                'ssh_user': pt.get('ssh_user'),
+                'ssh_key': expand_path(pt.get('ssh_key_file') or pt.get('key_file')),
+                'local_port': pt.get('local_port', 8000),
+                'remote_port': pt.get('remote_port', 8000),
+                'label': pt.get('label', pt.get('ssh_host', 'peer')),
+            }
+
+        # New: array form
+        raw_list = data.get('peer_tunnels')
+        if isinstance(raw_list, list):
+            return {'peer_tunnels': [_normalise(pt) for pt in raw_list if pt]}
+
+        # Legacy: single object form
         pt = data.get('peer_tunnel', {})
-        if not pt:
-            return {}
-        return {
-            'peer_tunnel_enabled': pt.get('enabled', False),
-            'peer_tunnel_ssh_host': pt.get('ssh_host'),
-            'peer_tunnel_ssh_port': pt.get('ssh_port', 22),
-            'peer_tunnel_ssh_user': pt.get('ssh_user'),
-            'peer_tunnel_ssh_key': expand_path(pt.get('ssh_key_file') or pt.get('key_file')),
-            'peer_tunnel_local_port': pt.get('local_port', 8000),
-            'peer_tunnel_remote_port': pt.get('remote_port', 8000),
-        }
+        if pt:
+            return {'peer_tunnels': [_normalise(pt)]}
+
+        return {'peer_tunnels': []}
 
     @classmethod
     def from_file(cls, path: str) -> 'AgentConfig':
@@ -229,7 +236,7 @@ class AgentConfig:
             pypnm_tunnel_local_port=tunnel_config.get('local_port', 8080),
             pypnm_tunnel_remote_port=tunnel_config.get('remote_port', 8080),
             # Reverse tunnel to peer agent server
-            **cls._parse_peer_tunnel(data, expand_path),
+            **cls._parse_peer_tunnels(data, expand_path),
             # CMTS Access
             cmts_enabled=cmts.get('enabled', cmts.get('snmp_direct', True)),
             cmts_community=cmts.get('community', 'public'),
@@ -428,9 +435,9 @@ class PyPNMAgent:
         # SSH Tunnel to PyPNM
         self.pypnm_tunnel = None
         self.pypnm_tunnel_monitor = None
-        # Reverse tunnel to peer agent server
-        self.peer_tunnel = None
-        self.peer_tunnel_monitor = None
+        # Reverse tunnels to peer agent servers (one SSHTunnelManager per entry)
+        self.peer_tunnels: list = []
+        self.peer_tunnel_monitors: list = []
         
         # CM Proxy (SSH to reach modems)
         self.cm_proxy: Optional[SSHProxyExecutor] = None
@@ -481,42 +488,64 @@ class PyPNMAgent:
         }
     
     def _setup_peer_tunnel(self) -> bool:
-        """Set up reverse SSH tunnel to a peer agent server (e.g. Server B)."""
-        if not self.config.peer_tunnel_enabled:
+        """Set up reverse SSH tunnels to peer agent servers.
+
+        Iterates over all entries in config.peer_tunnels and starts a
+        reverse SSH tunnel + monitor for each enabled entry.  Failures
+        are non-fatal per entry; returns False only if ALL entries fail.
+        """
+        entries = [pt for pt in self.config.peer_tunnels if pt.get('enabled', True)]
+        if not entries:
+            self.logger.info("Peer tunnels: none enabled, skipping")
             return True
-        if not self.config.peer_tunnel_ssh_host:
-            self.logger.error("peer_tunnel enabled but no ssh_host configured")
-            return False
+
+        self.logger.info(f"Peer tunnels: starting {len(entries)} reverse SSH tunnel(s)...")
+
         try:
             from ssh_tunnel import SSHTunnelConfig, SSHTunnelManager, TunnelMonitor
-            tunnel_config = SSHTunnelConfig(
-                ssh_host=self.config.peer_tunnel_ssh_host,
-                ssh_port=self.config.peer_tunnel_ssh_port,
-                ssh_user=self.config.peer_tunnel_ssh_user,
-                ssh_key_file=self.config.peer_tunnel_ssh_key,
-                local_port=self.config.peer_tunnel_local_port,
-                remote_host='127.0.0.1',
-                remote_port=self.config.peer_tunnel_remote_port,
-                reverse=True,
-            )
-            self.peer_tunnel = SSHTunnelManager(tunnel_config, use_paramiko=False)
-            if not self.peer_tunnel.start_tunnel():
-                self.logger.error("Failed to start peer reverse SSH tunnel")
-                return False
-            self.peer_tunnel_monitor = TunnelMonitor(self.peer_tunnel)
-            self.peer_tunnel_monitor.start()
-            self.logger.info(
-                f"Peer reverse tunnel active: "
-                f"{self.config.peer_tunnel_ssh_host}:{self.config.peer_tunnel_remote_port} "
-                f"-> localhost:{self.config.peer_tunnel_local_port}"
-            )
-            return True
         except ImportError:
             self.logger.error("ssh_tunnel module not available")
             return False
-        except Exception as e:
-            self.logger.error(f"Failed to set up peer tunnel: {e}")
-            return False
+
+        any_ok = False
+        for pt in entries:
+            label = pt.get('label', pt.get('ssh_host', 'peer'))
+            if not pt.get('ssh_host'):
+                self.logger.error(f"  [{label}] no ssh_host configured, skipping")
+                continue
+            self.logger.info(
+                f"  [{label}] ssh -R {pt.get('remote_port', 8000)}:localhost:{pt.get('local_port', 8000)}"
+                f" {pt.get('ssh_user', '')}@{pt['ssh_host']}:{pt.get('ssh_port', 22)}"
+                f" (key: {pt.get('ssh_key') or 'default'})"
+            )
+            try:
+                tunnel_config = SSHTunnelConfig(
+                    ssh_host=pt['ssh_host'],
+                    ssh_port=pt.get('ssh_port', 22),
+                    ssh_user=pt.get('ssh_user'),
+                    ssh_key_file=pt.get('ssh_key'),
+                    local_port=pt.get('local_port', 8000),
+                    remote_host='127.0.0.1',
+                    remote_port=pt.get('remote_port', 8000),
+                    reverse=True,
+                )
+                tunnel = SSHTunnelManager(tunnel_config, use_paramiko=False)
+                if not tunnel.start_tunnel():
+                    self.logger.error(f"  [{label}] FAILED to start — check SSH connectivity/auth/GatewayPorts on remote")
+                    continue
+                monitor = TunnelMonitor(tunnel)
+                monitor.start()
+                self.peer_tunnels.append(tunnel)
+                self.peer_tunnel_monitors.append(monitor)
+                self.logger.info(
+                    f"  [{label}] OK — port {pt.get('remote_port', 8000)} open on {pt['ssh_host']}"
+                    f" → PyPNM localhost:{pt.get('local_port', 8000)}"
+                )
+                any_ok = True
+            except Exception as e:
+                self.logger.error(f"  [{label}] setup error: {e}")
+
+        return any_ok
 
     def _setup_pypnm_tunnel(self) -> bool:
         """Set up SSH tunnel to PyPNM Server if configured."""
@@ -1312,7 +1341,7 @@ class PyPNMAgent:
                 self.logger.error("Failed to establish SSH tunnel, cannot continue")
                 return
 
-        if self.config.peer_tunnel_enabled:
+        if self.config.peer_tunnels:
             self._setup_peer_tunnel()  # non-fatal -- log and continue
         
         ws_url = self._get_websocket_url()
@@ -1354,10 +1383,12 @@ class PyPNMAgent:
             self.tftp_ssh.close()
         if self.pypnm_tunnel_monitor:
             self.pypnm_tunnel_monitor.stop()
-        if self.peer_tunnel_monitor:
-            self.peer_tunnel_monitor.stop()
-        if self.peer_tunnel:
-            self.peer_tunnel.stop_tunnel()
+        for monitor in self.peer_tunnel_monitors:
+            monitor.stop()
+        for tunnel in self.peer_tunnels:
+            tunnel.stop_tunnel()
+        self.peer_tunnel_monitors.clear()
+        self.peer_tunnels.clear()
         if self.pypnm_tunnel:
             self.pypnm_tunnel.stop_tunnel()
         self._executor.shutdown(wait=False)
@@ -1415,12 +1446,22 @@ def main():
     # Log configuration summary
     logger.info(f"Agent ID: {config.agent_id}")
     logger.info(f"PyPNM Server: {config.pypnm_server_url}")
-    logger.info(f"SSH Tunnel: {'enabled' if config.pypnm_ssh_tunnel_enabled else 'disabled'}")
-    if config.pypnm_ssh_tunnel_enabled:
-        logger.info(f"  SSH Host: {config.pypnm_ssh_host}")
+    logger.info(f"PyPNM SSH Tunnel: {'enabled -> ' + config.pypnm_ssh_host if config.pypnm_ssh_tunnel_enabled else 'disabled'}")
+    logger.info(f"CMTS SNMP: {'enabled' if config.cmts_enabled else 'disabled'}")
+    logger.info(f"CM access: {'enabled' if config.cm_enabled else 'disabled'}")
     logger.info(f"CM Proxy: {config.cm_proxy_host or 'not configured'}")
-    logger.info(f"CMTS SNMP Direct: {config.cmts_enabled}")
     logger.info(f"TFTP SSH: {config.tftp_ssh_host or 'not configured'}")
+    enabled_peer_tunnels = [pt for pt in config.peer_tunnels if pt.get('enabled', True)]
+    if enabled_peer_tunnels:
+        logger.info(f"Peer reverse tunnels: {len(enabled_peer_tunnels)} configured")
+        for pt in enabled_peer_tunnels:
+            logger.info(
+                f"  [{pt.get('label', 'peer')}]"
+                f" -R {pt.get('remote_port', 8000)}:localhost:{pt.get('local_port', 8000)}"
+                f" via {pt.get('ssh_user', '')}@{pt.get('ssh_host')}:{pt.get('ssh_port', 22)}"
+            )
+    else:
+        logger.info("Peer reverse tunnels: none configured")
     
     agent = PyPNMAgent(config)
     

@@ -97,6 +97,8 @@ class SSHTunnelManager:
             '-o', f'ServerAliveCountMax={self.config.keepalive_count_max}',
             '-o', 'ExitOnForwardFailure=yes',
             '-o', 'StrictHostKeyChecking=accept-new',
+            '-o', 'ConnectTimeout=10',
+            '-o', 'BatchMode=yes',  # never hang waiting for password prompt
         ]
         
         if self.config.ssh_key_file:
@@ -117,13 +119,15 @@ class SSHTunnelManager:
                 stderr=subprocess.PIPE
             )
             
-            # Give it a moment to establish
-            time.sleep(2)
-            
+            # Wait long enough that a quick auth/connect failure is visible
+            # (ConnectTimeout=10, but most failures happen within 3 s)
+            time.sleep(3)
+
             if self._tunnel_process.poll() is not None:
-                # Process exited
-                stderr = self._tunnel_process.stderr.read().decode()
-                self.logger.error(f"SSH tunnel failed to start: {stderr}")
+                # Process exited — grab stderr for diagnostics
+                stderr = self._tunnel_process.stderr.read().decode().strip()
+                self.logger.error(f"SSH tunnel failed to start (exit {self._tunnel_process.returncode}): {stderr or '(no stderr)'}")
+                self.logger.error(f"  Command was: {' '.join(ssh_cmd)}")
                 return False
             
             if self.config.reverse:

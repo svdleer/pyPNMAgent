@@ -10,6 +10,9 @@ build/
 
 # Config files with secrets
 agent_config.json
+agent_config.cmts-agent.json
+agent_config.cm-agent.json
+agent_config.modem-agent.json
 config/
 
 # Virtual environments
