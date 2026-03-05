@@ -415,8 +415,11 @@ class PyPNMAgent:
         # interactive GUI tasks.
         # · interactive_pool — GUI clicks, CMTS walks, RF/ifindex discovery
         # · bulk_pool        — background modem enrichment (snmp_bulk_get)
-        self._interactive_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix='snmp-int')
-        self._bulk_executor        = ThreadPoolExecutor(max_workers=5,  thread_name_prefix='snmp-bulk')
+        # Tunable via env: AGENT_INTERACTIVE_THREADS / AGENT_BULK_THREADS
+        _int_threads  = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 20))
+        _bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 10))
+        self._interactive_executor = ThreadPoolExecutor(max_workers=_int_threads,  thread_name_prefix='snmp-int')
+        self._bulk_executor        = ThreadPoolExecutor(max_workers=_bulk_threads, thread_name_prefix='snmp-bulk')
         # Legacy alias kept so any direct references still work
         self._executor = self._interactive_executor
         # websocket-client ws.send() is NOT thread-safe — serialise all sends
