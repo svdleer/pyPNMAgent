@@ -103,6 +103,7 @@ class SSHTunnelManager:
             '-o', 'StrictHostKeyChecking=accept-new',
             '-o', 'ConnectTimeout=10',
             '-o', 'BatchMode=yes',  # never hang waiting for password prompt
+            '-o', 'TCPKeepAlive=yes',  # OS-level TCP keepalives (helps with nc NAT drops)
         ]
         
         if self.config.ssh_key_file:
@@ -118,22 +119,45 @@ class SSHTunnelManager:
         ssh_cmd.append(ssh_target)
         
         self.logger.info(f"Starting SSH tunnel: {' '.join(ssh_cmd)}")
-        
+
         try:
             self._tunnel_process = subprocess.Popen(
                 ssh_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )
+
+            # Drain stderr in a background thread so the pipe buffer never fills
+            # up and blocks the ssh/nc process.  nc-based ProxyCommands are
+            # especially verbose; a full 64 KB buffer causes a silent hang.
+            def _drain_stderr(proc, label):
+                for line in proc.stderr:
+                    txt = line.decode(errors='replace').rstrip()
+                    if txt:
+                        self.logger.debug(f"[{label}] ssh stderr: {txt}")
+
+            _label = f"{self.config.ssh_user}@{self.config.ssh_host}" if self.config.ssh_user else self.config.ssh_host
+            _drain_thread = threading.Thread(
+                target=_drain_stderr,
+                args=(self._tunnel_process, _label),
+                daemon=True,
+                name=f"ssh-stderr-{_label}",
+            )
+            _drain_thread.start()
             
             # Wait long enough that a quick auth/connect failure is visible
             # (ConnectTimeout=10, but most failures happen within 3 s)
             time.sleep(3)
 
             if self._tunnel_process.poll() is not None:
-                # Process exited — grab stderr for diagnostics
-                stderr = self._tunnel_process.stderr.read().decode().strip()
-                self.logger.error(f"SSH tunnel failed to start (exit {self._tunnel_process.returncode}): {stderr or '(no stderr)'}")
+                # Process exited — stderr already being drained by thread;
+                # join briefly to capture any last output before reporting.
+                _drain_thread.join(timeout=1)
+                try:
+                    last_stderr = self._tunnel_process.stderr.read().decode().strip()
+                except Exception:
+                    last_stderr = ''
+                self.logger.error(f"SSH tunnel failed to start (exit {self._tunnel_process.returncode}): {last_stderr or '(no stderr)'}")
                 self.logger.error(f"  Command was: {' '.join(ssh_cmd)}")
                 return False
             
