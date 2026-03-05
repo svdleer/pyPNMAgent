@@ -1,0 +1,17 @@
+{
+    "agent_id": "modem-agent",
+    "_comment": "Agent on the server reachable via autossh reverse tunnel port 42001.",
+    "pypnm_server": {
+        "url": "ws://127.0.0.1:8000/api/agents/ws",
+        "_comment_url": "Reaches PyPNM via the -R 8000:localhost:8000 reverse tunnel added to autossh",
+        "auth_token": "of-en-SEVEN-Shnok-EXCLAMATION_POINT-Op"
+    },
+    "cmts_access": { "enabled": false },
+    "cm_access": {
+        "enabled": true,
+        "community": "m0d3m1nf0"
+    },
+    "tftp_server": {
+        "tftp_path": "/tmp"
+    }
+}
