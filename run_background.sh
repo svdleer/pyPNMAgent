@@ -127,14 +127,22 @@ stop_agent() {
         did_something=1
     fi
 
-    # --- 3. Kill any ssh tunnel processes spawned by the agent ---------------
-    # Match ssh -N (no-command tunnels) whose command line contains our key or
-    # hosts from agent_config.json; fall back to all ssh -N processes owned by us.
-    SSH_PIDS=$(pgrep -u "$(id -u)" -f "ssh.*-[NR]" 2>/dev/null)
-    if [ -n "$SSH_PIDS" ]; then
-        echo "Killing ssh tunnel process(es): $SSH_PIDS"
-        kill -9 $SSH_PIDS 2>/dev/null
-        did_something=1
+    # --- 3. Kill any ssh tunnel processes that are children of agent PIDs ----
+    # Only target ssh processes whose parent is one of our agent.py PIDs,
+    # NOT a broad sweep (which would catch unrelated autossh tunnels).
+    AGENT_PIDS_NOW=$(pgrep -f "${AGENT_DIR}/agent.py" 2>/dev/null)
+    if [ -z "$AGENT_PIDS_NOW" ]; then
+        AGENT_PIDS_NOW=$(pgrep -f "python.*agent\.py" 2>/dev/null)
+    fi
+    if [ -n "$AGENT_PIDS_NOW" ]; then
+        for APID in $AGENT_PIDS_NOW; do
+            CHILD_SSH=$(pgrep -P "$APID" -x ssh 2>/dev/null)
+            if [ -n "$CHILD_SSH" ]; then
+                echo "Killing ssh child process(es) of agent PID $APID: $CHILD_SSH"
+                kill -9 $CHILD_SSH 2>/dev/null
+                did_something=1
+            fi
+        done
     fi
 
     if [ "$did_something" -eq 1 ]; then
