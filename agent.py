@@ -470,6 +470,7 @@ class PyPNMAgent:
             'snmp_bulk_walk': self._handle_snmp_bulk_walk,
             'snmp_parallel_walk': self._handle_snmp_parallel_walk,
             'tftp_get': self._handle_tftp_get,
+            'file_get': self._handle_file_get,
             'cmts_command': self._handle_cmts_command,
         }
     
@@ -632,7 +633,10 @@ class PyPNMAgent:
         
         if self.tftp_ssh:
             caps.append('tftp_get')
-        
+
+        # Local file retrieval from TFTP root — always available
+        caps.append('file_get')
+
         # CMTS capabilities - agent provides SNMP walks, PyPNM API handles logic
         if self.config.cmts_enabled:
             caps.extend(['cmts_snmp_walk', 'cmts_snmp_get'])
@@ -1084,6 +1088,48 @@ class PyPNMAgent:
                 'error': str(e)
             }
     
+    def _handle_file_get(self, params: dict) -> dict:
+        """
+        Read a PNM capture file from the local TFTP root and return its content
+        as base64.  Used by the PyPNM API when PNM_RETRIEVAL_METHOD=agent.
+
+        params:
+            filename  (str)  bare filename or glob prefix (e.g. 'rxmer_xxxx')
+            glob      (bool) if True, return newest file matching 'filename*'
+        """
+        import base64
+        import glob as _glob
+
+        tftp_root = os.environ.get('TFTP_ROOT', self.config.tftp_path)
+        filename  = params.get('filename', '')
+        use_glob  = params.get('glob', True)   # always glob — CMTS adds timestamps
+
+        if not filename:
+            return {'success': False, 'error': 'filename param required'}
+
+        if use_glob:
+            pattern = os.path.join(tftp_root, f"{filename}*")
+            matches = sorted(_glob.glob(pattern), reverse=True)  # newest first
+            if not matches:
+                return {'success': False, 'error': f'No files matching {filename}* in {tftp_root}'}
+            fpath = matches[0]
+        else:
+            fpath = os.path.join(tftp_root, filename)
+
+        try:
+            with open(fpath, 'rb') as fh:
+                data = fh.read()
+            return {
+                'success':        True,
+                'filename':       os.path.basename(fpath),
+                'size':           len(data),
+                'content_base64': base64.b64encode(data).decode(),
+            }
+        except FileNotFoundError:
+            return {'success': False, 'error': f'File not found: {fpath}'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
     def _handle_cmts_command(self, params: dict) -> dict:
         """Execute command on CMTS via SSH."""
         cmts_host = params.get('cmts_host') or params.get('cmts_ip')
