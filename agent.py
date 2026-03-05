@@ -442,14 +442,17 @@ class PyPNMAgent:
         # · interactive_pool — GUI clicks, CMTS walks, RF/ifindex discovery
         # · bulk_pool        — background modem enrichment (snmp_bulk_get)
         # Tunable via env: AGENT_INTERACTIVE_THREADS / AGENT_BULK_THREADS
-        _int_threads  = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 20))
-        _bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 10))
-        self._interactive_executor = ThreadPoolExecutor(max_workers=_int_threads,  thread_name_prefix='snmp-int')
-        self._bulk_executor        = ThreadPoolExecutor(max_workers=_bulk_threads, thread_name_prefix='snmp-bulk')
+        self._int_threads  = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 20))
+        self._bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 10))
+        self._interactive_executor = ThreadPoolExecutor(max_workers=self._int_threads,  thread_name_prefix='snmp-int')
+        self._bulk_executor        = ThreadPoolExecutor(max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')
         # Legacy alias kept so any direct references still work
         self._executor = self._interactive_executor
         # websocket-client ws.send() is NOT thread-safe — serialise all sends
         self._send_lock = threading.Lock()
+        # Monotone counter incremented on every reconnect so stale tasks can
+        # detect they belong to a previous session and drop their response.
+        self._session_id = 0
         
         # SSH Tunnel to PyPNM
         self.pypnm_tunnel = None
@@ -620,8 +623,13 @@ class PyPNMAgent:
     def _on_open(self, ws):
         """Called when WebSocket connection is established."""
         ws_url = self._get_websocket_url()
-        self.logger.info(f"Connected to PyPNM Server: {ws_url}")
-        
+        if self._session_id > 0:
+            self.logger.info(f"Reconnected to PyPNM Server (session #{self._session_id + 1}): {ws_url}")
+        else:
+            self.logger.info(f"Connected to PyPNM Server: {ws_url}")
+        self._session_id += 1
+        self.logger.info(f"Session #{self._session_id} — executor pools reset, ready for commands")
+
         auth_msg = {
             'type': 'auth',
             'agent_id': self.config.agent_id,
@@ -663,8 +671,31 @@ class PyPNMAgent:
         self.logger.error(f"WebSocket error: {error}")
     
     def _on_close(self, ws, close_status_code, close_msg):
-        """Called when connection is closed."""
-        self.logger.warning(f"Connection closed: {close_status_code} - {close_msg}")
+        """Called when connection is closed — reset executor pools so queued tasks
+        from this session are cancelled and threads are reclaimed before reconnect."""
+        self.logger.warning(f"Connection closed (session #{self._session_id}): {close_status_code} - {close_msg}")
+        self._reset_executors()
+
+    def _reset_executors(self):
+        """Shut down both executor pools (cancels queued tasks) and create fresh ones.
+        Called on every disconnect so the next session starts with empty queues."""
+        self.logger.info("Resetting executor pools (cancelling queued tasks)...")
+        # shutdown(wait=False, cancel_futures=True) is Python 3.9+;
+        # fall back to shutdown(wait=False) for older interpreters.
+        for pool, name in ((self._interactive_executor, 'interactive'),
+                           (self._bulk_executor, 'bulk')):
+            try:
+                pool.shutdown(wait=False, cancel_futures=True)
+            except TypeError:
+                pool.shutdown(wait=False)
+            self.logger.debug(f"  {name} pool shut down")
+
+        self._interactive_executor = ThreadPoolExecutor(
+            max_workers=self._int_threads, thread_name_prefix='snmp-int')
+        self._bulk_executor = ThreadPoolExecutor(
+            max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')
+        self._executor = self._interactive_executor
+        self.logger.info("Executor pools reset — ready for next connection")
     
     def _get_capabilities(self) -> list[str]:
         """Return list of agent capabilities."""
@@ -726,6 +757,11 @@ class PyPNMAgent:
             return
 
         def _run_handler():
+            # Capture session id and ws at dispatch time — if either has changed
+            # by the time we finish (i.e. we've disconnected and reconnected),
+            # drop the response instead of trying to send on a dead socket.
+            dispatched_session = self._session_id
+            dispatched_ws = ws
             try:
                 self.logger.debug(f"Executing {command} for {request_id}")
                 result = handler(params)
@@ -746,9 +782,16 @@ class PyPNMAgent:
                     'request_id': request_id,
                     'error': str(e)
                 }
+            # Guard: don't send on a stale websocket from a previous session
+            if self._session_id != dispatched_session or self.ws is not dispatched_ws:
+                self.logger.warning(
+                    f"Dropping response for {request_id} — session changed "
+                    f"(was #{dispatched_session}, now #{self._session_id})"
+                )
+                return
             try:
                 with self._send_lock:
-                    ws.send(json.dumps(response))
+                    dispatched_ws.send(json.dumps(response))
                 self.logger.info(f"Response sent for {request_id}")
             except Exception as e:
                 self.logger.error(f"Failed to send response for {request_id}: {e}")
@@ -1412,8 +1455,8 @@ class PyPNMAgent:
         self.peer_tunnels.clear()
         if self.pypnm_tunnel:
             self.pypnm_tunnel.stop_tunnel()
-        self._executor.shutdown(wait=False)
-        
+        self._reset_executors()
+
         self.logger.info("Agent stopped")
 
 
