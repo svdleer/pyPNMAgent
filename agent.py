@@ -419,6 +419,8 @@ class PyPNMAgent:
         self._bulk_executor        = ThreadPoolExecutor(max_workers=5,  thread_name_prefix='snmp-bulk')
         # Legacy alias kept so any direct references still work
         self._executor = self._interactive_executor
+        # websocket-client ws.send() is NOT thread-safe — serialise all sends
+        self._send_lock = threading.Lock()
         
         # SSH Tunnel to PyPNM
         self.pypnm_tunnel = None
@@ -659,7 +661,8 @@ class PyPNMAgent:
                 'request_id': request_id,
                 'error': f'Unknown command: {command}'
             }
-            ws.send(json.dumps(response))
+            with self._send_lock:
+                ws.send(json.dumps(response))
             return
 
         def _run_handler():
@@ -684,7 +687,8 @@ class PyPNMAgent:
                     'error': str(e)
                 }
             try:
-                ws.send(json.dumps(response))
+                with self._send_lock:
+                    ws.send(json.dumps(response))
                 self.logger.info(f"Response sent for {request_id}")
             except Exception as e:
                 self.logger.error(f"Failed to send response for {request_id}: {e}")
