@@ -11,8 +11,8 @@ import os
 import subprocess
 import threading
 import time
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 try:
     import paramiko
@@ -49,6 +49,10 @@ class SSHTunnelConfig:
     keepalive_count_max: int = 3
     auto_reconnect: bool = True
     reconnect_delay: int = 5
+
+    # Extra ssh -o options appended verbatim, e.g.:
+    # ['PreferredAuthentications=publickey', 'PubkeyAuthentication=yes', 'IdentitiesOnly=yes']
+    ssh_extra_options: List[str] = field(default_factory=list)
 
 
 class SSHTunnelManager:
@@ -103,10 +107,13 @@ class SSHTunnelManager:
         
         if self.config.ssh_key_file:
             ssh_cmd.extend(['-i', self.config.ssh_key_file])
-        
+
+        for opt in self.config.ssh_extra_options:
+            ssh_cmd.extend(['-o', opt])
+
         if self.config.ssh_port != 22:
             ssh_cmd.extend(['-p', str(self.config.ssh_port)])
-        
+
         ssh_target = f'{self.config.ssh_user}@{self.config.ssh_host}' if self.config.ssh_user else self.config.ssh_host
         ssh_cmd.append(ssh_target)
         

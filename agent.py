@@ -169,6 +169,7 @@ class AgentConfig:
                 'local_port': pt.get('local_port', 8000),
                 'remote_port': pt.get('remote_port', 8000),
                 'label': pt.get('label', pt.get('ssh_host', 'peer')),
+                'ssh_options': pt.get('ssh_options', []),
             }
 
         # New: array form
@@ -528,6 +529,7 @@ class PyPNMAgent:
                     remote_host='127.0.0.1',
                     remote_port=pt.get('remote_port', 8000),
                     reverse=True,
+                    ssh_extra_options=pt.get('ssh_options', []),
                 )
                 tunnel = SSHTunnelManager(tunnel_config, use_paramiko=False)
                 if not tunnel.start_tunnel():
