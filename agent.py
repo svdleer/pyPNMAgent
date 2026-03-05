@@ -476,6 +476,7 @@ class PyPNMAgent:
             'snmp_parallel_walk': self._handle_snmp_parallel_walk,
             'tftp_get': self._handle_tftp_get,
             'file_get': self._handle_file_get,
+            'pnm_file_get': self._handle_file_get,
             'cmts_command': self._handle_cmts_command,
         }
     
@@ -641,6 +642,12 @@ class PyPNMAgent:
 
         # Local file retrieval from TFTP root — always available
         caps.append('file_get')
+
+        # pnm_file_get: only announced when the TFTP root is readable
+        # so the API can safely route PNM file fetches to the right agent.
+        tftp_root = os.environ.get('TFTP_ROOT', self.config.tftp_path)
+        if os.path.isdir(tftp_root) and os.access(tftp_root, os.R_OK):
+            caps.append('pnm_file_get')
 
         # CMTS capabilities - agent provides SNMP walks, PyPNM API handles logic
         if self.config.cmts_enabled:
