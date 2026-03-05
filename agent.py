@@ -187,6 +187,7 @@ class AgentConfig:
     @classmethod
     def from_file(cls, path: str) -> 'AgentConfig':
         """Load configuration from JSON file."""
+        import re
         with open(path) as f:
             raw = f.read()
         # Strip trailing garbage (e.g. from broken heredoc installs)
@@ -194,6 +195,22 @@ class AgentConfig:
         if idx == -1:
             raise ValueError(f"No closing '}}' found in {path} -- file appears empty or corrupt")
         raw = raw[:idx + 1]
+
+        # Remove stray control characters that are illegal in JSON
+        # (0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F — keep tab 0x09, LF 0x0A, CR 0x0D)
+        sanitized, n_removed = re.subn(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', raw)
+        if n_removed:
+            # Find first occurrence for a useful diagnostic
+            m = re.search(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', raw)
+            line_no = raw[:m.start()].count('\n') + 1
+            col_no  = m.start() - raw[:m.start()].rfind('\n')
+            logger.warning(
+                f"Stripped {n_removed} illegal control character(s) from {path} "
+                f"(first at line {line_no}, col {col_no}, char 0x{ord(m.group()):02x}). "
+                f"Re-save the file to remove this warning."
+            )
+            raw = sanitized
+
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as e:
