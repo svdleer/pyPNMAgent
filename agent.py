@@ -1210,21 +1210,57 @@ class PyPNMAgent:
         import base64
         import glob as _glob
 
-        tftp_root = os.environ.get('TFTP_ROOT', self.config.tftp_path)
+        # Build search roots in priority order. This allows agent-mode file
+        # retrieval to work even when captures land outside /tftpboot.
+        roots: list[str] = []
+
+        def _add_root(v: Optional[str]):
+            if not v:
+                return
+            p = os.path.abspath(os.path.expanduser(v))
+            if p not in roots:
+                roots.append(p)
+
+        _add_root(os.environ.get('TFTP_ROOT'))
+        _add_root(os.environ.get('PYPNM_TFTP_PATH'))
+        _add_root(self.config.tftp_path)
+        for fallback in ('/var/lib/tftpboot', '/tftpboot', '/tmp', '/access/pnmupload', '/pnmupload'):
+            _add_root(fallback)
+
         filename  = params.get('filename', '')
         use_glob  = params.get('glob', True)   # always glob — CMTS adds timestamps
 
         if not filename:
             return {'success': False, 'error': 'filename param required'}
 
+        matches: list[str] = []
         if use_glob:
-            pattern = os.path.join(tftp_root, f"{filename}*")
-            matches = sorted(_glob.glob(pattern), reverse=True)  # newest first
+            for root in roots:
+                pattern = os.path.join(root, f"{filename}*")
+                m = sorted(_glob.glob(pattern), reverse=True)  # newest first
+                if m:
+                    matches = m
+                    break
             if not matches:
-                return {'success': False, 'error': f'No files matching {filename}* in {tftp_root}'}
+                return {
+                    'success': False,
+                    'error': f"No files matching {filename}* in any search root",
+                    'searched_roots': roots,
+                }
             fpath = matches[0]
         else:
-            fpath = os.path.join(tftp_root, filename)
+            fpath = ''
+            for root in roots:
+                cand = os.path.join(root, filename)
+                if os.path.exists(cand):
+                    fpath = cand
+                    break
+            if not fpath:
+                return {
+                    'success': False,
+                    'error': f"File not found: {filename}",
+                    'searched_roots': roots,
+                }
 
         try:
             with open(fpath, 'rb') as fh:
