@@ -870,6 +870,7 @@ class PyPNMAgent:
             return {'success': False, 'error': 'target_ip or modem_ip required'}
         community = params.get('community', 'private')
         timeout = params.get('timeout', 5)
+        retries = params.get('retries', 2)  # 0 = fail-fast (e.g. enrichment), 2 = default
         # Limit concurrent SNMP requests to avoid overwhelming the modem
         max_concurrent = params.get('max_concurrent', 10)
         
@@ -882,7 +883,7 @@ class PyPNMAgent:
             
             async def fetch_with_semaphore(oid):
                 async with semaphore:
-                    return await self._async_snmp_get(target_ip, oid, community, timeout)
+                    return await self._async_snmp_get(target_ip, oid, community, timeout, retries)
             
             tasks = [fetch_with_semaphore(oid) for oid in oids]
             return await asyncio.gather(*tasks, return_exceptions=True)
@@ -1040,13 +1041,13 @@ class PyPNMAgent:
             self.logger.error(f"SNMP parallel walk error: {e}")
             return {'success': False, 'error': str(e)}
     
-    async def _async_snmp_get(self, target_ip: str, oid: str, community: str, timeout: int = 5) -> dict:
+    async def _async_snmp_get(self, target_ip: str, oid: str, community: str, timeout: int = 5, retries: int = 2) -> dict:
         """Async SNMP GET using pysnmp."""
         try:
             errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
                 SnmpEngine(),
                 CommunityData(community),
-                await make_transport(target_ip, 161, timeout=timeout, retries=2),
+                await make_transport(target_ip, 161, timeout=timeout, retries=retries),
                 ContextData(),
                 ObjectType(ObjectIdentity(oid))
             )
