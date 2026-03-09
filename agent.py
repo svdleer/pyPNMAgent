@@ -699,7 +699,7 @@ class PyPNMAgent:
     
     def _get_capabilities(self) -> list[str]:
         """Return list of agent capabilities."""
-        caps = ['snmp_get', 'snmp_walk', 'snmp_set', 'snmp_bulk_get']
+        caps = ['snmp_get', 'snmp_walk', 'snmp_set', 'snmp_bulk_get', 'snmp_parallel_walk']
         
         # CM (Cable Modem) reachability
         if self.cm_proxy:
@@ -713,7 +713,6 @@ class PyPNMAgent:
         if self.config.cmts_enabled:
             caps.append('cmts_reachable')  # Can reach CMTS
             caps.append('cmts_snmp_direct')
-            caps.append('snmp_parallel_walk')
         
         if self.config.cmts_ssh_enabled:
             caps.append('cmts_command')  # Can execute CMTS CLI commands via SSH
