@@ -40,3 +40,6 @@ id_*
 
 # local tunnel secrets — never commit
 .env
+
+# deploy script with real host details — keep example in scripts/
+deploy/push-agent.sh

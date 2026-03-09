@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
 # push-agent.sh — pull latest agent.py and push to all jump-server hosts
-# Usage: ./deploy/push-agent.sh
+#
+# SETUP:
+#   cp scripts/push-agent.example.sh deploy/push-agent.sh
+#   chmod +x deploy/push-agent.sh
+#   # Edit AGENT_HOSTS in deploy/push-agent.sh with your real hosts
+#   ./deploy/push-agent.sh
+#
+# NOTE: deploy/push-agent.sh is in .gitignore (contains real hostnames/users)
 
 set -euo pipefail
 
 # ── Agent hosts ──────────────────────────────────────────────────────────────
 # Format: "user@host"
 AGENT_HOSTS=(
-    "svdleer@hop-access1.ext.oss.local"
-    "svanderleer@eq1"
-    "svanderleer@eq2"
+    "user@jump-server-1"
+    "user@jump-server-2"
+    "user@jump-server-3"
 )
 SSH_PORT=22
 REMOTE_DIR="~/.pypnm-agent"
