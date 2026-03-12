@@ -155,6 +155,9 @@ class AgentConfig:
     tftp_ssh_user: Optional[str] = None
     tftp_ssh_key: Optional[str] = None
     tftp_path: str = "/tftpboot"
+    # Explicitly opt-in to announcing pnm_file_get capability.
+    # Only set True on agents that have direct read access to the TFTP capture root.
+    pnm_file_get_enabled: bool = False
     
     @classmethod
     def _parse_peer_tunnels(cls, data: dict, expand_path) -> dict:
@@ -285,6 +288,7 @@ class AgentConfig:
             tftp_ssh_user=tftp.get('username'),
             tftp_ssh_key=expand_path(tftp.get('key_file')),
             tftp_path=tftp.get('tftp_path', '/tftpboot'),
+            pnm_file_get_enabled=tftp.get('pnm_file_get_enabled', False),
         )
     
     @classmethod
@@ -321,6 +325,7 @@ class AgentConfig:
             tftp_ssh_user=os.environ.get('PYPNM_TFTP_SSH_USER'),
             tftp_ssh_key=expand_path(os.environ.get('PYPNM_TFTP_SSH_KEY')),
             tftp_path=os.environ.get('PYPNM_TFTP_PATH', '/tftpboot'),
+            pnm_file_get_enabled=os.environ.get('PYPNM_PNM_FILE_GET_ENABLED', 'false').lower() == 'true',
         )
 
 
@@ -729,10 +734,15 @@ class PyPNMAgent:
         # Local file retrieval from TFTP root — always available
         caps.append('file_get')
 
-        # pnm_file_get: only announced when the TFTP root is readable
-        # so the API can safely route PNM file fetches to the right agent.
+        # pnm_file_get: only announced when explicitly enabled in config/env
+        # AND the TFTP root is actually readable.  cm-agents that only do SNMP
+        # must NOT announce this capability.
         tftp_root = os.environ.get('TFTP_ROOT', self.config.tftp_path)
-        if os.path.isdir(tftp_root) and os.access(tftp_root, os.R_OK):
+        pnm_file_get_enabled = (
+            self.config.pnm_file_get_enabled
+            or os.environ.get('PYPNM_PNM_FILE_GET_ENABLED', 'false').lower() == 'true'
+        )
+        if pnm_file_get_enabled and os.path.isdir(tftp_root) and os.access(tftp_root, os.R_OK):
             caps.append('pnm_file_get')
 
         # CMTS capabilities - agent provides SNMP walks, PyPNM API handles logic
