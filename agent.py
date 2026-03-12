@@ -502,6 +502,7 @@ class PyPNMAgent:
             'snmp_get': self._handle_snmp_get,
             'snmp_walk': self._handle_snmp_walk,
             'snmp_set': self._handle_snmp_set,
+            'snmp_set_sequence': self._handle_snmp_set_sequence,
             'snmp_bulk_get': self._handle_snmp_bulk_get,
             'snmp_bulk_walk': self._handle_snmp_bulk_walk,
             'snmp_parallel_walk': self._handle_snmp_parallel_walk,
@@ -704,7 +705,7 @@ class PyPNMAgent:
     
     def _get_capabilities(self) -> list[str]:
         """Return list of agent capabilities."""
-        caps = ['snmp_get', 'snmp_walk', 'snmp_set', 'snmp_bulk_get', 'snmp_parallel_walk']
+        caps = ['snmp_get', 'snmp_walk', 'snmp_set', 'snmp_set_sequence', 'snmp_bulk_get', 'snmp_parallel_walk']
         
         # CM (Cable Modem) reachability
         if self.cm_proxy:
@@ -870,6 +871,49 @@ class PyPNMAgent:
         
         return asyncio.run(self._async_snmp_set(target_ip, oid, value, value_type, community, params.get('timeout', 5)))
     
+    def _handle_snmp_set_sequence(self, params: dict) -> dict:
+        """Execute a sequence of SNMP SETs for one target as a single atomic task.
+
+        This keeps all SETs for one modem in one agent task, preventing
+        queue saturation when many modems are scanned concurrently.
+
+        params:
+            target_ip  : modem IP
+            community  : SNMP write community
+            sets       : list of {oid, value, type, sleep_after} dicts
+                         sleep_after (float, optional): seconds to sleep after this SET
+            timeout    : per-SET SNMP timeout (default 5)
+        """
+        target_ip = params.get('target_ip') or params.get('modem_ip')
+        if not target_ip:
+            return {'success': False, 'error': 'target_ip required'}
+        sets = params.get('sets', [])
+        if not sets:
+            return {'success': False, 'error': 'sets list required'}
+        community = params.get('community', 'private')
+        timeout = params.get('timeout', 5)
+
+        if not PYSNMP_AVAILABLE:
+            return {'success': False, 'error': 'pysnmp not available'}
+
+        async def run_sequence():
+            results = []
+            for item in sets:
+                oid = item['oid']
+                value = item['value']
+                value_type = item.get('type', 'i')
+                result = await self._async_snmp_set(target_ip, oid, value, value_type, community, timeout)
+                results.append({'oid': oid, 'value': value, **result})
+                if not result.get('success'):
+                    return {'success': False, 'failed_oid': oid, 'results': results,
+                            'error': result.get('error', 'SET failed')}
+                sleep_after = item.get('sleep_after', 0)
+                if sleep_after:
+                    await asyncio.sleep(sleep_after)
+            return {'success': True, 'results': results}
+
+        return asyncio.run(run_sequence())
+
     def _handle_snmp_bulk_get(self, params: dict) -> dict:
         """Handle multiple SNMP GET requests with controlled concurrency."""
         oids = params.get('oids', [])
