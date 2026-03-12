@@ -442,7 +442,7 @@ class PyPNMAgent:
         # · bulk_pool        — background modem enrichment (snmp_bulk_get)
         # · long_pool        — PNM file captures (file_get/pnm_file_get), may run 30-90 s
         # Tunable via env: AGENT_INTERACTIVE_THREADS / AGENT_BULK_THREADS / AGENT_LONG_THREADS
-        self._int_threads  = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 20))
+        self._int_threads  = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 50))
         self._bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 10))
         self._long_threads = int(os.environ.get('AGENT_LONG_THREADS', 10))
         self._interactive_executor = ThreadPoolExecutor(max_workers=self._int_threads,  thread_name_prefix='snmp-int')
