@@ -27,13 +27,25 @@ start_agent() {
     fi
     
     echo "Starting PyPNM Agent..."
-    
-    # Activate venv and run agent
+
+    # Use venv python explicitly — don't rely on PATH after source activate
+    PYTHON="${VENV_DIR}/bin/python"
+    if [ ! -x "$PYTHON" ]; then
+        echo "ERROR: venv not found at $VENV_DIR — run install.sh first"
+        return 1
+    fi
+
     cd "$AGENT_DIR"
-    source "${VENV_DIR}/bin/activate"
-    
-    # Run with nohup, redirect output to log file
-    nohup python agent.py -c agent_config.json >> "$LOG_FILE" 2>&1 &
+
+    # Wrap in a restart loop so crashes auto-recover
+    nohup bash -c "
+        while true; do
+            PYTHONUNBUFFERED=1 ${PYTHON} -u agent.py -c agent_config.json
+            EXIT_CODE=\$?
+            echo \"\$(date '+%Y-%m-%d %H:%M:%S') Agent exited (code \$EXIT_CODE), restarting in 10s...\"
+            sleep 10
+        done
+    " >> "$LOG_FILE" 2>&1 &
     
     PID=$!
     echo $PID > "$PID_FILE"
