@@ -155,6 +155,9 @@ class AgentConfig:
     tftp_ssh_user: Optional[str] = None
     tftp_ssh_key: Optional[str] = None
     tftp_path: str = "/tftpboot"
+    # Explicitly opt-in to announcing pnm_file_get capability.
+    # Only set True on agents that have direct read access to the TFTP capture root.
+    pnm_file_get_enabled: bool = False
     
     @classmethod
     def _parse_peer_tunnels(cls, data: dict, expand_path) -> dict:
@@ -285,6 +288,7 @@ class AgentConfig:
             tftp_ssh_user=tftp.get('username'),
             tftp_ssh_key=expand_path(tftp.get('key_file')),
             tftp_path=tftp.get('tftp_path', '/tftpboot'),
+            pnm_file_get_enabled=tftp.get('pnm_file_get_enabled', False),
         )
     
     @classmethod
@@ -321,6 +325,7 @@ class AgentConfig:
             tftp_ssh_user=os.environ.get('PYPNM_TFTP_SSH_USER'),
             tftp_ssh_key=expand_path(os.environ.get('PYPNM_TFTP_SSH_KEY')),
             tftp_path=os.environ.get('PYPNM_TFTP_PATH', '/tftpboot'),
+            pnm_file_get_enabled=os.environ.get('PYPNM_PNM_FILE_GET_ENABLED', 'false').lower() == 'true',
         )
 
 
@@ -442,7 +447,7 @@ class PyPNMAgent:
         # · bulk_pool        — background modem enrichment (snmp_bulk_get)
         # · long_pool        — PNM file captures (file_get/pnm_file_get), may run 30-90 s
         # Tunable via env: AGENT_INTERACTIVE_THREADS / AGENT_BULK_THREADS / AGENT_LONG_THREADS
-        self._int_threads  = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 20))
+        self._int_threads  = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 50))
         self._bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 10))
         self._long_threads = int(os.environ.get('AGENT_LONG_THREADS', 10))
         self._interactive_executor = ThreadPoolExecutor(max_workers=self._int_threads,  thread_name_prefix='snmp-int')
@@ -502,6 +507,7 @@ class PyPNMAgent:
             'snmp_get': self._handle_snmp_get,
             'snmp_walk': self._handle_snmp_walk,
             'snmp_set': self._handle_snmp_set,
+            'snmp_set_sequence': self._handle_snmp_set_sequence,
             'snmp_bulk_get': self._handle_snmp_bulk_get,
             'snmp_bulk_walk': self._handle_snmp_bulk_walk,
             'snmp_parallel_walk': self._handle_snmp_parallel_walk,
@@ -704,7 +710,7 @@ class PyPNMAgent:
     
     def _get_capabilities(self) -> list[str]:
         """Return list of agent capabilities."""
-        caps = ['snmp_get', 'snmp_walk', 'snmp_set', 'snmp_bulk_get', 'snmp_parallel_walk']
+        caps = ['snmp_get', 'snmp_walk', 'snmp_set', 'snmp_set_sequence', 'snmp_bulk_get', 'snmp_parallel_walk']
         
         # CM (Cable Modem) reachability
         if self.cm_proxy:
@@ -728,10 +734,15 @@ class PyPNMAgent:
         # Local file retrieval from TFTP root — always available
         caps.append('file_get')
 
-        # pnm_file_get: only announced when the TFTP root is readable
-        # so the API can safely route PNM file fetches to the right agent.
+        # pnm_file_get: only announced when explicitly enabled in config/env
+        # AND the TFTP root is actually readable.  cm-agents that only do SNMP
+        # must NOT announce this capability.
         tftp_root = os.environ.get('TFTP_ROOT', self.config.tftp_path)
-        if os.path.isdir(tftp_root) and os.access(tftp_root, os.R_OK):
+        pnm_file_get_enabled = (
+            self.config.pnm_file_get_enabled
+            or os.environ.get('PYPNM_PNM_FILE_GET_ENABLED', 'false').lower() == 'true'
+        )
+        if pnm_file_get_enabled and os.path.isdir(tftp_root) and os.access(tftp_root, os.R_OK):
             caps.append('pnm_file_get')
 
         # CMTS capabilities - agent provides SNMP walks, PyPNM API handles logic
@@ -870,6 +881,49 @@ class PyPNMAgent:
         
         return asyncio.run(self._async_snmp_set(target_ip, oid, value, value_type, community, params.get('timeout', 5)))
     
+    def _handle_snmp_set_sequence(self, params: dict) -> dict:
+        """Execute a sequence of SNMP SETs for one target as a single atomic task.
+
+        This keeps all SETs for one modem in one agent task, preventing
+        queue saturation when many modems are scanned concurrently.
+
+        params:
+            target_ip  : modem IP
+            community  : SNMP write community
+            sets       : list of {oid, value, type, sleep_after} dicts
+                         sleep_after (float, optional): seconds to sleep after this SET
+            timeout    : per-SET SNMP timeout (default 5)
+        """
+        target_ip = params.get('target_ip') or params.get('modem_ip')
+        if not target_ip:
+            return {'success': False, 'error': 'target_ip required'}
+        sets = params.get('sets', [])
+        if not sets:
+            return {'success': False, 'error': 'sets list required'}
+        community = params.get('community', 'private')
+        timeout = params.get('timeout', 5)
+
+        if not PYSNMP_AVAILABLE:
+            return {'success': False, 'error': 'pysnmp not available'}
+
+        async def run_sequence():
+            results = []
+            for item in sets:
+                oid = item['oid']
+                value = item['value']
+                value_type = item.get('type', 'i')
+                result = await self._async_snmp_set(target_ip, oid, value, value_type, community, timeout)
+                results.append({'oid': oid, 'value': value, **result})
+                if not result.get('success'):
+                    return {'success': False, 'failed_oid': oid, 'results': results,
+                            'error': result.get('error', 'SET failed')}
+                sleep_after = item.get('sleep_after', 0)
+                if sleep_after:
+                    await asyncio.sleep(sleep_after)
+            return {'success': True, 'results': results}
+
+        return asyncio.run(run_sequence())
+
     def _handle_snmp_bulk_get(self, params: dict) -> dict:
         """Handle multiple SNMP GET requests with controlled concurrency."""
         oids = params.get('oids', [])
