@@ -411,7 +411,14 @@ class PyPNMAgent:
         self.ws: Optional[websocket.WebSocketApp] = None
         self.running = False
         
-        self._executor = ThreadPoolExecutor(max_workers=20, thread_name_prefix='snmp')
+        # Two separate thread pools so background enrichment never starves
+        # interactive GUI tasks.
+        # · interactive_pool — GUI clicks, CMTS walks, RF/ifindex discovery
+        # · bulk_pool        — background modem enrichment (snmp_bulk_get)
+        self._interactive_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix='snmp-int')
+        self._bulk_executor        = ThreadPoolExecutor(max_workers=5,  thread_name_prefix='snmp-bulk')
+        # Legacy alias kept so any direct references still work
+        self._executor = self._interactive_executor
         
         # SSH Tunnel to PyPNM
         self.pypnm_tunnel = None
@@ -678,7 +685,13 @@ class PyPNMAgent:
             except Exception as e:
                 self.logger.error(f"Failed to send response for {request_id}: {e}")
 
-        self._executor.submit(_run_handler)
+        # Route bulk (enrichment) tasks to the dedicated pool so they can
+        # never starve the 10-worker interactive pool used for GUI requests.
+        priority = data.get('priority', 'interactive')
+        if priority == 'bulk':
+            self._bulk_executor.submit(_run_handler)
+        else:
+            self._interactive_executor.submit(_run_handler)
     
     def _handle_ping(self, params: dict) -> dict:
         """Handle ping/connectivity check."""
@@ -831,6 +844,8 @@ class PyPNMAgent:
         per_tree_hard_limit = timeout * (max_reps + 4) * 1.5  # generous headroom
 
         async def do_parallel_walk():
+            errors = {}   # oid -> error string
+
             async def walk_one(oid):
                 transport = await make_transport(ip, 161, timeout=timeout, retries=0)
                 results = []
@@ -838,7 +853,15 @@ class PyPNMAgent:
                     SnmpEngine(), CommunityData(community), transport, ContextData(),
                     0, max_reps, ObjectType(ObjectIdentity(oid))
                 ):
-                    if errorIndication or errorStatus:
+                    if errorIndication:
+                        err = str(errorIndication)
+                        errors[oid] = err
+                        self.logger.warning(f"SNMP walk error OID {oid} on {ip} (community={community!r}): {err}")
+                        break
+                    if errorStatus:
+                        err = f"{errorStatus.prettyPrint()} at {errorIndex}"
+                        errors[oid] = err
+                        self.logger.warning(f"SNMP walk error OID {oid} on {ip} (community={community!r}): {err}")
                         break
                     for varBind in varBinds:
                         oid_str = str(varBind[0]).lstrip('.')
@@ -855,19 +878,49 @@ class PyPNMAgent:
                 try:
                     return await asyncio.wait_for(walk_one(oid), timeout=per_tree_hard_limit)
                 except asyncio.TimeoutError:
-                    self.logger.warning(f"walk_one timed out after {per_tree_hard_limit:.0f}s for OID {oid} on {ip}")
+                    err = f"timed out after {per_tree_hard_limit:.0f}s"
+                    errors[oid] = err
+                    self.logger.warning(f"walk_one {err} for OID {oid} on {ip}")
                     return []
                 except Exception as e:
-                    self.logger.debug(f"walk_one error OID {oid} on {ip}: {e}")
+                    errors[oid] = str(e)
+                    self.logger.warning(f"walk_one error OID {oid} on {ip}: {e}")
                     return []
 
             results_list = await asyncio.gather(*[walk_one_safe(oid) for oid in oids])
             all_results = dict(zip(oids, results_list))
-            return {'success': any(len(v) > 0 for v in all_results.values()), 'results': all_results}
+            non_empty = sum(1 for v in all_results.values() if v)
+            success = non_empty > 0
+
+            # Build a human-readable summary for callers
+            warnings = []
+            if errors:
+                for oid, err in errors.items():
+                    warnings.append(f"{oid}: {err}")
+            if not success:
+                warnings.append(
+                    f"All {len(oids)} OID trees empty on {ip} — possible wrong community "
+                    f"(used {community!r}) or modem offline"
+                )
+                self.logger.error(
+                    f"Parallel walk: ALL trees empty for {ip} community={community!r} — "
+                    f"{len(errors)} OID errors: {list(errors.values())[:3]}"
+                )
+            else:
+                if errors:
+                    self.logger.warning(
+                        f"Parallel walk: {non_empty}/{len(oids)} trees returned data for {ip}, "
+                        f"{len(errors)} OIDs had errors"
+                    )
+
+            return {'success': success, 'results': all_results, 'warnings': warnings}
         
         try:
             result = asyncio.run(do_parallel_walk())
-            self.logger.info(f"Parallel walk completed: {len(result.get('results', {}))} OID trees")
+            self.logger.info(
+                f"Parallel walk completed: {len(result.get('results', {}))} OID trees, "
+                f"{sum(1 for v in result.get('results', {}).values() if v)} non-empty"
+            )
             return result
         except Exception as e:
             self.logger.error(f"SNMP parallel walk error: {e}")
