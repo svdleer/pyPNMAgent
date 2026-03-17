@@ -4,16 +4,40 @@
         "url": "ws://127.0.0.1:8000/api/agents/ws",
         "auth_token": "your-secure-token-here"
     },
-    "peer_tunnel": {
-        "_comment": "Reverse SSH tunnel: opens remote_port on ssh_host so Server B agent can reach PyPNM via localhost there",
-        "enabled": false,
-        "ssh_host": "server-b.internal",
-        "ssh_port": 22,
-        "ssh_user": "svdleer",
-        "key_file": "~/.ssh/id_ed25519",
-        "local_port": 8000,
-        "remote_port": 8000
-    },
+    "peer_tunnels": [
+        {
+            "_comment": "Reverse SSH tunnel to CM agent host: opens remote_port on ssh_host so the CM agent can reach PyPNM via localhost:remote_port there",
+            "label": "cm-agent",
+            "enabled": false,
+            "ssh_host": "cm-agent-host.internal",
+            "ssh_port": 22,
+            "ssh_user": "svdleer",
+            "key_file": "~/.ssh/id_ed25519",
+            "ssh_options": [
+                "PreferredAuthentications=publickey",
+                "PubkeyAuthentication=yes",
+                "IdentitiesOnly=yes"
+            ],
+            "local_port": 8000,
+            "remote_port": 8000
+        },
+        {
+            "_comment": "Reverse SSH tunnel to get-file agent host: opens remote_port so the file agent can reach PyPNM via localhost:remote_port there",
+            "label": "file-agent",
+            "enabled": false,
+            "ssh_host": "file-agent-host.internal",
+            "ssh_port": 22,
+            "ssh_user": "svdleer",
+            "key_file": "~/.ssh/id_ed25519",
+            "ssh_options": [
+                "PreferredAuthentications=publickey",
+                "PubkeyAuthentication=yes",
+                "IdentitiesOnly=yes"
+            ],
+            "local_port": 8000,
+            "remote_port": 8001
+        }
+    ],
     "cmts_access": {
         "enabled": true,
         "community": "public",

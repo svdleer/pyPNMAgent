@@ -13,7 +13,7 @@ import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -114,15 +114,11 @@ class AgentConfig:
     pypnm_tunnel_local_port: int = 8080
     pypnm_tunnel_remote_port: int = 8080
     
-    # Reverse SSH tunnel -- opens a port on a peer server (e.g. Server B)
-    # so that Server B's agent can reach PyPNM via localhost there.
-    peer_tunnel_enabled: bool = False
-    peer_tunnel_ssh_host: Optional[str] = None   # Server B hostname
-    peer_tunnel_ssh_port: int = 22
-    peer_tunnel_ssh_user: Optional[str] = None
-    peer_tunnel_ssh_key: Optional[str] = None
-    peer_tunnel_local_port: int = 8000            # local port to expose (PyPNM)
-    peer_tunnel_remote_port: int = 8000           # port opened on Server B
+    # Reverse SSH tunnels -- each entry opens a port on a remote peer server
+    # so that peer agent can reach PyPNM via localhost there.
+    # Supports both a single peer_tunnel object (legacy) and a peer_tunnels array.
+    # Each entry: {enabled, ssh_host, ssh_port, ssh_user, ssh_key, local_port, remote_port}
+    peer_tunnels: list = field(default_factory=list)
 
     # CMTS Access - for SNMP to CMTS devices
     cmts_enabled: bool = True
@@ -161,24 +157,38 @@ class AgentConfig:
     tftp_path: str = "/tftpboot"
     
     @classmethod
-    def _parse_peer_tunnel(cls, data: dict, expand_path) -> dict:
-        """Parse peer_tunnel section from config dict."""
+    def _parse_peer_tunnels(cls, data: dict, expand_path) -> dict:
+        """Parse peer_tunnels (array) or legacy peer_tunnel (object) from config."""
+        def _normalise(pt: dict) -> dict:
+            return {
+                'enabled': pt.get('enabled', True),
+                'ssh_host': pt.get('ssh_host'),
+                'ssh_port': pt.get('ssh_port', 22),
+                'ssh_user': pt.get('ssh_user'),
+                'ssh_key': expand_path(pt.get('ssh_key_file') or pt.get('key_file')),
+                'local_port': pt.get('local_port', 8000),
+                'remote_port': pt.get('remote_port', 8000),
+                'label': pt.get('label', pt.get('ssh_host', 'peer')),
+                'ssh_options': pt.get('ssh_options', []),
+                'keepalive_interval': pt.get('keepalive_interval', 0),  # 0 = use SSHTunnelConfig default
+            }
+
+        # New: array form
+        raw_list = data.get('peer_tunnels')
+        if isinstance(raw_list, list):
+            return {'peer_tunnels': [_normalise(pt) for pt in raw_list if pt]}
+
+        # Legacy: single object form
         pt = data.get('peer_tunnel', {})
-        if not pt:
-            return {}
-        return {
-            'peer_tunnel_enabled': pt.get('enabled', False),
-            'peer_tunnel_ssh_host': pt.get('ssh_host'),
-            'peer_tunnel_ssh_port': pt.get('ssh_port', 22),
-            'peer_tunnel_ssh_user': pt.get('ssh_user'),
-            'peer_tunnel_ssh_key': expand_path(pt.get('ssh_key_file') or pt.get('key_file')),
-            'peer_tunnel_local_port': pt.get('local_port', 8000),
-            'peer_tunnel_remote_port': pt.get('remote_port', 8000),
-        }
+        if pt:
+            return {'peer_tunnels': [_normalise(pt)]}
+
+        return {'peer_tunnels': []}
 
     @classmethod
     def from_file(cls, path: str) -> 'AgentConfig':
         """Load configuration from JSON file."""
+        import re
         with open(path) as f:
             raw = f.read()
         # Strip trailing garbage (e.g. from broken heredoc installs)
@@ -186,6 +196,22 @@ class AgentConfig:
         if idx == -1:
             raise ValueError(f"No closing '}}' found in {path} -- file appears empty or corrupt")
         raw = raw[:idx + 1]
+
+        # Remove stray control characters that are illegal in JSON
+        # (0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F — keep tab 0x09, LF 0x0A, CR 0x0D)
+        sanitized, n_removed = re.subn(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', raw)
+        if n_removed:
+            # Find first occurrence for a useful diagnostic
+            m = re.search(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', raw)
+            line_no = raw[:m.start()].count('\n') + 1
+            col_no  = m.start() - raw[:m.start()].rfind('\n')
+            logger.warning(
+                f"Stripped {n_removed} illegal control character(s) from {path} "
+                f"(first at line {line_no}, col {col_no}, char 0x{ord(m.group()):02x}). "
+                f"Re-save the file to remove this warning."
+            )
+            raw = sanitized
+
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as e:
@@ -229,7 +255,7 @@ class AgentConfig:
             pypnm_tunnel_local_port=tunnel_config.get('local_port', 8080),
             pypnm_tunnel_remote_port=tunnel_config.get('remote_port', 8080),
             # Reverse tunnel to peer agent server
-            **cls._parse_peer_tunnel(data, expand_path),
+            **cls._parse_peer_tunnels(data, expand_path),
             # CMTS Access
             cmts_enabled=cmts.get('enabled', cmts.get('snmp_direct', True)),
             cmts_community=cmts.get('community', 'public'),
@@ -415,17 +441,25 @@ class PyPNMAgent:
         # interactive GUI tasks.
         # · interactive_pool — GUI clicks, CMTS walks, RF/ifindex discovery
         # · bulk_pool        — background modem enrichment (snmp_bulk_get)
-        self._interactive_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix='snmp-int')
-        self._bulk_executor        = ThreadPoolExecutor(max_workers=5,  thread_name_prefix='snmp-bulk')
+        # Tunable via env: AGENT_INTERACTIVE_THREADS / AGENT_BULK_THREADS
+        self._int_threads  = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 20))
+        self._bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 10))
+        self._interactive_executor = ThreadPoolExecutor(max_workers=self._int_threads,  thread_name_prefix='snmp-int')
+        self._bulk_executor        = ThreadPoolExecutor(max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')
         # Legacy alias kept so any direct references still work
         self._executor = self._interactive_executor
+        # websocket-client ws.send() is NOT thread-safe — serialise all sends
+        self._send_lock = threading.Lock()
+        # Monotone counter incremented on every reconnect so stale tasks can
+        # detect they belong to a previous session and drop their response.
+        self._session_id = 0
         
         # SSH Tunnel to PyPNM
         self.pypnm_tunnel = None
         self.pypnm_tunnel_monitor = None
-        # Reverse tunnel to peer agent server
-        self.peer_tunnel = None
-        self.peer_tunnel_monitor = None
+        # Reverse tunnels to peer agent servers (one SSHTunnelManager per entry)
+        self.peer_tunnels: list = []
+        self.peer_tunnel_monitors: list = []
         
         # CM Proxy (SSH to reach modems)
         self.cm_proxy: Optional[SSHProxyExecutor] = None
@@ -470,46 +504,72 @@ class PyPNMAgent:
             'snmp_bulk_walk': self._handle_snmp_bulk_walk,
             'snmp_parallel_walk': self._handle_snmp_parallel_walk,
             'tftp_get': self._handle_tftp_get,
+            'file_get': self._handle_file_get,
+            'pnm_file_get': self._handle_file_get,
             'cmts_command': self._handle_cmts_command,
         }
     
     def _setup_peer_tunnel(self) -> bool:
-        """Set up reverse SSH tunnel to a peer agent server (e.g. Server B)."""
-        if not self.config.peer_tunnel_enabled:
+        """Set up reverse SSH tunnels to peer agent servers.
+
+        Iterates over all entries in config.peer_tunnels and starts a
+        reverse SSH tunnel + monitor for each enabled entry.  Failures
+        are non-fatal per entry; returns False only if ALL entries fail.
+        """
+        entries = [pt for pt in self.config.peer_tunnels if pt.get('enabled', True)]
+        if not entries:
+            self.logger.info("Peer tunnels: none enabled, skipping")
             return True
-        if not self.config.peer_tunnel_ssh_host:
-            self.logger.error("peer_tunnel enabled but no ssh_host configured")
-            return False
+
+        self.logger.info(f"Peer tunnels: starting {len(entries)} reverse SSH tunnel(s)...")
+
         try:
             from ssh_tunnel import SSHTunnelConfig, SSHTunnelManager, TunnelMonitor
-            tunnel_config = SSHTunnelConfig(
-                ssh_host=self.config.peer_tunnel_ssh_host,
-                ssh_port=self.config.peer_tunnel_ssh_port,
-                ssh_user=self.config.peer_tunnel_ssh_user,
-                ssh_key_file=self.config.peer_tunnel_ssh_key,
-                local_port=self.config.peer_tunnel_local_port,
-                remote_host='127.0.0.1',
-                remote_port=self.config.peer_tunnel_remote_port,
-                reverse=True,
-            )
-            self.peer_tunnel = SSHTunnelManager(tunnel_config, use_paramiko=False)
-            if not self.peer_tunnel.start_tunnel():
-                self.logger.error("Failed to start peer reverse SSH tunnel")
-                return False
-            self.peer_tunnel_monitor = TunnelMonitor(self.peer_tunnel)
-            self.peer_tunnel_monitor.start()
-            self.logger.info(
-                f"Peer reverse tunnel active: "
-                f"{self.config.peer_tunnel_ssh_host}:{self.config.peer_tunnel_remote_port} "
-                f"-> localhost:{self.config.peer_tunnel_local_port}"
-            )
-            return True
         except ImportError:
             self.logger.error("ssh_tunnel module not available")
             return False
-        except Exception as e:
-            self.logger.error(f"Failed to set up peer tunnel: {e}")
-            return False
+
+        any_ok = False
+        for pt in entries:
+            label = pt.get('label', pt.get('ssh_host', 'peer'))
+            if not pt.get('ssh_host'):
+                self.logger.error(f"  [{label}] no ssh_host configured, skipping")
+                continue
+            self.logger.info(
+                f"  [{label}] ssh -R {pt.get('remote_port', 8000)}:localhost:{pt.get('local_port', 8000)}"
+                f" {pt.get('ssh_user', '')}@{pt['ssh_host']}:{pt.get('ssh_port', 22)}"
+                f" (key: {pt.get('ssh_key') or 'default'})"
+            )
+            try:
+                tunnel_config = SSHTunnelConfig(
+                    ssh_host=pt['ssh_host'],
+                    ssh_port=pt.get('ssh_port', 22),
+                    ssh_user=pt.get('ssh_user'),
+                    ssh_key_file=pt.get('ssh_key'),
+                    local_port=pt.get('local_port', 8000),
+                    remote_host='127.0.0.1',
+                    remote_port=pt.get('remote_port', 8000),
+                    reverse=True,
+                    ssh_extra_options=pt.get('ssh_options', []),
+                    keepalive_interval=pt.get('keepalive_interval') or 30,
+                )
+                tunnel = SSHTunnelManager(tunnel_config, use_paramiko=False)
+                if not tunnel.start_tunnel():
+                    self.logger.error(f"  [{label}] FAILED to start — check SSH connectivity/auth/GatewayPorts on remote")
+                    continue
+                monitor = TunnelMonitor(tunnel)
+                monitor.start()
+                self.peer_tunnels.append(tunnel)
+                self.peer_tunnel_monitors.append(monitor)
+                self.logger.info(
+                    f"  [{label}] OK — port {pt.get('remote_port', 8000)} open on {pt['ssh_host']}"
+                    f" → PyPNM localhost:{pt.get('local_port', 8000)}"
+                )
+                any_ok = True
+            except Exception as e:
+                self.logger.error(f"  [{label}] setup error: {e}")
+
+        return any_ok
 
     def _setup_pypnm_tunnel(self) -> bool:
         """Set up SSH tunnel to PyPNM Server if configured."""
@@ -563,8 +623,13 @@ class PyPNMAgent:
     def _on_open(self, ws):
         """Called when WebSocket connection is established."""
         ws_url = self._get_websocket_url()
-        self.logger.info(f"Connected to PyPNM Server: {ws_url}")
-        
+        if self._session_id > 0:
+            self.logger.info(f"Reconnected to PyPNM Server (session #{self._session_id + 1}): {ws_url}")
+        else:
+            self.logger.info(f"Connected to PyPNM Server: {ws_url}")
+        self._session_id += 1
+        self.logger.info(f"Session #{self._session_id} — executor pools reset, ready for commands")
+
         auth_msg = {
             'type': 'auth',
             'agent_id': self.config.agent_id,
@@ -606,8 +671,31 @@ class PyPNMAgent:
         self.logger.error(f"WebSocket error: {error}")
     
     def _on_close(self, ws, close_status_code, close_msg):
-        """Called when connection is closed."""
-        self.logger.warning(f"Connection closed: {close_status_code} - {close_msg}")
+        """Called when connection is closed — reset executor pools so queued tasks
+        from this session are cancelled and threads are reclaimed before reconnect."""
+        self.logger.warning(f"Connection closed (session #{self._session_id}): {close_status_code} - {close_msg}")
+        self._reset_executors()
+
+    def _reset_executors(self):
+        """Shut down both executor pools (cancels queued tasks) and create fresh ones.
+        Called on every disconnect so the next session starts with empty queues."""
+        self.logger.info("Resetting executor pools (cancelling queued tasks)...")
+        # shutdown(wait=False, cancel_futures=True) is Python 3.9+;
+        # fall back to shutdown(wait=False) for older interpreters.
+        for pool, name in ((self._interactive_executor, 'interactive'),
+                           (self._bulk_executor, 'bulk')):
+            try:
+                pool.shutdown(wait=False, cancel_futures=True)
+            except TypeError:
+                pool.shutdown(wait=False)
+            self.logger.debug(f"  {name} pool shut down")
+
+        self._interactive_executor = ThreadPoolExecutor(
+            max_workers=self._int_threads, thread_name_prefix='snmp-int')
+        self._bulk_executor = ThreadPoolExecutor(
+            max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')
+        self._executor = self._interactive_executor
+        self.logger.info("Executor pools reset — ready for next connection")
     
     def _get_capabilities(self) -> list[str]:
         """Return list of agent capabilities."""
@@ -632,7 +720,16 @@ class PyPNMAgent:
         
         if self.tftp_ssh:
             caps.append('tftp_get')
-        
+
+        # Local file retrieval from TFTP root — always available
+        caps.append('file_get')
+
+        # pnm_file_get: only announced when the TFTP root is readable
+        # so the API can safely route PNM file fetches to the right agent.
+        tftp_root = os.environ.get('TFTP_ROOT', self.config.tftp_path)
+        if os.path.isdir(tftp_root) and os.access(tftp_root, os.R_OK):
+            caps.append('pnm_file_get')
+
         # CMTS capabilities - agent provides SNMP walks, PyPNM API handles logic
         if self.config.cmts_enabled:
             caps.extend(['cmts_snmp_walk', 'cmts_snmp_get'])
@@ -655,10 +752,16 @@ class PyPNMAgent:
                 'request_id': request_id,
                 'error': f'Unknown command: {command}'
             }
-            ws.send(json.dumps(response))
+            with self._send_lock:
+                ws.send(json.dumps(response))
             return
 
         def _run_handler():
+            # Capture session id and ws at dispatch time — if either has changed
+            # by the time we finish (i.e. we've disconnected and reconnected),
+            # drop the response instead of trying to send on a dead socket.
+            dispatched_session = self._session_id
+            dispatched_ws = ws
             try:
                 self.logger.debug(f"Executing {command} for {request_id}")
                 result = handler(params)
@@ -679,8 +782,16 @@ class PyPNMAgent:
                     'request_id': request_id,
                     'error': str(e)
                 }
+            # Guard: don't send on a stale websocket from a previous session
+            if self._session_id != dispatched_session or self.ws is not dispatched_ws:
+                self.logger.warning(
+                    f"Dropping response for {request_id} — session changed "
+                    f"(was #{dispatched_session}, now #{self._session_id})"
+                )
+                return
             try:
-                ws.send(json.dumps(response))
+                with self._send_lock:
+                    dispatched_ws.send(json.dumps(response))
                 self.logger.info(f"Response sent for {request_id}")
             except Exception as e:
                 self.logger.error(f"Failed to send response for {request_id}: {e}")
@@ -1084,6 +1195,48 @@ class PyPNMAgent:
                 'error': str(e)
             }
     
+    def _handle_file_get(self, params: dict) -> dict:
+        """
+        Read a PNM capture file from the local TFTP root and return its content
+        as base64.  Used by the PyPNM API when PNM_RETRIEVAL_METHOD=agent.
+
+        params:
+            filename  (str)  bare filename or glob prefix (e.g. 'rxmer_xxxx')
+            glob      (bool) if True, return newest file matching 'filename*'
+        """
+        import base64
+        import glob as _glob
+
+        tftp_root = os.environ.get('TFTP_ROOT', self.config.tftp_path)
+        filename  = params.get('filename', '')
+        use_glob  = params.get('glob', True)   # always glob — CMTS adds timestamps
+
+        if not filename:
+            return {'success': False, 'error': 'filename param required'}
+
+        if use_glob:
+            pattern = os.path.join(tftp_root, f"{filename}*")
+            matches = sorted(_glob.glob(pattern), reverse=True)  # newest first
+            if not matches:
+                return {'success': False, 'error': f'No files matching {filename}* in {tftp_root}'}
+            fpath = matches[0]
+        else:
+            fpath = os.path.join(tftp_root, filename)
+
+        try:
+            with open(fpath, 'rb') as fh:
+                data = fh.read()
+            return {
+                'success':        True,
+                'filename':       os.path.basename(fpath),
+                'size':           len(data),
+                'content_base64': base64.b64encode(data).decode(),
+            }
+        except FileNotFoundError:
+            return {'success': False, 'error': f'File not found: {fpath}'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
     def _handle_cmts_command(self, params: dict) -> dict:
         """Execute command on CMTS via SSH."""
         cmts_host = params.get('cmts_host') or params.get('cmts_ip')
@@ -1252,7 +1405,7 @@ class PyPNMAgent:
                 self.logger.error("Failed to establish SSH tunnel, cannot continue")
                 return
 
-        if self.config.peer_tunnel_enabled:
+        if self.config.peer_tunnels:
             self._setup_peer_tunnel()  # non-fatal -- log and continue
         
         ws_url = self._get_websocket_url()
@@ -1294,14 +1447,16 @@ class PyPNMAgent:
             self.tftp_ssh.close()
         if self.pypnm_tunnel_monitor:
             self.pypnm_tunnel_monitor.stop()
-        if self.peer_tunnel_monitor:
-            self.peer_tunnel_monitor.stop()
-        if self.peer_tunnel:
-            self.peer_tunnel.stop_tunnel()
+        for monitor in self.peer_tunnel_monitors:
+            monitor.stop()
+        for tunnel in self.peer_tunnels:
+            tunnel.stop_tunnel()
+        self.peer_tunnel_monitors.clear()
+        self.peer_tunnels.clear()
         if self.pypnm_tunnel:
             self.pypnm_tunnel.stop_tunnel()
-        self._executor.shutdown(wait=False)
-        
+        self._reset_executors()
+
         self.logger.info("Agent stopped")
 
 
@@ -1355,12 +1510,22 @@ def main():
     # Log configuration summary
     logger.info(f"Agent ID: {config.agent_id}")
     logger.info(f"PyPNM Server: {config.pypnm_server_url}")
-    logger.info(f"SSH Tunnel: {'enabled' if config.pypnm_ssh_tunnel_enabled else 'disabled'}")
-    if config.pypnm_ssh_tunnel_enabled:
-        logger.info(f"  SSH Host: {config.pypnm_ssh_host}")
+    logger.info(f"PyPNM SSH Tunnel: {'enabled -> ' + config.pypnm_ssh_host if config.pypnm_ssh_tunnel_enabled else 'disabled'}")
+    logger.info(f"CMTS SNMP: {'enabled' if config.cmts_enabled else 'disabled'}")
+    logger.info(f"CM access: {'enabled' if config.cm_enabled else 'disabled'}")
     logger.info(f"CM Proxy: {config.cm_proxy_host or 'not configured'}")
-    logger.info(f"CMTS SNMP Direct: {config.cmts_enabled}")
     logger.info(f"TFTP SSH: {config.tftp_ssh_host or 'not configured'}")
+    enabled_peer_tunnels = [pt for pt in config.peer_tunnels if pt.get('enabled', True)]
+    if enabled_peer_tunnels:
+        logger.info(f"Peer reverse tunnels: {len(enabled_peer_tunnels)} configured")
+        for pt in enabled_peer_tunnels:
+            logger.info(
+                f"  [{pt.get('label', 'peer')}]"
+                f" -R {pt.get('remote_port', 8000)}:localhost:{pt.get('local_port', 8000)}"
+                f" via {pt.get('ssh_user', '')}@{pt.get('ssh_host')}:{pt.get('ssh_port', 22)}"
+            )
+    else:
+        logger.info("Peer reverse tunnels: none configured")
     
     agent = PyPNMAgent(config)
     

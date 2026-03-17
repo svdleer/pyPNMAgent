@@ -1,0 +1,17 @@
+{
+    "agent_id": "file-agent",
+    "_comment": "Get-file agent (former modem-agent). PyPNM is reached via the reverse SSH tunnel opened by the CMTS agent on port 8001 of this host.",
+    "pypnm_server": {
+        "url": "ws://127.0.0.1:8001/api/agents/ws",
+        "_comment_url": "Reaches PyPNM via the CMTS agent reverse tunnel: -R 8001:localhost:8000",
+        "auth_token": "of-en-SEVEN-Shnok-EXCLAMATION_POINT-Op"
+    },
+    "cmts_access": { "enabled": false },
+    "cm_access": {
+        "enabled": true,
+        "community": "m0d3m1nf0"
+    },
+    "tftp_server": {
+        "tftp_path": "/tmp"
+    }
+}

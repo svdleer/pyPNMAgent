@@ -10,6 +10,9 @@ build/
 
 # Config files with secrets
 agent_config.json
+agent_config.cmts-agent.json
+agent_config.cm-agent.json
+agent_config.modem-agent.json
 config/
 
 # Virtual environments
@@ -31,3 +34,9 @@ logs/
 *.pem
 id_*
 # Committed DOCSIS MIBs for agent SNMP operations
+
+# local env overrides (keep secrets out of git)
+.env
+
+# local tunnel secrets — never commit
+.env
