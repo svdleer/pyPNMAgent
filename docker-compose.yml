@@ -10,7 +10,7 @@ services:
     network_mode: host
     environment:
       - AGENT_ID=pypnm-agent-01
-      - SERVER_URL=ws://localhost:5050/ws/agent
+      - PYPNM_SERVER_URL=ws://localhost:8000/api/agents/ws
       - PYPNM_CMTS_ENABLED=true
       - PYPNM_CM_ENABLED=false
     volumes:

@@ -4,6 +4,8 @@
 # This agent runs on the Jump Server and connects OUT to the GUI Server
 # via WebSocket. It executes SNMP/SSH commands and returns results.
 
+from __future__ import annotations  # enables PEP 604/585 syntax on Python 3.8/3.9
+
 import json
 import logging
 import os
@@ -73,6 +75,16 @@ class AgentConfig:
     pypnm_tunnel_local_port: int = 8080
     pypnm_tunnel_remote_port: int = 8080
     
+    # Reverse SSH tunnel — opens a port on a peer server (e.g. Server B)
+    # so that Server B's agent can reach PyPNM via localhost there.
+    peer_tunnel_enabled: bool = False
+    peer_tunnel_ssh_host: Optional[str] = None   # Server B hostname
+    peer_tunnel_ssh_port: int = 22
+    peer_tunnel_ssh_user: Optional[str] = None
+    peer_tunnel_ssh_key: Optional[str] = None
+    peer_tunnel_local_port: int = 8000            # local port to expose (PyPNM)
+    peer_tunnel_remote_port: int = 8000           # port opened on Server B
+
     # CMTS Access - for SNMP to CMTS devices
     cmts_enabled: bool = True
     cmts_community: str = 'public'
@@ -110,10 +122,35 @@ class AgentConfig:
     tftp_path: str = "/tftpboot"
     
     @classmethod
+    def _parse_peer_tunnel(cls, data: dict, expand_path) -> dict:
+        """Parse peer_tunnel section from config dict."""
+        pt = data.get('peer_tunnel', {})
+        if not pt:
+            return {}
+        return {
+            'peer_tunnel_enabled': pt.get('enabled', False),
+            'peer_tunnel_ssh_host': pt.get('ssh_host'),
+            'peer_tunnel_ssh_port': pt.get('ssh_port', 22),
+            'peer_tunnel_ssh_user': pt.get('ssh_user'),
+            'peer_tunnel_ssh_key': expand_path(pt.get('ssh_key_file') or pt.get('key_file')),
+            'peer_tunnel_local_port': pt.get('local_port', 8000),
+            'peer_tunnel_remote_port': pt.get('remote_port', 8000),
+        }
+
+    @classmethod
     def from_file(cls, path: str) -> 'AgentConfig':
         """Load configuration from JSON file."""
         with open(path) as f:
-            data = json.load(f)
+            raw = f.read()
+        # Strip trailing garbage (e.g. from broken heredoc installs)
+        idx = raw.rfind('}')
+        if idx == -1:
+            raise ValueError(f"No closing '}}' found in {path} — file appears empty or corrupt")
+        raw = raw[:idx + 1]
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in {path}: {e}") from e
         
         # Expand ~ in paths
         def expand_path(p):
@@ -142,9 +179,11 @@ class AgentConfig:
             pypnm_ssh_host=tunnel_config.get('ssh_host'),
             pypnm_ssh_port=tunnel_config.get('ssh_port', 22),
             pypnm_ssh_user=tunnel_config.get('ssh_user'),
-            pypnm_ssh_key=expand_path(tunnel_config.get('ssh_key_file')),
+            pypnm_ssh_key=expand_path(tunnel_config.get('ssh_key_file') or tunnel_config.get('key_file')),
             pypnm_tunnel_local_port=tunnel_config.get('local_port', 8080),
             pypnm_tunnel_remote_port=tunnel_config.get('remote_port', 8080),
+            # Reverse tunnel to peer agent server
+            **cls._parse_peer_tunnel(data, expand_path),
             # CMTS Access
             cmts_enabled=cmts.get('enabled', cmts.get('snmp_direct', True)),
             cmts_community=cmts.get('community', 'public'),
@@ -184,7 +223,7 @@ class AgentConfig:
         
         return cls(
             agent_id=os.environ.get('PYPNM_AGENT_ID', 'agent-01'),
-            pypnm_server_url=os.environ.get('PYPNM_SERVER_URL', 'ws://127.0.0.1:5050/ws/agent'),
+            pypnm_server_url=os.environ.get('PYPNM_SERVER_URL', 'ws://127.0.0.1:8000/api/agents/ws'),
             auth_token=os.environ.get('PYPNM_AUTH_TOKEN', 'dev-token'),
             reconnect_interval=int(os.environ.get('PYPNM_RECONNECT_INTERVAL', '5')),
             # SSH Tunnel to PyPNM
@@ -328,9 +367,12 @@ class PyPNMAgent:
         
         self._executor = ThreadPoolExecutor(max_workers=20, thread_name_prefix='snmp')
         
-        # SSH Tunnel
+        # SSH Tunnel to PyPNM
         self.pypnm_tunnel = None
         self.pypnm_tunnel_monitor = None
+        # Reverse tunnel to peer agent server
+        self.peer_tunnel = None
+        self.peer_tunnel_monitor = None
         
         # CM Proxy (SSH to reach modems)
         self.cm_proxy: Optional[SSHProxyExecutor] = None
@@ -378,6 +420,44 @@ class PyPNMAgent:
             'cmts_command': self._handle_cmts_command,
         }
     
+    def _setup_peer_tunnel(self) -> bool:
+        """Set up reverse SSH tunnel to a peer agent server (e.g. Server B)."""
+        if not self.config.peer_tunnel_enabled:
+            return True
+        if not self.config.peer_tunnel_ssh_host:
+            self.logger.error("peer_tunnel enabled but no ssh_host configured")
+            return False
+        try:
+            from ssh_tunnel import SSHTunnelConfig, SSHTunnelManager, TunnelMonitor
+            tunnel_config = SSHTunnelConfig(
+                ssh_host=self.config.peer_tunnel_ssh_host,
+                ssh_port=self.config.peer_tunnel_ssh_port,
+                ssh_user=self.config.peer_tunnel_ssh_user,
+                ssh_key_file=self.config.peer_tunnel_ssh_key,
+                local_port=self.config.peer_tunnel_local_port,
+                remote_host='127.0.0.1',
+                remote_port=self.config.peer_tunnel_remote_port,
+                reverse=True,
+            )
+            self.peer_tunnel = SSHTunnelManager(tunnel_config, use_paramiko=False)
+            if not self.peer_tunnel.start_tunnel():
+                self.logger.error("Failed to start peer reverse SSH tunnel")
+                return False
+            self.peer_tunnel_monitor = TunnelMonitor(self.peer_tunnel)
+            self.peer_tunnel_monitor.start()
+            self.logger.info(
+                f"Peer reverse tunnel active: "
+                f"{self.config.peer_tunnel_ssh_host}:{self.config.peer_tunnel_remote_port} "
+                f"→ localhost:{self.config.peer_tunnel_local_port}"
+            )
+            return True
+        except ImportError:
+            self.logger.error("ssh_tunnel module not available")
+            return False
+        except Exception as e:
+            self.logger.error(f"Failed to set up peer tunnel: {e}")
+            return False
+
     def _setup_pypnm_tunnel(self) -> bool:
         """Set up SSH tunnel to PyPNM Server if configured."""
         if not self.config.pypnm_ssh_tunnel_enabled:
@@ -423,7 +503,7 @@ class PyPNMAgent:
         """Get the WebSocket URL (through tunnel if enabled)."""
         if self.config.pypnm_ssh_tunnel_enabled:
             # Connect to local tunnel endpoint
-            return f"ws://127.0.0.1:{self.config.pypnm_tunnel_local_port}/ws/agent"
+            return f"ws://127.0.0.1:{self.config.pypnm_tunnel_local_port}/api/agents/ws"
         else:
             return self.config.pypnm_server_url
     
@@ -511,11 +591,12 @@ class PyPNMAgent:
         request_id = data.get('request_id')
         command = data.get('command')
         params = data.get('params', {})
-        
+
         self.logger.info(f"Received command: {request_id} - {command}")
-        
+
         handler = self.handlers.get(command)
         if not handler:
+            self.logger.warning(f"Unknown command '{command}' for task {request_id}")
             response = {
                 'type': 'error',
                 'request_id': request_id,
@@ -523,18 +604,20 @@ class PyPNMAgent:
             }
             ws.send(json.dumps(response))
             return
-        
+
         def _run_handler():
             try:
+                self.logger.debug(f"Executing {command} for {request_id}")
                 result = handler(params)
+                success = result.get('success', True) if isinstance(result, dict) else True
+                self.logger.info(f"Handler returned for {request_id} (success={success})")
                 response = {
                     'type': 'response',
                     'request_id': request_id,
                     'result': result
                 }
-                self.logger.info(f"Handler returned for {request_id}")
             except Exception as e:
-                self.logger.exception(f"Command execution error: {e}")
+                self.logger.exception(f"Command execution error for {request_id}: {e}")
                 response = {
                     'type': 'error',
                     'request_id': request_id,
@@ -545,7 +628,7 @@ class PyPNMAgent:
                 self.logger.info(f"Response sent for {request_id}")
             except Exception as e:
                 self.logger.error(f"Failed to send response for {request_id}: {e}")
-        
+
         self._executor.submit(_run_handler)
     
     def _handle_ping(self, params: dict) -> dict:
@@ -682,7 +765,8 @@ class PyPNMAgent:
         ip = params.get('ip')
         oids = params.get('oids', [])
         community = params.get('community', 'public')
-        timeout = params.get('timeout', 10)
+        timeout = params.get('timeout', 5)          # 5 s per packet
+        max_reps = params.get('max_repetitions', 500)  # 12k modems / 500 = 24 PDUs per tree
         
         if not ip or not oids:
             return {'success': False, 'error': 'ip and oids required'}
@@ -698,7 +782,7 @@ class PyPNMAgent:
                 results = []
                 async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
                     SnmpEngine(), CommunityData(community), transport, ContextData(),
-                    0, 25, ObjectType(ObjectIdentity(oid))
+                    0, max_reps, ObjectType(ObjectIdentity(oid))
                 ):
                     if errorIndication or errorStatus:
                         break
@@ -1040,6 +1124,9 @@ class PyPNMAgent:
             if not self._setup_pypnm_tunnel():
                 self.logger.error("Failed to establish SSH tunnel, cannot continue")
                 return
+
+        if self.config.peer_tunnel_enabled:
+            self._setup_peer_tunnel()  # non-fatal — log and continue
         
         ws_url = self._get_websocket_url()
         
@@ -1076,6 +1163,10 @@ class PyPNMAgent:
             self.tftp_ssh.close()
         if self.pypnm_tunnel_monitor:
             self.pypnm_tunnel_monitor.stop()
+        if self.peer_tunnel_monitor:
+            self.peer_tunnel_monitor.stop()
+        if self.peer_tunnel:
+            self.peer_tunnel.stop_tunnel()
         if self.pypnm_tunnel:
             self.pypnm_tunnel.stop_tunnel()
         self._executor.shutdown(wait=False)
