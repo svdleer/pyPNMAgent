@@ -29,69 +29,58 @@ except ImportError:
     paramiko = None
     print("WARNING: paramiko not installed. SSH proxy features disabled.")
 
-# pysnmp imports -- v7+ uses v3arch.asyncio, v6 uses hlapi.asyncio
+# pysnmp imports -- requires v7+ (lextudio fork, Python 3.9+)
 import asyncio
 try:
-    # pysnmp >= 7 (requires Python 3.9+)
+    # pysnmp >= 7 (lextudio fork, Python 3.9+) — v3arch.asyncio path
+    # Naming changed across releases: camelCase (7.1.x) → snake_case (7.1.22+)
     from pysnmp.hlapi.v3arch.asyncio import (
         SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
         ObjectType, ObjectIdentity,
-        get_cmd, set_cmd, bulk_walk_cmd,
         Integer32, OctetString, Unsigned32, Counter32, Counter64, Gauge32, TimeTicks, IpAddress
     )
+    import pysnmp.hlapi.v3arch.asyncio as _snmp_mod
+
+    def _pick(*names):
+        for n in names:
+            v = getattr(_snmp_mod, n, None)
+            if v is not None:
+                return v
+        raise ImportError(f"None of {names} found in pysnmp.hlapi.v3arch.asyncio")
+
+    get_cmd       = _pick('get_cmd',       'getCmd')
+    set_cmd       = _pick('set_cmd',       'setCmd')
+    bulk_walk_cmd = _pick('bulk_walk_cmd', 'bulkWalkCmd', 'walkCmd')
+
     PYSNMP_AVAILABLE = True
-    print("INFO: pysnmp v7+ loaded (v3arch.asyncio)", flush=True)
-except ImportError:
+    import pysnmp as _pysnmp_pkg
+    print(f"INFO: pysnmp {_pysnmp_pkg.__version__} loaded (v3arch.asyncio)", flush=True)
+except (ImportError, Exception) as _pysnmp_err:
+    # Check if pysnmp is installed at all (could be v6 or missing)
     try:
-        # pysnmp 6.x (Python 3.8 compatible)
-        from pysnmp.hlapi.asyncio import (
-            SnmpEngine, CommunityData, UdpTransportTarget as _UdpTransportTarget, ContextData,
-            ObjectType, ObjectIdentity,
-            getCmd, setCmd, bulkCmd,
-            Integer32, OctetString, Unsigned32, Counter32, Counter64, Gauge32, TimeTicks, IpAddress
+        import pysnmp as _pysnmp_pkg
+        _ver = getattr(_pysnmp_pkg, '__version__', 'unknown')
+        print(
+            f"ERROR: pysnmp {_ver} is installed but failed to import required symbols: {_pysnmp_err}\n"
+            f"       This agent requires pysnmp v7+ (lextudio fork) on Python 3.9+.\n"
+            f"       To reinstall:\n"
+            f"         pyenv local 3.11.9\n"
+            f"         rm -rf venv && python -m venv venv\n"
+            f"         venv/bin/pip install -r requirements.txt",
+            flush=True
         )
-        # v6 uses direct constructor; wrap to match v7's `await UdpTransportTarget.create()` syntax
-        class UdpTransportTarget(_UdpTransportTarget):
-            @classmethod
-            async def create(cls, addr, timeout=5, retries=1, **kw):
-                return cls(addr, timeout=timeout, retries=retries, **kw)
-        # Alias to v7 names
-        get_cmd = getCmd
-        set_cmd = setCmd
-        # v6 has bulkCmd (one PDU) but not bulk_walk_cmd -- implement pagination
-        async def bulk_walk_cmd(engine, community, transport, context,
-                                non_repeaters, max_repetitions, *var_binds):
-            """Paginate bulkCmd to emulate v7 bulk_walk_cmd async generator."""
-            try:
-                base_oid = str(var_binds[0][0])
-            except Exception:
-                base_oid = str(var_binds[0])
-            current_vbs = list(var_binds)
-            while True:
-                errorIndication, errorStatus, errorIndex, varBindTable = await bulkCmd(
-                    engine, community, transport, context,
-                    non_repeaters, max_repetitions, *current_vbs
-                )
-                if errorIndication or errorStatus:
-                    yield (errorIndication, errorStatus, errorIndex, [])
-                    return
-                if not varBindTable:
-                    return
-                last_oid = None
-                for varBind in varBindTable:
-                    oid_str = str(varBind[0])
-                    if not oid_str.startswith(base_oid):
-                        return
-                    yield (None, None, 0, [varBind])
-                    last_oid = varBind[0]
-                if last_oid is None:
-                    return
-                current_vbs = [ObjectType(ObjectIdentity(str(last_oid)))]
-        PYSNMP_AVAILABLE = True
-        print("INFO: pysnmp v6 loaded (hlapi.asyncio) - Python 3.8 compatible", flush=True)
     except ImportError:
-        PYSNMP_AVAILABLE = False
-        print("WARNING: pysnmp not installed. Run: pip install pysnmp", flush=True)
+        print(
+            "ERROR: pysnmp is not installed.\n"
+            "       Run: pip install pysnmp",
+            flush=True
+        )
+    PYSNMP_AVAILABLE = False
+    raise SystemExit(1)
+
+async def make_transport(ip: str, port: int = 161, timeout: float = 5, retries: int = 1):
+    """Create UdpTransportTarget via create() classmethod (required by pysnmp v7)."""
+    return await UdpTransportTarget.create((ip, port), timeout=timeout, retries=retries)
 
 try:
     import redis
@@ -206,7 +195,14 @@ class AgentConfig:
         def expand_path(p):
             return os.path.expanduser(p) if p else None
         
-        server_config = data.get('pypnm_server') or data.get('gui_server', {})
+        server_config = data.get('pypnm_server') or data.get('gui_server') or {}
+        # Also support flat format: server_url / token at top level
+        if not server_config.get('url') and data.get('server_url'):
+            server_config = {
+                'url': data['server_url'],
+                'auth_token': data.get('token', data.get('auth_token', 'dev-token')),
+                'reconnect_interval': data.get('reconnect_interval', 5),
+            }
         tunnel_config = data.get('pypnm_ssh_tunnel') or data.get('gui_ssh_tunnel', {})
         cmts = data.get('cmts_access', {})
         cm_access = data.get('cm_access', {})
@@ -836,7 +832,7 @@ class PyPNMAgent:
 
         async def do_parallel_walk():
             async def walk_one(oid):
-                transport = await UdpTransportTarget.create((ip, 161), timeout=timeout, retries=0)
+                transport = await make_transport(ip, 161, timeout=timeout, retries=0)
                 results = []
                 async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
                     SnmpEngine(), CommunityData(community), transport, ContextData(),
@@ -845,8 +841,8 @@ class PyPNMAgent:
                     if errorIndication or errorStatus:
                         break
                     for varBind in varBinds:
-                        oid_str = str(varBind[0])
-                        if not oid_str.startswith(oid):
+                        oid_str = str(varBind[0]).lstrip('.')
+                        if not oid_str.startswith(oid.lstrip('.')):
                             return results
                         results.append({
                             'oid': oid_str,
@@ -883,7 +879,7 @@ class PyPNMAgent:
             errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
                 SnmpEngine(),
                 CommunityData(community),
-                await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+                await make_transport(target_ip, 161, timeout=timeout, retries=2),
                 ContextData(),
                 ObjectType(ObjectIdentity(oid))
             )
@@ -908,7 +904,7 @@ class PyPNMAgent:
             async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
                 SnmpEngine(),
                 CommunityData(community),
-                await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+                await make_transport(target_ip, 161, timeout=timeout, retries=2),
                 ContextData(),
                 0, 25,  # non-repeaters, max-repetitions
                 ObjectType(ObjectIdentity(oid)),
@@ -920,9 +916,9 @@ class PyPNMAgent:
                     return {'success': False, 'error': f'{errorStatus.prettyPrint()} at {errorIndex}'}
                 
                 for varBind in varBinds:
-                    oid_str = str(varBind[0])
+                    oid_str = str(varBind[0]).lstrip('.')
                     # Stop if we've walked past the requested OID tree
-                    if not oid_str.startswith(oid):
+                    if not oid_str.startswith(oid.lstrip('.')):
                         break
                     results.append({
                         'oid': oid_str,
@@ -943,7 +939,7 @@ class PyPNMAgent:
             errorIndication, errorStatus, errorIndex, varBinds = await set_cmd(
                 SnmpEngine(),
                 CommunityData(community),
-                await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+                await make_transport(target_ip, 161, timeout=timeout, retries=2),
                 ContextData(),
                 ObjectType(ObjectIdentity(oid), snmp_value)
             )
@@ -969,7 +965,7 @@ class PyPNMAgent:
         async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
             SnmpEngine(),
             CommunityData(community),
-            await UdpTransportTarget.create((target_ip, 161), timeout=timeout, retries=2),
+            await make_transport(target_ip, 161, timeout=timeout, retries=2),
             ContextData(),
             0, max_repetitions,  # non-repeaters, max-repetitions
             ObjectType(ObjectIdentity(oid)),
