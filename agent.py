@@ -437,15 +437,17 @@ class PyPNMAgent:
         self.ws: Optional[websocket.WebSocketApp] = None
         self.running = False
         
-        # Two separate thread pools so background enrichment never starves
-        # interactive GUI tasks.
+        # Three separate thread pools:
         # · interactive_pool — GUI clicks, CMTS walks, RF/ifindex discovery
         # · bulk_pool        — background modem enrichment (snmp_bulk_get)
-        # Tunable via env: AGENT_INTERACTIVE_THREADS / AGENT_BULK_THREADS
+        # · long_pool        — PNM file captures (file_get/pnm_file_get), may run 30-90 s
+        # Tunable via env: AGENT_INTERACTIVE_THREADS / AGENT_BULK_THREADS / AGENT_LONG_THREADS
         self._int_threads  = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 20))
         self._bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 10))
+        self._long_threads = int(os.environ.get('AGENT_LONG_THREADS', 10))
         self._interactive_executor = ThreadPoolExecutor(max_workers=self._int_threads,  thread_name_prefix='snmp-int')
         self._bulk_executor        = ThreadPoolExecutor(max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')
+        self._long_executor        = ThreadPoolExecutor(max_workers=self._long_threads, thread_name_prefix='snmp-long')
         # Legacy alias kept so any direct references still work
         self._executor = self._interactive_executor
         # websocket-client ws.send() is NOT thread-safe — serialise all sends
@@ -683,7 +685,8 @@ class PyPNMAgent:
         # shutdown(wait=False, cancel_futures=True) is Python 3.9+;
         # fall back to shutdown(wait=False) for older interpreters.
         for pool, name in ((self._interactive_executor, 'interactive'),
-                           (self._bulk_executor, 'bulk')):
+                           (self._bulk_executor, 'bulk'),
+                           (self._long_executor, 'long')):
             try:
                 pool.shutdown(wait=False, cancel_futures=True)
             except TypeError:
@@ -694,6 +697,8 @@ class PyPNMAgent:
             max_workers=self._int_threads, thread_name_prefix='snmp-int')
         self._bulk_executor = ThreadPoolExecutor(
             max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')
+        self._long_executor = ThreadPoolExecutor(
+            max_workers=self._long_threads, thread_name_prefix='snmp-long')
         self._executor = self._interactive_executor
         self.logger.info("Executor pools reset — ready for next connection")
     
@@ -795,10 +800,14 @@ class PyPNMAgent:
             except Exception as e:
                 self.logger.error(f"Failed to send response for {request_id}: {e}")
 
-        # Route bulk (enrichment) tasks to the dedicated pool so they can
-        # never starve the 10-worker interactive pool used for GUI requests.
+        # Route tasks to the appropriate pool:
+        #   long  — file_get / pnm_file_get (PNM captures, 30–90 s)
+        #   bulk  — background modem enrichment (snmp_bulk_get)
+        #   interactive — everything else (GUI clicks, CMTS walks)
         priority = data.get('priority', 'interactive')
-        if priority == 'bulk':
+        if priority == 'long' or command in ('file_get', 'pnm_file_get'):
+            self._long_executor.submit(_run_handler)
+        elif priority == 'bulk':
             self._bulk_executor.submit(_run_handler)
         else:
             self._interactive_executor.submit(_run_handler)
