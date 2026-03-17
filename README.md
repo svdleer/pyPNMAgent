@@ -13,6 +13,11 @@ Remote agent for [PyPNM](https://github.com/svdleer/PyPNM) that runs on a jump s
 - **Secure Connection** - WebSocket with authentication to PyPNM GUI server
 - **Capability-based Routing** - Advertises capabilities for smart task routing
 
+## Related Repositories
+
+- PyPNM core: https://github.com/svdleer/PyPNM
+- PyPNM GUI: https://github.com/svdleer/PyPNMGui
+
 ## Quick Start
 
 See [INSTALL.md](INSTALL.md) for detailed installation instructions.
