@@ -940,6 +940,7 @@ class PyPNMAgent:
         community = params.get('community', 'public')
         timeout = params.get('timeout', 5)          # 5 s per packet
         max_reps = params.get('max_repetitions', 500)  # 12k modems / 500 = 24 PDUs per tree
+        limit = int(params.get('limit', 10000))
         
         if not ip or not oids:
             return {'success': False, 'error': 'ip and oids required'}
@@ -983,6 +984,8 @@ class PyPNMAgent:
                             'value': self._parse_snmp_value(varBind[1]),
                             'type': type(varBind[1]).__name__
                         })
+                        if len(results) >= limit:
+                            return results
                 return results
 
             async def walk_one_safe(oid):
