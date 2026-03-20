@@ -43,3 +43,7 @@ id_*
 
 # deploy script with real host details — keep example in scripts/
 deploy/push-agent.sh
+
+# Local memory artifacts
+memories/
+/memories/
