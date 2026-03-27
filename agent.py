@@ -841,11 +841,13 @@ class PyPNMAgent:
         }
     
     def _resolve_community(self, params: dict) -> str:
-        """Resolve SNMP community: use task param if explicit, else fall back to agent config."""
+        """Resolve SNMP community: use task param if explicit, else agent's configured community."""
         c = params.get('community')
         if c and c not in ('public', 'private'):
             return c
-        return self.config.cm_community or c or 'private'
+        if self.config.cmts_enabled:
+            return self.config.cmts_community
+        return self.config.cm_community
 
     def _handle_snmp_get(self, params: dict) -> dict:
         """Handle SNMP GET request via pysnmp."""
