@@ -840,13 +840,20 @@ class PyPNMAgent:
             'output': result.stdout
         }
     
+    def _resolve_community(self, params: dict) -> str:
+        """Resolve SNMP community: use task param if explicit, else fall back to agent config."""
+        c = params.get('community')
+        if c and c not in ('public', 'private'):
+            return c
+        return self.config.cm_community or c or 'private'
+
     def _handle_snmp_get(self, params: dict) -> dict:
         """Handle SNMP GET request via pysnmp."""
         target_ip = params.get('target_ip') or params.get('modem_ip')
         if not target_ip:
             return {'success': False, 'error': 'target_ip or modem_ip required'}
         oid = params['oid']
-        community = params.get('community', 'private')
+        community = self._resolve_community(params)
         
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
@@ -859,7 +866,7 @@ class PyPNMAgent:
         if not target_ip:
             return {'success': False, 'error': 'target_ip or modem_ip required'}
         oid = params['oid']
-        community = params.get('community', 'private')
+        community = self._resolve_community(params)
         
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
@@ -874,7 +881,7 @@ class PyPNMAgent:
         oid = params['oid']
         value = params['value']
         value_type = params.get('type', 'i')
-        community = params.get('community', 'private')
+        community = self._resolve_community(params)
         
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
@@ -900,7 +907,7 @@ class PyPNMAgent:
         sets = params.get('sets', [])
         if not sets:
             return {'success': False, 'error': 'sets list required'}
-        community = params.get('community', 'private')
+        community = self._resolve_community(params)
         timeout = params.get('timeout', 5)
 
         if not PYSNMP_AVAILABLE:
@@ -930,7 +937,7 @@ class PyPNMAgent:
         target_ip = params.get('target_ip') or params.get('modem_ip')
         if not target_ip:
             return {'success': False, 'error': 'target_ip or modem_ip required'}
-        community = params.get('community', 'private')
+        community = self._resolve_community(params)
         timeout = params.get('timeout', 5)
         retries = params.get('retries', 2)  # 0 = fail-fast (e.g. enrichment), 2 = default
         # Limit concurrent SNMP requests to avoid overwhelming the modem
@@ -965,7 +972,7 @@ class PyPNMAgent:
         """Handle SNMP BULK WALK for efficient table retrieval (e.g., CMTS modem table)."""
         target_ip = params['target_ip']
         oid = params['oid']
-        community = params.get('community', 'public')
+        community = self._resolve_community(params)
         max_repetitions = params.get('max_repetitions', 25)
         limit = params.get('limit', 10000)
         timeout = params.get('timeout', 10)
@@ -1000,7 +1007,7 @@ class PyPNMAgent:
         """Walk multiple OID trees concurrently via asyncio."""
         ip = params.get('ip')
         oids = params.get('oids', [])
-        community = params.get('community', 'public')
+        community = self._resolve_community(params)
         timeout = params.get('timeout', 5)          # 5 s per packet
         max_reps = params.get('max_repetitions', 500)  # 12k modems / 500 = 24 PDUs per tree
         limit = int(params.get('limit', 10000))
