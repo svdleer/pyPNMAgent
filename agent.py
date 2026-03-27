@@ -1071,8 +1071,12 @@ class PyPNMAgent:
                     self.logger.warning(f"walk_one error OID {oid} on {ip}: {e}")
                     return []
 
-            results_list = await asyncio.gather(*[walk_one_safe(oid) for oid in oids])
-            all_results = dict(zip(oids, results_list))
+            # Serialize walks against the same modem — cable modems have
+            # limited SNMP capacity and drop packets when hit with multiple
+            # concurrent bulk walks, causing timeouts.
+            all_results = {}
+            for oid in oids:
+                all_results[oid] = await walk_one_safe(oid)
             non_empty = sum(1 for v in all_results.values() if v)
             success = non_empty > 0
 
