@@ -1075,10 +1075,21 @@ class PyPNMAgent:
             # limited SNMP capacity and drop packets when hit with multiple
             # concurrent bulk walks, causing timeouts.
             all_results = {}
+            walk_durations = {}
             for oid in oids:
+                t0 = asyncio.get_event_loop().time()
                 all_results[oid] = await walk_one_safe(oid)
+                elapsed = asyncio.get_event_loop().time() - t0
+                walk_durations[oid] = round(elapsed, 2)
             non_empty = sum(1 for v in all_results.values() if v)
             success = non_empty > 0
+
+            # Log per-OID timing so we can identify slow MIBs
+            dur_summary = ', '.join(
+                f"{oid.split('.')[-2]}.{oid.split('.')[-1]}={walk_durations[oid]:.1f}s({len(all_results[oid])}rows)"
+                for oid in oids
+            )
+            self.logger.info(f"Walk durations for {ip}: total={sum(walk_durations.values()):.1f}s | {dur_summary}")
 
             # Build a human-readable summary for callers
             warnings = []
@@ -1101,7 +1112,7 @@ class PyPNMAgent:
                         f"{len(errors)} OIDs had errors"
                     )
 
-            return {'success': success, 'results': all_results, 'warnings': warnings}
+            return {'success': success, 'results': all_results, 'warnings': warnings, 'walk_durations': walk_durations}
         
         try:
             result = asyncio.run(do_parallel_walk())
