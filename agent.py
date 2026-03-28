@@ -13,6 +13,7 @@ import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -95,6 +96,55 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('PyPNM-Agent')
+
+
+class WebSocketLogHandler(logging.Handler):
+    """Streams log records to PyPNM API over the agent's existing WebSocket.
+
+    Keeps a local ring buffer (default 500) so recent logs survive even
+    if the WS is temporarily disconnected.  The handler is installed once
+    and the ``ws`` reference is swapped on reconnect.
+    """
+
+    MAX_BUFFER: int = 500
+
+    def __init__(self, agent_id: str, level: int = logging.DEBUG) -> None:
+        super().__init__(level)
+        self.agent_id = agent_id
+        self._ws: Any = None
+        self._send_lock: threading.Lock | None = None
+        self._buffer: deque[dict[str, Any]] = deque(maxlen=self.MAX_BUFFER)
+
+    def attach(self, ws: Any, send_lock: threading.Lock) -> None:
+        """Point the handler at the current WebSocket + send lock."""
+        self._ws = ws
+        self._send_lock = send_lock
+
+    def detach(self) -> None:
+        self._ws = None
+
+    def emit(self, record: logging.LogRecord) -> None:
+        entry = {
+            "ts": record.created,
+            "level": record.levelname,
+            "name": record.name,
+            "msg": self.format(record),
+        }
+        self._buffer.append(entry)
+        ws = self._ws
+        lock = self._send_lock
+        if ws and lock:
+            try:
+                msg = json.dumps({"type": "log", "agent_id": self.agent_id, "entry": entry})
+                with lock:
+                    ws.send(msg)
+            except Exception:
+                pass  # best-effort; log is still in the ring buffer
+
+    def get_recent(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Return up to *limit* recent log entries from the ring buffer."""
+        items = list(self._buffer)
+        return items[-limit:]
 
 
 @dataclass
@@ -461,6 +511,11 @@ class PyPNMAgent:
         # detect they belong to a previous session and drop their response.
         self._session_id = 0
         
+        # WebSocket log streaming — sends log records to API for remote debugging
+        self._ws_log_handler = WebSocketLogHandler(agent_id=config.agent_id, level=logging.DEBUG)
+        self._ws_log_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        logging.getLogger('PyPNM-Agent').addHandler(self._ws_log_handler)
+        
         # SSH Tunnel to PyPNM
         self.pypnm_tunnel = None
         self.pypnm_tunnel_monitor = None
@@ -645,6 +700,7 @@ class PyPNMAgent:
             'capabilities': self._get_capabilities()
         }
         ws.send(json.dumps(auth_msg))
+        self._ws_log_handler.attach(ws, self._send_lock)
     
     def _on_message(self, ws, message):
         """Called when a message is received."""
@@ -681,6 +737,7 @@ class PyPNMAgent:
     def _on_close(self, ws, close_status_code, close_msg):
         """Called when connection is closed — reset executor pools so queued tasks
         from this session are cancelled and threads are reclaimed before reconnect."""
+        self._ws_log_handler.detach()
         self.logger.warning(f"Connection closed (session #{self._session_id}): {close_status_code} - {close_msg}")
         self._reset_executors()
 
@@ -844,9 +901,12 @@ class PyPNMAgent:
         """Resolve SNMP community: use task param if explicit, else agent's configured community."""
         c = params.get('community')
         if c and c not in ('public', 'private'):
+            self.logger.debug(f"_resolve_community: using explicit community={c}")
             return c
         if self.config.cmts_enabled:
+            self.logger.debug(f"_resolve_community: using cmts_community={self.config.cmts_community}")
             return self.config.cmts_community
+        self.logger.debug(f"_resolve_community: using cm_community={self.config.cm_community}")
         return self.config.cm_community
 
     def _handle_snmp_get(self, params: dict) -> dict:
@@ -944,6 +1004,7 @@ class PyPNMAgent:
         retries = params.get('retries', 2)  # 0 = fail-fast (e.g. enrichment), 2 = default
         # Limit concurrent SNMP requests to avoid overwhelming the modem
         max_concurrent = params.get('max_concurrent', 10)
+        self.logger.debug(f"snmp_bulk_get: target={target_ip} community={community} oids={len(oids)} timeout={timeout} retries={retries}")
         
         # Use pysnmp
         if not PYSNMP_AVAILABLE:
