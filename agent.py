@@ -951,25 +951,68 @@ class PyPNMAgent:
         self.logger.info(f"ping_sweep: {len(targets)} targets, timeout={timeout}s, concurrent={concurrent}")
         try:
             from icmplib import multiping
-            results = multiping(
-                targets,
-                count=count,
-                timeout=timeout,
-                concurrent_tasks=concurrent,
-                privileged=False,  # use UDP datagram sockets (no root needed)
-            )
-            reachable = [h.address for h in results if h.is_alive]
-            unreachable = [h.address for h in results if not h.is_alive]
-            self.logger.info(f"ping_sweep done: {len(reachable)}/{len(targets)} reachable")
-            return {
-                'success': True,
-                'reachable': reachable,
-                'unreachable': unreachable,
-                'total': len(targets),
-            }
+            # Try privileged=False first (needs net.ipv4.ping_group_range),
+            # fall back to privileged=True (needs CAP_NET_RAW or root).
+            for privileged in (False, True):
+                try:
+                    results = multiping(
+                        targets,
+                        count=count,
+                        timeout=timeout,
+                        concurrent_tasks=concurrent,
+                        privileged=privileged,
+                    )
+                    reachable = [h.address for h in results if h.is_alive]
+                    unreachable = [h.address for h in results if not h.is_alive]
+                    self.logger.info(f"ping_sweep done (privileged={privileged}): {len(reachable)}/{len(targets)} reachable")
+                    return {
+                        'success': True,
+                        'reachable': reachable,
+                        'unreachable': unreachable,
+                        'total': len(targets),
+                    }
+                except PermissionError:
+                    continue
+                except OSError as e:
+                    if 'not permitted' in str(e).lower() or 'operation not permitted' in str(e).lower():
+                        continue
+                    raise
+            # Both modes failed — fall through to subprocess fallback
+            raise PermissionError("icmplib needs root or net.ipv4.ping_group_range")
         except Exception as e:
-            self.logger.error(f"ping_sweep failed: {e}")
-            return {'success': False, 'error': str(e)}
+            self.logger.warning(f"icmplib failed ({e}), falling back to subprocess ping")
+
+        # Fallback: concurrent subprocess ping (no special permissions needed)
+        import asyncio
+        reachable: list[str] = []
+
+        async def _ping_one(ip: str, sem: asyncio.Semaphore):
+            async with sem:
+                try:
+                    proc = await asyncio.create_subprocess_exec(
+                        'ping', '-c', str(count), '-W', str(max(1, int(timeout))), ip,
+                        stdout=asyncio.subprocess.DEVNULL,
+                        stderr=asyncio.subprocess.DEVNULL,
+                    )
+                    await asyncio.wait_for(proc.wait(), timeout=timeout + 2)
+                    if proc.returncode == 0:
+                        reachable.append(ip)
+                except Exception:
+                    pass
+
+        async def _run_all():
+            sem = asyncio.Semaphore(concurrent)
+            await asyncio.gather(*[_ping_one(ip, sem) for ip in targets])
+
+        asyncio.run(_run_all())
+        unreachable = [ip for ip in targets if ip not in set(reachable)]
+        self.logger.info(f"ping_sweep done (subprocess): {len(reachable)}/{len(targets)} reachable")
+        return {
+            'success': True,
+            'reachable': reachable,
+            'unreachable': unreachable,
+            'total': len(targets),
+        }
     
     def _resolve_community(self, params: dict) -> str:
         """Resolve SNMP community: use task param if explicit, else agent's configured community."""
