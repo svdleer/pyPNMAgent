@@ -599,6 +599,7 @@ class PyPNMAgent:
             'snmp_bulk_get': self._handle_snmp_bulk_get,
             'snmp_bulk_walk': self._handle_snmp_bulk_walk,
             'snmp_parallel_walk': self._handle_snmp_parallel_walk,
+            'ping_sweep': self._handle_ping_sweep,
             'tftp_get': self._handle_tftp_get,
             'file_get': self._handle_file_get,
             'pnm_file_get': self._handle_file_get,
@@ -929,6 +930,46 @@ class PyPNMAgent:
             'target': target,
             'output': result.stdout
         }
+
+    def _handle_ping_sweep(self, params: dict) -> dict:
+        """Bulk ICMP ping sweep — returns list of reachable IPs.
+
+        Params:
+            targets: list[str]  — IP addresses to probe
+            count: int          — pings per host (default 1)
+            timeout: float      — seconds per host (default 1)
+            concurrent_tasks: int — parallel probes (default 100)
+        """
+        targets = params.get('targets', [])
+        if not targets:
+            return {'success': True, 'reachable': [], 'unreachable': [], 'total': 0}
+
+        count = int(params.get('count', 1))
+        timeout = float(params.get('timeout', 1))
+        concurrent = int(params.get('concurrent_tasks', 100))
+
+        self.logger.info(f"ping_sweep: {len(targets)} targets, timeout={timeout}s, concurrent={concurrent}")
+        try:
+            from icmplib import multiping
+            results = multiping(
+                targets,
+                count=count,
+                timeout=timeout,
+                concurrent_tasks=concurrent,
+                privileged=False,  # use UDP datagram sockets (no root needed)
+            )
+            reachable = [h.address for h in results if h.is_alive]
+            unreachable = [h.address for h in results if not h.is_alive]
+            self.logger.info(f"ping_sweep done: {len(reachable)}/{len(targets)} reachable")
+            return {
+                'success': True,
+                'reachable': reachable,
+                'unreachable': unreachable,
+                'total': len(targets),
+            }
+        except Exception as e:
+            self.logger.error(f"ping_sweep failed: {e}")
+            return {'success': False, 'error': str(e)}
     
     def _resolve_community(self, params: dict) -> str:
         """Resolve SNMP community: use task param if explicit, else agent's configured community."""

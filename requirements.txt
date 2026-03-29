@@ -8,3 +8,4 @@ paramiko>=3.3.0
 redis>=5.0.0
 pysnmp>=6.2.6  # 6.x for Python 3.8, 7.x for Python 3.9+
 pysnmp-mibs>=0.1.6
+icmplib>=3.0
