@@ -137,20 +137,46 @@ class WebSocketLogHandler(logging.Handler):
             "msg": self.format(record),
         }
         self._buffer.append(entry)
-        ws = self._ws
-        lock = self._send_lock
-        if ws and lock:
-            try:
-                msg = json.dumps({"type": "log", "agent_id": self.agent_id, "entry": entry})
-                with lock:
-                    ws.send(msg)
-            except Exception:
-                pass  # best-effort; log is still in the ring buffer
+        # Don't send over WS synchronously — it competes with task response
+        # sends via the shared _send_lock and can starve response delivery.
+        # Logs are batched and flushed periodically by _flush_logs() instead.
 
     def get_recent(self, limit: int = 100) -> list[dict[str, Any]]:
         """Return up to *limit* recent log entries from the ring buffer."""
         items = list(self._buffer)
         return items[-limit:]
+
+    def start_flush_thread(self) -> None:
+        """Start a daemon thread that periodically flushes buffered logs over WS."""
+        self._flush_cursor = len(self._buffer)
+        t = threading.Thread(target=self._flush_loop, daemon=True, name="ws-log-flush")
+        t.start()
+
+    def _flush_loop(self) -> None:
+        """Send batched log entries every 5 seconds, outside the hot path."""
+        while True:
+            time.sleep(5)
+            ws = self._ws
+            lock = self._send_lock
+            if not ws or not lock:
+                continue
+            items = list(self._buffer)
+            to_send = items[self._flush_cursor:]
+            if not to_send:
+                continue
+            self._flush_cursor = len(self._buffer)
+            # Send as a single batch message
+            try:
+                batch = to_send[-200:]  # cap to last 200 per flush
+                msg = json.dumps({
+                    "type": "log_batch",
+                    "agent_id": self.agent_id,
+                    "entries": batch,
+                })
+                with lock:
+                    ws.send(msg)
+            except Exception:
+                pass
 
 
 @dataclass
@@ -521,6 +547,7 @@ class PyPNMAgent:
         self._ws_log_handler = WebSocketLogHandler(agent_id=config.agent_id, level=logging.DEBUG)
         self._ws_log_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
         logging.getLogger('PyPNM-Agent').addHandler(self._ws_log_handler)
+        self._ws_log_handler.start_flush_thread()
         
         # SSH Tunnel to PyPNM
         self.pypnm_tunnel = None
