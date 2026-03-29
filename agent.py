@@ -95,7 +95,13 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+# Ensure the console handler only shows INFO+, even though the logger allows DEBUG
+for _h in logging.root.handlers:
+    _h.setLevel(logging.INFO)
 logger = logging.getLogger('PyPNM-Agent')
+# Allow DEBUG records to reach WebSocketLogHandler (streams to API for remote debugging).
+# Console stays at INFO because the root handler is explicitly set above.
+logger.setLevel(logging.DEBUG)
 
 
 class WebSocketLogHandler(logging.Handler):
