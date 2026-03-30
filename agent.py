@@ -602,6 +602,7 @@ class PyPNMAgent:
             'ping_sweep': self._handle_ping_sweep,
             'tftp_get': self._handle_tftp_get,
             'file_get': self._handle_file_get,
+            'file_list': self._handle_file_list,
             'pnm_file_get': self._handle_file_get,
             'cmts_command': self._handle_cmts_command,
         }
@@ -824,6 +825,7 @@ class PyPNMAgent:
 
         # Local file retrieval from TFTP root — always available
         caps.append('file_get')
+        caps.append('file_list')
 
         # pnm_file_get: only announced when explicitly enabled in config/env
         # AND the TFTP root is actually readable.  cm-agents that only do SNMP
@@ -904,13 +906,13 @@ class PyPNMAgent:
 
         # Route tasks to the appropriate pool:
         #   long  — file_get / pnm_file_get (PNM captures, 30–90 s)
-        #   bulk  — background modem enrichment (snmp_bulk_get)
+        #   bulk  — background modem enrichment (snmp_bulk_get), UTSC file fetch
         #   interactive — everything else (GUI clicks, CMTS walks)
         priority = data.get('priority', 'interactive')
-        if priority == 'long' or command in ('file_get', 'pnm_file_get'):
-            self._long_executor.submit(_run_handler)
-        elif priority == 'bulk':
+        if priority == 'bulk':
             self._bulk_executor.submit(_run_handler)
+        elif priority == 'long' or command in ('file_get', 'pnm_file_get'):
+            self._long_executor.submit(_run_handler)
         else:
             self._interactive_executor.submit(_run_handler)
     
@@ -1462,7 +1464,58 @@ class PyPNMAgent:
                 'success': False,
                 'error': str(e)
             }
-    
+
+    def _handle_file_list(self, params: dict) -> dict:
+        """List PNM capture files matching a glob prefix from the local TFTP root.
+
+        Returns filenames only (no content), so the caller can decide which
+        files to fetch via file_get.  Used by the UTSC spectrum streamer to
+        discover new capture files without the overhead of FTP nlst.
+
+        params:
+            prefix   (str)  filename prefix to glob-match (e.g. 'utsc_')
+            prefixes (list) multiple prefixes to match (alternative to prefix)
+        """
+        import glob as _glob
+
+        roots: list[str] = []
+
+        def _add_root(v: str | None) -> None:
+            if not v:
+                return
+            p = os.path.abspath(os.path.expanduser(v))
+            if p not in roots:
+                roots.append(p)
+
+        _add_root(os.environ.get('TFTP_ROOT'))
+        _add_root(os.environ.get('PYPNM_TFTP_PATH'))
+        _add_root(self.config.tftp_path)
+        for fallback in ('/var/lib/tftpboot', '/tftpboot', '/tmp', '/access/pnmupload', '/pnmupload'):
+            _add_root(fallback)
+
+        prefixes = params.get('prefixes', [])
+        if not prefixes:
+            single = params.get('prefix', '')
+            prefixes = [single] if single else []
+
+        if not prefixes:
+            return {'success': False, 'error': 'prefix or prefixes param required'}
+
+        all_matches: list[str] = []
+        for root in roots:
+            for pfx in prefixes:
+                pattern = os.path.join(root, f"{pfx}*")
+                matches = _glob.glob(pattern)
+                all_matches.extend(os.path.basename(m) for m in matches)
+            if all_matches:
+                break  # Use first root that has any matches
+
+        return {
+            'success': True,
+            'files': sorted(set(all_matches)),
+            'count': len(set(all_matches)),
+        }
+
     def _handle_file_get(self, params: dict) -> dict:
         """
         Read a PNM capture file from the local TFTP root and return its content
