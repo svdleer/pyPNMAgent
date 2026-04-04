@@ -1019,9 +1019,15 @@ class PyPNMAgent:
     def _resolve_community(self, params: dict) -> str:
         """Resolve SNMP community: use task param if explicit, else agent's configured community."""
         c = params.get('community')
-        if c and c not in ('public', 'private'):
+        if c:
             self.logger.debug(f"_resolve_community: using explicit community={c}")
             return c
+        if params.get('target_ip') or params.get('modem_ip'):
+            self.logger.debug(f"_resolve_community: using cm_community={self.config.cm_community}")
+            return self.config.cm_community
+        if params.get('ip') or params.get('cmts_ip'):
+            self.logger.debug(f"_resolve_community: using cmts_community={self.config.cmts_community}")
+            return self.config.cmts_community
         if self.config.cmts_enabled:
             self.logger.debug(f"_resolve_community: using cmts_community={self.config.cmts_community}")
             return self.config.cmts_community
