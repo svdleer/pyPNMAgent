@@ -26,6 +26,9 @@ env/
 *.swp
 *.swo
 
+# GitHub metadata
+.github/
+
 # Logs
 *.log
 logs/
