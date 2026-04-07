@@ -321,6 +321,13 @@ class AgentConfig:
         cm_direct = data.get('cm_direct', {})
         cm_enabled = cm_access.get('enabled', cm_direct.get('enabled', False))
         cm_community = cm_access.get('community', cm_direct.get('community', ''))
+        cmts_community = (
+            cmts.get('community')
+            or os.environ.get('PYPNM_CMTS_COMMUNITY')
+            or os.environ.get('CMTS_SNMP_COMMUNITY')
+            or os.environ.get('CMTS_COMMUNITY')
+            or 'public'
+        )
         
         equalizer = data.get('equalizer', {})
         redis_config = data.get('redis', {})
@@ -343,7 +350,7 @@ class AgentConfig:
             **cls._parse_peer_tunnels(data, expand_path),
             # CMTS Access
             cmts_enabled=cmts.get('enabled', cmts.get('snmp_direct', True)),
-            cmts_community=cmts.get('community', 'public'),
+            cmts_community=cmts_community,
             cmts_write_community=cmts.get('write_community'),
             cmts_ssh_enabled=cmts.get('ssh_enabled', False),
             cmts_ssh_user=cmts.get('ssh_user'),
@@ -378,7 +385,14 @@ class AgentConfig:
         """Load configuration from environment variables."""
         def expand_path(p):
             return os.path.expanduser(p) if p else None
-        
+
+        cmts_community = (
+            os.environ.get('PYPNM_CMTS_COMMUNITY')
+            or os.environ.get('CMTS_SNMP_COMMUNITY')
+            or os.environ.get('CMTS_COMMUNITY')
+            or 'public'
+        )
+
         return cls(
             agent_id=os.environ.get('PYPNM_AGENT_ID', 'agent-01'),
             pypnm_server_url=os.environ.get('PYPNM_SERVER_URL', 'ws://127.0.0.1:8000/api/agents/ws'),
@@ -387,6 +401,7 @@ class AgentConfig:
             # SSH Tunnel to PyPNM
             pypnm_ssh_tunnel_enabled=os.environ.get('PYPNM_SSH_TUNNEL', 'false').lower() == 'true',
             pypnm_ssh_host=os.environ.get('PYPNM_SSH_HOST'),
+            cmts_community=cmts_community,
             pypnm_ssh_port=int(os.environ.get('PYPNM_SSH_PORT', '22')),
             pypnm_ssh_user=os.environ.get('PYPNM_SSH_USER'),
             pypnm_ssh_key=expand_path(os.environ.get('PYPNM_SSH_KEY')),
