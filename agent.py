@@ -1031,13 +1031,10 @@ class PyPNMAgent:
             'total': len(targets),
         }
     
-    # Generic placeholder communities that should never override agent config
-    _PLACEHOLDER_COMMUNITIES = frozenset({'public', 'private'})
-
     def _resolve_community(self, params: dict) -> str:
-        """Resolve SNMP community: use task param only if genuinely explicit, else agent's configured community."""
+        """Resolve SNMP community: use task param if explicit, else agent's configured community."""
         c = params.get('community')
-        if c and c not in self._PLACEHOLDER_COMMUNITIES:
+        if c:
             self.logger.debug(f"_resolve_community: using explicit community={c}")
             return c
         if params.get('target_ip') or params.get('modem_ip'):
