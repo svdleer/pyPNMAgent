@@ -619,6 +619,7 @@ class PyPNMAgent:
             'file_get': self._handle_file_get,
             'file_list': self._handle_file_list,
             'pnm_file_get': self._handle_file_get,
+            'pnm_file_catalog': self._handle_pnm_file_catalog,
             'cmts_command': self._handle_cmts_command,
         }
     
@@ -852,6 +853,7 @@ class PyPNMAgent:
         )
         if pnm_file_get_enabled and os.path.isdir(tftp_root) and os.access(tftp_root, os.R_OK):
             caps.append('pnm_file_get')
+            caps.append('pnm_file_catalog')
 
         # CMTS capabilities - agent provides SNMP walks, PyPNM API handles logic
         if self.config.cmts_enabled:
@@ -1489,134 +1491,207 @@ class PyPNMAgent:
                 'error': str(e)
             }
 
-    def _handle_file_list(self, params: dict) -> dict:
-        """List PNM capture files matching a glob prefix from the local TFTP root.
+    @staticmethod
+    def _safe_file_component(value: str, allow_empty: bool = False) -> str:
+        """Validate an agent file basename/prefix without accepting paths or globs."""
+        text = str(value or '')
+        if not text and allow_empty:
+            return ''
+        if (
+            not text
+            or text in {'.', '..'}
+            or os.path.isabs(text)
+            or Path(text).name != text
+            or '\x00' in text
+            or any(ch in text for ch in ('*', '?', '[', ']'))
+        ):
+            raise ValueError('Invalid filename or prefix')
+        return text
 
-        Returns filenames only (no content), so the caller can decide which
-        files to fetch via file_get.  Used by the UTSC spectrum streamer to
-        discover new capture files without the overhead of FTP nlst.
+    def _pnm_file_roots(self) -> list[Path]:
+        """Return unique, readable PNM roots in retrieval priority order."""
+        roots: list[Path] = []
 
-        params:
-            prefix   (str)  filename prefix to glob-match (e.g. 'utsc_')
-            prefixes (list) multiple prefixes to match (alternative to prefix)
-        """
-        import glob as _glob
-
-        roots: list[str] = []
-
-        def _add_root(v: str | None) -> None:
-            if not v:
+        def _add_root(value: str | None) -> None:
+            if not value:
                 return
-            p = os.path.abspath(os.path.expanduser(v))
-            if p not in roots:
-                roots.append(p)
+            root = Path(value).expanduser().resolve()
+            if root not in roots and root.is_dir() and os.access(str(root), os.R_OK):
+                roots.append(root)
 
         _add_root(os.environ.get('TFTP_ROOT'))
         _add_root(os.environ.get('PYPNM_TFTP_PATH'))
         _add_root(self.config.tftp_path)
         for fallback in ('/var/lib/tftpboot', '/tftpboot', '/tmp', '/access/pnmupload', '/pnmupload'):
             _add_root(fallback)
+        return roots
 
-        prefixes = params.get('prefixes', [])
-        if not prefixes:
-            single = params.get('prefix', '')
-            prefixes = [single] if single else []
+    @staticmethod
+    def _pnm_header_metadata(path: Path) -> dict | None:
+        """Read only enough bytes to classify PNN2/PNN6/PNN7 and identify the modem."""
+        try:
+            with path.open('rb') as handle:
+                header = handle.read(32)
+            if len(header) < 17 or header[:3] != b'PNN':
+                return None
+            pnn_number = int(header[3])
+            if pnn_number not in {2, 6, 7}:
+                return None
+            # PNN2/6/7 use the standard 10-byte PNM header. Their payloads
+            # start with channel ID followed by the six-byte cable-modem MAC.
+            payload_offset = 10
+            channel_id = int(header[payload_offset])
+            mac_bytes = header[payload_offset + 1:payload_offset + 7]
+            if len(mac_bytes) != 6:
+                return None
+            mac_address = ':'.join(f'{octet:02x}' for octet in mac_bytes)
+            return {
+                'pnm_file_type': f'PNN{pnn_number}',
+                'direction': 'downstream' if pnn_number == 2 else 'upstream',
+                'mac_address': mac_address,
+                'channel_id': channel_id,
+                'capture_time': int.from_bytes(header[6:10], byteorder='big', signed=False),
+            }
+        except (OSError, ValueError, IndexError):
+            return None
 
-        if not prefixes:
-            return {'success': False, 'error': 'prefix or prefixes param required'}
-
-        all_matches: list[str] = []
-        for root in roots:
-            for pfx in prefixes:
-                pattern = os.path.join(root, f"{pfx}*")
-                matches = _glob.glob(pattern)
-                all_matches.extend(os.path.basename(m) for m in matches)
-            if all_matches:
-                break  # Use first root that has any matches
-
-        return {
-            'success': True,
-            'files': sorted(set(all_matches)),
-            'count': len(set(all_matches)),
+    def _handle_pnm_file_catalog(self, params: dict) -> dict:
+        """Return metadata for PNN2/PNN6/PNN7 files without transferring file bodies."""
+        raw_mac = str(params.get('mac_address') or '').strip().lower()
+        requested_mac = raw_mac.replace(':', '').replace('-', '').replace('.', '')
+        if requested_mac and (
+            len(requested_mac) != 12
+            or any(ch not in '0123456789abcdef' for ch in requested_mac)
+        ):
+            return {'success': False, 'error': 'mac_address must contain 12 hexadecimal digits'}
+        direction = str(params.get('direction') or 'both').lower()
+        if direction not in {'downstream', 'upstream', 'both'}:
+            return {'success': False, 'error': 'direction must be downstream, upstream, or both'}
+        requested_types = {
+            str(value).upper() for value in (params.get('pnm_types') or ['PNN2', 'PNN6', 'PNN7'])
         }
+        requested_types &= {'PNN2', 'PNN6', 'PNN7'}
+        if not requested_types:
+            return {'success': False, 'error': 'No supported PNM types requested'}
+        try:
+            limit = max(1, min(int(params.get('limit') or 1000), 5000))
+        except (TypeError, ValueError):
+            return {'success': False, 'error': 'limit must be an integer'}
 
-    def _handle_file_get(self, params: dict) -> dict:
-        """
-        Read a PNM capture file from the local TFTP root and return its content
-        as base64.  Used by the PyPNM API when PNM_RETRIEVAL_METHOD=agent.
+        files: list[dict] = []
+        for root in self._pnm_file_roots():
+            root_files: list[dict] = []
+            try:
+                with os.scandir(root) as entries:
+                    for entry in entries:
+                        if not entry.is_file(follow_symlinks=False):
+                            continue
+                        path = Path(entry.path)
+                        metadata = self._pnm_header_metadata(path)
+                        if metadata is None or metadata['pnm_file_type'] not in requested_types:
+                            continue
+                        if direction != 'both' and metadata['direction'] != direction:
+                            continue
+                        normalized_mac = metadata['mac_address'].replace(':', '')
+                        if requested_mac and normalized_mac != requested_mac:
+                            continue
+                        stat = entry.stat(follow_symlinks=False)
+                        root_files.append({
+                            'filename': entry.name,
+                            'size': int(stat.st_size),
+                            'modified_time': float(stat.st_mtime),
+                            **metadata,
+                        })
+            except OSError as exc:
+                self.logger.debug('PNM catalog root %s unavailable: %s', root, exc)
+                continue
+            if root_files:
+                root_files.sort(
+                    key=lambda item: (
+                        int(item.get('capture_time', 0)),
+                        float(item.get('modified_time', 0.0)),
+                    ),
+                    reverse=True,
+                )
+                files = root_files[:limit]
+                break
 
-        params:
-            filename  (str)  bare filename or glob prefix (e.g. 'rxmer_xxxx')
-            glob      (bool) if True, return newest file matching 'filename*'
-        """
-        import base64
-        import glob as _glob
+        return {'success': True, 'files': files, 'count': len(files)}
 
-        # Build search roots in priority order. This allows agent-mode file
-        # retrieval to work even when captures land outside /tftpboot.
-        roots: list[str] = []
-
-        def _add_root(v: Optional[str]):
-            if not v:
-                return
-            p = os.path.abspath(os.path.expanduser(v))
-            if p not in roots:
-                roots.append(p)
-
-        _add_root(os.environ.get('TFTP_ROOT'))
-        _add_root(os.environ.get('PYPNM_TFTP_PATH'))
-        _add_root(self.config.tftp_path)
-        for fallback in ('/var/lib/tftpboot', '/tftpboot', '/tmp', '/access/pnmupload', '/pnmupload'):
-            _add_root(fallback)
-
-        filename  = params.get('filename', '')
-        use_glob  = params.get('glob', True)   # always glob — CMTS adds timestamps
-
-        if not filename:
-            return {'success': False, 'error': 'filename param required'}
+    def _handle_file_list(self, params: dict) -> dict:
+        """List regular files matching one or more safe basename prefixes."""
+        raw_prefixes = params.get('prefixes')
+        if raw_prefixes is None:
+            single = params.get('prefix')
+            raw_prefixes = [single] if single is not None else []
+        if not isinstance(raw_prefixes, list) or not raw_prefixes:
+            return {'success': False, 'error': 'prefix or prefixes param required'}
+        try:
+            prefixes = [self._safe_file_component(value, allow_empty=True) for value in raw_prefixes]
+        except ValueError as exc:
+            return {'success': False, 'error': str(exc)}
 
         matches: list[str] = []
-        if use_glob:
-            for root in roots:
-                pattern = os.path.join(root, f"{filename}*")
-                m = sorted(_glob.glob(pattern), reverse=True)  # newest first
-                if m:
-                    matches = m
-                    break
-            if not matches:
-                return {
-                    'success': False,
-                    'error': f"No files matching {filename}* in any search root",
-                    'searched_roots': roots,
-                }
-            fpath = matches[0]
-        else:
-            fpath = ''
-            for root in roots:
-                cand = os.path.join(root, filename)
-                if os.path.exists(cand):
-                    fpath = cand
-                    break
-            if not fpath:
-                return {
-                    'success': False,
-                    'error': f"File not found: {filename}",
-                    'searched_roots': roots,
-                }
+        for root in self._pnm_file_roots():
+            try:
+                with os.scandir(root) as entries:
+                    matches = sorted({
+                        entry.name
+                        for entry in entries
+                        if entry.is_file(follow_symlinks=False)
+                        and any(entry.name.startswith(prefix) for prefix in prefixes)
+                    })
+            except OSError:
+                continue
+            if matches:
+                break
+        return {'success': True, 'files': matches, 'count': len(matches)}
+
+    def _handle_file_get(self, params: dict) -> dict:
+        """Read a bounded regular file selected by safe basename or prefix."""
+        import base64
 
         try:
-            with open(fpath, 'rb') as fh:
-                data = fh.read()
+            filename = self._safe_file_component(params.get('filename', ''))
+        except ValueError as exc:
+            return {'success': False, 'error': str(exc)}
+        use_prefix = bool(params.get('glob', True))
+        selected: Path | None = None
+
+        for root in self._pnm_file_roots():
+            candidates: list[Path] = []
+            try:
+                with os.scandir(root) as entries:
+                    for entry in entries:
+                        if not entry.is_file(follow_symlinks=False):
+                            continue
+                        if (use_prefix and entry.name.startswith(filename)) or (not use_prefix and entry.name == filename):
+                            candidates.append(Path(entry.path))
+            except OSError:
+                continue
+            if candidates:
+                selected = max(candidates, key=lambda path: path.stat().st_mtime)
+                break
+
+        if selected is None:
+            return {'success': False, 'error': 'File not found'}
+
+        try:
+            max_bytes = int(os.environ.get('PYPNM_AGENT_FILE_MAX_BYTES', str(32 * 1024 * 1024)))
+            size = selected.stat().st_size
+            if size <= 0 or size > max_bytes:
+                return {'success': False, 'error': 'File is empty or exceeds the configured size limit'}
+            data = selected.read_bytes()
             return {
-                'success':        True,
-                'filename':       os.path.basename(fpath),
-                'size':           len(data),
+                'success': True,
+                'filename': selected.name,
+                'size': len(data),
                 'content_base64': base64.b64encode(data).decode(),
             }
         except FileNotFoundError:
-            return {'success': False, 'error': f'File not found: {fpath}'}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return {'success': False, 'error': 'File not found'}
+        except Exception as exc:
+            return {'success': False, 'error': str(exc)}
 
     def _handle_cmts_command(self, params: dict) -> dict:
         """Execute command on CMTS via SSH."""
