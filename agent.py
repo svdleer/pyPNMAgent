@@ -1032,21 +1032,21 @@ class PyPNMAgent:
         }
     
     def _resolve_community(self, params: dict) -> str:
-        """Resolve SNMP community: use task param if explicit, else agent's configured community."""
+        """Resolve SNMP community without writing credential values to logs."""
         c = params.get('community')
         if c:
-            self.logger.debug(f"_resolve_community: using explicit community={c}")
+            self.logger.debug("_resolve_community: using explicit task community")
             return c
         if params.get('target_ip') or params.get('modem_ip'):
-            self.logger.debug(f"_resolve_community: using cm_community={self.config.cm_community}")
+            self.logger.debug("_resolve_community: using configured modem community")
             return self.config.cm_community
         if params.get('ip') or params.get('cmts_ip'):
-            self.logger.debug(f"_resolve_community: using cmts_community={self.config.cmts_community}")
+            self.logger.debug("_resolve_community: using configured CMTS community")
             return self.config.cmts_community
         if self.config.cmts_enabled:
-            self.logger.debug(f"_resolve_community: using cmts_community={self.config.cmts_community}")
+            self.logger.debug("_resolve_community: using configured CMTS community")
             return self.config.cmts_community
-        self.logger.debug(f"_resolve_community: using cm_community={self.config.cm_community}")
+        self.logger.debug("_resolve_community: using configured modem community")
         return self.config.cm_community
 
     def _handle_snmp_get(self, params: dict) -> dict:
@@ -1144,7 +1144,10 @@ class PyPNMAgent:
         retries = params.get('retries', 2)  # 0 = fail-fast (e.g. enrichment), 2 = default
         # Limit concurrent SNMP requests to avoid overwhelming the modem
         max_concurrent = params.get('max_concurrent', 10)
-        self.logger.debug(f"snmp_bulk_get: target={target_ip} community={community} oids={len(oids)} timeout={timeout} retries={retries}")
+        self.logger.debug(
+            f"snmp_bulk_get: target={target_ip} oids={len(oids)} "
+            f"timeout={timeout} retries={retries}"
+        )
         
         # Use pysnmp
         if not PYSNMP_AVAILABLE:
@@ -1241,12 +1244,12 @@ class PyPNMAgent:
                     if errorIndication:
                         err = str(errorIndication)
                         errors[oid] = err
-                        self.logger.warning(f"SNMP walk error OID {oid} on {ip} (community={community!r}): {err}")
+                        self.logger.warning(f"SNMP walk error OID {oid} on {ip}: {err}")
                         break
                     if errorStatus:
                         err = f"{errorStatus.prettyPrint()} at {errorIndex}"
                         errors[oid] = err
-                        self.logger.warning(f"SNMP walk error OID {oid} on {ip} (community={community!r}): {err}")
+                        self.logger.warning(f"SNMP walk error OID {oid} on {ip}: {err}")
                         break
                     for varBind in varBinds:
                         oid_str = str(varBind[0]).lstrip('.')
@@ -1302,10 +1305,10 @@ class PyPNMAgent:
             if not success:
                 warnings.append(
                     f"All {len(oids)} OID trees empty on {ip} — possible wrong community "
-                    f"(used {community!r}) or modem offline"
+                    "or device offline"
                 )
                 self.logger.error(
-                    f"Parallel walk: ALL trees empty for {ip} community={community!r} — "
+                    f"Parallel walk: ALL trees empty for {ip} — "
                     f"{len(errors)} OID errors: {list(errors.values())[:3]}"
                 )
             else:
