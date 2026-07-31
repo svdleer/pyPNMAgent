@@ -1212,13 +1212,14 @@ class PyPNMAgent:
             }
     
     def _handle_snmp_parallel_walk(self, params: dict) -> dict:
-        """Walk multiple OID trees concurrently via asyncio."""
+        """Walk multiple OID trees serially within a bounded total deadline."""
         ip = params.get('ip')
         oids = params.get('oids', [])
         community = self._resolve_community(params)
-        timeout = params.get('timeout', 5)          # 5 s per packet
-        max_reps = params.get('max_repetitions', 500)  # 12k modems / 500 = 24 PDUs per tree
-        limit = int(params.get('limit', 10000))
+        timeout = max(0.1, float(params.get('timeout', 5)))
+        max_reps = max(1, int(params.get('max_repetitions', 500)))
+        limit = max(1, int(params.get('limit', 10000)))
+        overall_timeout = max(30.0, float(params.get('overall_timeout', 270)))
         
         if not ip or not oids:
             return {'success': False, 'error': 'ip and oids required'}
@@ -1228,13 +1229,17 @@ class PyPNMAgent:
         
         self.logger.info(f"SNMP parallel walk: {ip} - {len(oids)} OIDs")
         
-        # Per-tree hard timeout: retries=0 on LAN (no double-wait on loss),
-        # timeout=5s per PDU, 24 PDUs max -> 120s worst-case per tree.
-        # Hard cap per tree at timeout*max_reps*1.5 so a hung tree doesn't block.
-        per_tree_hard_limit = timeout * (max_reps + 4) * 1.5  # generous headroom
+        # Estimate the number of BULK PDUs from the row limit. max_repetitions
+        # is rows requested per PDU, not a count of PDUs.
+        expected_pdus = max(1, (limit + int(max_reps) - 1) // int(max_reps))
+        calculated_tree_limit = float(timeout) * (expected_pdus + 4) * 1.5
+        fair_tree_budget = max(10.0, overall_timeout / max(len(oids), 1) * 1.5)
+        per_tree_hard_limit = min(calculated_tree_limit, fair_tree_budget)
 
         async def do_parallel_walk():
             errors = {}   # oid -> error string
+            completed_oids = set()
+            truncated_oids = set()
 
             async def walk_one(oid):
                 transport = await make_transport(ip, 161, timeout=timeout, retries=0)
@@ -1256,6 +1261,7 @@ class PyPNMAgent:
                     for varBind in varBinds:
                         oid_str = str(varBind[0]).lstrip('.')
                         if not oid_str.startswith(oid.lstrip('.')):
+                            completed_oids.add(oid)
                             return results
                         results.append({
                             'oid': oid_str,
@@ -1263,14 +1269,17 @@ class PyPNMAgent:
                             'type': type(varBind[1]).__name__
                         })
                         if len(results) >= limit:
+                            truncated_oids.add(oid)
                             return results
+                if oid not in errors:
+                    completed_oids.add(oid)
                 return results
 
-            async def walk_one_safe(oid):
+            async def walk_one_safe(oid, hard_limit):
                 try:
-                    return await asyncio.wait_for(walk_one(oid), timeout=per_tree_hard_limit)
+                    return await asyncio.wait_for(walk_one(oid), timeout=hard_limit)
                 except asyncio.TimeoutError:
-                    err = f"timed out after {per_tree_hard_limit:.0f}s"
+                    err = f"timed out after {hard_limit:.0f}s"
                     errors[oid] = err
                     self.logger.warning(f"walk_one {err} for OID {oid} on {ip}")
                     return []
@@ -1284,10 +1293,22 @@ class PyPNMAgent:
             # concurrent bulk walks, causing timeouts.
             all_results = {}
             walk_durations = {}
-            for oid in oids:
-                t0 = asyncio.get_event_loop().time()
-                all_results[oid] = await walk_one_safe(oid)
-                elapsed = asyncio.get_event_loop().time() - t0
+            loop = asyncio.get_event_loop()
+            deadline = loop.time() + overall_timeout
+            for index, oid in enumerate(oids):
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    for pending_oid in oids[index:]:
+                        errors[pending_oid] = f"overall timeout budget exhausted after {overall_timeout:.0f}s"
+                        all_results[pending_oid] = []
+                        walk_durations[pending_oid] = 0.0
+                    break
+                t0 = loop.time()
+                all_results[oid] = await walk_one_safe(
+                    oid,
+                    min(per_tree_hard_limit, remaining),
+                )
+                elapsed = loop.time() - t0
                 walk_durations[oid] = round(elapsed, 2)
             non_empty = sum(1 for v in all_results.values() if v)
             success = non_empty > 0
@@ -1320,7 +1341,15 @@ class PyPNMAgent:
                         f"{len(errors)} OIDs had errors"
                     )
 
-            return {'success': success, 'results': all_results, 'warnings': warnings, 'walk_durations': walk_durations}
+            return {
+                'success': success,
+                'results': all_results,
+                'warnings': warnings,
+                'errors': errors,
+                'completed_oids': sorted(completed_oids),
+                'truncated_oids': sorted(truncated_oids),
+                'walk_durations': walk_durations,
+            }
         
         try:
             result = asyncio.run(do_parallel_walk())
