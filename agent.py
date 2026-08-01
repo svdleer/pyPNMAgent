@@ -9,6 +9,7 @@ from __future__ import annotations  # enables PEP 604/585 syntax on Python 3.8/3
 import json
 import logging
 import os
+import stat
 import subprocess
 import threading
 import time
@@ -618,7 +619,7 @@ class PyPNMAgent:
             'tftp_get': self._handle_tftp_get,
             'file_get': self._handle_file_get,
             'file_list': self._handle_file_list,
-            'pnm_file_get': self._handle_file_get,
+            'pnm_file_get': self._handle_pnm_file_get,
             'pnm_file_catalog': self._handle_pnm_file_catalog,
             'cmts_command': self._handle_cmts_command,
         }
@@ -1537,16 +1538,40 @@ class PyPNMAgent:
             raise ValueError('Invalid filename or prefix')
         return text
 
+    @staticmethod
+    def _path_contains_symlink(path: Path) -> bool:
+        """Return True when any existing component of an absolute path is a symlink."""
+        current = Path(path.anchor)
+        try:
+            for component in path.parts[1:]:
+                current /= component
+                if stat.S_ISLNK(os.lstat(current).st_mode):
+                    return True
+        except OSError:
+            return True
+        return False
+
     def _pnm_file_roots(self) -> list[Path]:
-        """Return unique, readable PNM roots in retrieval priority order."""
+        """Return unique, readable, non-symlink PNM roots in retrieval priority order."""
         roots: list[Path] = []
 
         def _add_root(value: str | None) -> None:
             if not value:
                 return
-            root = Path(value).expanduser().resolve()
-            if root not in roots and root.is_dir() and os.access(str(root), os.R_OK):
-                roots.append(root)
+            root = Path(os.path.abspath(os.path.expanduser(value)))
+            try:
+                root_stat = os.lstat(root)
+            except OSError:
+                return
+            if (
+                root in roots
+                or not stat.S_ISDIR(root_stat.st_mode)
+                or stat.S_ISLNK(root_stat.st_mode)
+                or self._path_contains_symlink(root)
+                or not os.access(str(root), os.R_OK)
+            ):
+                return
+            roots.append(root)
 
         _add_root(os.environ.get('TFTP_ROOT'))
         _add_root(os.environ.get('PYPNM_TFTP_PATH'))
@@ -1556,11 +1581,87 @@ class PyPNMAgent:
         return roots
 
     @staticmethod
-    def _pnm_header_metadata(path: Path) -> dict | None:
-        """Read only enough bytes to classify PNN2/PNN6/PNN7 and identify the modem."""
+    def _bounded_scan_setting(name: str, default: int, hard_maximum: int, minimum: int = 1) -> int:
+        """Read a scan setting while retaining a non-bypassable hard bound."""
         try:
-            with path.open('rb') as handle:
-                header = handle.read(32)
+            value = int(os.environ.get(name, str(default)))
+        except (TypeError, ValueError):
+            value = default
+        return max(minimum, min(value, hard_maximum))
+
+    def _bounded_pnm_files(self) -> tuple[list[tuple[int, Path]], bool]:
+        """Recursively enumerate regular files under approved roots without following symlinks."""
+        max_depth = self._bounded_scan_setting('PYPNM_AGENT_SCAN_MAX_DEPTH', 8, 32, 0)
+        max_directories = self._bounded_scan_setting('PYPNM_AGENT_SCAN_MAX_DIRECTORIES', 2048, 16384)
+        max_files = self._bounded_scan_setting('PYPNM_AGENT_SCAN_MAX_FILES', 20000, 100000)
+        directories_scanned = 0
+        files_seen = 0
+        discovered: list[tuple[int, Path]] = []
+        truncated = False
+
+        for root_index, root in enumerate(self._pnm_file_roots()):
+            pending: list[tuple[Path, int]] = [(root, 0)]
+            while pending:
+                if directories_scanned >= max_directories:
+                    truncated = True
+                    return discovered, truncated
+                directory, depth = pending.pop()
+                directories_scanned += 1
+                try:
+                    with os.scandir(directory) as scan:
+                        entries = sorted(scan, key=lambda entry: entry.name)
+                except OSError as exc:
+                    self.logger.debug('PNM scan directory %s unavailable: %s', directory, exc)
+                    continue
+
+                child_directories: list[Path] = []
+                for entry in entries:
+                    try:
+                        if entry.is_symlink():
+                            continue
+                        if entry.is_file(follow_symlinks=False):
+                            if files_seen >= max_files:
+                                truncated = True
+                                return discovered, truncated
+                            files_seen += 1
+                            discovered.append((root_index, Path(entry.path)))
+                        elif depth < max_depth and entry.is_dir(follow_symlinks=False):
+                            child_directories.append(Path(entry.path))
+                    except OSError:
+                        continue
+                for child in reversed(child_directories):
+                    pending.append((child, depth + 1))
+
+        return discovered, truncated
+
+    @staticmethod
+    def _open_regular_file_nofollow(path: Path) -> tuple[int, os.stat_result]:
+        """Open a regular file and verify that the descriptor matches the no-symlink path."""
+        before = os.lstat(path)
+        if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
+            raise OSError('Refusing to read a symlink or non-regular file')
+        flags = os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_NOFOLLOW', 0)
+        descriptor = os.open(str(path), flags)
+        try:
+            opened = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(opened.st_mode)
+                or opened.st_dev != before.st_dev
+                or opened.st_ino != before.st_ino
+            ):
+                raise OSError('File changed during secure open')
+            return descriptor, opened
+        except Exception:
+            os.close(descriptor)
+            raise
+
+    @classmethod
+    def _pnm_header_metadata(cls, path: Path) -> dict | None:
+        """Read only enough bytes to classify PNN2/PNN6/PNN7 and identify the modem."""
+        descriptor: int | None = None
+        try:
+            descriptor, opened = cls._open_regular_file_nofollow(path)
+            header = os.read(descriptor, 32)
             if len(header) < 17 or header[:3] != b'PNN':
                 return None
             pnn_number = int(header[3])
@@ -1580,12 +1681,41 @@ class PyPNMAgent:
                 'mac_address': mac_address,
                 'channel_id': channel_id,
                 'capture_time': int.from_bytes(header[6:10], byteorder='big', signed=False),
+                'size': int(opened.st_size),
+                'modified_time': float(opened.st_mtime),
             }
         except (OSError, ValueError, IndexError):
             return None
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
+
+    @classmethod
+    def _read_regular_file_nofollow(cls, path: Path, max_bytes: int) -> bytes:
+        """Read one bounded regular file through a verified no-follow descriptor."""
+        descriptor: int | None = None
+        try:
+            descriptor, opened = cls._open_regular_file_nofollow(path)
+            size = int(opened.st_size)
+            if size <= 0 or size > max_bytes:
+                raise ValueError('File is empty or exceeds the configured size limit')
+            chunks: list[bytes] = []
+            remaining = size
+            while remaining:
+                chunk = os.read(descriptor, min(remaining, 1024 * 1024))
+                if not chunk:
+                    raise OSError('File changed while being read')
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            if os.read(descriptor, 1):
+                raise OSError('File changed while being read')
+            return b''.join(chunks)
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
 
     def _handle_pnm_file_catalog(self, params: dict) -> dict:
-        """Return metadata for PNN2/PNN6/PNN7 files without transferring file bodies."""
+        """Return metadata for recursively discovered PNN2/PNN6/PNN7 files."""
         raw_mac = str(params.get('mac_address') or '').strip().lower()
         requested_mac = raw_mac.replace(':', '').replace('-', '').replace('.', '')
         if requested_mac and (
@@ -1607,45 +1737,91 @@ class PyPNMAgent:
         except (TypeError, ValueError):
             return {'success': False, 'error': 'limit must be an integer'}
 
-        files: list[dict] = []
-        for root in self._pnm_file_roots():
-            root_files: list[dict] = []
-            try:
-                with os.scandir(root) as entries:
-                    for entry in entries:
-                        if not entry.is_file(follow_symlinks=False):
-                            continue
-                        path = Path(entry.path)
-                        metadata = self._pnm_header_metadata(path)
-                        if metadata is None or metadata['pnm_file_type'] not in requested_types:
-                            continue
-                        if direction != 'both' and metadata['direction'] != direction:
-                            continue
-                        normalized_mac = metadata['mac_address'].replace(':', '')
-                        if requested_mac and normalized_mac != requested_mac:
-                            continue
-                        stat = entry.stat(follow_symlinks=False)
-                        root_files.append({
-                            'filename': entry.name,
-                            'size': int(stat.st_size),
-                            'modified_time': float(stat.st_mtime),
-                            **metadata,
-                        })
-            except OSError as exc:
-                self.logger.debug('PNM catalog root %s unavailable: %s', root, exc)
+        # Basenames are the public identity. Prefer the first approved root;
+        # within that root, retain the newest matching duplicate basename.
+        files_by_name: dict[str, tuple[int, dict]] = {}
+        discovered, truncated = self._bounded_pnm_files()
+        for root_index, path in discovered:
+            metadata = self._pnm_header_metadata(path)
+            if metadata is None or metadata['pnm_file_type'] not in requested_types:
                 continue
-            if root_files:
-                root_files.sort(
-                    key=lambda item: (
-                        int(item.get('capture_time', 0)),
-                        float(item.get('modified_time', 0.0)),
-                    ),
-                    reverse=True,
-                )
-                files = root_files[:limit]
-                break
+            if direction != 'both' and metadata['direction'] != direction:
+                continue
+            normalized_mac = metadata['mac_address'].replace(':', '')
+            if requested_mac and normalized_mac != requested_mac:
+                continue
 
-        return {'success': True, 'files': files, 'count': len(files)}
+            candidate = {'filename': path.name, **metadata}
+            existing = files_by_name.get(path.name)
+            if existing is None or root_index < existing[0]:
+                files_by_name[path.name] = (root_index, candidate)
+            elif root_index == existing[0]:
+                existing_item = existing[1]
+                if (
+                    int(candidate.get('capture_time', 0)),
+                    float(candidate.get('modified_time', 0.0)),
+                ) > (
+                    int(existing_item.get('capture_time', 0)),
+                    float(existing_item.get('modified_time', 0.0)),
+                ):
+                    files_by_name[path.name] = (root_index, candidate)
+
+        files = sorted(
+            (item for _, item in files_by_name.values()),
+            key=lambda item: (
+                int(item.get('capture_time', 0)),
+                float(item.get('modified_time', 0.0)),
+                str(item.get('filename', '')),
+            ),
+            reverse=True,
+        )[:limit]
+        response = {'success': True, 'files': files, 'count': len(files)}
+        if truncated:
+            response['warning'] = 'PNM catalog scan reached a configured safety bound; results may be incomplete'
+        return response
+
+    def _handle_pnm_file_get(self, params: dict) -> dict:
+        """Recursively retrieve an exact basename from approved roots without following symlinks."""
+        import base64
+
+        try:
+            filename = self._safe_file_component(params.get('filename', ''))
+        except ValueError as exc:
+            return {'success': False, 'error': str(exc)}
+        try:
+            max_bytes = int(os.environ.get('PYPNM_AGENT_FILE_MAX_BYTES', str(32 * 1024 * 1024)))
+        except (TypeError, ValueError):
+            return {'success': False, 'error': 'PYPNM_AGENT_FILE_MAX_BYTES must be an integer'}
+        if max_bytes <= 0:
+            return {'success': False, 'error': 'PYPNM_AGENT_FILE_MAX_BYTES must be positive'}
+
+        discovered, truncated = self._bounded_pnm_files()
+        candidates: list[Path] = []
+        selected_root: int | None = None
+        for root_index, path in discovered:
+            if path.name != filename:
+                continue
+            if selected_root is None:
+                selected_root = root_index
+            if root_index == selected_root:
+                candidates.append(path)
+
+        if not candidates:
+            suffix = ' before a scan safety bound was reached' if truncated else ''
+            return {'success': False, 'error': f'Exact PNM file basename not found{suffix}'}
+        try:
+            selected = max(candidates, key=lambda path: os.lstat(path).st_mtime)
+            data = self._read_regular_file_nofollow(selected, max_bytes)
+            return {
+                'success': True,
+                'filename': selected.name,
+                'size': len(data),
+                'content_base64': base64.b64encode(data).decode(),
+            }
+        except FileNotFoundError:
+            return {'success': False, 'error': 'PNM file disappeared during retrieval'}
+        except (OSError, ValueError) as exc:
+            return {'success': False, 'error': f'PNM file retrieval refused: {exc}'}
 
     def _handle_file_list(self, params: dict) -> dict:
         """List regular files matching one or more safe basename prefixes."""
