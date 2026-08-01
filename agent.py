@@ -1063,7 +1063,9 @@ class PyPNMAgent:
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
         
-        return asyncio.run(self._async_snmp_get(target_ip, oid, community, params.get('timeout', 5)))
+        timeout = params.get('timeout', 5)
+        retries = params.get('retries', 2)
+        return asyncio.run(self._async_snmp_get(target_ip, oid, community, timeout, retries))
     
     def _handle_snmp_walk(self, params: dict) -> dict:
         """Handle SNMP WALK request via pysnmp."""
@@ -1076,7 +1078,9 @@ class PyPNMAgent:
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
         
-        return asyncio.run(self._async_snmp_walk(target_ip, oid, community, params.get('timeout', 10)))
+        timeout = params.get('timeout', 10)
+        retries = params.get('retries', 2)
+        return asyncio.run(self._async_snmp_walk(target_ip, oid, community, timeout, retries))
     
     def _handle_snmp_set(self, params: dict) -> dict:
         """Handle SNMP SET request via pysnmp."""
@@ -1091,7 +1095,11 @@ class PyPNMAgent:
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
         
-        return asyncio.run(self._async_snmp_set(target_ip, oid, value, value_type, community, params.get('timeout', 5)))
+        timeout = params.get('timeout', 5)
+        retries = params.get('retries', 2)
+        return asyncio.run(self._async_snmp_set(
+            target_ip, oid, value, value_type, community, timeout, retries,
+        ))
     
     def _handle_snmp_set_sequence(self, params: dict) -> dict:
         """Execute a sequence of SNMP SETs for one target as a single atomic task.
@@ -1114,6 +1122,7 @@ class PyPNMAgent:
             return {'success': False, 'error': 'sets list required'}
         community = self._resolve_community(params)
         timeout = params.get('timeout', 5)
+        retries = params.get('retries', 2)
 
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
@@ -1124,7 +1133,9 @@ class PyPNMAgent:
                 oid = item['oid']
                 value = item['value']
                 value_type = item.get('type', 'i')
-                result = await self._async_snmp_set(target_ip, oid, value, value_type, community, timeout)
+                result = await self._async_snmp_set(
+                    target_ip, oid, value, value_type, community, timeout, retries,
+                )
                 results.append({'oid': oid, 'value': value, **result})
                 if not result.get('success'):
                     return {'success': False, 'failed_oid': oid, 'results': results,
@@ -1387,14 +1398,17 @@ class PyPNMAgent:
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
-    async def _async_snmp_walk(self, target_ip: str, oid: str, community: str, timeout: int = 10) -> dict:
+    async def _async_snmp_walk(
+        self, target_ip: str, oid: str, community: str,
+        timeout: int = 10, retries: int = 2,
+    ) -> dict:
         """Async SNMP WALK using pysnmp."""
         try:
             results = []
             async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
                 SnmpEngine(),
                 CommunityData(community),
-                await make_transport(target_ip, 161, timeout=timeout, retries=2),
+                await make_transport(target_ip, 161, timeout=timeout, retries=retries),
                 ContextData(),
                 0, 25,  # non-repeaters, max-repetitions
                 ObjectType(ObjectIdentity(oid)),
@@ -1420,8 +1434,10 @@ class PyPNMAgent:
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
-    async def _async_snmp_set(self, target_ip: str, oid: str, value: any, value_type: str, 
-                               community: str, timeout: int = 5) -> dict:
+    async def _async_snmp_set(
+        self, target_ip: str, oid: str, value: any, value_type: str,
+        community: str, timeout: int = 5, retries: int = 2,
+    ) -> dict:
         """Async SNMP SET using pysnmp."""
         try:
             snmp_value = self._to_snmp_value(value, value_type)
@@ -1429,7 +1445,7 @@ class PyPNMAgent:
             errorIndication, errorStatus, errorIndex, varBinds = await set_cmd(
                 SnmpEngine(),
                 CommunityData(community),
-                await make_transport(target_ip, 161, timeout=timeout, retries=2),
+                await make_transport(target_ip, 161, timeout=timeout, retries=retries),
                 ContextData(),
                 ObjectType(ObjectIdentity(oid), snmp_value)
             )
