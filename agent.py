@@ -1962,16 +1962,18 @@ class PyPNMAgent:
             
             if type_name == 'OctetString':
                 raw = bytes(value)
-                # 6-byte OctetStrings containing non-printable bytes are MAC addresses.
-                # Must check BEFORE attempting UTF-8 decode, because bytes like
-                # [0x00, 0x07, 0x11, 0x14, 0x3c, 0x27] are valid UTF-8 but not text.
-                if len(raw) == 6 and any(b < 0x20 or b > 0x7e for b in raw):
+                non_printable = any(b < 0x20 or b > 0x7e for b in raw)
+                # Preserve the established binary MAC representation, but
+                # serialize every other non-text OCTET STRING losslessly before
+                # decoding or stripping. This includes valid UTF-8 control bytes
+                # such as profile/IUC values 0x09 through 0x0d.
+                if len(raw) == 6 and non_printable:
                     return ':'.join(f'{b:02x}' for b in raw).upper()
+                if non_printable:
+                    return raw.hex()
                 try:
                     return raw.decode('utf-8').strip()
                 except UnicodeDecodeError:
-                    if len(raw) == 6:  # MAC address
-                        return ':'.join(f'{b:02x}' for b in raw).upper()
                     return raw.hex()
             
             if type_name == 'IpAddress':
