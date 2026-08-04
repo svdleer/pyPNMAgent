@@ -1065,7 +1065,10 @@ class PyPNMAgent:
         
         timeout = params.get('timeout', 5)
         retries = params.get('retries', 2)
-        return asyncio.run(self._async_snmp_get(target_ip, oid, community, timeout, retries))
+        raw_octets = bool(params.get('raw_octets', False))
+        return asyncio.run(self._async_snmp_get(
+            target_ip, oid, community, timeout, retries, raw_octets=raw_octets,
+        ))
     
     def _handle_snmp_walk(self, params: dict) -> dict:
         """Handle SNMP WALK request via pysnmp."""
@@ -1232,6 +1235,11 @@ class PyPNMAgent:
         max_reps = max(1, int(params.get('max_repetitions', 500)))
         limit = max(1, int(params.get('limit', 10000)))
         overall_timeout = max(30.0, float(params.get('overall_timeout', 270)))
+        raw_octet_oids = {
+            str(raw_oid).strip().lstrip('.')
+            for raw_oid in (params.get('raw_octet_oids') or [])
+            if str(raw_oid).strip()
+        }
         
         if not ip or not oids:
             return {'success': False, 'error': 'ip and oids required'}
@@ -1277,7 +1285,10 @@ class PyPNMAgent:
                             return results
                         results.append({
                             'oid': oid_str,
-                            'value': self._parse_snmp_value(varBind[1]),
+                            'value': self._parse_snmp_value(
+                                varBind[1],
+                                preserve_octets=oid.lstrip('.') in raw_octet_oids,
+                            ),
                             'type': type(varBind[1]).__name__
                         })
                         if len(results) >= limit:
@@ -1374,7 +1385,16 @@ class PyPNMAgent:
             self.logger.error(f"SNMP parallel walk error: {e}")
             return {'success': False, 'error': str(e)}
     
-    async def _async_snmp_get(self, target_ip: str, oid: str, community: str, timeout: int = 5, retries: int = 2) -> dict:
+    async def _async_snmp_get(
+        self,
+        target_ip: str,
+        oid: str,
+        community: str,
+        timeout: int = 5,
+        retries: int = 2,
+        *,
+        raw_octets: bool = False,
+    ) -> dict:
         """Async SNMP GET using pysnmp."""
         try:
             errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
@@ -1392,7 +1412,12 @@ class PyPNMAgent:
             
             output_lines = []
             for varBind in varBinds:
-                output_lines.append(f"{varBind[0].prettyPrint()} = {varBind[1].prettyPrint()}")
+                value = varBind[1]
+                if raw_octets and type(value).__name__ == 'OctetString':
+                    rendered_value = bytes(value).hex()
+                else:
+                    rendered_value = value.prettyPrint()
+                output_lines.append(f"{varBind[0].prettyPrint()} = {rendered_value}")
             
             return {'success': True, 'output': '\n'.join(output_lines)}
         except Exception as e:
@@ -1968,8 +1993,8 @@ class PyPNMAgent:
             return {'success': False, 'error': str(e)}
     
     
-    def _parse_snmp_value(self, value) -> Any:
-        """Parse pysnmp value to Python native type."""
+    def _parse_snmp_value(self, value, *, preserve_octets: bool = False) -> Any:
+        """Parse a pysnmp value, optionally preserving OCTET STRING bytes as hex."""
         try:
             if value is None:
                 return None
@@ -1978,6 +2003,8 @@ class PyPNMAgent:
             
             if type_name == 'OctetString':
                 raw = bytes(value)
+                if preserve_octets:
+                    return raw.hex()
                 non_printable = any(b < 0x20 or b > 0x7e for b in raw)
                 # Preserve the established binary MAC representation, but
                 # serialize every other non-text OCTET STRING losslessly before
