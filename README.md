@@ -10,7 +10,7 @@ Remote agent for [PyPNM](https://github.com/svdleer/PyPNM) that runs on a jump s
 - **PNM Measurements** - Trigger and retrieve Proactive Network Maintenance data
   - Downstream RxMER, Spectrum, Channel Estimation
   - Upstream OFDMA RxMER and UTSC
-- **Secure Connection** - WebSocket with authentication to PyPNM GUI server
+- **Secure Connection** - Authenticated WebSocket connection to the PyPNM API server
 - **Capability-based Routing** - Advertises capabilities for smart task routing
 
 ## Related Repositories
@@ -47,7 +47,7 @@ python agent.py -c agent_config.json
 {
     "agent_id": "jump-server-01",
     "pypnm_server": {
-        "url": "ws://pypnm-gui:5050/ws/agent",
+        "url": "ws://pypnm-server:8000/api/agents/ws",
         "auth_token": "your-token"
     },
     "cmts_access": {
@@ -76,8 +76,8 @@ python agent.py -c agent_config.json
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `AGENT_ID` | Unique agent identifier | `pypnm-agent-01` |
-| `SERVER_URL` | PyPNM GUI WebSocket URL | `ws://localhost:5050/ws/agent` |
+| `PYPNM_AGENT_ID` | Unique agent identifier | `agent-01` |
+| `PYPNM_SERVER_URL` | PyPNM API WebSocket URL | `ws://127.0.0.1:8000/api/agents/ws` |
 | `PYPNM_CMTS_ENABLED` | Enable CMTS access | `true` |
 | `PYPNM_CM_ENABLED` | Enable CM access | `false` |
 

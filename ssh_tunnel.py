@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Manages SSH tunnels for the PyPNM Agent:
-# - Tunnel to GUI Server for WebSocket connection
+# - Tunnel to the PyPNM API for the agent WebSocket connection
 # - SSH connection to SNMP Proxy for command execution
 
 import logging
@@ -428,7 +428,7 @@ def create_gui_tunnel(
     gui_port: int = 5050,
     local_port: int = 5050
 ) -> SSHTunnelManager:
-    """Create tunnel to GUI Server for WebSocket connection."""
+    """Create a tunnel to the PyPNM API for the agent WebSocket connection."""
     config = SSHTunnelConfig(
         ssh_host=gui_ssh_host,
         ssh_user=gui_ssh_user,

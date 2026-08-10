@@ -4,7 +4,7 @@
 
 - Python 3.10+ (or Docker)
 - Network access to:
-  - PyPNM GUI Server (WebSocket port 5050)
+  - PyPNM API Server (WebSocket endpoint `/api/agents/ws`, typically port 8000)
   - CMTS devices (SNMP UDP/161)
   - Cable modems (if cm_access enabled)
   - TFTP server (if using PNM file retrieval)
@@ -81,7 +81,7 @@ Edit `agent_config.json`:
 {
     "agent_id": "your-agent-name",
     "pypnm_server": {
-        "url": "ws://your-pypnm-gui-server:5050/ws/agent",
+        "url": "ws://your-pypnm-server:8000/api/agents/ws",
         "auth_token": "optional-auth-token"
     },
     "cmts_access": {
@@ -112,7 +112,7 @@ Edit `agent_config.json`:
 | Section | Option | Description |
 |---------|--------|-------------|
 | `agent_id` | - | Unique identifier for this agent |
-| `pypnm_server.url` | - | WebSocket URL of PyPNM GUI server |
+| `pypnm_server.url` | - | WebSocket URL of the PyPNM API server; must end in `/api/agents/ws` |
 | `cmts_access.enabled` | - | Enable CMTS SNMP access |
 | `cmts_access.community` | - | SNMP read community for CMTS |
 | `cmts_access.write_community` | - | SNMP write community (for PNM triggers) |
@@ -122,33 +122,25 @@ Edit `agent_config.json`:
 
 ## Verification
 
-Check the agent is connected:
+Check that PyPNM reports the connected agent:
 
 ```bash
-# Docker
+# Agent logs
 docker logs pypnm-agent | grep -i "connected\|authenticated"
 
-# Or check from GUI server
-curl http://your-gui-server:5050/api/pypnm/health
+# Canonical PyPNM agent API
+curl http://your-pypnm-server:8000/api/agents
 ```
 
-Expected output:
-```json
-{
-    "status": "ok",
-    "connected_agents": 1,
-    "cmts_capable_agents": 1,
-    "cm_capable_agents": 0
-}
-```
+The API response contains `status`, `count`, and an `agents` list with each connected agent's advertised capabilities.
 
 ## Troubleshooting
 
 ### Agent won't connect
 
-1. Check WebSocket URL is correct
-2. Verify network connectivity: `curl -v ws://gui-server:5050/ws/agent`
-3. Check firewall allows WebSocket connections
+1. Confirm the WebSocket URL ends in `/api/agents/ws`.
+2. Verify the PyPNM API is reachable: `curl http://pypnm-server:8000/api/agents`.
+3. Check the firewall allows the agent to reach the PyPNM API port.
 
 ### SNMP queries fail
 
@@ -158,6 +150,6 @@ Expected output:
 
 ### Agent keeps disconnecting
 
-1. Check for network instability
-2. Increase `reconnect_interval` in config
-3. Check GUI server logs for errors
+1. Check for network instability.
+2. Increase `reconnect_interval` in config.
+3. Check PyPNM API logs for connection or authentication errors.

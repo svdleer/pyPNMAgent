@@ -4,8 +4,8 @@
 set -e
 
 # 1. Prompt for config
-read -p "Agent ID: " AGENT_ID
-read -p "PyPNM API WebSocket URL (e.g. ws://<api_host>:8000/api/ws/agent): " PYPNM_SERVER_URL
+read -p "Agent ID: " PYPNM_AGENT_ID
+read -p "PyPNM API WebSocket URL (e.g. ws://<api_host>:8000/api/agents/ws): " PYPNM_SERVER_URL
 read -p "Agent token: " PYPNM_AGENT_TOKEN
 read -p "SNMP community (ARRIS): " SNMP_COMMUNITY_ARRIS
 read -p "SNMP community (CASA): " SNMP_COMMUNITY_CASA
@@ -18,7 +18,7 @@ read -p "TFTP IPv4 ALT (default 172.22.147.18): " TFTP_IPV4_ALT
 TFTP_IPV4_ALT=${TFTP_IPV4_ALT:-172.22.147.18}
 
 # 2. Write agent_config.json using Python (env vars avoid JSON-escaping issues)
-AGENT_ID="$AGENT_ID" \
+PYPNM_AGENT_ID="$PYPNM_AGENT_ID" \
 PYPNM_SERVER_URL="$PYPNM_SERVER_URL" \
 PYPNM_AGENT_TOKEN="$PYPNM_AGENT_TOKEN" \
 SNMP_COMMUNITY_ARRIS="$SNMP_COMMUNITY_ARRIS" \
@@ -32,7 +32,7 @@ python3 - <<'PYEOF'
 import json, os
 
 config = {
-  "agent_id":   os.environ["AGENT_ID"],
+  "agent_id":   os.environ["PYPNM_AGENT_ID"],
   "server_url": os.environ["PYPNM_SERVER_URL"],
   "token":      os.environ["PYPNM_AGENT_TOKEN"],
   "snmp_communities": {
