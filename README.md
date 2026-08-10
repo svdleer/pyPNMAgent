@@ -12,6 +12,7 @@ Remote agent for [PyPNM](https://github.com/svdleer/PyPNM) that runs on a jump s
   - Upstream OFDMA RxMER and UTSC
 - **Secure Connection** - Authenticated WebSocket connection to the PyPNM API server
 - **Capability-based Routing** - Advertises capabilities for smart task routing
+- **Safe Capture Retention** - Optional exact deletion and bounded age-housekeeping under one explicit writable root
 
 ## Related Repositories
 
@@ -57,9 +58,18 @@ python agent.py -c agent_config.json
     "cm_access": {
         "enabled": false,
         "community": "your-cm-community"
+    },
+    "tftp_server": {
+        "tftp_path": "/srv/tftp",
+        "pnm_file_get_enabled": true,
+        "pnm_file_write_root": "/srv/tftp",
+        "pnm_file_delete_enabled": false,
+        "pnm_file_housekeeping_enabled": false
     }
 }
 ```
+
+PNM write operations are default-disabled. Enable each operation independently only on the designated file agent, and set `pnm_file_write_root` to the exact writable capture root. Read discovery paths and fallback directories are never authorized for deletion.
 
 ## Capabilities
 
@@ -68,9 +78,10 @@ python agent.py -c agent_config.json
 | `cmts_reachable` | Can reach CMTS devices for SNMP |
 | `cm_reachable` | Can reach cable modems for SNMP |
 | `snmp_get/walk/set` | SNMP operations |
-| `pnm_ofdm_rxmer` | Downstream RxMER measurements |
-| `pnm_us_rxmer_*` | Upstream OFDMA RxMER |
-| `pnm_utsc_*` | Upstream Triggered Spectrum Capture |
+| `pnm_file_get` | Exact, bounded PNM capture retrieval (explicit read opt-in) |
+| `pnm_file_catalog` | Bounded PNM capture metadata catalog |
+| `pnm_file_delete` | Exact approved UTSC basename deletion (explicit write opt-in) |
+| `pnm_file_housekeeping` | Bounded age-based UTSC cleanup with dry-run support (explicit write opt-in) |
 
 ## Environment Variables
 
@@ -80,6 +91,10 @@ python agent.py -c agent_config.json
 | `PYPNM_SERVER_URL` | PyPNM API WebSocket URL | `ws://127.0.0.1:8000/api/agents/ws` |
 | `PYPNM_CMTS_ENABLED` | Enable CMTS access | `true` |
 | `PYPNM_CM_ENABLED` | Enable CM access | `false` |
+| `PYPNM_PNM_FILE_GET_ENABLED` | Advertise exact PNM file retrieval when the read root is available | `false` |
+| `PYPNM_PNM_WRITE_ROOT` | Explicit writable root for destructive PNM operations; no fallback | unset |
+| `PYPNM_PNM_FILE_DELETE_ENABLED` | Enable exact approved UTSC deletion | `false` |
+| `PYPNM_PNM_FILE_HOUSEKEEPING_ENABLED` | Enable bounded aged-UTSC housekeeping | `false` |
 
 ## License
 

@@ -241,6 +241,11 @@ class AgentConfig:
     # Explicitly opt-in to announcing pnm_file_get capability.
     # Only set True on agents that have direct read access to the TFTP capture root.
     pnm_file_get_enabled: bool = False
+    # Destructive PNM operations require a separate explicit writable root and
+    # independent opt-ins. Read-only roots and discovery fallbacks are never used.
+    pnm_file_write_root: Optional[str] = None
+    pnm_file_delete_enabled: bool = False
+    pnm_file_housekeeping_enabled: bool = False
     
     @classmethod
     def _parse_peer_tunnels(cls, data: dict, expand_path) -> dict:
@@ -379,6 +384,9 @@ class AgentConfig:
             tftp_ssh_key=expand_path(tftp.get('key_file')),
             tftp_path=tftp.get('tftp_path', '/tftpboot'),
             pnm_file_get_enabled=tftp.get('pnm_file_get_enabled', False),
+            pnm_file_write_root=expand_path(tftp.get('pnm_file_write_root')),
+            pnm_file_delete_enabled=tftp.get('pnm_file_delete_enabled', False),
+            pnm_file_housekeeping_enabled=tftp.get('pnm_file_housekeeping_enabled', False),
         )
     
     @classmethod
@@ -424,6 +432,9 @@ class AgentConfig:
             tftp_ssh_key=expand_path(os.environ.get('PYPNM_TFTP_SSH_KEY')),
             tftp_path=os.environ.get('PYPNM_TFTP_PATH', '/tftpboot'),
             pnm_file_get_enabled=os.environ.get('PYPNM_PNM_FILE_GET_ENABLED', 'false').lower() == 'true',
+            pnm_file_write_root=expand_path(os.environ.get('PYPNM_PNM_WRITE_ROOT')),
+            pnm_file_delete_enabled=os.environ.get('PYPNM_PNM_FILE_DELETE_ENABLED', 'false').lower() == 'true',
+            pnm_file_housekeeping_enabled=os.environ.get('PYPNM_PNM_FILE_HOUSEKEEPING_ENABLED', 'false').lower() == 'true',
         )
 
 
@@ -621,6 +632,8 @@ class PyPNMAgent:
             'file_list': self._handle_file_list,
             'pnm_file_get': self._handle_pnm_file_get,
             'pnm_file_catalog': self._handle_pnm_file_catalog,
+            'pnm_file_delete': self._handle_pnm_file_delete,
+            'pnm_file_housekeeping': self._handle_pnm_file_housekeeping,
             'cmts_command': self._handle_cmts_command,
         }
     
@@ -856,6 +869,24 @@ class PyPNMAgent:
             caps.append('pnm_file_get')
             caps.append('pnm_file_catalog')
 
+        # Destructive file capabilities are independent, default-disabled, and
+        # require an explicitly configured writable root. Retrieval fallbacks
+        # such as /tmp are deliberately never eligible.
+        write_root = self._pnm_write_root()
+        if write_root is not None:
+            delete_enabled = (
+                self.config.pnm_file_delete_enabled is True
+                or os.environ.get('PYPNM_PNM_FILE_DELETE_ENABLED', 'false').lower() == 'true'
+            )
+            housekeeping_enabled = (
+                self.config.pnm_file_housekeeping_enabled is True
+                or os.environ.get('PYPNM_PNM_FILE_HOUSEKEEPING_ENABLED', 'false').lower() == 'true'
+            )
+            if delete_enabled:
+                caps.append('pnm_file_delete')
+            if housekeeping_enabled:
+                caps.append('pnm_file_housekeeping')
+
         # CMTS capabilities - agent provides SNMP walks, PyPNM API handles logic
         if self.config.cmts_enabled:
             caps.extend(['cmts_snmp_walk', 'cmts_snmp_get'])
@@ -923,13 +954,15 @@ class PyPNMAgent:
                 self.logger.error(f"Failed to send response for {request_id}: {e}")
 
         # Route tasks to the appropriate pool:
-        #   long  — file_get / pnm_file_get (PNM captures, 30–90 s)
+        #   long  — file transfer / bounded PNM file scans (30–90 s)
         #   bulk  — background modem enrichment (snmp_bulk_get), UTSC file fetch
         #   interactive — everything else (GUI clicks, CMTS walks)
         priority = data.get('priority', 'interactive')
         if priority == 'bulk':
             self._bulk_executor.submit(_run_handler)
-        elif priority == 'long' or command in ('file_get', 'pnm_file_get'):
+        elif priority == 'long' or command in (
+            'file_get', 'pnm_file_get', 'pnm_file_delete', 'pnm_file_housekeeping'
+        ):
             self._long_executor.submit(_run_handler)
         else:
             self._interactive_executor.submit(_run_handler)
@@ -1674,6 +1707,265 @@ class PyPNMAgent:
                     pending.append((child, depth + 1))
 
         return discovered, truncated
+
+    def _pnm_write_root(self) -> Path | None:
+        """Return the one explicit writable PNM root, never a discovery fallback."""
+        configured = (
+            os.environ.get('PYPNM_PNM_WRITE_ROOT')
+            or self.config.pnm_file_write_root
+        )
+        if not configured:
+            return None
+        root = Path(os.path.abspath(os.path.expanduser(configured)))
+        try:
+            root_stat = os.lstat(root)
+        except OSError:
+            return None
+        if (
+            not stat.S_ISDIR(root_stat.st_mode)
+            or stat.S_ISLNK(root_stat.st_mode)
+            or self._path_contains_symlink(root)
+            or not os.access(str(root), os.R_OK | os.W_OK | os.X_OK)
+        ):
+            return None
+        return root
+
+    def _pnm_write_enabled(self, operation: str) -> bool:
+        """Check the independent default-deny opt-in for a destructive operation."""
+        if operation == 'delete':
+            return (
+                self.config.pnm_file_delete_enabled is True
+                or os.environ.get('PYPNM_PNM_FILE_DELETE_ENABLED', 'false').lower() == 'true'
+            )
+        if operation == 'housekeeping':
+            return (
+                self.config.pnm_file_housekeeping_enabled is True
+                or os.environ.get('PYPNM_PNM_FILE_HOUSEKEEPING_ENABLED', 'false').lower() == 'true'
+            )
+        return False
+
+    @classmethod
+    def _safe_utsc_capture_name(cls, value: str) -> str:
+        """Accept only exact UTSC capture basenames owned by this API."""
+        filename = cls._safe_file_component(value)
+        if not filename.startswith(('utsc_', 'PNMCcapUsSpecAn_')):
+            raise ValueError('Filename is not an approved UTSC capture basename')
+        return filename
+
+    def _bounded_pnm_write_files(self, root: Path) -> tuple[list[Path], bool]:
+        """Recursively enumerate regular files under the explicit writable root."""
+        max_depth = self._bounded_scan_setting('PYPNM_AGENT_SCAN_MAX_DEPTH', 8, 32, 0)
+        max_directories = self._bounded_scan_setting(
+            'PYPNM_AGENT_SCAN_MAX_DIRECTORIES', 2048, 16384
+        )
+        max_files = self._bounded_scan_setting('PYPNM_AGENT_SCAN_MAX_FILES', 20000, 100000)
+        pending: list[tuple[Path, int]] = [(root, 0)]
+        discovered: list[Path] = []
+        directories_scanned = 0
+
+        while pending:
+            if directories_scanned >= max_directories:
+                return discovered, True
+            directory, depth = pending.pop()
+            directories_scanned += 1
+            try:
+                with os.scandir(directory) as scan:
+                    entries = sorted(scan, key=lambda entry: entry.name)
+            except OSError as exc:
+                self.logger.debug('PNM write scan directory unavailable: %s', exc)
+                continue
+
+            child_directories: list[Path] = []
+            for entry in entries:
+                try:
+                    if entry.is_symlink():
+                        continue
+                    if entry.is_file(follow_symlinks=False):
+                        if len(discovered) >= max_files:
+                            return discovered, True
+                        discovered.append(Path(entry.path))
+                    elif depth < max_depth and entry.is_dir(follow_symlinks=False):
+                        child_directories.append(Path(entry.path))
+                except OSError:
+                    continue
+            for child in reversed(child_directories):
+                pending.append((child, depth + 1))
+
+        return discovered, False
+
+    @staticmethod
+    def _unlink_regular_file_nofollow(
+        root: Path,
+        path: Path,
+        expected: os.stat_result,
+    ) -> None:
+        """Unlink a verified regular file relative to a no-follow parent descriptor."""
+        if os.path.commonpath((str(root), str(path.parent))) != str(root):
+            raise OSError('File is outside the approved PNM root')
+        parent_flags = (
+            os.O_RDONLY
+            | getattr(os, 'O_CLOEXEC', 0)
+            | getattr(os, 'O_DIRECTORY', 0)
+            | getattr(os, 'O_NOFOLLOW', 0)
+        )
+        parent_fd = os.open(str(path.parent), parent_flags)
+        file_fd: int | None = None
+        try:
+            current = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+            if (
+                not stat.S_ISREG(current.st_mode)
+                or current.st_dev != expected.st_dev
+                or current.st_ino != expected.st_ino
+                or current.st_size != expected.st_size
+                or current.st_mtime_ns != expected.st_mtime_ns
+            ):
+                raise OSError('File changed before deletion')
+            file_flags = (
+                os.O_RDONLY
+                | getattr(os, 'O_CLOEXEC', 0)
+                | getattr(os, 'O_NOFOLLOW', 0)
+            )
+            file_fd = os.open(path.name, file_flags, dir_fd=parent_fd)
+            opened = os.fstat(file_fd)
+            if (
+                not stat.S_ISREG(opened.st_mode)
+                or opened.st_dev != current.st_dev
+                or opened.st_ino != current.st_ino
+            ):
+                raise OSError('File changed during secure deletion')
+            os.unlink(path.name, dir_fd=parent_fd)
+        finally:
+            if file_fd is not None:
+                os.close(file_fd)
+            os.close(parent_fd)
+
+    def _handle_pnm_file_delete(self, params: dict) -> dict:
+        """Delete exact approved UTSC basenames from one explicit writable root."""
+        if not self._pnm_write_enabled('delete'):
+            return {'success': False, 'error': 'PNM file deletion is not enabled'}
+        root = self._pnm_write_root()
+        if root is None:
+            return {'success': False, 'error': 'No approved writable PNM root is configured'}
+
+        raw_names = params.get('filenames')
+        if not isinstance(raw_names, list) or not 1 <= len(raw_names) <= 100:
+            return {'success': False, 'error': 'filenames must contain 1 to 100 basenames'}
+        try:
+            filenames = list(dict.fromkeys(
+                self._safe_utsc_capture_name(value) for value in raw_names
+            ))
+        except (TypeError, ValueError) as exc:
+            return {'success': False, 'error': str(exc)}
+
+        discovered, truncated = self._bounded_pnm_write_files(root)
+        by_name: dict[str, list[Path]] = {}
+        for path in discovered:
+            if path.name in filenames:
+                by_name.setdefault(path.name, []).append(path)
+
+        deleted: list[str] = []
+        errors: list[dict] = []
+        for filename in filenames:
+            matches = by_name.get(filename, [])
+            if not matches:
+                if truncated:
+                    errors.append({'filename': filename, 'error': 'Scan bound reached; absence is uncertain'})
+                continue  # Exact deletion is idempotent when the file is already absent.
+            if len(matches) != 1:
+                errors.append({'filename': filename, 'error': 'Duplicate basename is ambiguous'})
+                continue
+            path = matches[0]
+            try:
+                expected = os.lstat(path)
+                if stat.S_ISLNK(expected.st_mode) or not stat.S_ISREG(expected.st_mode):
+                    raise OSError('Refusing to delete a symlink or non-regular file')
+                self._unlink_regular_file_nofollow(root, path, expected)
+                deleted.append(filename)
+            except OSError as exc:
+                errors.append({'filename': filename, 'error': str(exc)})
+
+        result = {
+            'success': not errors,
+            'deleted_count': len(deleted),
+            'files': deleted,
+            'errors': errors,
+        }
+        if truncated:
+            result['truncated'] = True
+        if errors:
+            result['error'] = 'One or more exact PNM file deletions were refused'
+        return result
+
+    def _handle_pnm_file_housekeeping(self, params: dict) -> dict:
+        """Delete aged approved UTSC files from one explicit writable root."""
+        if not self._pnm_write_enabled('housekeeping'):
+            return {'success': False, 'error': 'PNM file housekeeping is not enabled'}
+        root = self._pnm_write_root()
+        if root is None:
+            return {'success': False, 'error': 'No approved writable PNM root is configured'}
+        try:
+            max_age_seconds = int(params.get('max_age_seconds', 60))
+        except (TypeError, ValueError):
+            return {'success': False, 'error': 'max_age_seconds must be an integer'}
+        if max_age_seconds < 1:
+            return {'success': False, 'error': 'max_age_seconds must be positive'}
+        dry_run = bool(params.get('dry_run', True))
+        cutoff = time.time() - max_age_seconds
+        max_actions = self._bounded_scan_setting(
+            'PYPNM_AGENT_HOUSEKEEPING_MAX_FILES', 1000, 5000
+        )
+
+        discovered, scan_truncated = self._bounded_pnm_write_files(root)
+        candidates: list[tuple[Path, os.stat_result]] = []
+        for path in discovered:
+            if not path.name.startswith(('utsc_', 'PNMCcapUsSpecAn_')):
+                continue
+            try:
+                file_stat = os.lstat(path)
+            except OSError:
+                continue
+            if (
+                stat.S_ISREG(file_stat.st_mode)
+                and not stat.S_ISLNK(file_stat.st_mode)
+                and file_stat.st_mtime < cutoff
+            ):
+                candidates.append((path, file_stat))
+        candidates.sort(key=lambda item: (item[1].st_mtime, item[0].name))
+        selected = candidates[:max_actions]
+        truncated = scan_truncated or len(candidates) > len(selected)
+
+        records: list[dict] = []
+        errors: list[dict] = []
+        if dry_run:
+            records = [
+                {'filename': path.name, 'size_bytes': int(file_stat.st_size), 'source': 'agent'}
+                for path, file_stat in selected
+            ]
+        else:
+            for path, file_stat in selected:
+                try:
+                    self._unlink_regular_file_nofollow(root, path, file_stat)
+                    records.append({
+                        'filename': path.name,
+                        'size_bytes': int(file_stat.st_size),
+                        'source': 'agent',
+                    })
+                except OSError as exc:
+                    errors.append({'filename': path.name, 'error': str(exc)})
+
+        result = {
+            'success': not errors,
+            'dry_run': dry_run,
+            'candidate_count': len(candidates),
+            'deleted_count': 0 if dry_run else len(records),
+            'total_size_bytes': sum(item['size_bytes'] for item in records),
+            'files': records[:50],
+            'truncated': truncated or len(records) > 50,
+            'errors': errors,
+        }
+        if errors:
+            result['error'] = 'One or more aged PNM file deletions were refused'
+        return result
 
     @staticmethod
     def _open_regular_file_nofollow(path: Path) -> tuple[int, os.stat_result]:
