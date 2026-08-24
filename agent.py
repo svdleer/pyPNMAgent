@@ -1268,6 +1268,18 @@ class PyPNMAgent:
         max_reps = max(1, int(params.get('max_repetitions', 500)))
         limit = max(1, int(params.get('limit', 10000)))
         overall_timeout = max(30.0, float(params.get('overall_timeout', 270)))
+        try:
+            min_remaining_tree_reserve = float(
+                params.get('min_remaining_tree_reserve', 0)
+            )
+        except (TypeError, ValueError):
+            min_remaining_tree_reserve = 0.0
+        if min_remaining_tree_reserve != min_remaining_tree_reserve:
+            min_remaining_tree_reserve = 0.0
+        min_remaining_tree_reserve = min(
+            max(0.0, min_remaining_tree_reserve),
+            overall_timeout / max(len(oids), 1),
+        )
         raw_octet_oids = {
             str(raw_oid).strip().lstrip('.')
             for raw_oid in (params.get('raw_octet_oids') or [])
@@ -1359,10 +1371,23 @@ class PyPNMAgent:
                         all_results[pending_oid] = []
                         walk_durations[pending_oid] = 0.0
                     break
+                later_tree_count = len(oids) - index - 1
+                available_for_current = (
+                    remaining
+                    - min_remaining_tree_reserve * later_tree_count
+                )
+                if available_for_current <= 0:
+                    errors[oid] = (
+                        "timeout budget reserved for "
+                        f"{later_tree_count} remaining OID tree(s)"
+                    )
+                    all_results[oid] = []
+                    walk_durations[oid] = 0.0
+                    continue
                 t0 = loop.time()
                 all_results[oid] = await walk_one_safe(
                     oid,
-                    min(per_tree_hard_limit, remaining),
+                    min(per_tree_hard_limit, available_for_current),
                 )
                 elapsed = loop.time() - t0
                 walk_durations[oid] = round(elapsed, 2)
