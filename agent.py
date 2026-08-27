@@ -180,6 +180,14 @@ class WebSocketLogHandler(logging.Handler):
                 pass
 
 
+def _first_nonblank(*values):
+    """Return the first non-blank value without modifying it."""
+    for value in values:
+        if value is not None and str(value).strip():
+            return value
+    return None
+
+
 @dataclass
 class AgentConfig:
     """Agent configuration for Jump Server deployment."""
@@ -205,8 +213,10 @@ class AgentConfig:
 
     # CMTS Access - for SNMP to CMTS devices
     cmts_enabled: bool = True
-    cmts_community: str = 'public'
+    cmts_community: str = ''
     cmts_write_community: Optional[str] = None
+    # Per-target CMTS credentials. Explicit task values still take precedence.
+    cmts_list: list = field(default_factory=list)
     # Optional: SSH to CMTS for CLI commands
     cmts_ssh_enabled: bool = False
     cmts_ssh_user: Optional[str] = None
@@ -214,7 +224,8 @@ class AgentConfig:
     
     # CM Access - for SNMP to Cable Modems
     cm_enabled: bool = False
-    cm_community: str = 'm0d3m1nf0'
+    cm_community: str = ''
+    cm_write_community: Optional[str] = None
     # Optional: SSH proxy to reach CMs (if not directly reachable)
     cm_proxy_host: Optional[str] = None
     cm_proxy_port: int = 22
@@ -326,14 +337,51 @@ class AgentConfig:
         cm_proxy = cm_access.get('proxy', {}) or data.get('cm_proxy', {})
         cm_direct = data.get('cm_direct', {})
         cm_enabled = cm_access.get('enabled', cm_direct.get('enabled', False))
-        cm_community = cm_access.get('community', cm_direct.get('community', ''))
-        cmts_community = (
-            cmts.get('community')
-            or os.environ.get('PYPNM_CMTS_COMMUNITY')
-            or os.environ.get('CMTS_SNMP_COMMUNITY')
-            or os.environ.get('CMTS_COMMUNITY')
-            or 'public'
+        cm_community = _first_nonblank(
+            cm_access.get('community'),
+            cm_direct.get('community'),
+            data.get('modem_community'),
+        ) or ''
+        cm_write_community = _first_nonblank(
+            cm_access.get('write_community'),
+            cm_direct.get('write_community'),
+            data.get('modem_write_community'),
+            os.environ.get('PYPNM_CM_WRITE_COMMUNITY'),
+            os.environ.get('MODEM_WRITE_COMMUNITY'),
+            os.environ.get('CM_RW_COMMUNITY'),
         )
+        cmts_community = _first_nonblank(
+            cmts.get('community'),
+            data.get('cmts_community'),
+            os.environ.get('PYPNM_CMTS_COMMUNITY'),
+            os.environ.get('CMTS_SNMP_COMMUNITY'),
+            os.environ.get('CMTS_COMMUNITY'),
+        ) or ''
+        cmts_write_community = _first_nonblank(
+            cmts.get('write_community'),
+            data.get('cmts_write_community'),
+            os.environ.get('PYPNM_CMTS_WRITE_COMMUNITY'),
+            os.environ.get('CMTS_WRITE_COMMUNITY'),
+        )
+
+        cmts_list = []
+        raw_cmts_list = data.get('cmts_list', [])
+        if isinstance(raw_cmts_list, list):
+            allowed_cmts_keys = {
+                'name', 'ip', 'community', 'write_community', 'vendor', 'type'
+            }
+            for raw_cmts in raw_cmts_list:
+                if not isinstance(raw_cmts, dict):
+                    continue
+                entry = {
+                    key: value
+                    for key, value in raw_cmts.items()
+                    if key in allowed_cmts_keys
+                    and value is not None
+                    and (not isinstance(value, str) or value.strip())
+                }
+                if entry.get('ip') is not None:
+                    cmts_list.append(entry)
         
         equalizer = data.get('equalizer', {})
         redis_config = data.get('redis', {})
@@ -357,13 +405,15 @@ class AgentConfig:
             # CMTS Access
             cmts_enabled=cmts.get('enabled', cmts.get('snmp_direct', True)),
             cmts_community=cmts_community,
-            cmts_write_community=cmts.get('write_community'),
+            cmts_write_community=cmts_write_community,
+            cmts_list=cmts_list,
             cmts_ssh_enabled=cmts.get('ssh_enabled', False),
             cmts_ssh_user=cmts.get('ssh_user'),
             cmts_ssh_key=expand_path(cmts.get('ssh_key_file')),
             # CM Access
             cm_enabled=cm_enabled,
             cm_community=cm_community,
+            cm_write_community=cm_write_community,
             cm_proxy_host=cm_proxy.get('host'),
             cm_proxy_port=cm_proxy.get('port', 22),
             cm_proxy_user=cm_proxy.get('username') or cm_proxy.get('user'),
@@ -395,11 +445,24 @@ class AgentConfig:
         def expand_path(p):
             return os.path.expanduser(p) if p else None
 
-        cmts_community = (
-            os.environ.get('PYPNM_CMTS_COMMUNITY')
-            or os.environ.get('CMTS_SNMP_COMMUNITY')
-            or os.environ.get('CMTS_COMMUNITY')
-            or 'public'
+        cmts_community = _first_nonblank(
+            os.environ.get('PYPNM_CMTS_COMMUNITY'),
+            os.environ.get('CMTS_SNMP_COMMUNITY'),
+            os.environ.get('CMTS_COMMUNITY'),
+        ) or ''
+        cmts_write_community = _first_nonblank(
+            os.environ.get('PYPNM_CMTS_WRITE_COMMUNITY'),
+            os.environ.get('CMTS_WRITE_COMMUNITY'),
+        )
+        cm_community = _first_nonblank(
+            os.environ.get('PYPNM_CM_COMMUNITY'),
+            os.environ.get('MODEM_COMMUNITY'),
+            os.environ.get('CM_SNMP_COMMUNITY'),
+        ) or ''
+        cm_write_community = _first_nonblank(
+            os.environ.get('PYPNM_CM_WRITE_COMMUNITY'),
+            os.environ.get('MODEM_WRITE_COMMUNITY'),
+            os.environ.get('CM_RW_COMMUNITY'),
         )
 
         return cls(
@@ -411,6 +474,7 @@ class AgentConfig:
             pypnm_ssh_tunnel_enabled=os.environ.get('PYPNM_SSH_TUNNEL', 'false').lower() == 'true',
             pypnm_ssh_host=os.environ.get('PYPNM_SSH_HOST'),
             cmts_community=cmts_community,
+            cmts_write_community=cmts_write_community,
             pypnm_ssh_port=int(os.environ.get('PYPNM_SSH_PORT', '22')),
             pypnm_ssh_user=os.environ.get('PYPNM_SSH_USER'),
             pypnm_ssh_key=expand_path(os.environ.get('PYPNM_SSH_KEY')),
@@ -420,7 +484,8 @@ class AgentConfig:
             cmts_enabled=os.environ.get('PYPNM_CMTS_ENABLED', 'true').lower() == 'true',
             # CM Access
             cm_enabled=os.environ.get('PYPNM_CM_ENABLED', 'false').lower() == 'true',
-            cm_community=os.environ.get('PYPNM_CM_COMMUNITY', 'm0d3m1nf0'),
+            cm_community=cm_community,
+            cm_write_community=cm_write_community,
             cm_proxy_host=os.environ.get('PYPNM_CM_PROXY_HOST'),
             cm_proxy_port=int(os.environ.get('PYPNM_CM_PROXY_PORT', '22')),
             cm_proxy_user=os.environ.get('PYPNM_CM_PROXY_USER'),
@@ -887,10 +952,6 @@ class PyPNMAgent:
             if housekeeping_enabled:
                 caps.append('pnm_file_housekeeping')
 
-        # CMTS capabilities - agent provides SNMP walks, PyPNM API handles logic
-        if self.config.cmts_enabled:
-            caps.extend(['cmts_snmp_walk', 'cmts_snmp_get'])
-        
         return caps
     
     def _handle_command(self, ws, data: dict):
@@ -1067,23 +1128,69 @@ class PyPNMAgent:
             'total': len(targets),
         }
     
-    def _resolve_community(self, params: dict) -> str:
-        """Resolve SNMP community without writing credential values to logs."""
-        c = params.get('community')
-        if c:
+    def _resolve_community(self, params: dict, *, write: bool = False) -> str:
+        """Resolve an explicit community or the configured value for a declared target role."""
+        explicit = params.get('community')
+        if explicit is not None and str(explicit).strip():
             self.logger.debug("_resolve_community: using explicit task community")
-            return c
-        if params.get('target_ip') or params.get('modem_ip'):
-            self.logger.debug("_resolve_community: using configured modem community")
-            return self.config.cm_community
-        if params.get('ip') or params.get('cmts_ip'):
-            self.logger.debug("_resolve_community: using configured CMTS community")
-            return self.config.cmts_community
-        if self.config.cmts_enabled:
-            self.logger.debug("_resolve_community: using configured CMTS community")
-            return self.config.cmts_community
-        self.logger.debug("_resolve_community: using configured modem community")
-        return self.config.cm_community
+            return explicit
+
+        target_role = str(
+            params.get('target_role') or params.get('target_type') or ''
+        ).strip().lower()
+        if target_role not in {'cm', 'cmts'}:
+            raise ValueError(
+                "target_role must be 'cm' or 'cmts' when community is omitted"
+            )
+
+        if target_role == 'cmts':
+            configured = None
+            target_ip = _first_nonblank(
+                params.get('target_ip'),
+                params.get('modem_ip'),
+                params.get('ip'),
+                params.get('cmts_ip'),
+            )
+            if target_ip is not None:
+                normalized_target = str(target_ip).strip()
+                for cmts_entry in self.config.cmts_list:
+                    if str(cmts_entry.get('ip', '')).strip() != normalized_target:
+                        continue
+                    configured = (
+                        cmts_entry.get('write_community')
+                        if write
+                        else cmts_entry.get('community')
+                    )
+                    if configured is not None and str(configured).strip():
+                        self.logger.debug(
+                            "_resolve_community: using per-target cmts %s community",
+                            "write" if write else "read",
+                        )
+                    else:
+                        configured = None
+                    break
+            if configured is None:
+                configured = (
+                    self.config.cmts_write_community
+                    if write
+                    else self.config.cmts_community
+                )
+        else:
+            configured = (
+                self.config.cm_write_community
+                if write
+                else self.config.cm_community
+            )
+
+        if configured is None or not str(configured).strip():
+            raise ValueError(
+                f"No SNMP community configured for target_role '{target_role}'"
+            )
+
+        self.logger.debug(
+            "_resolve_community: using configured %s community", target_role
+        )
+        return configured
 
     def _handle_snmp_get(self, params: dict) -> dict:
         """Handle SNMP GET request via pysnmp."""
@@ -1126,7 +1233,7 @@ class PyPNMAgent:
         oid = params['oid']
         value = params['value']
         value_type = params.get('type', 'i')
-        community = self._resolve_community(params)
+        community = self._resolve_community(params, write=True)
         
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
@@ -1156,7 +1263,7 @@ class PyPNMAgent:
         sets = params.get('sets', [])
         if not sets:
             return {'success': False, 'error': 'sets list required'}
-        community = self._resolve_community(params)
+        community = self._resolve_community(params, write=True)
         timeout = params.get('timeout', 5)
         retries = params.get('retries', 2)
 

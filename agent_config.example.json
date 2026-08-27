@@ -38,17 +38,28 @@
             "remote_port": 8001
         }
     ],
+    "cmts_list": [
+        {
+            "name": "cmts-01",
+            "ip": "192.0.2.10",
+            "community": "your-cmts-read-community",
+            "write_community": "your-cmts-write-community",
+            "vendor": "vendor-name",
+            "type": "platform-type"
+        }
+    ],
     "cmts_access": {
         "enabled": true,
-        "community": "public",
-        "write_community": "private",
+        "community": "your-cmts-read-community",
+        "write_community": "your-cmts-write-community",
         "ssh_enabled": false,
         "ssh_user": "admin",
         "ssh_key_file": "~/.ssh/id_ed25519"
     },
     "cm_access": {
         "enabled": true,
-        "community": "your-cm-community",
+        "community": "your-cm-read-community",
+        "write_community": "your-cm-write-community",
         "proxy": {
             "host": "cm-proxy.internal",
             "user": "pnm-agent",
