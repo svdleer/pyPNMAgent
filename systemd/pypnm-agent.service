@@ -17,6 +17,7 @@ ExecStart=%h/.pypnm-agent/start.sh
 Restart=always
 RestartSec=10
 Environment=PYTHONUNBUFFERED=1
+Environment=AGENT_BULK_THREADS=2
 
 [Install]
 WantedBy=default.target

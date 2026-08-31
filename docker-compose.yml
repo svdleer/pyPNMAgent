@@ -13,6 +13,7 @@ services:
       - PYPNM_SERVER_URL=ws://localhost:8000/api/agents/ws
       - PYPNM_CMTS_ENABLED=true
       - PYPNM_CM_ENABLED=false
+      - AGENT_BULK_THREADS=2
     volumes:
       - ./config:/app/config:ro
       - ~/.ssh:/home/pypnm/.ssh:ro

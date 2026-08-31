@@ -21,6 +21,9 @@ RestartSec=10
 # Give the API time to start before the first connection attempt
 StartLimitIntervalSec=0
 
+# Limit each agent to two simultaneous bulk CMTS inventory tasks.
+Environment=AGENT_BULK_THREADS=2
+
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=pypnm-ctms-agent
