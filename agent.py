@@ -1129,68 +1129,135 @@ class PyPNMAgent:
         }
     
     def _resolve_community(self, params: dict, *, write: bool = False) -> str:
-        """Resolve an explicit community or the configured value for a declared target role."""
-        explicit = params.get('community')
-        if explicit is not None and str(explicit).strip():
-            self.logger.debug("_resolve_community: using explicit task community")
-            return explicit
-
+        """Resolve role-specific credentials without letting CM tasks override the agent."""
+        explicit = _first_nonblank(params.get('community'))
         target_role = str(
             params.get('target_role') or params.get('target_type') or ''
         ).strip().lower()
+
+        # Preserve legacy explicit-only tasks that predate target_role.
         if target_role not in {'cm', 'cmts'}:
+            if explicit is not None:
+                self.logger.debug("_resolve_community: using explicit legacy task community")
+                return str(explicit)
             raise ValueError(
                 "target_role must be 'cm' or 'cmts' when community is omitted"
             )
 
-        if target_role == 'cmts':
-            configured = None
-            target_ip = _first_nonblank(
-                params.get('target_ip'),
-                params.get('modem_ip'),
-                params.get('ip'),
-                params.get('cmts_ip'),
+        if target_role == 'cm':
+            # Cable-modem credentials belong to the CM agent. A separate write
+            # value is optional because deployed modems commonly use one
+            # community for both reads and writes.
+            configured = _first_nonblank(
+                self.config.cm_write_community if write else None,
+                self.config.cm_community,
             )
-            if target_ip is not None:
-                normalized_target = str(target_ip).strip()
-                for cmts_entry in self.config.cmts_list:
-                    if str(cmts_entry.get('ip', '')).strip() != normalized_target:
-                        continue
-                    configured = (
-                        cmts_entry.get('write_community')
-                        if write
-                        else cmts_entry.get('community')
+            if configured is not None:
+                if explicit is not None:
+                    self.logger.debug(
+                        "_resolve_community: ignoring explicit CM task community; "
+                        "using agent-configured community"
                     )
-                    if configured is not None and str(configured).strip():
-                        self.logger.debug(
-                            "_resolve_community: using per-target cmts %s community",
-                            "write" if write else "read",
-                        )
-                    else:
-                        configured = None
-                    break
-            if configured is None:
-                configured = (
-                    self.config.cmts_write_community
-                    if write
-                    else self.config.cmts_community
-                )
-        else:
-            configured = (
-                self.config.cm_write_community
-                if write
-                else self.config.cm_community
-            )
+                else:
+                    self.logger.debug(
+                        "_resolve_community: using agent-configured CM community"
+                    )
+                return str(configured)
+            raise ValueError("No SNMP community configured for target_role 'cm'")
 
-        if configured is None or not str(configured).strip():
-            raise ValueError(
-                f"No SNMP community configured for target_role '{target_role}'"
-            )
+        # CMTS explicit overrides and per-target credentials retain their
+        # existing precedence; the modem fallback policy must not affect them.
+        if explicit is not None:
+            self.logger.debug("_resolve_community: using explicit CMTS task community")
+            return str(explicit)
 
-        self.logger.debug(
-            "_resolve_community: using configured %s community", target_role
+        configured = None
+        target_ip = _first_nonblank(
+            params.get('target_ip'),
+            params.get('modem_ip'),
+            params.get('ip'),
+            params.get('cmts_ip'),
         )
-        return configured
+        if target_ip is not None:
+            normalized_target = str(target_ip).strip()
+            for cmts_entry in self.config.cmts_list:
+                if str(cmts_entry.get('ip', '')).strip() != normalized_target:
+                    continue
+                configured = (
+                    cmts_entry.get('write_community')
+                    if write
+                    else cmts_entry.get('community')
+                )
+                if configured is not None and str(configured).strip():
+                    self.logger.debug(
+                        "_resolve_community: using per-target cmts %s community",
+                        "write" if write else "read",
+                    )
+                else:
+                    configured = None
+                break
+        if configured is None:
+            configured = (
+                self.config.cmts_write_community
+                if write
+                else self.config.cmts_community
+            )
+        if configured is None or not str(configured).strip():
+            raise ValueError("No SNMP community configured for target_role 'cmts'")
+
+        self.logger.debug("_resolve_community: using configured cmts community")
+        return str(configured)
+
+    @staticmethod
+    def _is_no_response_failure(result: object) -> bool:
+        """Return True only for a timeout identified by the SNMP transport."""
+        return (
+            isinstance(result, dict)
+            and result.get('success') is False
+            and result.get('failure_kind') == 'transport_timeout'
+        )
+
+    def _cm_public_fallback_allowed(
+        self, params: dict, community: str, *, write: bool = False,
+    ) -> bool:
+        """Allow public only after a configured CM credential was attempted."""
+        target_role = str(
+            params.get('target_role') or params.get('target_type') or ''
+        ).strip().lower()
+        configured = _first_nonblank(
+            self.config.cm_write_community if write else None,
+            self.config.cm_community,
+        )
+        return (
+            target_role == 'cm'
+            and configured is not None
+            and str(community).strip().lower() != 'public'
+        )
+
+    async def _run_cm_with_public_fallback(
+        self,
+        params: dict,
+        community: str,
+        operation_name: str,
+        operation,
+        *,
+        write: bool = False,
+    ) -> dict:
+        """Run with the configured CM community, retrying public on no response."""
+        result = await operation(community)
+        if (
+            self._cm_public_fallback_allowed(params, community, write=write)
+            and self._is_no_response_failure(result)
+        ):
+            target_ip = params.get('target_ip') or params.get('modem_ip') or '-'
+            self.logger.warning(
+                "%s to %s received no response with the configured CM "
+                "community; retrying once with public",
+                operation_name,
+                target_ip,
+            )
+            return await operation('public')
+        return result
 
     def _handle_snmp_get(self, params: dict) -> dict:
         """Handle SNMP GET request via pysnmp."""
@@ -1199,17 +1266,28 @@ class PyPNMAgent:
             return {'success': False, 'error': 'target_ip or modem_ip required'}
         oid = params['oid']
         community = self._resolve_community(params)
-        
+
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
-        
+
         timeout = params.get('timeout', 5)
         retries = params.get('retries', 2)
         raw_octets = bool(params.get('raw_octets', False))
-        return asyncio.run(self._async_snmp_get(
-            target_ip, oid, community, timeout, retries, raw_octets=raw_octets,
+
+        async def run_get(active_community: str) -> dict:
+            return await self._async_snmp_get(
+                target_ip,
+                oid,
+                active_community,
+                timeout,
+                retries,
+                raw_octets=raw_octets,
+            )
+
+        return asyncio.run(self._run_cm_with_public_fallback(
+            params, community, 'SNMP GET', run_get,
         ))
-    
+
     def _handle_snmp_walk(self, params: dict) -> dict:
         """Handle SNMP WALK request via pysnmp."""
         target_ip = params.get('target_ip') or params.get('modem_ip')
@@ -1217,14 +1295,22 @@ class PyPNMAgent:
             return {'success': False, 'error': 'target_ip or modem_ip required'}
         oid = params['oid']
         community = self._resolve_community(params)
-        
+
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
-        
+
         timeout = params.get('timeout', 10)
         retries = params.get('retries', 2)
-        return asyncio.run(self._async_snmp_walk(target_ip, oid, community, timeout, retries))
-    
+
+        async def run_walk(active_community: str) -> dict:
+            return await self._async_snmp_walk(
+                target_ip, oid, active_community, timeout, retries,
+            )
+
+        return asyncio.run(self._run_cm_with_public_fallback(
+            params, community, 'SNMP WALK', run_walk,
+        ))
+
     def _handle_snmp_set(self, params: dict) -> dict:
         """Handle SNMP SET request via pysnmp."""
         target_ip = params.get('target_ip') or params.get('modem_ip')
@@ -1234,28 +1320,35 @@ class PyPNMAgent:
         value = params['value']
         value_type = params.get('type', 'i')
         community = self._resolve_community(params, write=True)
-        
+
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
-        
+
         timeout = params.get('timeout', 5)
         retries = params.get('retries', 2)
-        return asyncio.run(self._async_snmp_set(
-            target_ip, oid, value, value_type, community, timeout, retries,
+
+        async def run_set(active_community: str) -> dict:
+            return await self._async_snmp_set(
+                target_ip,
+                oid,
+                value,
+                value_type,
+                active_community,
+                timeout,
+                retries,
+            )
+
+        return asyncio.run(self._run_cm_with_public_fallback(
+            params, community, 'SNMP SET', run_set, write=True,
         ))
-    
+
     def _handle_snmp_set_sequence(self, params: dict) -> dict:
-        """Execute a sequence of SNMP SETs for one target as a single atomic task.
+        """Execute a sequence of SNMP SETs for one target as a single task.
 
-        This keeps all SETs for one modem in one agent task, preventing
-        queue saturation when many modems are scanned concurrently.
-
-        params:
-            target_ip  : modem IP
-            community  : SNMP write community
-            sets       : list of {oid, value, type, sleep_after} dicts
-                         sleep_after (float, optional): seconds to sleep after this SET
-            timeout    : per-SET SNMP timeout (default 5)
+        The agent-configured CM community is attempted first. If a SET receives
+        no response, that SET is retried once with public and the remainder of
+        the sequence continues with public. SNMP error responses never trigger
+        the fallback.
         """
         target_ip = params.get('target_ip') or params.get('modem_ip')
         if not target_ip:
@@ -1272,17 +1365,50 @@ class PyPNMAgent:
 
         async def run_sequence():
             results = []
+            active_community = community
             for item in sets:
                 oid = item['oid']
                 value = item['value']
                 value_type = item.get('type', 'i')
                 result = await self._async_snmp_set(
-                    target_ip, oid, value, value_type, community, timeout, retries,
+                    target_ip,
+                    oid,
+                    value,
+                    value_type,
+                    active_community,
+                    timeout,
+                    retries,
                 )
+                if (
+                    active_community != 'public'
+                    and self._cm_public_fallback_allowed(
+                        params, active_community, write=True,
+                    )
+                    and self._is_no_response_failure(result)
+                ):
+                    self.logger.warning(
+                        "SNMP SET sequence to %s received no response with the "
+                        "configured CM community; retrying with public",
+                        target_ip,
+                    )
+                    active_community = 'public'
+                    result = await self._async_snmp_set(
+                        target_ip,
+                        oid,
+                        value,
+                        value_type,
+                        active_community,
+                        timeout,
+                        retries,
+                    )
                 results.append({'oid': oid, 'value': value, **result})
                 if not result.get('success'):
-                    return {'success': False, 'failed_oid': oid, 'results': results,
-                            'error': result.get('error', 'SET failed')}
+                    return {
+                        'success': False,
+                        'failed_oid': oid,
+                        'results': results,
+                        'error': result.get('error', 'SET failed'),
+                    }
                 sleep_after = item.get('sleep_after', 0)
                 if sleep_after:
                     await asyncio.sleep(sleep_after)
@@ -1299,36 +1425,57 @@ class PyPNMAgent:
         community = self._resolve_community(params)
         timeout = params.get('timeout', 5)
         retries = params.get('retries', 2)  # 0 = fail-fast (e.g. enrichment), 2 = default
-        # Limit concurrent SNMP requests to avoid overwhelming the modem
         max_concurrent = params.get('max_concurrent', 10)
         self.logger.debug(
             f"snmp_bulk_get: target={target_ip} oids={len(oids)} "
             f"timeout={timeout} retries={retries}"
         )
-        
-        # Use pysnmp
+
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
-        
-        async def fetch_all():
+
+        async def fetch_all(active_community: str):
             semaphore = asyncio.Semaphore(max_concurrent)
-            
+
             async def fetch_with_semaphore(oid):
                 async with semaphore:
-                    return await self._async_snmp_get(target_ip, oid, community, timeout, retries)
-            
+                    return await self._async_snmp_get(
+                        target_ip, oid, active_community, timeout, retries,
+                    )
+
             tasks = [fetch_with_semaphore(oid) for oid in oids]
             return await asyncio.gather(*tasks, return_exceptions=True)
-        
-        fetch_results = asyncio.run(fetch_all())
-        
+
+        async def run_bulk_get():
+            fetch_results = await fetch_all(community)
+            normalized = [
+                {'success': False, 'error': str(result)}
+                if isinstance(result, Exception)
+                else result
+                for result in fetch_results
+            ]
+            if (
+                normalized
+                and self._cm_public_fallback_allowed(params, community)
+                and all(self._is_no_response_failure(result) for result in normalized)
+            ):
+                self.logger.warning(
+                    "SNMP bulk GET to %s received no responses with the "
+                    "configured CM community; retrying once with public",
+                    target_ip,
+                )
+                return await fetch_all('public')
+            return fetch_results
+
+        fetch_results = asyncio.run(run_bulk_get())
+
         results = {}
         for oid, result in zip(oids, fetch_results):
             if isinstance(result, Exception):
                 results[oid] = {'success': False, 'error': str(result)}
             else:
                 results[oid] = result
-        
+
         return {'success': True, 'results': results}
     
     def _handle_snmp_bulk_walk(self, params: dict) -> dict:
@@ -1571,7 +1718,15 @@ class PyPNMAgent:
             )
             
             if errorIndication:
-                return {'success': False, 'error': str(errorIndication)}
+                return {
+                    'success': False,
+                    'error': str(errorIndication),
+                    'failure_kind': (
+                        'transport_timeout'
+                        if type(errorIndication).__name__ == 'RequestTimedOut'
+                        else 'transport_error'
+                    ),
+                }
             elif errorStatus:
                 return {'success': False, 'error': f'{errorStatus.prettyPrint()} at {errorIndex}'}
             
@@ -1605,7 +1760,15 @@ class PyPNMAgent:
                 lexicographicMode=False
             ):
                 if errorIndication:
-                    return {'success': False, 'error': str(errorIndication)}
+                    return {
+                        'success': False,
+                        'error': str(errorIndication),
+                        'failure_kind': (
+                            'transport_timeout'
+                            if type(errorIndication).__name__ == 'RequestTimedOut'
+                            else 'transport_error'
+                        ),
+                    }
                 elif errorStatus:
                     return {'success': False, 'error': f'{errorStatus.prettyPrint()} at {errorIndex}'}
                 
@@ -1641,7 +1804,15 @@ class PyPNMAgent:
             )
             
             if errorIndication:
-                return {'success': False, 'error': str(errorIndication)}
+                return {
+                    'success': False,
+                    'error': str(errorIndication),
+                    'failure_kind': (
+                        'transport_timeout'
+                        if type(errorIndication).__name__ == 'RequestTimedOut'
+                        else 'transport_error'
+                    ),
+                }
             elif errorStatus:
                 return {'success': False, 'error': f'{errorStatus.prettyPrint()} at {errorIndex}'}
             
