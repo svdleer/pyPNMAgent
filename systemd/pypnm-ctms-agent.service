@@ -21,8 +21,9 @@ RestartSec=10
 # Give the API time to start before the first connection attempt
 StartLimitIntervalSec=0
 
-# Limit each agent to two simultaneous bulk CMTS inventory tasks.
+# Keep CMTS bulk work bounded; modem identity uses a separate executor.
 Environment=AGENT_BULK_THREADS=2
+Environment=AGENT_IDENTITY_THREADS=64
 
 StandardOutput=journal
 StandardError=journal

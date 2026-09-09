@@ -618,15 +618,18 @@ class PyPNMAgent:
         
         # Three separate thread pools:
         # · interactive_pool — GUI clicks, CMTS walks, RF/ifindex discovery
-        # · bulk_pool        — background modem enrichment (snmp_bulk_get)
+        # · bulk_pool        — bounded CMTS inventory/background work
+        # · identity_pool    — fail-fast per-modem identity GETs
         # · long_pool        — PNM file captures (file_get/pnm_file_get), may run 30-90 s
-        # Tunable via env: AGENT_INTERACTIVE_THREADS / AGENT_BULK_THREADS / AGENT_LONG_THREADS
-        self._int_threads  = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 50))
+        # Tunable via AGENT_*_THREADS environment variables.
+        self._int_threads = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 50))
         self._bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 10))
+        self._identity_threads = int(os.environ.get('AGENT_IDENTITY_THREADS', 64))
         self._long_threads = int(os.environ.get('AGENT_LONG_THREADS', 10))
-        self._interactive_executor = ThreadPoolExecutor(max_workers=self._int_threads,  thread_name_prefix='snmp-int')
-        self._bulk_executor        = ThreadPoolExecutor(max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')
-        self._long_executor        = ThreadPoolExecutor(max_workers=self._long_threads, thread_name_prefix='snmp-long')
+        self._interactive_executor = ThreadPoolExecutor(max_workers=self._int_threads, thread_name_prefix='snmp-int')
+        self._bulk_executor = ThreadPoolExecutor(max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')
+        self._identity_executor = ThreadPoolExecutor(max_workers=self._identity_threads, thread_name_prefix='snmp-identity')
+        self._long_executor = ThreadPoolExecutor(max_workers=self._long_threads, thread_name_prefix='snmp-long')
         # Legacy alias kept so any direct references still work
         self._executor = self._interactive_executor
         # websocket-client ws.send() is NOT thread-safe — serialise all sends
@@ -827,7 +830,13 @@ class PyPNMAgent:
             'type': 'auth',
             'agent_id': self.config.agent_id,
             'token': self.config.auth_token,
-            'capabilities': self._get_capabilities()
+            'capabilities': self._get_capabilities(),
+            'limits': {
+                'interactive': self._int_threads,
+                'bulk': self._bulk_threads,
+                'identity': self._identity_threads,
+                'long': self._long_threads,
+            },
         }
         ws.send(json.dumps(auth_msg))
         self._ws_log_handler.attach(ws, self._send_lock)
@@ -879,6 +888,7 @@ class PyPNMAgent:
         # fall back to shutdown(wait=False) for older interpreters.
         for pool, name in ((self._interactive_executor, 'interactive'),
                            (self._bulk_executor, 'bulk'),
+                           (self._identity_executor, 'identity'),
                            (self._long_executor, 'long')):
             try:
                 pool.shutdown(wait=False, cancel_futures=True)
@@ -890,6 +900,8 @@ class PyPNMAgent:
             max_workers=self._int_threads, thread_name_prefix='snmp-int')
         self._bulk_executor = ThreadPoolExecutor(
             max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')
+        self._identity_executor = ThreadPoolExecutor(
+            max_workers=self._identity_threads, thread_name_prefix='snmp-identity')
         self._long_executor = ThreadPoolExecutor(
             max_workers=self._long_threads, thread_name_prefix='snmp-long')
         self._executor = self._interactive_executor
@@ -1016,10 +1028,13 @@ class PyPNMAgent:
 
         # Route tasks to the appropriate pool:
         #   long  — file transfer / bounded PNM file scans (30–90 s)
-        #   bulk  — background modem enrichment (snmp_bulk_get), UTSC file fetch
-        #   interactive — everything else (GUI clicks, CMTS walks)
+        #   identity — fail-fast inventory identity GETs only
+        #   bulk  — bounded CMTS inventory and other background work
+        #   interactive — GUI clicks and ordinary SNMP operations
         priority = data.get('priority', 'interactive')
-        if priority == 'bulk':
+        if priority == 'identity':
+            self._identity_executor.submit(_run_handler)
+        elif priority == 'bulk':
             self._bulk_executor.submit(_run_handler)
         elif priority == 'long' or command in (
             'file_get', 'pnm_file_get', 'pnm_file_delete', 'pnm_file_housekeeping'
@@ -1229,7 +1244,8 @@ class PyPNMAgent:
             self.config.cm_community,
         )
         return (
-            target_role == 'cm'
+            params.get('allow_public_fallback', True) is not False
+            and target_role == 'cm'
             and configured is not None
             and str(community).strip().lower() != 'public'
         )

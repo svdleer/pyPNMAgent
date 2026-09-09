@@ -14,6 +14,7 @@ services:
       - PYPNM_CMTS_ENABLED=true
       - PYPNM_CM_ENABLED=false
       - AGENT_BULK_THREADS=2
+      - AGENT_IDENTITY_THREADS=64
     volumes:
       - ./config:/app/config:ro
       - ~/.ssh:/home/pypnm/.ssh:ro
