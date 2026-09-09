@@ -623,7 +623,7 @@ class PyPNMAgent:
         # · long_pool        — PNM file captures (file_get/pnm_file_get), may run 30-90 s
         # Tunable via AGENT_*_THREADS environment variables.
         self._int_threads = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 50))
-        self._bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 10))
+        self._bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 2))
         self._identity_threads = int(os.environ.get('AGENT_IDENTITY_THREADS', 64))
         self._long_threads = int(os.environ.get('AGENT_LONG_THREADS', 10))
         self._interactive_executor = ThreadPoolExecutor(max_workers=self._int_threads, thread_name_prefix='snmp-int')
