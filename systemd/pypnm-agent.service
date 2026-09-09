@@ -19,7 +19,7 @@ RestartSec=10
 Environment=PYTHONUNBUFFERED=1
 # Keep heavy background work bounded; identity has a dedicated fail-fast pool.
 Environment=AGENT_BULK_THREADS=2
-Environment=AGENT_IDENTITY_THREADS=64
+Environment=AGENT_IDENTITY_THREADS=48
 
 [Install]
 WantedBy=default.target

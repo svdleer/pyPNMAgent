@@ -624,7 +624,7 @@ class PyPNMAgent:
         # Tunable via AGENT_*_THREADS environment variables.
         self._int_threads = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 50))
         self._bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 2))
-        self._identity_threads = int(os.environ.get('AGENT_IDENTITY_THREADS', 64))
+        self._identity_threads = int(os.environ.get('AGENT_IDENTITY_THREADS', 48))
         self._long_threads = int(os.environ.get('AGENT_LONG_THREADS', 10))
         self._interactive_executor = ThreadPoolExecutor(max_workers=self._int_threads, thread_name_prefix='snmp-int')
         self._bulk_executor = ThreadPoolExecutor(max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')

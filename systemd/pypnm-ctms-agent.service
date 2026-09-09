@@ -23,7 +23,7 @@ StartLimitIntervalSec=0
 
 # Keep CMTS bulk work bounded; modem identity uses a separate executor.
 Environment=AGENT_BULK_THREADS=2
-Environment=AGENT_IDENTITY_THREADS=64
+Environment=AGENT_IDENTITY_THREADS=48
 
 StandardOutput=journal
 StandardError=journal
