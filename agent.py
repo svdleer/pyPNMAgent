@@ -226,46 +226,7 @@ def _first_nonblank(*values):
 
 CM_POLLER_PAGE_SIZE_HARD_MAX = 5000
 CM_POLLER_RESPONSE_BYTE_HARD_MAX = 16 * 1024 * 1024
-_CM_POLLER_CREDENTIAL_KEYS = frozenset({'DB', 'DB_USER', 'DB_PASS', 'DB_HOST'})
 _NORMALIZED_MAC_RE = re.compile(r'^[0-9a-f]{2}(?::[0-9a-f]{2}){5}$')
-
-
-def _load_cm_poller_db_credentials(credentials_file: str) -> dict[str, str]:
-    """Parse the four allowed dbinfo assignments as inert text."""
-    path = Path(os.path.expanduser(credentials_file))
-    if not path.is_file() or not os.access(path, os.R_OK):
-        raise ValueError('CM poller credentials file is unavailable')
-
-    parsed: dict[str, str] = {}
-    try:
-        with path.open('r', encoding='utf-8') as handle:
-            for line in handle:
-                line = line.rstrip('\r\n')
-                if not line:
-                    continue
-                key, separator, raw_value = line.partition('=')
-                if (
-                    separator != '='
-                    or key not in _CM_POLLER_CREDENTIAL_KEYS
-                    or key in parsed
-                ):
-                    raise ValueError('CM poller credentials file is invalid')
-                value = raw_value.strip()
-                if (
-                    len(value) >= 2
-                    and value[0] == value[-1]
-                    and value[0] in {'"', "'"}
-                ):
-                    value = value[1:-1]
-                if not value or any(ord(character) < 32 for character in value):
-                    raise ValueError('CM poller credentials file is invalid')
-                parsed[key] = value
-    except (OSError, UnicodeError) as exc:
-        raise ValueError('CM poller credentials file is unavailable') from exc
-
-    if set(parsed) != _CM_POLLER_CREDENTIAL_KEYS:
-        raise ValueError('CM poller credentials file is invalid')
-    return parsed
 
 
 @dataclass
@@ -319,10 +280,13 @@ class AgentConfig:
     cm_proxy_user: Optional[str] = None
     cm_proxy_key: Optional[str] = None
 
-    # Read-only CM-poller inventory access. Database values are loaded only
-    # from the inert credentials file and are never accepted from tasks.
+    # Read-only CM-poller inventory access. Database values stay in the local
+    # agent configuration and are never accepted from API task parameters.
     cm_poller_mysql_enabled: bool = False
-    cm_poller_mysql_credentials_file: str = '~/dbinfo'
+    cm_poller_mysql_host: Optional[str] = None
+    cm_poller_mysql_database: Optional[str] = None
+    cm_poller_mysql_user: Optional[str] = None
+    cm_poller_mysql_password: Optional[str] = None
     cm_poller_mysql_connect_timeout: int = 5
     cm_poller_mysql_read_timeout: int = 30
     cm_poller_mysql_page_size: int = 1000
@@ -545,14 +509,29 @@ class AgentConfig:
             'cm_poller_mysql.enabled',
             allow_string=enabled_from_env,
         )
-        credentials_file, _ = cm_poller_value(
-            'credentials_file',
-            'PYPNM_CM_POLLER_MYSQL_CREDENTIALS_FILE',
-            '~/dbinfo',
+        def cm_poller_text(key: str, env_name: str) -> str | None:
+            raw_value, _ = cm_poller_value(key, env_name, None)
+            if raw_value is None:
+                return None
+            if not isinstance(raw_value, str):
+                raise ValueError(f'cm_poller_mysql.{key} must be a string')
+            normalized = raw_value.strip()
+            if not normalized or any(ord(character) < 32 for character in normalized):
+                raise ValueError(f'cm_poller_mysql.{key} must be a non-empty string')
+            return normalized
+
+        cm_poller_mysql_host = cm_poller_text(
+            'host', 'PYPNM_CM_POLLER_MYSQL_HOST'
         )
-        if not isinstance(credentials_file, str) or not credentials_file.strip():
-            raise ValueError('cm_poller_mysql.credentials_file must be a non-empty string')
-        credentials_file = expand_path(credentials_file.strip())
+        cm_poller_mysql_database = cm_poller_text(
+            'database', 'PYPNM_CM_POLLER_MYSQL_DATABASE'
+        )
+        cm_poller_mysql_user = cm_poller_text(
+            'user', 'PYPNM_CM_POLLER_MYSQL_USER'
+        )
+        cm_poller_mysql_password = cm_poller_text(
+            'password', 'PYPNM_CM_POLLER_MYSQL_PASSWORD'
+        )
 
         connect_timeout_value, connect_timeout_from_env = cm_poller_value(
             'connect_timeout', 'PYPNM_CM_POLLER_MYSQL_CONNECT_TIMEOUT', 5
@@ -680,7 +659,10 @@ class AgentConfig:
             cm_proxy_key=expand_path(cm_proxy.get('key_file')),
             # Read-only CM-poller inventory
             cm_poller_mysql_enabled=cm_poller_mysql_enabled,
-            cm_poller_mysql_credentials_file=credentials_file,
+            cm_poller_mysql_host=cm_poller_mysql_host,
+            cm_poller_mysql_database=cm_poller_mysql_database,
+            cm_poller_mysql_user=cm_poller_mysql_user,
+            cm_poller_mysql_password=cm_poller_mysql_password,
             cm_poller_mysql_connect_timeout=cm_poller_mysql_connect_timeout,
             cm_poller_mysql_read_timeout=cm_poller_mysql_read_timeout,
             cm_poller_mysql_page_size=cm_poller_mysql_page_size,
@@ -821,9 +803,10 @@ class AgentConfig:
             cm_proxy_key=expand_path(os.environ.get('PYPNM_CM_PROXY_KEY')),
             # Read-only CM-poller inventory
             cm_poller_mysql_enabled=cm_poller_mysql_enabled,
-            cm_poller_mysql_credentials_file=expand_path(
-                os.environ.get('PYPNM_CM_POLLER_MYSQL_CREDENTIALS_FILE', '~/dbinfo')
-            ),
+            cm_poller_mysql_host=os.environ.get('PYPNM_CM_POLLER_MYSQL_HOST'),
+            cm_poller_mysql_database=os.environ.get('PYPNM_CM_POLLER_MYSQL_DATABASE'),
+            cm_poller_mysql_user=os.environ.get('PYPNM_CM_POLLER_MYSQL_USER'),
+            cm_poller_mysql_password=os.environ.get('PYPNM_CM_POLLER_MYSQL_PASSWORD'),
             cm_poller_mysql_connect_timeout=cm_poller_mysql_connect_timeout,
             cm_poller_mysql_read_timeout=cm_poller_mysql_read_timeout,
             cm_poller_mysql_page_size=cm_poller_mysql_page_size,
@@ -1247,16 +1230,25 @@ class PyPNMAgent:
         self.logger.info("Executor pools reset — ready for next connection")
 
     def _cm_poller_mysql_credentials(self) -> dict[str, str]:
-        """Return validated credentials only when the feature is fully usable."""
+        """Return validated inline credentials only when the feature is usable."""
         if self.config.cm_poller_mysql_enabled is not True:
             raise ValueError('CM poller inventory is not enabled')
         if pymysql is None or DictCursor is None:
             raise ValueError('CM poller inventory dependency is unavailable')
-        if (
-            not isinstance(self.config.cm_poller_mysql_credentials_file, str)
-            or not self.config.cm_poller_mysql_credentials_file.strip()
-        ):
-            raise ValueError('CM poller inventory configuration is invalid')
+        configured_credentials = {
+            'DB_HOST': self.config.cm_poller_mysql_host,
+            'DB': self.config.cm_poller_mysql_database,
+            'DB_USER': self.config.cm_poller_mysql_user,
+            'DB_PASS': self.config.cm_poller_mysql_password,
+        }
+        credentials: dict[str, str] = {}
+        for key, raw_value in configured_credentials.items():
+            if not isinstance(raw_value, str):
+                raise ValueError('CM poller inventory configuration is invalid')
+            value = raw_value.strip()
+            if not value or any(ord(character) < 32 for character in value):
+                raise ValueError('CM poller inventory configuration is invalid')
+            credentials[key] = value
         bounded_settings = (
             (self.config.cm_poller_mysql_connect_timeout, 1, 10),
             (self.config.cm_poller_mysql_read_timeout, 1, 30),
@@ -1278,9 +1270,7 @@ class PyPNMAgent:
             for value, minimum, maximum in bounded_settings
         ):
             raise ValueError('CM poller inventory configuration is invalid')
-        return _load_cm_poller_db_credentials(
-            self.config.cm_poller_mysql_credentials_file
-        )
+        return credentials
 
     def _cm_poller_inventory_available(self) -> bool:
         """Fail closed unless the complete CM-poller configuration is usable."""

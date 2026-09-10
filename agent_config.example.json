@@ -46,9 +46,12 @@
         }
     ],
     "cm_poller_mysql": {
-        "_comment": "Default-disabled read-only inventory source; DB values are read from credentials_file and never stored here",
+        "_comment": "Default-disabled read-only inventory source; keep this local config owner-readable and never commit real credentials",
         "enabled": false,
-        "credentials_file": "~/dbinfo",
+        "host": "127.0.0.1",
+        "database": "cm_poller",
+        "user": "cm_poller_readonly",
+        "password": "replace-with-local-password",
         "connect_timeout": 5,
         "read_timeout": 30,
         "page_size": 1000,
