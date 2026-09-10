@@ -114,13 +114,17 @@ class WebSocketLogHandler(logging.Handler):
     """
 
     MAX_BUFFER: int = 500
+    MAX_BATCH: int = 200
 
     def __init__(self, agent_id: str, level: int = logging.DEBUG) -> None:
         super().__init__(level)
         self.agent_id = agent_id
         self._ws: Any = None
         self._send_lock: threading.Lock | None = None
-        self._buffer: deque[dict[str, Any]] = deque(maxlen=self.MAX_BUFFER)
+        self._buffer: deque[tuple[int, dict[str, Any]]] = deque(maxlen=self.MAX_BUFFER)
+        self._buffer_lock = threading.Lock()
+        self._next_sequence = 0
+        self._last_sent_sequence = 0
 
     def attach(self, ws: Any, send_lock: threading.Lock) -> None:
         """Point the handler at the current WebSocket + send lock."""
@@ -137,19 +141,23 @@ class WebSocketLogHandler(logging.Handler):
             "name": record.name,
             "msg": self.format(record),
         }
-        self._buffer.append(entry)
+        with self._buffer_lock:
+            self._next_sequence += 1
+            self._buffer.append((self._next_sequence, entry))
         # Don't send over WS synchronously — it competes with task response
         # sends via the shared _send_lock and can starve response delivery.
         # Logs are batched and flushed periodically by _flush_logs() instead.
 
     def get_recent(self, limit: int = 100) -> list[dict[str, Any]]:
         """Return up to *limit* recent log entries from the ring buffer."""
-        items = list(self._buffer)
+        with self._buffer_lock:
+            items = [entry for _, entry in self._buffer]
         return items[-limit:]
 
     def start_flush_thread(self) -> None:
         """Start a daemon thread that periodically flushes buffered logs over WS."""
-        self._flush_cursor = len(self._buffer)
+        with self._buffer_lock:
+            self._last_sent_sequence = self._next_sequence
         t = threading.Thread(target=self._flush_loop, daemon=True, name="ws-log-flush")
         t.start()
 
@@ -161,23 +169,43 @@ class WebSocketLogHandler(logging.Handler):
             lock = self._send_lock
             if not ws or not lock:
                 continue
-            items = list(self._buffer)
-            to_send = items[self._flush_cursor:]
-            if not to_send:
+
+            with self._buffer_lock:
+                if (
+                    self._buffer
+                    and self._last_sent_sequence < self._buffer[0][0] - 1
+                ):
+                    # The bounded ring rolled over while disconnected or busy.
+                    # Resume from the oldest retained entry instead of allowing
+                    # a positional cursor to become permanently stuck.
+                    self._last_sent_sequence = self._buffer[0][0] - 1
+                pending = [
+                    (sequence, entry)
+                    for sequence, entry in self._buffer
+                    if sequence > self._last_sent_sequence
+                ][:self.MAX_BATCH]
+
+            if not pending:
                 continue
-            self._flush_cursor = len(self._buffer)
-            # Send as a single batch message
+
+            last_sequence = pending[-1][0]
             try:
-                batch = to_send[-200:]  # cap to last 200 per flush
                 msg = json.dumps({
                     "type": "log_batch",
                     "agent_id": self.agent_id,
-                    "entries": batch,
+                    "entries": [entry for _, entry in pending],
                 })
                 with lock:
                     ws.send(msg)
             except Exception:
-                pass
+                # Keep the sequence pending so a later flush or reconnect retries it.
+                continue
+
+            with self._buffer_lock:
+                self._last_sent_sequence = max(
+                    self._last_sent_sequence,
+                    last_sequence,
+                )
 
 
 def _first_nonblank(*values):
