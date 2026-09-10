@@ -45,6 +45,15 @@
             "remote_port": 8001
         }
     ],
+    "cm_poller_mysql": {
+        "_comment": "Default-disabled read-only inventory source; DB values are read from credentials_file and never stored here",
+        "enabled": false,
+        "credentials_file": "~/dbinfo",
+        "connect_timeout": 5,
+        "read_timeout": 30,
+        "page_size": 1000,
+        "response_byte_max": 4194304
+    },
     "cmts_list": [
         {
             "name": "cmts-01",

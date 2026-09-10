@@ -9,6 +9,7 @@ from __future__ import annotations  # enables PEP 604/585 syntax on Python 3.8/3
 import json
 import logging
 import os
+import re
 import stat
 import subprocess
 import threading
@@ -89,6 +90,13 @@ try:
 except ImportError:
     redis = None
     print("INFO: redis not installed. Caching disabled. Run: pip install redis")
+
+try:
+    import pymysql
+    from pymysql.cursors import DictCursor
+except ImportError:
+    pymysql = None
+    DictCursor = None
 
 
 # Configure logging
@@ -216,6 +224,50 @@ def _first_nonblank(*values):
     return None
 
 
+CM_POLLER_PAGE_SIZE_HARD_MAX = 5000
+CM_POLLER_RESPONSE_BYTE_HARD_MAX = 16 * 1024 * 1024
+_CM_POLLER_CREDENTIAL_KEYS = frozenset({'DB', 'DB_USER', 'DB_PASS', 'DB_HOST'})
+_NORMALIZED_MAC_RE = re.compile(r'^[0-9a-f]{2}(?::[0-9a-f]{2}){5}$')
+
+
+def _load_cm_poller_db_credentials(credentials_file: str) -> dict[str, str]:
+    """Parse the four allowed dbinfo assignments as inert text."""
+    path = Path(os.path.expanduser(credentials_file))
+    if not path.is_file() or not os.access(path, os.R_OK):
+        raise ValueError('CM poller credentials file is unavailable')
+
+    parsed: dict[str, str] = {}
+    try:
+        with path.open('r', encoding='utf-8') as handle:
+            for line in handle:
+                line = line.rstrip('\r\n')
+                if not line:
+                    continue
+                key, separator, raw_value = line.partition('=')
+                if (
+                    separator != '='
+                    or key not in _CM_POLLER_CREDENTIAL_KEYS
+                    or key in parsed
+                ):
+                    raise ValueError('CM poller credentials file is invalid')
+                value = raw_value.strip()
+                if (
+                    len(value) >= 2
+                    and value[0] == value[-1]
+                    and value[0] in {'"', "'"}
+                ):
+                    value = value[1:-1]
+                if not value or any(ord(character) < 32 for character in value):
+                    raise ValueError('CM poller credentials file is invalid')
+                parsed[key] = value
+    except (OSError, UnicodeError) as exc:
+        raise ValueError('CM poller credentials file is unavailable') from exc
+
+    if set(parsed) != _CM_POLLER_CREDENTIAL_KEYS:
+        raise ValueError('CM poller credentials file is invalid')
+    return parsed
+
+
 @dataclass
 class AgentConfig:
     """Agent configuration for Jump Server deployment."""
@@ -266,6 +318,15 @@ class AgentConfig:
     cm_proxy_port: int = 22
     cm_proxy_user: Optional[str] = None
     cm_proxy_key: Optional[str] = None
+
+    # Read-only CM-poller inventory access. Database values are loaded only
+    # from the inert credentials file and are never accepted from tasks.
+    cm_poller_mysql_enabled: bool = False
+    cm_poller_mysql_credentials_file: str = '~/dbinfo'
+    cm_poller_mysql_connect_timeout: int = 5
+    cm_poller_mysql_read_timeout: int = 30
+    cm_poller_mysql_page_size: int = 1000
+    cm_poller_mysql_response_byte_max: int = 4 * 1024 * 1024
     
     # Equalizer Server - for SNMP queries via SSH (has best CMTS connectivity)
     equalizer_host: Optional[str] = None
@@ -318,6 +379,53 @@ class AgentConfig:
         if not 1 <= count <= 512:
             raise ValueError(f"workers.{name} must be between 1 and 512")
         return count
+
+    @staticmethod
+    def _parse_config_bool(
+        value: Any,
+        default: bool,
+        name: str,
+        *,
+        allow_string: bool = False,
+    ) -> bool:
+        """Parse a strict JSON boolean or an explicit true/false env fallback."""
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        if allow_string and isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {'true', 'false'}:
+                return normalized == 'true'
+        raise ValueError(f'{name} must be a boolean')
+
+    @staticmethod
+    def _parse_bounded_config_int(
+        value: Any,
+        default: int,
+        name: str,
+        minimum: int,
+        maximum: int,
+        *,
+        allow_string: bool = False,
+    ) -> int:
+        """Parse one integer configuration value with non-bypassable bounds."""
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            raise ValueError(f'{name} must be an integer')
+        if isinstance(value, int):
+            parsed = value
+        elif allow_string and isinstance(value, str):
+            try:
+                parsed = int(value.strip())
+            except ValueError as exc:
+                raise ValueError(f'{name} must be an integer') from exc
+        else:
+            raise ValueError(f'{name} must be an integer')
+        if not minimum <= parsed <= maximum:
+            raise ValueError(f'{name} must be between {minimum} and {maximum}')
+        return parsed
     
     @classmethod
     def _parse_peer_tunnels(cls, data: dict, expand_path) -> dict:
@@ -414,6 +522,74 @@ class AgentConfig:
         tunnel_config = data.get('pypnm_ssh_tunnel') or data.get('gui_ssh_tunnel', {})
         cmts = data.get('cmts_access', {})
         cm_access = data.get('cm_access', {})
+        cm_poller = data.get('cm_poller_mysql')
+        if cm_poller is None:
+            cm_poller = {}
+        elif not isinstance(cm_poller, dict):
+            raise ValueError('cm_poller_mysql must be a JSON object')
+
+        def cm_poller_value(key: str, env_name: str, default: Any) -> tuple[Any, bool]:
+            if key in cm_poller:
+                return cm_poller[key], False
+            env_value = os.environ.get(env_name)
+            if env_value is not None:
+                return env_value, True
+            return default, False
+
+        enabled_value, enabled_from_env = cm_poller_value(
+            'enabled', 'PYPNM_CM_POLLER_MYSQL_ENABLED', False
+        )
+        cm_poller_mysql_enabled = cls._parse_config_bool(
+            enabled_value,
+            False,
+            'cm_poller_mysql.enabled',
+            allow_string=enabled_from_env,
+        )
+        credentials_file, _ = cm_poller_value(
+            'credentials_file',
+            'PYPNM_CM_POLLER_MYSQL_CREDENTIALS_FILE',
+            '~/dbinfo',
+        )
+        if not isinstance(credentials_file, str) or not credentials_file.strip():
+            raise ValueError('cm_poller_mysql.credentials_file must be a non-empty string')
+        credentials_file = expand_path(credentials_file.strip())
+
+        connect_timeout_value, connect_timeout_from_env = cm_poller_value(
+            'connect_timeout', 'PYPNM_CM_POLLER_MYSQL_CONNECT_TIMEOUT', 5
+        )
+        read_timeout_value, read_timeout_from_env = cm_poller_value(
+            'read_timeout', 'PYPNM_CM_POLLER_MYSQL_READ_TIMEOUT', 30
+        )
+        page_size_value, page_size_from_env = cm_poller_value(
+            'page_size', 'PYPNM_CM_POLLER_MYSQL_PAGE_SIZE', 1000
+        )
+        response_byte_max_value, response_byte_max_from_env = cm_poller_value(
+            'response_byte_max',
+            'PYPNM_CM_POLLER_MYSQL_RESPONSE_BYTE_MAX',
+            4 * 1024 * 1024,
+        )
+        cm_poller_mysql_connect_timeout = cls._parse_bounded_config_int(
+            connect_timeout_value, 5, 'cm_poller_mysql.connect_timeout', 1, 10,
+            allow_string=connect_timeout_from_env,
+        )
+        cm_poller_mysql_read_timeout = cls._parse_bounded_config_int(
+            read_timeout_value, 30, 'cm_poller_mysql.read_timeout', 1, 30,
+            allow_string=read_timeout_from_env,
+        )
+        cm_poller_mysql_page_size = cls._parse_bounded_config_int(
+            page_size_value, 1000, 'cm_poller_mysql.page_size', 1,
+            CM_POLLER_PAGE_SIZE_HARD_MAX,
+            allow_string=page_size_from_env,
+        )
+        cm_poller_mysql_response_byte_max = cls._parse_bounded_config_int(
+            response_byte_max_value,
+            4 * 1024 * 1024,
+            'cm_poller_mysql.response_byte_max',
+            1024,
+            CM_POLLER_RESPONSE_BYTE_HARD_MAX,
+            allow_string=response_byte_max_from_env,
+        )
+
         cm_proxy = cm_access.get('proxy', {}) or data.get('cm_proxy', {})
         cm_direct = data.get('cm_direct', {})
         cm_enabled = cm_access.get('enabled', cm_direct.get('enabled', False))
@@ -502,6 +678,13 @@ class AgentConfig:
             cm_proxy_port=cm_proxy.get('port', 22),
             cm_proxy_user=cm_proxy.get('username') or cm_proxy.get('user'),
             cm_proxy_key=expand_path(cm_proxy.get('key_file')),
+            # Read-only CM-poller inventory
+            cm_poller_mysql_enabled=cm_poller_mysql_enabled,
+            cm_poller_mysql_credentials_file=credentials_file,
+            cm_poller_mysql_connect_timeout=cm_poller_mysql_connect_timeout,
+            cm_poller_mysql_read_timeout=cm_poller_mysql_read_timeout,
+            cm_poller_mysql_page_size=cm_poller_mysql_page_size,
+            cm_poller_mysql_response_byte_max=cm_poller_mysql_response_byte_max,
             # Equalizer (for CMTS SNMP via SSH)
             equalizer_host=equalizer.get('host'),
             equalizer_port=equalizer.get('port', 22),
@@ -547,6 +730,44 @@ class AgentConfig:
             os.environ.get('PYPNM_CM_WRITE_COMMUNITY'),
             os.environ.get('MODEM_WRITE_COMMUNITY'),
             os.environ.get('CM_RW_COMMUNITY'),
+        )
+        cm_poller_mysql_enabled = cls._parse_config_bool(
+            os.environ.get('PYPNM_CM_POLLER_MYSQL_ENABLED'),
+            False,
+            'cm_poller_mysql.enabled',
+            allow_string=True,
+        )
+        cm_poller_mysql_connect_timeout = cls._parse_bounded_config_int(
+            os.environ.get('PYPNM_CM_POLLER_MYSQL_CONNECT_TIMEOUT'),
+            5,
+            'cm_poller_mysql.connect_timeout',
+            1,
+            10,
+            allow_string=True,
+        )
+        cm_poller_mysql_read_timeout = cls._parse_bounded_config_int(
+            os.environ.get('PYPNM_CM_POLLER_MYSQL_READ_TIMEOUT'),
+            30,
+            'cm_poller_mysql.read_timeout',
+            1,
+            30,
+            allow_string=True,
+        )
+        cm_poller_mysql_page_size = cls._parse_bounded_config_int(
+            os.environ.get('PYPNM_CM_POLLER_MYSQL_PAGE_SIZE'),
+            1000,
+            'cm_poller_mysql.page_size',
+            1,
+            CM_POLLER_PAGE_SIZE_HARD_MAX,
+            allow_string=True,
+        )
+        cm_poller_mysql_response_byte_max = cls._parse_bounded_config_int(
+            os.environ.get('PYPNM_CM_POLLER_MYSQL_RESPONSE_BYTE_MAX'),
+            4 * 1024 * 1024,
+            'cm_poller_mysql.response_byte_max',
+            1024,
+            CM_POLLER_RESPONSE_BYTE_HARD_MAX,
+            allow_string=True,
         )
 
         return cls(
@@ -598,6 +819,15 @@ class AgentConfig:
             cm_proxy_port=int(os.environ.get('PYPNM_CM_PROXY_PORT', '22')),
             cm_proxy_user=os.environ.get('PYPNM_CM_PROXY_USER'),
             cm_proxy_key=expand_path(os.environ.get('PYPNM_CM_PROXY_KEY')),
+            # Read-only CM-poller inventory
+            cm_poller_mysql_enabled=cm_poller_mysql_enabled,
+            cm_poller_mysql_credentials_file=expand_path(
+                os.environ.get('PYPNM_CM_POLLER_MYSQL_CREDENTIALS_FILE', '~/dbinfo')
+            ),
+            cm_poller_mysql_connect_timeout=cm_poller_mysql_connect_timeout,
+            cm_poller_mysql_read_timeout=cm_poller_mysql_read_timeout,
+            cm_poller_mysql_page_size=cm_poller_mysql_page_size,
+            cm_poller_mysql_response_byte_max=cm_poller_mysql_response_byte_max,
             # TFTP
             tftp_ssh_host=os.environ.get('PYPNM_TFTP_SSH_HOST'),
             tftp_ssh_port=int(os.environ.get('PYPNM_TFTP_SSH_PORT', '22')),
@@ -810,6 +1040,7 @@ class PyPNMAgent:
             'pnm_file_catalog': self._handle_pnm_file_catalog,
             'pnm_file_delete': self._handle_pnm_file_delete,
             'pnm_file_housekeeping': self._handle_pnm_file_housekeeping,
+            'cm_poller_modems_page': self._handle_cm_poller_modems_page,
             'cmts_command': self._handle_cmts_command,
         }
     
@@ -1014,6 +1245,50 @@ class PyPNMAgent:
             max_workers=self._long_threads, thread_name_prefix='snmp-long')
         self._executor = self._interactive_executor
         self.logger.info("Executor pools reset — ready for next connection")
+
+    def _cm_poller_mysql_credentials(self) -> dict[str, str]:
+        """Return validated credentials only when the feature is fully usable."""
+        if self.config.cm_poller_mysql_enabled is not True:
+            raise ValueError('CM poller inventory is not enabled')
+        if pymysql is None or DictCursor is None:
+            raise ValueError('CM poller inventory dependency is unavailable')
+        if (
+            not isinstance(self.config.cm_poller_mysql_credentials_file, str)
+            or not self.config.cm_poller_mysql_credentials_file.strip()
+        ):
+            raise ValueError('CM poller inventory configuration is invalid')
+        bounded_settings = (
+            (self.config.cm_poller_mysql_connect_timeout, 1, 10),
+            (self.config.cm_poller_mysql_read_timeout, 1, 30),
+            (
+                self.config.cm_poller_mysql_page_size,
+                1,
+                CM_POLLER_PAGE_SIZE_HARD_MAX,
+            ),
+            (
+                self.config.cm_poller_mysql_response_byte_max,
+                1024,
+                CM_POLLER_RESPONSE_BYTE_HARD_MAX,
+            ),
+        )
+        if any(
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not minimum <= value <= maximum
+            for value, minimum, maximum in bounded_settings
+        ):
+            raise ValueError('CM poller inventory configuration is invalid')
+        return _load_cm_poller_db_credentials(
+            self.config.cm_poller_mysql_credentials_file
+        )
+
+    def _cm_poller_inventory_available(self) -> bool:
+        """Fail closed unless the complete CM-poller configuration is usable."""
+        try:
+            self._cm_poller_mysql_credentials()
+        except ValueError:
+            return False
+        return True
     
     def _get_capabilities(self) -> list[str]:
         """Return list of agent capabilities."""
@@ -1026,6 +1301,9 @@ class PyPNMAgent:
         
         if self.config.cm_enabled:
             caps.append('cm_reachable')  # Can reach modems directly
+
+        if self._cm_poller_inventory_available():
+            caps.append('cm_poller_inventory')
         
         # CMTS reachability  
         if self.config.cmts_enabled:
@@ -1079,7 +1357,11 @@ class PyPNMAgent:
         request_id = data.get('request_id')
         command = data.get('command')
         priority = str(data.get('priority') or 'interactive').strip().lower()
-        if priority not in {'interactive', 'bulk', 'identity', 'long'}:
+        if command == 'cm_poller_modems_page':
+            # This fixed database page command must never consume interactive,
+            # identity, or long-running executor capacity.
+            priority = 'bulk'
+        elif priority not in {'interactive', 'bulk', 'identity', 'long'}:
             self.logger.warning(
                 "Unknown priority %r for task %s; routing as interactive",
                 priority,
@@ -1091,8 +1373,10 @@ class PyPNMAgent:
         if not isinstance(raw_params, dict):
             raw_params = {}
         params = dict(raw_params)
-        # Internal-only context lets handlers enforce resource bounds by pool.
+        # Internal-only context lets handlers enforce resource bounds by pool
+        # and size the exact response frame. Task parameters cannot override it.
         params['_agent_priority'] = priority
+        params['_agent_request_id'] = request_id
         received_at = time.monotonic()
 
         self.logger.info(
@@ -1298,6 +1582,210 @@ class PyPNMAgent:
             'total': len(targets),
         }
     
+    @staticmethod
+    def _cm_poller_json_value(value: Any) -> Any:
+        """Convert a database scalar to a JSON-safe value without logging it."""
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return value
+        if isinstance(value, (bytes, bytearray, memoryview)):
+            return bytes(value).decode('utf-8', errors='replace')
+        return str(value)
+
+    def _bounded_cm_poller_response(
+        self,
+        rows: list[dict[str, Any]],
+        total_rows: int | None,
+        cursor: str,
+        database_has_more: bool,
+        request_id: Any,
+    ) -> dict[str, Any]:
+        """Trim whole rows until the exact encoded response frame fits."""
+        response_byte_max = self.config.cm_poller_mysql_response_byte_max
+        original_count = len(rows)
+
+        def build_result(retained_count: int) -> dict[str, Any]:
+            retained = rows[:retained_count]
+            return {
+                'success': True,
+                'rows': retained,
+                'count': retained_count,
+                'total_rows': total_rows,
+                'next_cursor': retained[-1]['c_mac'] if retained else cursor,
+                'has_more': database_has_more or retained_count < original_count,
+            }
+
+        def encoded_size(result: dict[str, Any]) -> int:
+            # Match _handle_command's actual outer envelope and default JSON
+            # separators so the configured limit applies to the sent frame.
+            response = {
+                'type': 'response',
+                'request_id': request_id,
+                'result': result,
+            }
+            return len(json.dumps(response, ensure_ascii=True).encode('utf-8'))
+
+        complete = build_result(original_count)
+        if encoded_size(complete) <= response_byte_max:
+            return complete
+
+        # Encoded prefix size grows monotonically, so locate the largest page
+        # that fits without repeatedly serializing every smaller prefix.
+        smallest = 1
+        largest = original_count - 1
+        best: dict[str, Any] | None = None
+        while smallest <= largest:
+            retained_count = (smallest + largest) // 2
+            candidate = build_result(retained_count)
+            if encoded_size(candidate) <= response_byte_max:
+                best = candidate
+                smallest = retained_count + 1
+            else:
+                largest = retained_count - 1
+        if best is not None:
+            return best
+
+        failure = {
+            'success': False,
+            'error': 'CM poller row exceeds the configured response byte limit',
+            'rows': [],
+            'count': 0,
+            'total_rows': total_rows,
+            'next_cursor': cursor,
+            'has_more': bool(rows) or database_has_more,
+        }
+        if encoded_size(failure) <= response_byte_max:
+            return failure
+        return {
+            'success': False,
+            'error': 'CM poller response byte limit is unusable',
+        }
+
+    def _handle_cm_poller_modems_page(self, params: dict) -> dict:
+        """Return one bounded page from the CM-poller modems inventory."""
+        if self.config.cm_poller_mysql_enabled is not True:
+            return {'success': False, 'error': 'CM poller inventory is not enabled'}
+
+        if set(params) - {
+            'cursor',
+            'page_size',
+            '_agent_priority',
+            '_agent_request_id',
+        }:
+            return {'success': False, 'error': 'Unsupported CM poller parameters'}
+
+        raw_cursor = params.get('cursor', '')
+        if not isinstance(raw_cursor, str) or (
+            raw_cursor and _NORMALIZED_MAC_RE.fullmatch(raw_cursor) is None
+        ):
+            return {
+                'success': False,
+                'error': 'cursor must be empty or a normalized 17-character colon MAC',
+            }
+        cursor_value = raw_cursor
+
+        raw_page_size = params.get(
+            'page_size',
+            self.config.cm_poller_mysql_page_size,
+        )
+        if isinstance(raw_page_size, bool) or not isinstance(raw_page_size, int):
+            return {'success': False, 'error': 'page_size must be an integer'}
+        if not 1 <= raw_page_size <= CM_POLLER_PAGE_SIZE_HARD_MAX:
+            return {
+                'success': False,
+                'error': (
+                    'page_size must be between 1 and '
+                    f'{CM_POLLER_PAGE_SIZE_HARD_MAX}'
+                ),
+            }
+
+        try:
+            credentials = self._cm_poller_mysql_credentials()
+        except ValueError:
+            return {
+                'success': False,
+                'error': 'CM poller inventory configuration is unavailable',
+            }
+
+        connection = None
+        try:
+            connection = pymysql.connect(
+                host=credentials['DB_HOST'],
+                user=credentials['DB_USER'],
+                password=credentials['DB_PASS'],
+                database=credentials['DB'],
+                connect_timeout=self.config.cm_poller_mysql_connect_timeout,
+                read_timeout=self.config.cm_poller_mysql_read_timeout,
+                cursorclass=DictCursor,
+                charset='utf8mb4',
+                autocommit=False,
+            )
+            with connection.cursor() as database_cursor:
+                try:
+                    database_cursor.execute('SET TRANSACTION READ ONLY')
+                except pymysql.MySQLError:
+                    # Older compatible servers may not support transaction
+                    # access modes. Roll back that statement and continue with
+                    # the fixed SELECT-only command set below.
+                    connection.rollback()
+
+                total_rows = None
+                if cursor_value == '':
+                    database_cursor.execute(
+                        'SELECT COUNT(*) AS total_rows FROM modems'
+                    )
+                    count_row = database_cursor.fetchone() or {}
+                    total_rows = int(count_row.get('total_rows', 0))
+
+                database_cursor.execute(
+                    'SELECT c_mac, l_ip, model, hw_rev, sw_rev, '
+                    'UNIX_TIMESTAMP(last_update) AS last_update '
+                    'FROM modems WHERE c_mac > %s '
+                    'ORDER BY c_mac LIMIT %s',
+                    (cursor_value, raw_page_size + 1),
+                )
+                fetched_rows = list(database_cursor.fetchall())
+            connection.rollback()
+        except pymysql.MySQLError:
+            return {
+                'success': False,
+                'error_code': 'source_temporarily_unavailable',
+                'error': 'CM poller inventory query failed',
+            }
+        except (TypeError, ValueError):
+            return {'success': False, 'error': 'CM poller inventory data is invalid'}
+        finally:
+            if connection is not None:
+                try:
+                    connection.close()
+                except pymysql.MySQLError:
+                    pass
+
+        database_has_more = len(fetched_rows) > raw_page_size
+        rows: list[dict[str, Any]] = []
+        for raw_row in fetched_rows[:raw_page_size]:
+            raw_mac = self._cm_poller_json_value(raw_row.get('c_mac'))
+            normalized_mac = str(raw_mac).strip().lower()
+            if _NORMALIZED_MAC_RE.fullmatch(normalized_mac) is None:
+                return {'success': False, 'error': 'CM poller inventory data is invalid'}
+            rows.append({
+                'c_mac': normalized_mac,
+                'l_ip': self._cm_poller_json_value(raw_row.get('l_ip')),
+                'model': self._cm_poller_json_value(raw_row.get('model')),
+                'hw_rev': self._cm_poller_json_value(raw_row.get('hw_rev')),
+                'sw_rev': self._cm_poller_json_value(raw_row.get('sw_rev')),
+                'last_update': self._cm_poller_json_value(
+                    raw_row.get('last_update')
+                ),
+            })
+
+        return self._bounded_cm_poller_response(
+            rows,
+            total_rows,
+            cursor_value,
+            database_has_more,
+            params.get('_agent_request_id'),
+        )
+
     def _resolve_community(self, params: dict, *, write: bool = False) -> str:
         """Resolve role-specific credentials without letting CM tasks override the agent."""
         explicit = _first_nonblank(params.get('community'))
