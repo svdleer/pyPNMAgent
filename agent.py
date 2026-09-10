@@ -195,6 +195,13 @@ class AgentConfig:
     pypnm_server_url: str
     auth_token: str
     reconnect_interval: int = 5
+
+    # Dedicated command worker pools. ``gui`` in agent_config.json maps to
+    # the interactive priority used by PyPNM's wire protocol.
+    interactive_workers: int = 50
+    bulk_workers: int = 2
+    identity_workers: int = 8
+    long_workers: int = 10
     
     # SSH Tunnel to PyPNM Server (WebSocket connection)
     pypnm_ssh_tunnel_enabled: bool = False
@@ -257,6 +264,32 @@ class AgentConfig:
     pnm_file_write_root: Optional[str] = None
     pnm_file_delete_enabled: bool = False
     pnm_file_housekeeping_enabled: bool = False
+
+    @staticmethod
+    def _parse_worker_count(
+        value: Any,
+        default: int,
+        name: str,
+        *,
+        allow_string: bool = False,
+    ) -> int:
+        """Validate one worker count without silently truncating JSON values."""
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            raise ValueError(f"workers.{name} must be an integer")
+        if isinstance(value, int):
+            count = value
+        elif allow_string and isinstance(value, str):
+            try:
+                count = int(value.strip())
+            except ValueError as exc:
+                raise ValueError(f"workers.{name} must be an integer") from exc
+        else:
+            raise ValueError(f"workers.{name} must be an integer")
+        if not 1 <= count <= 512:
+            raise ValueError(f"workers.{name} must be between 1 and 512")
+        return count
     
     @classmethod
     def _parse_peer_tunnels(cls, data: dict, expand_path) -> dict:
@@ -331,6 +364,25 @@ class AgentConfig:
                 'auth_token': data.get('token', data.get('auth_token', 'dev-token')),
                 'reconnect_interval': data.get('reconnect_interval', 5),
             }
+
+        workers = data.get('workers')
+        if workers is None:
+            workers = {}
+        elif not isinstance(workers, dict):
+            raise ValueError("workers must be a JSON object")
+        interactive_workers = cls._parse_worker_count(
+            workers.get('gui', workers.get('interactive')),
+            50,
+            'gui',
+        )
+        bulk_workers = cls._parse_worker_count(workers.get('bulk'), 2, 'bulk')
+        identity_workers = cls._parse_worker_count(
+            workers.get('identity'),
+            8,
+            'identity',
+        )
+        long_workers = cls._parse_worker_count(workers.get('long'), 10, 'long')
+
         tunnel_config = data.get('pypnm_ssh_tunnel') or data.get('gui_ssh_tunnel', {})
         cmts = data.get('cmts_access', {})
         cm_access = data.get('cm_access', {})
@@ -392,6 +444,10 @@ class AgentConfig:
             pypnm_server_url=server_config['url'],
             auth_token=server_config.get('auth_token', 'dev-token'),
             reconnect_interval=server_config.get('reconnect_interval', 5),
+            interactive_workers=interactive_workers,
+            bulk_workers=bulk_workers,
+            identity_workers=identity_workers,
+            long_workers=long_workers,
             # SSH Tunnel to PyPNM Server
             pypnm_ssh_tunnel_enabled=tunnel_config.get('enabled', False),
             pypnm_ssh_host=tunnel_config.get('ssh_host'),
@@ -470,6 +526,30 @@ class AgentConfig:
             pypnm_server_url=os.environ.get('PYPNM_SERVER_URL', 'ws://127.0.0.1:8000/api/agents/ws'),
             auth_token=os.environ.get('PYPNM_AUTH_TOKEN', 'dev-token'),
             reconnect_interval=int(os.environ.get('PYPNM_RECONNECT_INTERVAL', '5')),
+            interactive_workers=cls._parse_worker_count(
+                os.environ.get('AGENT_INTERACTIVE_THREADS'),
+                50,
+                'gui',
+                allow_string=True,
+            ),
+            bulk_workers=cls._parse_worker_count(
+                os.environ.get('AGENT_BULK_THREADS'),
+                2,
+                'bulk',
+                allow_string=True,
+            ),
+            identity_workers=cls._parse_worker_count(
+                os.environ.get('AGENT_IDENTITY_THREADS'),
+                8,
+                'identity',
+                allow_string=True,
+            ),
+            long_workers=cls._parse_worker_count(
+                os.environ.get('AGENT_LONG_THREADS'),
+                10,
+                'long',
+                allow_string=True,
+            ),
             # SSH Tunnel to PyPNM
             pypnm_ssh_tunnel_enabled=os.environ.get('PYPNM_SSH_TUNNEL', 'false').lower() == 'true',
             pypnm_ssh_host=os.environ.get('PYPNM_SSH_HOST'),
@@ -621,11 +701,11 @@ class PyPNMAgent:
         # · bulk_pool        — bounded CMTS inventory/background work
         # · identity_pool    — fail-fast per-modem identity GETs
         # · long_pool        — PNM file captures (file_get/pnm_file_get), may run 30-90 s
-        # Tunable via AGENT_*_THREADS environment variables.
-        self._int_threads = int(os.environ.get('AGENT_INTERACTIVE_THREADS', 50))
-        self._bulk_threads = int(os.environ.get('AGENT_BULK_THREADS', 2))
-        self._identity_threads = int(os.environ.get('AGENT_IDENTITY_THREADS', 48))
-        self._long_threads = int(os.environ.get('AGENT_LONG_THREADS', 10))
+        # Configured by the agent_config.json ``workers`` object.
+        self._int_threads = config.interactive_workers
+        self._bulk_threads = config.bulk_workers
+        self._identity_threads = config.identity_workers
+        self._long_threads = config.long_workers
         self._interactive_executor = ThreadPoolExecutor(max_workers=self._int_threads, thread_name_prefix='snmp-int')
         self._bulk_executor = ThreadPoolExecutor(max_workers=self._bulk_threads, thread_name_prefix='snmp-bulk')
         self._identity_executor = ThreadPoolExecutor(max_workers=self._identity_threads, thread_name_prefix='snmp-identity')
@@ -967,12 +1047,32 @@ class PyPNMAgent:
         return caps
     
     def _handle_command(self, ws, data: dict):
-        """Dispatch command to thread pool for concurrent execution."""
+        """Dispatch command to its isolated priority executor."""
         request_id = data.get('request_id')
         command = data.get('command')
-        params = data.get('params', {})
+        priority = str(data.get('priority') or 'interactive').strip().lower()
+        if priority not in {'interactive', 'bulk', 'identity', 'long'}:
+            self.logger.warning(
+                "Unknown priority %r for task %s; routing as interactive",
+                priority,
+                request_id,
+            )
+            priority = 'interactive'
 
-        self.logger.info(f"Received command: {request_id} - {command}")
+        raw_params = data.get('params') or {}
+        if not isinstance(raw_params, dict):
+            raw_params = {}
+        params = dict(raw_params)
+        # Internal-only context lets handlers enforce resource bounds by pool.
+        params['_agent_priority'] = priority
+        received_at = time.monotonic()
+
+        self.logger.info(
+            "Received command: %s - %s (priority=%s)",
+            request_id,
+            command,
+            priority,
+        )
 
         handler = self.handlers.get(command)
         if not handler:
@@ -992,14 +1092,42 @@ class PyPNMAgent:
             # drop the response instead of trying to send on a dead socket.
             dispatched_session = self._session_id
             dispatched_ws = ws
+            worker_name = threading.current_thread().name
+            queue_wait = time.monotonic() - received_at
+            started_at = time.monotonic()
             try:
-                self.logger.debug(f"Executing {command} for {request_id}")
+                self.logger.debug(
+                    "Executing %s for %s (priority=%s worker=%s queue_wait=%.3fs)",
+                    command,
+                    request_id,
+                    priority,
+                    worker_name,
+                    queue_wait,
+                )
                 result = handler(params)
+                elapsed = time.monotonic() - started_at
                 success = result.get('success', True) if isinstance(result, dict) else True
                 if not success:
-                    self.logger.warning(f"Handler returned failure for {request_id} ({command}): {result.get('error', 'no error detail')}")
+                    self.logger.warning(
+                        "Handler returned failure for %s (%s priority=%s worker=%s "
+                        "elapsed=%.3fs): %s",
+                        request_id,
+                        command,
+                        priority,
+                        worker_name,
+                        elapsed,
+                        result.get('error', 'no error detail'),
+                    )
                 else:
-                    self.logger.info(f"Handler returned for {request_id} (success=True)")
+                    self.logger.info(
+                        "Handler returned for %s (success=True priority=%s worker=%s "
+                        "queue_wait=%.3fs elapsed=%.3fs)",
+                        request_id,
+                        priority,
+                        worker_name,
+                        queue_wait,
+                        elapsed,
+                    )
                 response = {
                     'type': 'response',
                     'request_id': request_id,
@@ -1031,7 +1159,6 @@ class PyPNMAgent:
         #   identity — fail-fast inventory identity GETs only
         #   bulk  — bounded CMTS inventory and other background work
         #   interactive — GUI clicks and ordinary SNMP operations
-        priority = data.get('priority', 'interactive')
         if priority == 'identity':
             self._identity_executor.submit(_run_handler)
         elif priority == 'bulk':
@@ -1342,10 +1469,21 @@ class PyPNMAgent:
         community = self._resolve_community(params)
         timeout = params.get('timeout', 5)
         retries = params.get('retries', 2)  # 0 = fail-fast (e.g. enrichment), 2 = default
-        max_concurrent = params.get('max_concurrent', 10)
+        priority = str(params.get('_agent_priority') or 'interactive')
+        try:
+            max_concurrent = max(1, int(params.get('max_concurrent', 10)))
+        except (TypeError, ValueError):
+            max_concurrent = 10
+        if priority == 'identity':
+            # Identity already has task-level concurrency through its dedicated
+            # executor. Serializing each task's OIDs prevents the bounded worker
+            # pool from multiplying into many simultaneous pysnmp engines and
+            # preserves process capacity for the interactive GUI executor.
+            max_concurrent = 1
         self.logger.debug(
             f"snmp_bulk_get: target={target_ip} oids={len(oids)} "
-            f"timeout={timeout} retries={retries}"
+            f"timeout={timeout} retries={retries} priority={priority} "
+            f"max_concurrent={max_concurrent}"
         )
 
         if not PYSNMP_AVAILABLE:
@@ -2706,6 +2844,13 @@ def main():
     
     # Log configuration summary
     logger.info(f"Agent ID: {config.agent_id}")
+    logger.info(
+        "Worker pools: gui=%s bulk=%s identity=%s long=%s",
+        config.interactive_workers,
+        config.bulk_workers,
+        config.identity_workers,
+        config.long_workers,
+    )
     logger.info(f"PyPNM Server: {config.pypnm_server_url}")
     logger.info(f"PyPNM SSH Tunnel: {'enabled -> ' + config.pypnm_ssh_host if config.pypnm_ssh_tunnel_enabled else 'disabled'}")
     logger.info(f"CMTS SNMP: {'enabled' if config.cmts_enabled else 'disabled'}")

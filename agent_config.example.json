@@ -4,6 +4,13 @@
         "url": "ws://127.0.0.1:8000/api/agents/ws",
         "auth_token": "your-secure-token-here"
     },
+    "workers": {
+        "_comment": "Dedicated agent worker pools; GUI maps to PyPNM interactive priority",
+        "gui": 50,
+        "bulk": 2,
+        "identity": 8,
+        "long": 10
+    },
     "peer_tunnels": [
         {
             "_comment": "Reverse SSH tunnel to CM agent host: opens remote_port on ssh_host so the CM agent can reach PyPNM via localhost:remote_port there",
