@@ -1223,58 +1223,6 @@ class PyPNMAgent:
         self.logger.debug("_resolve_community: using configured cmts community")
         return str(configured)
 
-    @staticmethod
-    def _is_no_response_failure(result: object) -> bool:
-        """Return True only for a timeout identified by the SNMP transport."""
-        return (
-            isinstance(result, dict)
-            and result.get('success') is False
-            and result.get('failure_kind') == 'transport_timeout'
-        )
-
-    def _cm_public_fallback_allowed(
-        self, params: dict, community: str, *, write: bool = False,
-    ) -> bool:
-        """Allow public only after a configured CM credential was attempted."""
-        target_role = str(
-            params.get('target_role') or params.get('target_type') or ''
-        ).strip().lower()
-        configured = _first_nonblank(
-            self.config.cm_write_community if write else None,
-            self.config.cm_community,
-        )
-        return (
-            params.get('allow_public_fallback', True) is not False
-            and target_role == 'cm'
-            and configured is not None
-            and str(community).strip().lower() != 'public'
-        )
-
-    async def _run_cm_with_public_fallback(
-        self,
-        params: dict,
-        community: str,
-        operation_name: str,
-        operation,
-        *,
-        write: bool = False,
-    ) -> dict:
-        """Run with the configured CM community, retrying public on no response."""
-        result = await operation(community)
-        if (
-            self._cm_public_fallback_allowed(params, community, write=write)
-            and self._is_no_response_failure(result)
-        ):
-            target_ip = params.get('target_ip') or params.get('modem_ip') or '-'
-            self.logger.warning(
-                "%s to %s received no response with the configured CM "
-                "community; retrying once with public",
-                operation_name,
-                target_ip,
-            )
-            return await operation('public')
-        return result
-
     def _handle_snmp_get(self, params: dict) -> dict:
         """Handle SNMP GET request via pysnmp."""
         target_ip = params.get('target_ip') or params.get('modem_ip')
@@ -1289,19 +1237,13 @@ class PyPNMAgent:
         timeout = params.get('timeout', 5)
         retries = params.get('retries', 2)
         raw_octets = bool(params.get('raw_octets', False))
-
-        async def run_get(active_community: str) -> dict:
-            return await self._async_snmp_get(
-                target_ip,
-                oid,
-                active_community,
-                timeout,
-                retries,
-                raw_octets=raw_octets,
-            )
-
-        return asyncio.run(self._run_cm_with_public_fallback(
-            params, community, 'SNMP GET', run_get,
+        return asyncio.run(self._async_snmp_get(
+            target_ip,
+            oid,
+            community,
+            timeout,
+            retries,
+            raw_octets=raw_octets,
         ))
 
     def _handle_snmp_walk(self, params: dict) -> dict:
@@ -1317,14 +1259,8 @@ class PyPNMAgent:
 
         timeout = params.get('timeout', 10)
         retries = params.get('retries', 2)
-
-        async def run_walk(active_community: str) -> dict:
-            return await self._async_snmp_walk(
-                target_ip, oid, active_community, timeout, retries,
-            )
-
-        return asyncio.run(self._run_cm_with_public_fallback(
-            params, community, 'SNMP WALK', run_walk,
+        return asyncio.run(self._async_snmp_walk(
+            target_ip, oid, community, timeout, retries,
         ))
 
     def _handle_snmp_set(self, params: dict) -> dict:
@@ -1342,30 +1278,18 @@ class PyPNMAgent:
 
         timeout = params.get('timeout', 5)
         retries = params.get('retries', 2)
-
-        async def run_set(active_community: str) -> dict:
-            return await self._async_snmp_set(
-                target_ip,
-                oid,
-                value,
-                value_type,
-                active_community,
-                timeout,
-                retries,
-            )
-
-        return asyncio.run(self._run_cm_with_public_fallback(
-            params, community, 'SNMP SET', run_set, write=True,
+        return asyncio.run(self._async_snmp_set(
+            target_ip,
+            oid,
+            value,
+            value_type,
+            community,
+            timeout,
+            retries,
         ))
 
     def _handle_snmp_set_sequence(self, params: dict) -> dict:
-        """Execute a sequence of SNMP SETs for one target as a single task.
-
-        The agent-configured CM community is attempted first. If a SET receives
-        no response, that SET is retried once with public and the remainder of
-        the sequence continues with public. SNMP error responses never trigger
-        the fallback.
-        """
+        """Execute a sequence of SNMP SETs using the configured CM credential."""
         target_ip = params.get('target_ip') or params.get('modem_ip')
         if not target_ip:
             return {'success': False, 'error': 'target_ip required'}
@@ -1381,7 +1305,6 @@ class PyPNMAgent:
 
         async def run_sequence():
             results = []
-            active_community = community
             for item in sets:
                 oid = item['oid']
                 value = item['value']
@@ -1391,32 +1314,10 @@ class PyPNMAgent:
                     oid,
                     value,
                     value_type,
-                    active_community,
+                    community,
                     timeout,
                     retries,
                 )
-                if (
-                    active_community != 'public'
-                    and self._cm_public_fallback_allowed(
-                        params, active_community, write=True,
-                    )
-                    and self._is_no_response_failure(result)
-                ):
-                    self.logger.warning(
-                        "SNMP SET sequence to %s received no response with the "
-                        "configured CM community; retrying with public",
-                        target_ip,
-                    )
-                    active_community = 'public'
-                    result = await self._async_snmp_set(
-                        target_ip,
-                        oid,
-                        value,
-                        value_type,
-                        active_community,
-                        timeout,
-                        retries,
-                    )
                 results.append({'oid': oid, 'value': value, **result})
                 if not result.get('success'):
                     return {
@@ -1450,40 +1351,19 @@ class PyPNMAgent:
         if not PYSNMP_AVAILABLE:
             return {'success': False, 'error': 'pysnmp not available'}
 
-        async def fetch_all(active_community: str):
+        async def fetch_all():
             semaphore = asyncio.Semaphore(max_concurrent)
 
             async def fetch_with_semaphore(oid):
                 async with semaphore:
                     return await self._async_snmp_get(
-                        target_ip, oid, active_community, timeout, retries,
+                        target_ip, oid, community, timeout, retries,
                     )
 
             tasks = [fetch_with_semaphore(oid) for oid in oids]
             return await asyncio.gather(*tasks, return_exceptions=True)
 
-        async def run_bulk_get():
-            fetch_results = await fetch_all(community)
-            normalized = [
-                {'success': False, 'error': str(result)}
-                if isinstance(result, Exception)
-                else result
-                for result in fetch_results
-            ]
-            if (
-                normalized
-                and self._cm_public_fallback_allowed(params, community)
-                and all(self._is_no_response_failure(result) for result in normalized)
-            ):
-                self.logger.warning(
-                    "SNMP bulk GET to %s received no responses with the "
-                    "configured CM community; retrying once with public",
-                    target_ip,
-                )
-                return await fetch_all('public')
-            return fetch_results
-
-        fetch_results = asyncio.run(run_bulk_get())
+        fetch_results = asyncio.run(fetch_all())
 
         results = {}
         for oid, result in zip(oids, fetch_results):
