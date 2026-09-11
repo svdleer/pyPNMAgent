@@ -1024,6 +1024,7 @@ class PyPNMAgent:
             'pnm_file_delete': self._handle_pnm_file_delete,
             'pnm_file_housekeeping': self._handle_pnm_file_housekeeping,
             'cm_poller_modems_page': self._handle_cm_poller_modems_page,
+            'cm_poller_modems_page_v2': self._handle_cm_poller_modems_page_v2,
             'cmts_command': self._handle_cmts_command,
         }
     
@@ -1294,6 +1295,7 @@ class PyPNMAgent:
 
         if self._cm_poller_inventory_available():
             caps.append('cm_poller_inventory')
+            caps.append('cm_poller_inventory_v2')
         
         # CMTS reachability  
         if self.config.cmts_enabled:
@@ -1347,8 +1349,8 @@ class PyPNMAgent:
         request_id = data.get('request_id')
         command = data.get('command')
         priority = str(data.get('priority') or 'interactive').strip().lower()
-        if command == 'cm_poller_modems_page':
-            # This fixed database page command must never consume interactive,
+        if command in {'cm_poller_modems_page', 'cm_poller_modems_page_v2'}:
+            # Fixed database page commands must never consume interactive,
             # identity, or long-running executor capacity.
             priority = 'bulk'
         elif priority not in {'interactive', 'bulk', 'identity', 'long'}:
@@ -1651,6 +1653,25 @@ class PyPNMAgent:
         }
 
     def _handle_cm_poller_modems_page(self, params: dict) -> dict:
+        """Return one v1 page for API versions that predate CNR transport."""
+        return self._handle_cm_poller_modems_page_contract(
+            params,
+            include_cnr=False,
+        )
+
+    def _handle_cm_poller_modems_page_v2(self, params: dict) -> dict:
+        """Return one v2 page including the source CNR address."""
+        return self._handle_cm_poller_modems_page_contract(
+            params,
+            include_cnr=True,
+        )
+
+    def _handle_cm_poller_modems_page_contract(
+        self,
+        params: dict,
+        *,
+        include_cnr: bool,
+    ) -> dict:
         """Return one bounded page from the CM-poller modems inventory."""
         if self.config.cm_poller_mysql_enabled is not True:
             return {'success': False, 'error': 'CM poller inventory is not enabled'}
@@ -1726,13 +1747,22 @@ class PyPNMAgent:
                     count_row = database_cursor.fetchone() or {}
                     total_rows = int(count_row.get('total_rows', 0))
 
-                database_cursor.execute(
-                    'SELECT c_mac, l_ip, model, hw_rev, sw_rev, '
-                    'UNIX_TIMESTAMP(last_update) AS last_update '
-                    'FROM modems WHERE c_mac > %s '
-                    'ORDER BY c_mac LIMIT %s',
-                    (cursor_value, raw_page_size + 1),
-                )
+                if include_cnr:
+                    database_cursor.execute(
+                        'SELECT c_mac, l_ip, model, hw_rev, sw_rev, cnr, '
+                        'UNIX_TIMESTAMP(last_update) AS last_update '
+                        'FROM modems WHERE c_mac > %s '
+                        'ORDER BY c_mac LIMIT %s',
+                        (cursor_value, raw_page_size + 1),
+                    )
+                else:
+                    database_cursor.execute(
+                        'SELECT c_mac, l_ip, model, hw_rev, sw_rev, '
+                        'UNIX_TIMESTAMP(last_update) AS last_update '
+                        'FROM modems WHERE c_mac > %s '
+                        'ORDER BY c_mac LIMIT %s',
+                        (cursor_value, raw_page_size + 1),
+                    )
                 fetched_rows = list(database_cursor.fetchall())
             connection.rollback()
         except pymysql.MySQLError:
@@ -1757,7 +1787,7 @@ class PyPNMAgent:
             normalized_mac = str(raw_mac).strip().lower()
             if _NORMALIZED_MAC_RE.fullmatch(normalized_mac) is None:
                 return {'success': False, 'error': 'CM poller inventory data is invalid'}
-            rows.append({
+            row = {
                 'c_mac': normalized_mac,
                 'l_ip': self._cm_poller_json_value(raw_row.get('l_ip')),
                 'model': self._cm_poller_json_value(raw_row.get('model')),
@@ -1766,7 +1796,10 @@ class PyPNMAgent:
                 'last_update': self._cm_poller_json_value(
                     raw_row.get('last_update')
                 ),
-            })
+            }
+            if include_cnr:
+                row['cnr'] = self._cm_poller_json_value(raw_row.get('cnr'))
+            rows.append(row)
 
         return self._bounded_cm_poller_response(
             rows,
