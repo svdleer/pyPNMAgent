@@ -50,3 +50,5 @@ deploy/push-agent.sh
 # Local memory artifacts
 memories/
 /memories/
+# Generated semantic review artifacts
+/semantic-review/*.md
