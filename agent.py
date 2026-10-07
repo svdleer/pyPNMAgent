@@ -1846,13 +1846,14 @@ class PyPNMAgent:
                 return str(configured)
             raise ValueError("No SNMP community configured for target_role 'cm'")
 
-        # CMTS explicit overrides and per-target credentials retain their
-        # existing precedence; the modem fallback policy must not affect them.
-        if explicit is not None:
-            self.logger.debug("_resolve_community: using explicit CMTS task community")
-            return str(explicit)
-
+        # CMTS credentials are agent-owned as well. Explicit task values are
+        # ignored so GUI/API callers cannot override production credentials.
         configured = None
+        if explicit is not None:
+            self.logger.debug(
+                "_resolve_community: ignoring explicit CMTS task community; "
+                "using agent-configured community"
+            )
         target_ip = _first_nonblank(
             params.get('target_ip'),
             params.get('modem_ip'),
