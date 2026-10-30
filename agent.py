@@ -2135,41 +2135,48 @@ class PyPNMAgent:
             truncated_oids = set()
 
             async def walk_one(oid):
-                transport = await make_transport(ip, 161, timeout=timeout, retries=0)
-                results = []
-                async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
-                    SnmpEngine(), CommunityData(community), transport, ContextData(),
-                    0, max_reps, ObjectType(ObjectIdentity(oid))
-                ):
-                    if errorIndication:
-                        err = str(errorIndication)
-                        errors[oid] = err
-                        self.logger.warning(f"SNMP walk error OID {oid} on {ip}: {err}")
-                        break
-                    if errorStatus:
-                        err = f"{errorStatus.prettyPrint()} at {errorIndex}"
-                        errors[oid] = err
-                        self.logger.warning(f"SNMP walk error OID {oid} on {ip}: {err}")
-                        break
-                    for varBind in varBinds:
-                        oid_str = str(varBind[0]).lstrip('.')
-                        if not oid_str.startswith(oid.lstrip('.')):
-                            completed_oids.add(oid)
-                            return results
-                        results.append({
-                            'oid': oid_str,
-                            'value': self._parse_snmp_value(
-                                varBind[1],
-                                preserve_octets=oid.lstrip('.') in raw_octet_oids,
-                            ),
-                            'type': type(varBind[1]).__name__
-                        })
-                        if len(results) >= limit:
-                            truncated_oids.add(oid)
-                            return results
-                if oid not in errors:
-                    completed_oids.add(oid)
-                return results
+                engine = SnmpEngine()
+                try:
+                    transport = await make_transport(ip, 161, timeout=timeout, retries=0)
+                    results = []
+                    async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
+                        engine, CommunityData(community), transport, ContextData(),
+                        0, max_reps, ObjectType(ObjectIdentity(oid))
+                    ):
+                        if errorIndication:
+                            err = str(errorIndication)
+                            errors[oid] = err
+                            self.logger.warning(f"SNMP walk error OID {oid} on {ip}: {err}")
+                            break
+                        if errorStatus:
+                            err = f"{errorStatus.prettyPrint()} at {errorIndex}"
+                            errors[oid] = err
+                            self.logger.warning(f"SNMP walk error OID {oid} on {ip}: {err}")
+                            break
+                        for varBind in varBinds:
+                            oid_str = str(varBind[0]).lstrip('.')
+                            if not oid_str.startswith(oid.lstrip('.')):
+                                completed_oids.add(oid)
+                                return results
+                            results.append({
+                                'oid': oid_str,
+                                'value': self._parse_snmp_value(
+                                    varBind[1],
+                                    preserve_octets=oid.lstrip('.') in raw_octet_oids,
+                                ),
+                                'type': type(varBind[1]).__name__
+                            })
+                            if len(results) >= limit:
+                                truncated_oids.add(oid)
+                                return results
+                    if oid not in errors:
+                        completed_oids.add(oid)
+                    return results
+                finally:
+                    try:
+                        engine.close_dispatcher()
+                    except Exception:
+                        pass
 
             async def walk_one_safe(oid, hard_limit):
                 try:
@@ -2282,9 +2289,10 @@ class PyPNMAgent:
         raw_octets: bool = False,
     ) -> dict:
         """Async SNMP GET using pysnmp."""
+        engine = SnmpEngine()
         try:
             errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
-                SnmpEngine(),
+                engine,
                 CommunityData(community),
                 await make_transport(target_ip, 161, timeout=timeout, retries=retries),
                 ContextData(),
@@ -2316,16 +2324,22 @@ class PyPNMAgent:
             return {'success': True, 'output': '\n'.join(output_lines)}
         except Exception as e:
             return {'success': False, 'error': str(e)}
-    
+        finally:
+            try:
+                engine.close_dispatcher()
+            except Exception:
+                pass
+
     async def _async_snmp_walk(
         self, target_ip: str, oid: str, community: str,
         timeout: int = 10, retries: int = 2,
     ) -> dict:
         """Async SNMP WALK using pysnmp."""
+        engine = SnmpEngine()
         try:
             results = []
             async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
-                SnmpEngine(),
+                engine,
                 CommunityData(community),
                 await make_transport(target_ip, 161, timeout=timeout, retries=retries),
                 ContextData(),
@@ -2360,17 +2374,23 @@ class PyPNMAgent:
             return {'success': True, 'results': results}
         except Exception as e:
             return {'success': False, 'error': str(e)}
-    
+        finally:
+            try:
+                engine.close_dispatcher()
+            except Exception:
+                pass
+
     async def _async_snmp_set(
         self, target_ip: str, oid: str, value: any, value_type: str,
         community: str, timeout: int = 5, retries: int = 2,
     ) -> dict:
         """Async SNMP SET using pysnmp."""
+        engine = SnmpEngine()
         try:
             snmp_value = self._to_snmp_value(value, value_type)
             
             errorIndication, errorStatus, errorIndex, varBinds = await set_cmd(
-                SnmpEngine(),
+                engine,
                 CommunityData(community),
                 await make_transport(target_ip, 161, timeout=timeout, retries=retries),
                 ContextData(),
@@ -2397,44 +2417,54 @@ class PyPNMAgent:
             return {'success': True, 'output': '\n'.join(output_lines)}
         except Exception as e:
             return {'success': False, 'error': str(e)}
+        finally:
+            try:
+                engine.close_dispatcher()
+            except Exception:
+                pass
 
     async def _async_snmp_bulk_walk(self, target_ip: str, oid: str, community: str, 
                                      max_repetitions: int, limit: int, timeout: int):
         """Async SNMP bulk walk using pysnmp."""
+        engine = SnmpEngine()
         modems = []
-        
-        async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
-            SnmpEngine(),
-            CommunityData(community),
-            await make_transport(target_ip, 161, timeout=timeout, retries=2),
-            ContextData(),
-            0, max_repetitions,  # non-repeaters, max-repetitions
-            ObjectType(ObjectIdentity(oid)),
-            lexicographicMode=False
-        ):
-            if errorIndication:
-                self.logger.error(f"SNMP error: {errorIndication}")
-                break
-            elif errorStatus:
-                self.logger.error(f"SNMP error: {errorStatus.prettyPrint()}")
-                break
-            
-            for varBind in varBinds:
-                oid_val, value = varBind
-                mac_hex = value.prettyPrint()
-                if mac_hex.startswith('0x'):
-                    mac_hex = mac_hex[2:]
-                
-                if len(mac_hex) == 12:
-                    mac_address = ':'.join(mac_hex[i:i+2] for i in range(0, 12, 2))
-                    modems.append({
-                        'mac_address': mac_address.upper()
-                    })
-            
-            if len(modems) >= limit:
-                break
-        
-        return modems
+        try:
+            async for (errorIndication, errorStatus, errorIndex, varBinds) in bulk_walk_cmd(
+                engine,
+                CommunityData(community),
+                await make_transport(target_ip, 161, timeout=timeout, retries=2),
+                ContextData(),
+                0, max_repetitions,  # non-repeaters, max-repetitions
+                ObjectType(ObjectIdentity(oid)),
+                lexicographicMode=False
+            ):
+                if errorIndication:
+                    self.logger.error(f"SNMP error: {errorIndication}")
+                    break
+                elif errorStatus:
+                    self.logger.error(f"SNMP error: {errorStatus.prettyPrint()}")
+                    break
+
+                for varBind in varBinds:
+                    oid_val, value = varBind
+                    mac_hex = value.prettyPrint()
+                    if mac_hex.startswith('0x'):
+                        mac_hex = mac_hex[2:]
+
+                    if len(mac_hex) == 12:
+                        mac_address = ':'.join(mac_hex[i:i+2] for i in range(0, 12, 2))
+                        modems.append({
+                            'mac_address': mac_address.upper()
+                        })
+
+                if len(modems) >= limit:
+                    break
+            return modems
+        finally:
+            try:
+                engine.close_dispatcher()
+            except Exception:
+                pass
     
     def _handle_tftp_get(self, params: dict) -> dict:
         """Handle TFTP/PNM file retrieval via SSH to TFTP server."""
